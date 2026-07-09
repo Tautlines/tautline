@@ -2,7 +2,7 @@
 # Versions verified green against bin/minervit-methodology on 2026-06-13.
 pytest==8.3.4
 mypy==2.1.0
-ruff==0.15.17
+ruff==0.15.21
 # pytest-cov powers the informational coverage step (arch-validate-tests-5);
 # verified green against bin/minervit-methodology (~23% via --cov=minervit_methodology) on 2026-06-20.
 pytest-cov==7.1.0
