@@ -10,13 +10,13 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@remotion/cli": "4.0.470",
-    "@remotion/google-fonts": "4.0.470",
-    "@remotion/media": "4.0.470",
-    "@remotion/transitions": "4.0.470",
+    "@remotion/cli": "4.0.487",
+    "@remotion/google-fonts": "4.0.487",
+    "@remotion/media": "4.0.487",
+    "@remotion/transitions": "4.0.487",
     "react": "19.2.6",
     "react-dom": "19.2.6",
-    "remotion": "4.0.470",
+    "remotion": "4.0.487",
     "zod": "^4.3.6"
   },
   "devDependencies": {
