@@ -1,0 +1,75 @@
+{
+  "behaviorChanges": [
+    "Verified the methodology repo's own self-adapter gates (lane-start, methodology-status --fail-on-drift) already pass against the tracked .minervit/adapter.json; no adapter schema violation existed (self-adapter verification task)",
+    "A prior in-flight pass on this task had incorrectly removed workProfiles.prePushBase, believing it invalid; release-time Codex review and independent schema validation confirmed the key is valid (methodology/adapter-schema.json) and load-bearing for non-development work-profile pre-push base resolution on this repo's origin/experimental release track, so it was restored before shipping",
+    "the internal productization refactor plan has the self-adapter verification checkbox ticked and its tracked finding marked closed, with the corrected verification narrative",
+    "lane startup, hooks, adapters, generated files, product worktrees, release tracks, and AI-facing policy are otherwise unchanged"
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    },
+    {
+      "name": "methodology-regression-rca",
+      "path": "plugins/minervit-ai-delivery-methodology/skills/methodology-regression-rca/SKILL.md",
+      "removeAfter": "1.0.0",
+      "replacement": "framework-intake",
+      "section": "skills",
+      "status": "deprecated"
+    },
+    {
+      "name": "rules-audit",
+      "path": "plugins/minervit-ai-delivery-methodology/skills/rules-audit/SKILL.md",
+      "removeAfter": "1.0.0",
+      "replacement": "framework-intake",
+      "section": "skills",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [],
+  "productsTested": [
+    "methodology-framework"
+  ],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "No adapter migration is required for downstream products; this release only corrects the methodology repo's own self-adapter documentation/verification trail.",
+    "Stable clients remain on the stable channel unless they explicitly opt into experimental.",
+    "This release is WIP-safe because .minervit/adapter.json ends this release with the same functional workProfiles.prePushBase value it had before the self-adapter verification task began; only release metadata and docs changed net.",
+    "Pinning back to 0.6.257 is safe; the self-adapter's functional state (including workProfiles.prePushBase) is unchanged between 0.6.257 and 0.6.258."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.6.258",
+  "wipSafe": true
+}

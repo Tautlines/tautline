@@ -1,0 +1,83 @@
+{
+  "behaviorChanges": [
+    "The methodology repository now has a repo-local, public-safe source adapter at .minervit/adapter.json",
+    "The committed .minervit-ai-delivery.json is generated from that source adapter so lane-start and methodology-status no longer fail with 'No project adapter found' in the framework repo",
+    "lane-start in the methodology repo preserves handwritten AGENTS.md and CLAUDE.md and regenerates only the lane JSON unless a reviewed migration intentionally moves those bootstrap files to generated sources",
+    "The methodology repo's generated lane JSON uses a stable self-referential methodologyCommit marker so render-adapters --check is not invalidated by the commit that contains the generated file",
+    "The methodology self-adapter declares provider-neutral framework development policy, WSL2 as the supported Windows path, no production deploy target, and scripts/test.sh plus scripts/validate.sh as local release gates",
+    "render-adapters now emits the deprecated goalTracker warning only when the raw source adapter declares goalTracker, avoiding false warnings from compatibility defaults",
+    "Generated Git hooks prefer the methodology CLI path that generated the hook before falling back to MINERVIT_METHODOLOGY_REPO, preventing stale global checkouts from shadowing newer hook commands",
+    "Strict review evidence no longer accepts adapter wrapper bases that point at local refs such as main; scoped review bases must be remote refs such as origin/main or origin/experimental",
+    "GitHub request and operation locks warn and continue when the local cache path is unavailable instead of crashing startup/status commands",
+    "Branch-liveness checks treat experimental as a framework base branch for release-channel work",
+    "Existing product/client adapters, generated files, release-track pins, update behavior, hooks, and product lane startup behavior are unchanged"
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    },
+    {
+      "name": "methodology-regression-rca",
+      "path": "plugins/minervit-ai-delivery-methodology/skills/methodology-regression-rca/SKILL.md",
+      "removeAfter": "1.0.0",
+      "replacement": "framework-intake",
+      "section": "skills",
+      "status": "deprecated"
+    },
+    {
+      "name": "rules-audit",
+      "path": "plugins/minervit-ai-delivery-methodology/skills/rules-audit/SKILL.md",
+      "removeAfter": "1.0.0",
+      "replacement": "framework-intake",
+      "section": "skills",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [],
+  "productsTested": [
+    "methodology-framework",
+    "example-saas"
+  ],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "No client adapter migration is required; existing product/client lanes stay on their current stable or experimental pins.",
+    "Stable clients remain on the stable channel unless they explicitly opt into experimental.",
+    "This release is WIP-safe because it adds methodology-repo self-hosting adapter config, narrows false deprecation/review-base behavior, and makes GitHub lock failures non-crashing.",
+    "Pinning back to 0.6.243 restores the previous framework repo behavior, where methodology-status/lane-start require an external adapter before the repo can self-host gates."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.6.244",
+  "wipSafe": true
+}

@@ -1,0 +1,60 @@
+{
+  "behaviorChanges": [
+    "Phase 5.1 CLI package split continues: opt-in telemetry and guard-event helper primitives move from bin/minervit-methodology into src/minervit_methodology/telemetry.py",
+    "bin/minervit-methodology keeps lazy compatibility wrappers with verbatim signatures for telemetry_enabled, telemetry_path, record_gate_telemetry, guard_log_event, parse_guard_report_since, and guard_event_after_since",
+    "cut-release checksums src/minervit_methodology/telemetry.py so the immutable release boundary covers the newly extracted implementation",
+    "lane startup, hooks, adapters, generated files, product worktrees, telemetry behavior, guard decisions, and AI-facing policy are unchanged"
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [],
+  "productsTested": [
+    "methodology-framework",
+    "example-saas"
+  ],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "No adapter migration is required; generated adapters do not need to change for this release.",
+    "Stable clients remain on the stable channel unless they explicitly opt into experimental.",
+    "This release is WIP-safe because it preserves existing telemetry and guard-event behavior behind compatibility wrappers.",
+    "Pinning back to 0.6.227 restores the previous in-bin implementation while keeping the same command behavior."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.6.228",
+  "wipSafe": true
+}

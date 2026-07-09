@@ -1,0 +1,20 @@
+{
+  "behaviorChanges": [
+    "canonical Review Before Push policy is now a concise 500-word-capped contract while detailed review procedure lives in the review-before-push and native-review-checklist skills",
+    "canonical-rules.md is smaller by roughly one thousand words without changing review gate behavior",
+    "tests now pin the review policy size ratchet and detailed skill ownership so duplicated review prose does not silently return"
+  ],
+  "deprecatedSurfaces": [],
+  "optionalMigrations": [],
+  "productsTested": [
+    "example-saas"
+  ],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "Revert to the previous pinned stable release if a lane depends on canonical-rules.md containing the old detailed review procedure prose.",
+    "No adapter migration is required; this changes policy organization and generated compatibility text only."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.6.136",
+  "wipSafe": true
+}

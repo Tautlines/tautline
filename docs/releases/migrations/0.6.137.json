@@ -1,0 +1,20 @@
+{
+  "behaviorChanges": [
+    "canonical Drive, Do Not Defer, Anti-Work-Evasion, and Plain-Language Status policy modules are merged into the concise Autonomy And Status contract",
+    "generated adapters now render one Autonomy And Status section instead of three separate autonomy/status sections",
+    "tests now pin the combined policy module at 600 words so detailed evasion/status taxonomy does not silently return to canonical policy"
+  ],
+  "deprecatedSurfaces": [],
+  "optionalMigrations": [],
+  "productsTested": [
+    "example-saas"
+  ],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "Revert to the previous pinned stable release if a lane depends on generated adapters containing separate Drive, Anti-Work-Evasion, or Plain-Language Status headings.",
+    "No adapter migration is required; this changes policy organization and generated compatibility text only."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.6.137",
+  "wipSafe": true
+}

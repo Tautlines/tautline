@@ -1,0 +1,66 @@
+{
+  "behaviorChanges": [
+    "Private-repo-context tests skip when the public-release-export marker file is present, so a public export's CI runs green on day one",
+    "Public boundary scans filter to files that exist, keeping them meaningful over the export's reduced tree",
+    "Commands, hooks, adapters, generated files, and runtime behavior are unchanged; test-only release"
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    },
+    {
+      "name": "rules-audit",
+      "path": "plugins/minervit-ai-delivery-methodology/skills/rules-audit/SKILL.md",
+      "removeAfter": "1.0.0",
+      "replacement": "framework-intake",
+      "section": "skills",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [],
+  "productsTested": [
+    "methodology-framework"
+  ],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "No adapter migration is required; generated adapters do not need to change for this release.",
+    "Stable clients remain on the stable channel unless they explicitly opt into experimental.",
+    "This release is WIP-safe because it changes test collection context only.",
+    "Pinning back to 0.6.264 restores the previous test behavior in export trees."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.6.265",
+  "wipSafe": true
+}

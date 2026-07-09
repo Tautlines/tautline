@@ -1,0 +1,75 @@
+{
+  "behaviorChanges": [
+    "render_adapter() (bin/minervit-methodology) has redundant/filler prose deduped and tightened across the Planning Artifacts, Review Before Push, Merge Queue, Background Commands, Autonomy And Planning/Status, Delivery Summaries, Execution Packet Work Loop, Context Continuity, and Technical Stack Policy sections, restoring headroom under the rendered-adapter byte budget for the reference adapter",
+    "No adapter JSON content changed and every REQUIRED_RENDERED_ADAPTER_MARKERS entry in tests/test_generated_adapter_contract.py remains present verbatim",
+    "tests/test_rendered_adapter_budget.py now reports current/limit/headroom byte counts on assertion failure instead of a bare byte-count assert",
+    "lane startup, hooks, adapters, generated files, product worktrees, release tracks, and AI-facing policy are otherwise unchanged"
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    },
+    {
+      "name": "methodology-regression-rca",
+      "path": "plugins/minervit-ai-delivery-methodology/skills/methodology-regression-rca/SKILL.md",
+      "removeAfter": "1.0.0",
+      "replacement": "framework-intake",
+      "section": "skills",
+      "status": "deprecated"
+    },
+    {
+      "name": "rules-audit",
+      "path": "plugins/minervit-ai-delivery-methodology/skills/rules-audit/SKILL.md",
+      "removeAfter": "1.0.0",
+      "replacement": "framework-intake",
+      "section": "skills",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [],
+  "productsTested": [
+    "methodology-framework"
+  ],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "No adapter migration is required; generated adapters do not need to change for this release.",
+    "Stable clients remain on the stable channel unless they explicitly opt into experimental.",
+    "This release is WIP-safe because it only tightens rendered-adapter prose and a test failure message, not the adapter schema or runtime behavior.",
+    "Pinning back to 0.6.259 restores the previous (slightly more verbose) render_adapter() prose; rendered CLAUDE.md/AGENTS.md output would grow back toward the byte ceiling but remains within it either way."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.6.260",
+  "wipSafe": true
+}

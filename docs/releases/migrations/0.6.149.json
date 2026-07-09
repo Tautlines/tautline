@@ -1,0 +1,21 @@
+{
+  "behaviorChanges": [
+    "Stop And Deferral Red Flags policy now states the state-based stop principle instead of carrying the long phrase-lawyer example list",
+    "the policy module points agents to blocker-declare for true blockers and identifies phrase matches as advisory telemetry during transition",
+    "tests ratchet methodology/policy/06a-stop-and-deferral-red-flags.md to 350 words and at most five forbidden-example lines"
+  ],
+  "deprecatedSurfaces": [],
+  "optionalMigrations": [],
+  "productsTested": [
+    "example-saas"
+  ],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "No adapter migration is required; stable clients remain on the stable channel unless they explicitly opt into experimental.",
+    "Generated canonical policy changes only after rerendering from the policy source; existing pinned stable lanes keep their current generated rules until safe upgrade.",
+    "Because agent-facing policy wording changes, this release is not WIP-safe for automatic active-lane upgrades."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.6.149",
+  "wipSafe": false
+}

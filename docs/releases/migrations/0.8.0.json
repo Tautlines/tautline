@@ -1,0 +1,77 @@
+{
+  "behaviorChanges": [
+    "The framework is renamed to Tautline (tagline: the governor for AI coding agents); public docs, README, and plugin manifests carry the new name",
+    "bin/tautline is the canonical CLI; bin/minervit-methodology remains as a one-line exec shim so existing lanes, hooks, and installed user shims keep working",
+    "TAUTLINE_-prefixed environment variables are honored everywhere with MINERVIT_ names as fallback (resolve_env); no existing environment needs to change",
+    "Generated lane markers move to .tautline.json and repo-local source adapters to .tautline/adapter.json; every read path resolves the canonical name first and falls back to the legacy .minervit-ai-delivery.json / .minervit/adapter.json names",
+    "Rendered adapters and help text emit tautline <subcommand>; generated lane wrappers and the installed user shim resolve tautline first and fall back to minervit-methodology (including pinned older checkouts)",
+    "Plugins are renamed: minervit-ai-delivery-methodology -> tautline-core, minervit-delivery-ops -> tautline-ops (directories and declared names)",
+    "A public ROADMAP.md tracks product direction (package split, pipx install, guided onboarding, update prompts) in the open"
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    },
+    {
+      "name": "rules-audit",
+      "path": "plugins/tautline-core/skills/rules-audit/SKILL.md",
+      "removeAfter": "1.0.0",
+      "replacement": "framework-intake",
+      "section": "skills",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [
+    {
+      "description": "Re-render each product's generated adapter against 0.8.0 (tautline render-adapters --project <source adapter> --target <repo> --write) so rendered commands emit the tautline CLI name and the marker moves to .tautline.json; commit the rename (the legacy .minervit-ai-delivery.json marker and minervit-methodology shim keep working until the post-launch fallback removal, so this can be scheduled per product).",
+      "id": "re-render-adapters-for-tautline"
+    },
+    {
+      "description": "Re-register AI-runtime plugin installs under the new plugin names: minervit-ai-delivery-methodology -> tautline-core, minervit-delivery-ops -> tautline-ops. Runtime configs that reference the old plugin directory paths or declared names will not resolve after updating the framework checkout.",
+      "id": "reinstall-plugins-under-tautline-names"
+    }
+  ],
+  "productsTested": [],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "No adapter migration is required to keep running; generated adapters from earlier releases keep working through the CLI shim, env fallback, and marker fallback.",
+    "Stable clients remain on the stable channel unless they explicitly opt into experimental.",
+    "This release is not WIP-safe for automatic active-lane upgrades because the plugin directories and declared plugin names change: an AI-runtime session whose plugin registration references the old names loses those skills until plugins are re-registered (see the reinstall-plugins-under-tautline-names migration). Lane CLI invocation, env vars, and markers are unaffected mid-work thanks to the compatibility fallbacks.",
+    "Pinning back to 0.7.1 restores the pre-rename names end-to-end; nothing in 0.8.0 writes state that 0.7.1 cannot read (the canonical marker written by 0.8.0 renders would be ignored by 0.7.1, which still reads the legacy marker, so re-render after pinning back)."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.8.0",
+  "wipSafe": false
+}

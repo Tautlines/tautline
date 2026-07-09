@@ -1,0 +1,42 @@
+name: ci-python
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Exercise the declared 3.10 floor (match statements) and a modern version.
+        python-version: ["3.10", "3.12"]
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+
+      - name: Install dev toolchain
+        run: pip install -r requirements-dev.txt
+
+      - name: Run python checks
+        run: scripts/test.sh
+
+      # Coverage no-regression gate (arch-validate-tests-5; quality rec #7 Part 1): BLOCKS
+      # the build when coverage falls below [report] fail_under in .coveragerc. The ratchet
+      # floor lives in .coveragerc; raise it as coverage improves, never lower it to pass a
+      # regression. Guard against re-defanging: tests/test_coverage_gate_enforced.py.
+      - name: Coverage (ratchet floor, blocking)
+        run: pytest --cov=minervit_methodology --cov-config=.coveragerc --cov-report=term-missing

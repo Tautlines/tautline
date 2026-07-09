@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "tautline-ops",
+  "displayName": "Minervit Delivery Ops",
+  "version": "0.8.1",
+  "description": "Claude Code package for Minervit delivery operations, communications, journals, and media workflows.",
+  "author": {
+    "name": "Minervit",
+    "url": "https://github.com/minervit"
+  },
+  "homepage": "https://github.com/tautlines/tautline",
+  "repository": "https://github.com/tautlines/tautline",
+  "license": "MIT",
+  "keywords": [
+    "ai-delivery",
+    "delivery-ops",
+    "iteration-review",
+    "journals",
+    "claude"
+  ],
+  "skills": "./skills/"
+}

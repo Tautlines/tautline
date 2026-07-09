@@ -1,0 +1,77 @@
+{
+  "behaviorChanges": [
+    "Phase 5.1 CLI package split continues: blocker declaration validation, blocker record construction, blocker status output, and pre-push blocker state result helpers move from bin/minervit-methodology into src/minervit_methodology/guards.py",
+    "bin/minervit-methodology keeps blocker_declare_error, blocker_declare_record, blocker_status_result, and guard_check_blocker_state_result compatibility wrappers",
+    "bin/minervit-methodology keeps stdlib-only fallback implementations for guard helpers so copied CLI launchers without src/minervit_methodology, or launchers paired with a stale helper package, keep blocker command and response-guard behavior instead of raising ImportError or AttributeError",
+    "blocker-declare, blocker-status, blocker-clear, guard-check, response-guard-hook, output, exit codes, and file formats are unchanged",
+    "lane startup, hooks, adapters, generated files, product worktrees, release tracks, and AI-facing policy are unchanged"
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    },
+    {
+      "name": "methodology-regression-rca",
+      "path": "plugins/minervit-ai-delivery-methodology/skills/methodology-regression-rca/SKILL.md",
+      "removeAfter": "1.0.0",
+      "replacement": "framework-intake",
+      "section": "skills",
+      "status": "deprecated"
+    },
+    {
+      "name": "rules-audit",
+      "path": "plugins/minervit-ai-delivery-methodology/skills/rules-audit/SKILL.md",
+      "removeAfter": "1.0.0",
+      "replacement": "framework-intake",
+      "section": "skills",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [],
+  "productsTested": [
+    "methodology-framework",
+    "example-saas"
+  ],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "No adapter migration is required; generated adapters do not need to change for this release.",
+    "Stable clients remain on the stable channel unless they explicitly opt into experimental.",
+    "This release is WIP-safe because it preserves existing blocker command and guard-check behavior behind compatibility wrappers plus copied-bin/stale-package fallbacks.",
+    "Pinning back to 0.6.249 restores the previous in-bin blocker command helper implementation while keeping the same command behavior."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.6.250",
+  "wipSafe": true
+}

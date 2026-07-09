@@ -1,0 +1,60 @@
+{
+  "behaviorChanges": [
+    "public-release-check and public-release-export can now read private product/client scan terms from an explicit untracked --private-terms-file",
+    "public-release-export still fails closed when no private terms are configured unless --allow-empty-private-terms is intentionally passed",
+    "public-release-export refuses --private-terms-file paths inside the methodology repository or export destination so private denylists cannot be copied into public candidates",
+    "public-release-export reports only private-term source and count, and the export marker records no private term values",
+    "lane startup, hooks, adapters, generated files, and product worktrees are unchanged"
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [],
+  "productsTested": [
+    "example-saas"
+  ],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "No adapter migration is required; generated adapters do not need to change for this release.",
+    "Stable clients remain on the stable channel unless they explicitly opt into experimental.",
+    "This release is WIP-safe because it only changes maintainer public-release tooling and documentation.",
+    "Pinning back to 0.6.212 restores env-only MINERVIT_PUBLIC_RELEASE_PRIVATE_TERMS configuration for public release private-term scans."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.6.213",
+  "wipSafe": true
+}

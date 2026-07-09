@@ -1,0 +1,28 @@
+{
+  "behaviorChanges": [
+    "delivery operations skills move from the core methodology plugin into the optional minervit-delivery-ops plugin",
+    "the core plugin keeps development process skills, hooks, startup gates, review gates, and adapter lifecycle behavior",
+    "the public contract manifest now scans both packaged skill roots so moved skills remain declared stable surfaces",
+    "iteration-review renderer assets now live under plugins/minervit-delivery-ops/skills/iteration-review/renderer-kit"
+  ],
+  "deprecatedSurfaces": [],
+  "optionalMigrations": [
+    {
+      "description": "Users who invoke iteration-review, milestone-update, session-journal, usage-accounting, event-observability, or database-migration-collision skills from their AI runtime should install or enable the new minervit-delivery-ops plugin. CLI commands continue to resolve their assets from the methodology checkout.",
+      "id": "install-minervit-delivery-ops-plugin"
+    }
+  ],
+  "productsTested": [
+    "example-saas"
+  ],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "No adapter migration is required and no generated adapter files change in this release.",
+    "Stable clients remain on the stable channel unless they explicitly opt into experimental.",
+    "Because plugin packaging and renderer paths change, this release is not WIP-safe for automatic active-lane upgrades.",
+    "If an AI runtime cannot find an ops skill after upgrade, install or enable minervit-delivery-ops; pinning back to 0.6.149 restores the previous single-plugin package layout."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.6.150",
+  "wipSafe": false
+}

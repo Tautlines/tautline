@@ -1,0 +1,46 @@
+name: Feature Request
+description: Propose a new capability or behavior change.
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the idea. Note that **features need maintainer acceptance before a pull
+        request is opened** — see the "Before you build" section of
+        [CONTRIBUTING.md](../../CONTRIBUTING.md). Filing this issue is the discussion step,
+        not a guarantee the feature will be accepted.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+      description: What problem are you trying to solve? Who is affected, and how, today?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed Approach
+      description: How would you solve it? Note any alternatives you considered.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: willing-to-implement
+    attributes:
+      label: Are you willing to implement this yourself?
+      options:
+        - "Yes, I'd like to open a PR once this is discussed"
+        - "Yes, but I'd need guidance"
+        - "No, I'm reporting the need"
+    validations:
+      required: true
+
+  - type: markdown
+    attributes:
+      value: |
+        A maintainer will respond with whether this fits the project's scope and layering
+        model (see `CONTRIBUTING.md`) before any implementation work should start.

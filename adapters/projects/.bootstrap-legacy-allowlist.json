@@ -1,0 +1,9 @@
+{
+  "adapters": [
+    {
+      "path": "adapters/projects/example-saas.json",
+      "project": "Example SaaS",
+      "reason": "Framework-shipped fictional reference adapter. It is rendered in tests against arbitrary/empty targets, so it cannot use target-relative repo evidence and is grandfathered as legacy-reviewed. Contains no real infrastructure, accounts, or customer data."
+    }
+  ]
+}

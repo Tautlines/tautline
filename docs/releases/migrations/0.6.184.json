@@ -1,0 +1,58 @@
+{
+  "behaviorChanges": [
+    "the internal validate.sh disposition plan (validate-sh-disposition.md) inventories the frozen scripts/validate.sh assertion groups for Phase 5 retirement",
+    "the inventory classifies validator blocks as already-covered-by <pytest file>, port, or obsolete before any shell coverage is deleted",
+    "scripts/validate.sh, lane runtime behavior, hooks, generated adapters, and canonical policy are unchanged; only release-migration-report metadata is added"
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [],
+  "productsTested": [
+    "example-saas"
+  ],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "No adapter migration is required; generated adapters do not need to change for this release.",
+    "Stable clients remain on the stable channel unless they explicitly opt into experimental.",
+    "This release is WIP-safe because it adds only a planning artifact plus release metadata and does not change runtime or AI-facing policy behavior.",
+    "Pinning back to 0.6.183 removes the validator disposition inventory but does not change lane runtime behavior."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.6.184",
+  "wipSafe": true
+}

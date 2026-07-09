@@ -1,0 +1,27 @@
+# Coverage config for the extension-less CLI (bin/minervit-methodology).
+#
+# The dual-fixture pytest harness (tests/conftest.py) imports the CLI in-process
+# under the module name "minervit_methodology" via SourceFileLoader, so coverage
+# is attributed to that import name (not a file path or package dir). Measuring by
+# module name is what lets `pytest --cov --cov-config=.coveragerc` collect data;
+# `source = bin/minervit-methodology` collects nothing because the file has no
+# package/extension for coverage to map.
+#
+# No-regression gate (arch-validate-tests-5; quality rec #7 Part 1, 2026-06-24): the
+# coverage step BLOCKS the build below [report] fail_under. CI runs it WITHOUT
+# continue-on-error, so a coverage regression now fails the job (it no longer dogfoods
+# the FM1/FM3 "tests run but failure does not gate" anti-pattern). Guard:
+# tests/test_coverage_gate_enforced.py.
+
+[run]
+source = minervit_methodology
+branch = false
+
+[report]
+show_missing = true
+# Ratchet floor: set just below the measured baseline (~25.13%) so a real regression
+# fails while cross-version (3.10/3.12) variance does not. RATCHET ONLY -- raise as
+# coverage improves; never lower it to pass a regression. Per-change exercise of NEW
+# lines is the diff-coverage gate (rec #7 Part 2).
+fail_under = 24
+skip_covered = false

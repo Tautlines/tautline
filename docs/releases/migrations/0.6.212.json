@@ -1,0 +1,59 @@
+{
+  "behaviorChanges": [
+    "release-update delivery ledgers can now record documented suspension decisions with timestamp, source, scope, and reason",
+    "release-update-status and public-release-check count valid suspension records as release accountability evidence while preserving fail-closed behavior for missing or malformed evidence",
+    "the productization-refactor release-card suspension window is recorded so public release checks no longer require unwanted retroactive Google Chat posts",
+    "lane startup, hooks, adapters, generated files, and product worktrees are unchanged"
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [],
+  "productsTested": [
+    "example-saas"
+  ],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "No adapter migration is required; generated adapters do not need to change for this release.",
+    "Stable clients remain on the stable channel unless they explicitly opt into experimental.",
+    "This release is WIP-safe because it only changes maintainer release-accountability checks and the release-update ledger.",
+    "Pinning back to 0.6.211 restores the prior release-update public-release gate, which requires Google Chat delivery markers and ignores documented suspension evidence."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.6.212",
+  "wipSafe": true
+}

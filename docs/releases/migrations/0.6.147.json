@@ -1,0 +1,28 @@
+{
+  "behaviorChanges": [
+    "Claude Stop-hook blocking now starts from lane state: active goals require continuing authorized work, a fresh true-blocker record, a terminal goal ledger, or documented context rotation",
+    "phrase-only Stop guard checks are advisory telemetry by default and write .ai-runs/guard-events.jsonl without blocking",
+    "responseGuard.phraseChecks is an internal adapter compatibility key with advisory, blocking, and off modes",
+    "blocked Stop-hook recovery text now names the three legal exits instead of listing incident-specific recovery prose"
+  ],
+  "deprecatedSurfaces": [],
+  "optionalMigrations": [
+    {
+      "description": "Adapters that need the old phrase-only Stop-hook blocking during transition may set responseGuard.phraseChecks=blocking. Omitted adapters use advisory phrase telemetry.",
+      "id": "responseGuard.phraseChecks"
+    }
+  ],
+  "productsTested": [
+    "example-saas"
+  ],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "No adapter migration is required; stable clients remain on the stable channel unless they explicitly opt into experimental.",
+    "Set responseGuard.phraseChecks=blocking to restore legacy phrase-blocking behavior for a specific adapter during transition.",
+    "Run blocker-clear or delete .ai-work/BLOCKER.json to discard stale local blocker state; use blocker-declare to create a fresh legal stop exit.",
+    "Because Stop-hook behavior changes, this release is not WIP-safe for automatic active-lane upgrades."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.6.147",
+  "wipSafe": false
+}

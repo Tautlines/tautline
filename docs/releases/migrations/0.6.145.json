@@ -1,0 +1,23 @@
+{
+  "behaviorChanges": [
+    "minervit-methodology init now provides the unmanaged-repo front door: write the bootstrap interview, print unresolved setup questions, and continue after answers",
+    "init reuses an existing bootstrap interview instead of overwriting partial answers, and init --continue refuses to overwrite existing source adapters or unmanaged CLAUDE.md/AGENTS.md instruction files",
+    "init --continue writes .minervit/adapter.json, renders generated adapter files, and runs lane-start only for unmanaged repos; managed repos no-op instead of being overwritten",
+    "lane-start missing-adapter recovery now points to one command, minervit-methodology init --target .",
+    "README.md is now a concise public onboarding entrypoint, with public contract and release-export commands moved to docs/reference/operations/release-engineering.md"
+  ],
+  "deprecatedSurfaces": [],
+  "optionalMigrations": [],
+  "productsTested": [
+    "example-saas"
+  ],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "Existing managed products and clients require no migration; their current generated adapters and framework pins keep working.",
+    "If a new adopter is not ready to complete init, delete the lane-local .ai-work/ADAPTER_BOOTSTRAP_INTERVIEW.md artifact and leave the repo unmanaged until setup resumes.",
+    "Revert to the previous pinned stable release if a product temporarily cannot tolerate the new onboarding command surface or README shape."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.6.145",
+  "wipSafe": true
+}

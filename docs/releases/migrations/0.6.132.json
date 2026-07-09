@@ -1,0 +1,19 @@
+{
+  "behaviorChanges": [
+    "scripts/test.sh now enforces a static external-process budget for scripts/validate.sh through tests/test_validate_freeze.py",
+    "validate.sh freeze tracking now covers subprocess-site growth as well as line-count growth"
+  ],
+  "deprecatedSurfaces": [],
+  "optionalMigrations": [],
+  "productsTested": [
+    "example-saas"
+  ],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "Revert to the previous pinned stable release if a methodology contributor workflow depends on adding new validate.sh shell/grep subprocess sites.",
+    "No product adapter migration is required."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.6.132",
+  "wipSafe": true
+}

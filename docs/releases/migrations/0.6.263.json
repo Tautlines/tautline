@@ -1,0 +1,75 @@
+{
+  "behaviorChanges": [
+    "Extracted helpers now live only in src/minervit_methodology: the duplicated copied-bin fallback helper bodies (_GuardFallback and the public-release standalone fallbacks) are removed and every caller routes through the module accessors",
+    "A copied bin/minervit-methodology launcher without a sibling src/minervit_methodology package now fails loudly with a guided SystemExit naming the missing package for non-hook commands; -hook commands keep failing open so a missing package never wedges a lane",
+    "A regression test pins the guided-SystemExit message contract against the real module accessors and proves a real -hook invocation fails open without src/",
+    "Behavior with the full checkout (the only supported install) is unchanged"
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    },
+    {
+      "name": "methodology-regression-rca",
+      "path": "plugins/minervit-ai-delivery-methodology/skills/methodology-regression-rca/SKILL.md",
+      "removeAfter": "1.0.0",
+      "replacement": "framework-intake",
+      "section": "skills",
+      "status": "deprecated"
+    },
+    {
+      "name": "rules-audit",
+      "path": "plugins/minervit-ai-delivery-methodology/skills/rules-audit/SKILL.md",
+      "removeAfter": "1.0.0",
+      "replacement": "framework-intake",
+      "section": "skills",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [],
+  "productsTested": [
+    "methodology-framework"
+  ],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "No adapter migration is required; generated adapters do not need to change for this release.",
+    "Stable clients remain on the stable channel unless they explicitly opt into experimental.",
+    "Not marked WIP-safe: copied-bin launchers without src/ lose fallback behavior by design in this release.",
+    "Pinning back to 0.6.262 restores the copied-bin fallback helper bodies."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.6.263",
+  "wipSafe": false
+}

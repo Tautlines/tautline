@@ -1,0 +1,71 @@
+{
+  "behaviorChanges": [
+    "The methodology-regression-rca compatibility alias skill is removed ahead of the first public tag; framework-intake owns regression RCA and feature-request intake",
+    "The public contract no longer lists the deprecated methodology-regression-rca skill entry",
+    "RCA artifact filenames, validate-rca-artifact, publish-rca-artifact, and all intake behavior are unchanged"
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    },
+    {
+      "name": "rules-audit",
+      "path": "plugins/minervit-ai-delivery-methodology/skills/rules-audit/SKILL.md",
+      "removeAfter": "1.0.0",
+      "replacement": "framework-intake",
+      "section": "skills",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [
+    {
+      "description": "The methodology-regression-rca compatibility alias skill is removed; use framework-intake for RCA and feature-request flows. Update any adapter, automation, or documentation that invokes the old skill name.",
+      "id": "framework-intake-replaces-methodology-regression-rca"
+    }
+  ],
+  "productsTested": [
+    "methodology-framework"
+  ],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "No adapter migration is required; generated adapters do not need to change for this release.",
+    "Stable clients remain on the stable channel unless they explicitly opt into experimental.",
+    "Not marked WIP-safe: lanes still invoking the methodology-regression-rca skill name must switch to framework-intake.",
+    "Pinning back to 0.6.263 restores the compatibility alias skill."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.6.264",
+  "wipSafe": false
+}

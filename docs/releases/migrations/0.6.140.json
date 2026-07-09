@@ -1,0 +1,20 @@
+{
+  "behaviorChanges": [
+    "sanctioned active-status updates for board-backed native subtasks now also claim the native parent issue active",
+    "terminal parent issues are not reopened when a child/subtask active update is reconciled",
+    "board-currency policy, board-item-update skill guidance, and backlog-provider operations docs now pin the reciprocal parent/subtask active-status invariant"
+  ],
+  "deprecatedSurfaces": [],
+  "optionalMigrations": [],
+  "productsTested": [
+    "example-saas"
+  ],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "Revert to the previous pinned stable release if a product temporarily cannot tolerate automatic parent active-status reconciliation.",
+    "No adapter migration is required; this changes status reconciliation behavior and public policy text only."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.6.140",
+  "wipSafe": true
+}

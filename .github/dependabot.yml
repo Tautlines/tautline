@@ -1,0 +1,24 @@
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/plugins/tautline-ops/skills/iteration-review/renderer-kit"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      remotion:
+        patterns: ["remotion", "@remotion/*"]
+      react:
+        patterns: ["react", "react-dom", "@types/react"]
+    # esbuild fix currently needs a breaking @remotion/cli downgrade; let Dependabot raise
+    # it as a reviewable PR (+ render smoke test) rather than auto-pinning. Do NOT auto-merge.
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "pip"
+    directory: "/"          # requirements-dev.txt
+    schedule:
+      interval: "weekly"

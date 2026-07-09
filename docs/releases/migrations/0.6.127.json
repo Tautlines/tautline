@@ -1,0 +1,38 @@
+{
+  "behaviorChanges": [
+    "review round budgets are T0=0, T1=1, and T2/T3=2 by default",
+    "codex-run rejects T0 implementation review and skips Stage 1 artifact requirements for T1 while accepting valid legacy T1 evidence",
+    "plan review is capped at two rounds by default; R3 requires explicit structural Critical evidence",
+    "early-warning smoke is conditional instead of a standing startup gate",
+    "generated adapters and response guards no longer require boundary-summary headings for ordinary status",
+    "Claude auto-compact guidance moves to 85 percent and model-effort policy is tier-aware"
+  ],
+  "deprecatedSurfaces": [],
+  "optionalMigrations": [
+    {
+      "command": "minervit-methodology render-adapters --project <adapter> --target <repo> --write",
+      "description": "Regenerate generated adapters at a safe boundary to pick up the new throughput, risk-tier, early-warning smoke, and concise status guidance.",
+      "id": "regenerate-throughput-adapter-text",
+      "surface": "generated-adapter"
+    }
+  ],
+  "productsTested": [
+    "example-saas"
+  ],
+  "requiredMigrations": [
+    {
+      "command": "edit adapter review.roundBudgets.T0 to 0, then run minervit-methodology render-adapters --project <adapter> --target <repo> --write",
+      "description": "Adapters that explicitly set review.roundBudgets.T0 to a positive value must set it to 0 or remove the key. T0 work is documentation/config-only and no longer supports an implementation review round.",
+      "id": "t0-review-budget-zero",
+      "surface": "adapter"
+    }
+  ],
+  "rollbackNotes": [
+    "Revert to 0.6.126 if a product depends on the prior broader review-round or standing-smoke behavior.",
+    "If an adapter explicitly used a positive T0 review budget, keep that adapter pinned below 0.6.127 until the budget is changed to 0 or removed.",
+    "No automatic adapter migration should run during active implementation; regenerate generated adapters at the next safe lane boundary."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.6.127",
+  "wipSafe": false
+}

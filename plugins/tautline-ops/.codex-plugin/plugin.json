@@ -1,0 +1,42 @@
+{
+  "author": {
+    "name": "Minervit",
+    "url": "https://github.com/minervit"
+  },
+  "description": "Minervit delivery operations skills for iteration reviews, milestone updates, runtime evidence, session journals, usage accounting, and migration repair.",
+  "homepage": "https://github.com/tautlines/tautline",
+  "interface": {
+    "brandColor": "#2563EB",
+    "capabilities": [
+      "Interactive",
+      "Write"
+    ],
+    "category": "Productivity",
+    "defaultPrompt": [
+      "Prepare an iteration review from a delivered goal.",
+      "Publish a milestone update through the configured delivery channel.",
+      "Prepare or publish a session journal.",
+      "Record or report local usage evidence.",
+      "Resolve a database migration collision."
+    ],
+    "developerName": "Minervit",
+    "displayName": "Minervit Delivery Ops",
+    "longDescription": "Packages Minervit's optional delivery operations workflows separately from the reusable methodology core. Use it for adapter-enabled iteration reviews, milestone updates, product delivery communications, runtime event evidence, session journals, usage accounting, and database migration collision repair.",
+    "privacyPolicyURL": "https://github.com/tautlines/tautline/blob/main/PRIVACY.md",
+    "shortDescription": "Optional delivery ops workflows for Minervit methodology lanes.",
+    "termsOfServiceURL": "https://github.com/tautlines/tautline/blob/main/TERMS.md",
+    "websiteURL": "https://github.com/tautlines/tautline"
+  },
+  "keywords": [
+    "ai-delivery",
+    "delivery-ops",
+    "review",
+    "codex",
+    "claude"
+  ],
+  "license": "MIT",
+  "name": "tautline-ops",
+  "repository": "https://github.com/tautlines/tautline",
+  "skills": "./skills/",
+  "version": "0.8.1"
+}

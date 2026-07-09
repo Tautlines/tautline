@@ -1,0 +1,61 @@
+{
+  "behaviorChanges": [
+    "Phase 5.1 CLI package split continues: pure stdlib utility helpers (slug, path, time, version, redaction, atomic-write helpers) move from bin/minervit-methodology into src/minervit_methodology/util.py",
+    "bin/minervit-methodology keeps lazy compatibility wrappers with verbatim signatures so all in-checkout behavior is unchanged",
+    "standalone copies of bin/minervit-methodology without src/ remain release-helpers-degraded only: utility helpers now also require src/ and fail with a guided error instead of a traceback, while the hook fail-open handler stays fail-open everywhere and degrades to exception-type-only messages when redaction is unavailable",
+    "validate.sh sync fixtures now copy src/minervit_methodology alongside bin so copied-checkout flows keep exercising the real implementation",
+    "cut-release checksums src/minervit_methodology/util.py so the immutable release boundary keeps covering all distributed implementation",
+    "runtime hooks, generated adapters, adapter schema, and command output behavior are unchanged; this is a mechanical extraction only"
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [],
+  "productsTested": [
+    "example-saas"
+  ],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "No adapter migration is required; generated adapters do not need to change for this release.",
+    "Stable clients remain on the stable channel unless they explicitly opt into experimental.",
+    "This release is WIP-safe because it only moves pure utility helper implementation behind compatibility wrappers without changing lane runtime behavior.",
+    "Pinning back to 0.6.203 restores the utility helper functions inside bin/minervit-methodology but does not change lane runtime behavior."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.6.204",
+  "wipSafe": true
+}

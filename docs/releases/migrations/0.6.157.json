@@ -1,0 +1,48 @@
+{
+  "behaviorChanges": [
+    "native-review-checklist is no longer a packaged skill on the experimental channel",
+    "plan-review-loop is no longer a packaged skill on the experimental channel",
+    "review-before-push now owns risk-tier review selection, T2/T3 plan review, native Stage 1 sweep, and cross-model implementation review workflows",
+    "public contract skill metadata removes the absorbed review skills and points review workflow users to review-before-push",
+    "generated adapter text and setup-runtime docs no longer advertise plan-review-loop as a separate Codex skill"
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "native-review-checklist",
+      "note": "This stable-status skill surface is removed only on the experimental track in 0.6.157. Stable-channel promotion must preserve the normal deprecation/removal policy or keep a compatibility alias.",
+      "replacement": "review-before-push",
+      "section": "skills",
+      "status": "experimental-removal"
+    },
+    {
+      "name": "plan-review-loop",
+      "note": "This stable-status skill surface is removed only on the experimental track in 0.6.157. Stable-channel promotion must preserve the normal deprecation/removal policy or keep a compatibility alias.",
+      "replacement": "review-before-push",
+      "section": "skills",
+      "status": "experimental-removal"
+    }
+  ],
+  "optionalMigrations": [
+    {
+      "description": "AI runtime prompts, docs, or memories that explicitly invoke the native-review-checklist skill should invoke review-before-push instead. The native Stage 1 sweep procedure now lives in the review-before-push reference.",
+      "id": "replace-native-review-checklist-skill-reference"
+    },
+    {
+      "description": "AI runtime prompts, docs, or memories that explicitly invoke the plan-review-loop skill should invoke review-before-push instead. The T2/T3 plan review procedure now lives in the review-before-push reference.",
+      "id": "replace-plan-review-loop-skill-reference"
+    }
+  ],
+  "productsTested": [
+    "example-saas"
+  ],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "No adapter migration is required; generated adapters only change their detailed-policy skill pointer when rerendered.",
+    "Stable clients remain on the stable channel unless they explicitly opt into experimental.",
+    "Because AI runtime skill surfaces are removed, this release is not WIP-safe for automatic active-lane upgrades.",
+    "Pinning back to 0.6.156 restores native-review-checklist and plan-review-loop as separate packaged skills."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.6.157",
+  "wipSafe": false
+}

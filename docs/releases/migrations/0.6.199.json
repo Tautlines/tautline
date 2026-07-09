@@ -1,0 +1,59 @@
+{
+  "behaviorChanges": [
+    "Phase 3 open-core boundary is tightened: core plugin references and canonical policy no longer carry provider-specific delivery-ops details such as chat providers, object storage/CDN, local tailing tools, or stack-specific migration repair",
+    "ops-owned delivery communications, deployment notifications, milestone updates, product notes, event logs, usage evidence, session journals, and migration-collision procedure remain in the delivery-ops plugin and detailed ops references",
+    "generated canonical-rules.md is regenerated from source modules and reduced to 66000 bytes while preserving required startup, review, board, monitor, proof, and release-track markers",
+    "runtime hooks, generated adapters, adapter schema, and operational CLI behavior are unchanged; CLI code only declares release metadata for this version"
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [],
+  "productsTested": [
+    "example-saas"
+  ],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "No adapter migration is required; generated adapters do not need to change for this release.",
+    "Stable clients remain on the stable channel unless they explicitly opt into experimental.",
+    "This release is WIP-safe because it changes policy/reference wording, release metadata, and tests only, without changing runtime hook behavior.",
+    "Pinning back to 0.6.198 restores the previous core references with more provider-specific delivery-ops detail but does not change lane runtime behavior."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.6.199",
+  "wipSafe": true
+}

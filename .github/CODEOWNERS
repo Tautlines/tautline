@@ -1,0 +1,35 @@
+# CODEOWNERS — required reviewers by path.
+# Last matching pattern wins, so trust-boundary rules are listed AFTER the
+# repo-wide default. Enable "Require review from Code Owners" branch
+# protection on the default branch for these rules to be enforced.
+#
+# --- Fork/adopter template ---
+# If you fork this repository, replace the handle below with your own GitHub
+# user or team slug before relying on these rules, e.g.:
+#   *                                                       @<org>/<methodology-maintainers-team>
+# --- end template ---
+
+# Repo-wide default owner.
+*                                                       @jason-minervit
+
+# --- Trust boundary: executable launcher (RCE surface) ---
+# The CLI that the auto-update path re-execs and that every hook invokes.
+/bin/                                                   @jason-minervit
+
+# --- Trust boundary: agent hooks (what runs in-session) ---
+# Hook manifests wire commands into the runtime tool lifecycle.
+/plugins/tautline-core/hooks/        @jason-minervit
+
+# --- Trust boundary: CI/CD (runs with repo secrets + write tokens) ---
+/.github/workflows/                                     @jason-minervit
+
+# --- Trust boundary: dependency lockfiles (supply chain) ---
+**/*.lock                                               @jason-minervit
+**/package-lock.json                                    @jason-minervit
+
+# --- Trust boundary: privilege-granting allowlist ---
+# Exempts listed adapters from a bootstrap-evidence requirement.
+/adapters/projects/.bootstrap-legacy-allowlist.json     @jason-minervit
+
+# --- Trust boundary: canonical policy + adapter schema (the rules engine) ---
+/methodology/                                           @jason-minervit

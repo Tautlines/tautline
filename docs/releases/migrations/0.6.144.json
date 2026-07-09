@@ -1,0 +1,21 @@
+{
+  "behaviorChanges": [
+    "stop-response, Bash, and ExitPlanMode guards now append fail-open lane-local JSONL guard-fire events under .ai-runs/guard-events.jsonl",
+    "guard-report summarizes per-check evaluated/fired counts with text or JSON output so productization cleanup can be driven by observed false-block and fire-rate data",
+    "the productization refactor plan is now tracked internally as the ordered Phase 0 through Phase 6 source-of-truth plan"
+  ],
+  "deprecatedSurfaces": [],
+  "optionalMigrations": [],
+  "productsTested": [
+    "example-saas"
+  ],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "Delete .ai-runs/guard-events.jsonl if a lane wants to discard local telemetry evidence; the file is lane-local and not required for operation.",
+    "Revert to the previous pinned stable release if a product temporarily cannot tolerate lane-local guard telemetry files.",
+    "No adapter migration is required; guard decisions and hook block/pass behavior are unchanged."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.6.144",
+  "wipSafe": true
+}

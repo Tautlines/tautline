@@ -1,0 +1,60 @@
+{
+  "behaviorChanges": [
+    "Phase 5.1 CLI package split continues: deployment-notification marker-path, latest-marker, CI-detection, source selection, and content-input helpers move from bin/minervit-methodology into src/minervit_methodology/deploy.py",
+    "bin/minervit-methodology keeps deployment_notification_marker_path, deployment_notification_latest_marker, deployment_notification_ci_detected, deployment_notification_source, and deployment_notification_content_from_args compatibility wrappers",
+    "deploy-ready notification dedupe, latest-marker status output, pipeline/agent source behavior, and deployment-notification gate decisions are unchanged",
+    "lane startup, hooks, adapters, generated files, product worktrees, release tracks, and AI-facing policy are unchanged"
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [],
+  "productsTested": [
+    "methodology-framework",
+    "example-saas"
+  ],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "No adapter migration is required; generated adapters do not need to change for this release.",
+    "Stable clients remain on the stable channel unless they explicitly opt into experimental.",
+    "This release is WIP-safe because it preserves existing deployment-notification marker/source/content behavior behind compatibility wrappers.",
+    "Pinning back to 0.6.237 restores the previous in-bin deployment-notification marker/source/content helper implementation while keeping the same command behavior."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.6.238",
+  "wipSafe": true
+}

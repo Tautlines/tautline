@@ -1,0 +1,59 @@
+{
+  "behaviorChanges": [
+    "core methodology SKILL.md entrypoints are capped at 45 lines each on the experimental channel",
+    "core methodology SKILL.md entrypoints now total no more than 1200 lines",
+    "detailed workflow procedure remains in packaged references/*.md files rather than the routine skill entrypoints",
+    "public quality tests now pin thinned entrypoints separately from detailed policy references"
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [],
+  "productsTested": [
+    "example-saas"
+  ],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "No adapter migration is required; generated adapters do not need to change for this release.",
+    "Stable clients remain on the stable channel unless they explicitly opt into experimental.",
+    "Because AI runtime skill prompt surfaces changed materially, this release is not WIP-safe for automatic active-lane upgrades.",
+    "Pinning back to 0.6.157 restores the previous longer core skill entrypoints."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.6.158",
+  "wipSafe": false
+}

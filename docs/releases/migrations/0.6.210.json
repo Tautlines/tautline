@@ -1,0 +1,59 @@
+{
+  "behaviorChanges": [
+    "public-release-check now blocks repositories whose fetched target remote shares the local root commit, making same-history public publishing fail closed",
+    "same-history detection uses local remote-tracking refs instead of network calls so public-release-check remains deterministic and CI-safe",
+    "public release diagnostics now report same-history-remote with the matching remote name and root commit prefix, pointing maintainers to public-release-export fresh-history publishing",
+    "clean public-release-export repositories remain unaffected because their fresh root commit does not match the private source history"
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [],
+  "productsTested": [
+    "example-saas"
+  ],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "No adapter migration is required; generated adapters do not need to change for this release.",
+    "Stable clients remain on the stable channel unless they explicitly opt into experimental.",
+    "This release is WIP-safe because it only tightens maintainer public-release validation and does not affect lane startup, hooks, adapters, or product worktrees.",
+    "Pinning back to 0.6.209 removes the same-history remote diagnostic, so same-history public publishing relies only on private-path history scans."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.6.210",
+  "wipSafe": true
+}

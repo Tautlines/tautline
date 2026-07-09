@@ -1,0 +1,75 @@
+{
+  "behaviorChanges": [
+    "methodology/policy/21-lane-lifecycle.md (and the canonical-rules.md it renders into) no longer names MINERVIT_METHODOLOGY_RELEASE_GOOGLE_CHAT_WEBHOOK; the release-announcement rule is now role-neutral (announce through the ops plugin)",
+    "docs/reference/operations/release-engineering.md gains a Release Announcements section documenting the webhook environment variable and its fallbacks that moved out of canonical policy",
+    "tests/test_canonical_rules.py no longer pins MINERVIT_METHODOLOGY_RELEASE_GOOGLE_CHAT_WEBHOOK as a required startup/release/authority marker",
+    "lane startup, hooks, adapters, generated files, product worktrees, release tracks, and AI-facing policy are otherwise unchanged"
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    },
+    {
+      "name": "methodology-regression-rca",
+      "path": "plugins/minervit-ai-delivery-methodology/skills/methodology-regression-rca/SKILL.md",
+      "removeAfter": "1.0.0",
+      "replacement": "framework-intake",
+      "section": "skills",
+      "status": "deprecated"
+    },
+    {
+      "name": "rules-audit",
+      "path": "plugins/minervit-ai-delivery-methodology/skills/rules-audit/SKILL.md",
+      "removeAfter": "1.0.0",
+      "replacement": "framework-intake",
+      "section": "skills",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [],
+  "productsTested": [
+    "methodology-framework"
+  ],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "No adapter migration is required; generated adapters do not need to change for this release.",
+    "Stable clients remain on the stable channel unless they explicitly opt into experimental.",
+    "This release is WIP-safe because it only changes documentation text and a test assertion, not runtime behavior.",
+    "Pinning back to 0.6.255 restores the previous canonical-policy wording that named the webhook environment variable directly."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.6.256",
+  "wipSafe": true
+}

@@ -1,0 +1,60 @@
+{
+  "behaviorChanges": [
+    "public-release-export now validates release-update delivery markers against the exported repository root instead of skipping them for non-source destinations",
+    "public-release-export --write reports public_release_export_check: blocked whenever the exported repository's own public-release-check would block on missing release-update delivery evidence",
+    "release-update public-release helper functions accept an explicit repo root so clean-history export candidates and in-place source checks use the same release ledger, VERSION, and changelog inputs",
+    "release-update delivery ledgers with the wrong schema now degrade to an empty delivered set so malformed public candidates fail closed",
+    "minimal test fixture repositories without VERSION metadata remain unaffected; real release candidates with VERSION metadata keep the release-update public-release gate"
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [],
+  "productsTested": [
+    "example-saas"
+  ],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "No adapter migration is required; generated adapters do not need to change for this release.",
+    "Stable clients remain on the stable channel unless they explicitly opt into experimental.",
+    "This release is WIP-safe because it only tightens maintainer public-export validation and does not affect lane startup, hooks, adapters, or product worktrees.",
+    "Pinning back to 0.6.207 restores the previous source-side export check behavior, where an export could say ok while the exported repo's own public-release-check blocked on release-update markers."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.6.208",
+  "wipSafe": true
+}

@@ -1,0 +1,58 @@
+{
+  "behaviorChanges": [
+    "canonical Backlog Provider Intake And Grooming policy is ratcheted to a 580-word cap while preserving provider authority, sanctioned command entrypoints, human-owned board schema, board Status currency, stakeholder questions, migration/export boundaries, board ordering, provider-item completion authority, and grooming DoR obligations",
+    "detailed provider workflow, board status, subtask reconciliation, stakeholder-question, migration/export, board-order, epic-scope, and grooming procedure remains in the owning reference docs and skills",
+    "canonical-rules.md is regenerated with the smaller backlog-provider module to reduce the compatibility prompt surface"
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [],
+  "productsTested": [
+    "example-saas"
+  ],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "No adapter migration is required; generated adapters do not need to change for this release.",
+    "Stable clients remain on the stable channel unless they explicitly opt into experimental.",
+    "Because canonical AI-facing backlog-provider text changed materially, this release is not WIP-safe for automatic active-lane upgrades.",
+    "Pinning back to 0.6.181 restores the previous longer Backlog Provider Intake And Grooming policy prose."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.6.182",
+  "wipSafe": false
+}

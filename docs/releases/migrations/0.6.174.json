@@ -1,0 +1,59 @@
+{
+  "behaviorChanges": [
+    "set-framework-channel now has an explicit --source adapter mode that updates repo-local .minervit/adapter.json _framework.channel instead of requiring hand-edited JSON",
+    "adapter channel writes validate the adapter before accepting output and refuse generated lane adapters or adapter paths outside the target repo",
+    "repo-local adapter channel writes re-render .minervit-ai-delivery.json with --json-only so the lane's effective _framework.channel changes immediately",
+    "the default set-framework-channel behavior remains the existing lane-local .minervit/pin.json override for backward compatibility"
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [],
+  "productsTested": [
+    "example-saas"
+  ],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "No adapter migration is required; existing pin-file channel selection keeps working unchanged.",
+    "Stable clients remain on the stable channel unless they explicitly opt into experimental.",
+    "This release is WIP-safe because the new adapter-write path is opt-in and existing startup/update defaults are unchanged.",
+    "Pinning back to 0.6.173 restores the previous pin-file-only set-framework-channel behavior."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.6.174",
+  "wipSafe": true
+}

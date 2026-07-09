@@ -1,0 +1,54 @@
+name: renderer-ci
+
+# Build/test gate for the iteration-review renderer-kit (sec-supplychain-1). Runs only when
+# the renderer-kit path changes so unrelated PRs stay fast. Installs with `npm ci` for a
+# reproducible, lockfile-exact tree (never `npm install`), then typechecks and tests.
+on:
+  pull_request:
+    paths:
+      - "plugins/tautline-ops/skills/iteration-review/renderer-kit/**"
+      - ".github/workflows/renderer-ci.yml"
+  push:
+    branches: [main]
+    paths:
+      - "plugins/tautline-ops/skills/iteration-review/renderer-kit/**"
+      - ".github/workflows/renderer-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  renderer:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: plugins/tautline-ops/skills/iteration-review/renderer-kit
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "20"
+
+      # Reproducible install: `npm ci` aborts on a package.json/package-lock.json mismatch,
+      # so it doubles as the renderer-kit lockfile-sync check.
+      - name: npm ci
+        run: npm ci
+
+      # Typecheck if the package declares a `typecheck` script (tsc --noEmit). Guarded so the
+      # job stays correct if the script is ever renamed/removed rather than failing opaquely.
+      - name: Typecheck (tsc --noEmit)
+        run: |
+          if npm run | grep -qE '^  typecheck'; then
+            npm run typecheck
+          else
+            echo "no typecheck script — skipping"
+          fi
+
+      # Test if the package declares a `test` script (vitest run).
+      - name: Test
+        run: |
+          if npm run | grep -qE '^  test'; then
+            npm test
+          else
+            echo "no test script — skipping"
+          fi

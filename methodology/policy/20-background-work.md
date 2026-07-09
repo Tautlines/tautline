@@ -1,0 +1,12 @@
+## Background Work
+
+- Long/background work must be observable and supervised: command, log, PID when available, interrupt conditions, timeout, heartbeat, and terminal summary.
+- A background command without a monitor is incomplete work. A monitor without forward motion is also incomplete work. Starting, arming, or announcing a monitor is not a stopping point; poll, recover, or start parallel-safe work.
+- Heartbeat/poll cadence must be concrete and no longer than 10 minutes unless adapter-stricter. Before any autonomous-loop yield, delayed wakeup, `ScheduleWakeup`, or host-equivalent heartbeat, enumerate current work and advance anything possible.
+- A delayed wakeup, reminder, monitor event, or shell completion notification is not active supervision. If monitored work may outlast the turn, arm `ScheduleWakeup` or an equivalent host self-wakeup at the same cadence.
+- Passive monitor stops are forbidden. Do not end a turn with only "monitor is running", "monitor watches", "waiting on merge", "waiting on checks", "R2 running", or equivalent status. Passive monitor stop examples include "CI is processing", "the deploy is underway", "the review is running", "checks are in progress", or updates without same-turn next action, active poll evidence, terminal outcome, or true blocker.
+- Strict monitor checks require a verified PID/process identity, not only a fresh log. Two no-progress cadences are stale/hung unless adapter-stricter.
+- Terminal monitor states are success, failure, cancelled, timed out, queue rejection, deploy failure, main red, or project-defined terminal state.
+- Transient provider/API failures are recovery-loop work. Claude, Codex, GitHub, network, overload, rate-limit, timeout, and 5xx/529 failures require retry/poll/backoff until class changes. Frustration, profanity, or an angry interjection is not an explicit stop.
+- Routine queued PRs are not background work to supervise; after clean local gates/review, queue it, record it, stop watching, and continue.
+- Claude Stop response guards and tool-rejection hooks are mandatory in Claude lanes. The response guard is active only when the lane has an active goal ledger and the current Claude transcript or hook payload proves a live goal session; it blocks passive/status-only stops, terminal continuity omission, false-active rejected-tool status, and standby language.

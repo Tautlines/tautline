@@ -1,0 +1,60 @@
+{
+  "behaviorChanges": [
+    "Phase 5.1 CLI package split continues: package name availability helper logic moves from bin/minervit-methodology into src/minervit_methodology/names.py",
+    "bin/minervit-methodology keeps the name_availability compatibility wrapper and passes the CLI's urlopen, Request, and redaction seams explicitly",
+    "check-name-availability continues to check npm and PyPI package names, report 404 as available, report 200 as taken, and degrade network errors to unknown",
+    "lane startup, hooks, adapters, generated files, product worktrees, release tracks, and AI-facing policy are unchanged"
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [],
+  "productsTested": [
+    "methodology-framework",
+    "example-saas"
+  ],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "No adapter migration is required; generated adapters do not need to change for this release.",
+    "Stable clients remain on the stable channel unless they explicitly opt into experimental.",
+    "This release is WIP-safe because it preserves existing name-availability behavior behind a compatibility wrapper.",
+    "Pinning back to 0.6.230 restores the previous in-bin implementation while keeping the same command behavior."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.6.231",
+  "wipSafe": true
+}

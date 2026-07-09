@@ -1,0 +1,76 @@
+{
+  "behaviorChanges": [
+    "Initial public (open-core) release; the public-export boundary, changelog, and product docs are cut to their launch shape",
+    "Auto-update trust hardening (security hardening): fresh installs default to a pinned update policy (advance via update-repin after review); --dangerously-skip-permissions refuses to run unless the effective policy is pinned or signed (checked at install and at launch); re-exec tokens move to a 0600 file in a 0700 dir under ~/.config/minervit; adapter-configured paths are contained to the project root (schema pattern + runtime backstop, documented scratchPaths/laneCoordination allowlist)",
+    "Governance and OSS contribution scaffolding for the public launch (governance pack): AI contribution policy, PR template, issue forms, GOVERNANCE.md, CONTRIBUTING additions, and a de-placeholdered CODEOWNERS",
+    "Launch documentation (README and demo assets): README rewrite, docs/README.md landing page, terminal demo GIF + vhs tape, and a social-preview generator (dev-only pillow dependency)",
+    "docs/product/ carries only the two public product docs (positioning, support/SLA model); the other internal product-strategy docs move under the export-excluded docs/productization/product-internal/",
+    "CHANGELOG.md and the methodology-plugin changelog are squashed to a single 0.7.0 launch entry; pre-launch history is retained privately in the export-excluded archive",
+    "The stack-specific makerkit-implementation example skill is no longer packaged with either plugin: it moves from the delivery-ops plugin to the unpackaged examples/community-skills/makerkit-implementation/ tree, keeping the portable core stack-agnostic; adopters who use it should copy it into their own skills directory (see the copy-makerkit-implementation-community-skill optional migration)",
+    "Commands, adapter schema, and generated-file behavior are unchanged for existing adopters; the pinned default and skip-permissions interlock apply to fresh installs and launcher regeneration only, and the rest of the launch reshapes documentation and packaging"
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    },
+    {
+      "name": "rules-audit",
+      "path": "plugins/minervit-ai-delivery-methodology/skills/rules-audit/SKILL.md",
+      "removeAfter": "1.0.0",
+      "replacement": "framework-intake",
+      "section": "skills",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [
+    {
+      "description": "Adopters who invoke the makerkit-implementation skill from their AI runtime should copy examples/community-skills/makerkit-implementation/ from the methodology checkout into their own skills directory: at 0.7.0 this stack-specific worked example moves out of the packaged plugins into the unpackaged examples/community-skills/ tree so the portable core stays stack-agnostic, and it is no longer distributed with either plugin. CLI commands continue to resolve their assets from the methodology checkout regardless of which plugins are enabled.",
+      "id": "copy-makerkit-implementation-community-skill"
+    }
+  ],
+  "productsTested": [
+    "methodology-framework"
+  ],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "No adapter migration is required; generated adapters do not need to change for this release.",
+    "Stable clients remain on the stable channel unless they explicitly opt into experimental.",
+    "Because this release removes a packaged AI runtime skill surface (makerkit-implementation leaves the delivery-ops plugin for the unpackaged examples/community-skills/ tree, the same reasoning that made 0.6.259 not WIP-safe), it is not WIP-safe for automatic active-lane upgrades: a lane mid-work on a MakerKit task would lose the skill until it copies examples/community-skills/makerkit-implementation/ into its own skills directory (the copy-makerkit-implementation-community-skill optional migration). The rest of the launch changes no runtime behavior for existing installs: the warn fallback for installs without a policy env is unchanged, and the pinned default and skip-permissions interlock apply to fresh installs and launcher regeneration only.",
+    "Pinning back to 0.6.268 (the immediately prior release) restores the pre-launch documentation layout, the full changelog history, and makerkit-implementation in the delivery-ops plugin while keeping the 0.6.268 security hardening (pinned-by-default policy, skip-permissions interlock, hardened re-exec token path, adapter path containment); only roll all the way back to 0.6.265 if the security hardening itself must be reverted."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.7.0",
+  "wipSafe": false
+}

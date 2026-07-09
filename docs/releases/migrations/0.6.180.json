@@ -1,0 +1,59 @@
+{
+  "behaviorChanges": [
+    "canonical Background Work policy is ratcheted further to a 570-word cap while preserving monitor evidence, active supervision, passive-stop, stale/hung, provider-recovery, queued-PR, terminal-state, and response-guard obligations",
+    "canonical Context Continuity policy is ratcheted further to a 610-word cap while preserving filesystem handoff, no-copy-paste, not-a-stop, final-handoff, startup-gate, ledger-precedence, planning-on-resume, and continuity-hold obligations",
+    "detailed monitor, stale/hung, provider-recovery, queue, handoff, portable-CLI, rotation-threshold, journal, and planning-on-resume procedure remains in the owning skill references",
+    "canonical-rules.md is regenerated with the smaller background/continuity modules to reduce the compatibility prompt surface"
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [],
+  "productsTested": [
+    "example-saas"
+  ],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "No adapter migration is required; generated adapters do not need to change for this release.",
+    "Stable clients remain on the stable channel unless they explicitly opt into experimental.",
+    "Because canonical AI-facing background-work and context-continuity text changed materially, this release is not WIP-safe for automatic active-lane upgrades.",
+    "Pinning back to 0.6.179 restores the previous longer Background Work and Context Continuity policy prose."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.6.180",
+  "wipSafe": false
+}

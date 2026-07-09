@@ -1,0 +1,4 @@
+interface:
+  display_name: "MakerKit Implementation"
+  short_description: "Reusable MakerKit SaaS planning, porting, billing, and deployment lessons."
+  default_prompt: "Use MakerKit implementation lessons to plan, port, build, or review this SaaS app."

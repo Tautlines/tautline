@@ -1,0 +1,59 @@
+{
+  "behaviorChanges": [
+    "canonical Backlog Provider Intake And Grooming policy is ratcheted to a 650-word cap while preserving provider authority, board schema ownership, stakeholder questions, migration/export, customer-facing scope, board order, epic scope, business framing, provider-item completion, and grooming DoR obligations",
+    "canonical Board Currency And Subtask Status policy is ratcheted to a 585-word cap while preserving lifecycle status sync, active/done transitions, scope-aware blocking, planning-start active claims, board-backed native subtask status, parent-done blocking, done verification evidence, and customer-facing bug board placement obligations",
+    "detailed backlog migration, board item write tiers, board schema adoption, epic grooming, provider work-order, and subtask reconciliation procedure remain in the owning references",
+    "canonical-rules.md is regenerated with the smaller backlog/board modules to reduce the compatibility prompt surface"
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [],
+  "productsTested": [
+    "example-saas"
+  ],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "No adapter migration is required; generated adapters do not need to change for this release.",
+    "Stable clients remain on the stable channel unless they explicitly opt into experimental.",
+    "Because canonical AI-facing backlog-provider and board-currency text changed materially, this release is not WIP-safe for automatic active-lane upgrades.",
+    "Pinning back to 0.6.178 restores the previous longer Backlog Provider Intake And Grooming and Board Currency And Subtask Status policy prose."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.6.179",
+  "wipSafe": false
+}

@@ -1,0 +1,36 @@
+{
+  "behaviorChanges": [
+    "operator-visibility is no longer a packaged skill on the experimental channel",
+    "delivery-summary now owns in-progress operator update cadence plus completed-work summaries",
+    "public contract skill metadata removes operator-visibility and points progress/status users to delivery-summary",
+    "setup-runtime docs no longer advertise operator-visibility as a separate Codex skill"
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "operator-visibility",
+      "note": "This stable-status skill surface is removed only on the experimental track in 0.6.154. Stable-channel promotion must preserve the normal deprecation/removal policy or keep a compatibility alias.",
+      "replacement": "delivery-summary",
+      "section": "skills",
+      "status": "experimental-removal"
+    }
+  ],
+  "optionalMigrations": [
+    {
+      "description": "AI runtime prompts, docs, or memories that explicitly invoke the operator-visibility skill should invoke delivery-summary instead. The operator progress cadence now lives in the delivery summary reference.",
+      "id": "replace-operator-visibility-skill-reference"
+    }
+  ],
+  "productsTested": [
+    "example-saas"
+  ],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "No adapter migration is required and no generated adapter files change in this release.",
+    "Stable clients remain on the stable channel unless they explicitly opt into experimental.",
+    "Because an AI runtime skill surface is removed, this release is not WIP-safe for automatic active-lane upgrades.",
+    "Pinning back to 0.6.153 restores operator-visibility as a separate packaged skill."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.6.154",
+  "wipSafe": false
+}

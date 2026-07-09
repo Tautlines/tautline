@@ -1,0 +1,45 @@
+name: npm-audit
+
+on:
+  pull_request:
+    paths:
+      - "plugins/tautline-ops/skills/iteration-review/renderer-kit/package*.json"
+      - ".github/workflows/npm-audit.yml"
+  push:
+    branches: [main]
+  schedule:
+    - cron: "0 6 * * 1"   # weekly Monday 06:00 UTC — catch newly-disclosed advisories
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: plugins/tautline-ops/skills/iteration-review/renderer-kit
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "20"
+
+      # Lockfile-sync gate (sec-supplychain-7): `npm ci` aborts when package.json and
+      # package-lock.json disagree, so a drifted/hand-edited lock fails the build instead
+      # of silently installing a different tree than the manifest declares. This also gives
+      # the audit step a reproducible, lock-exact install rather than `npm install` resolution.
+      - name: npm ci (lockfile-sync + reproducible install)
+        run: npm ci
+
+      # Gate: fail ONLY on critical (green today, full tree incl. dev deps). Audits the
+      # committed lockfile; needs network for the advisory DB. Never use --offline (false
+      # clean) and don't --omit=dev (a critical dev advisory must block).
+      - name: npm audit (blocking — critical)
+        run: npm audit --audit-level=critical
+
+      # Visibility: report high/moderate without failing the build.
+      - name: npm audit (informational — high+)
+        if: always()
+        continue-on-error: true
+        run: npm audit --audit-level=high

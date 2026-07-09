@@ -1,0 +1,27 @@
+{
+  "name": "minervit-iteration-review-video",
+  "version": "0.2.1",
+  "description": "Generic Remotion renderer for Minervit customer-facing goal iteration-review videos. Driven by a project's GoalReview JSON via --props.",
+  "scripts": {
+    "studio": "remotion studio",
+    "dev": "remotion studio",
+    "render:sample": "remotion render src/index.ts IterationReview out/sample-iteration-review.mp4",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.470",
+    "@remotion/google-fonts": "4.0.470",
+    "@remotion/media": "4.0.470",
+    "@remotion/transitions": "4.0.470",
+    "react": "19.2.6",
+    "react-dom": "19.2.6",
+    "remotion": "4.0.470",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/react": "19.2.6",
+    "typescript": "5.9.3",
+    "vitest": "^4.1.7"
+  }
+}

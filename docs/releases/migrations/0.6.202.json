@@ -1,0 +1,60 @@
+{
+  "behaviorChanges": [
+    "Phase 5 release-log hygiene moves the long narrative release log off the main branch into the dedicated release-notes archive branch",
+    "the main-branch release notes file is now a small current-version stub pointing to CHANGELOG.md and the archive branch",
+    "release-update summaries no longer require the archived narrative log and instead use concise changelog entries plus release migration report compatibility notes",
+    "runtime hooks, generated adapters, and adapter schema are unchanged; the only CLI behavior change is release-update summary sourcing",
+    "scripts/validate.sh remains frozen by line budget; its single release-note grep now verifies the stub/archive pointer instead of a narrative body phrase"
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [],
+  "productsTested": [
+    "example-saas"
+  ],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "No adapter migration is required; generated adapters do not need to change for this release.",
+    "Stable clients remain on the stable channel unless they explicitly opt into experimental.",
+    "This release is WIP-safe because it changes maintainer release documentation plumbing and release-update summary sourcing only, without changing runtime hook behavior.",
+    "Pinning back to 0.6.201 restores the full narrative release log on the main branch but does not change lane runtime behavior."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.6.202",
+  "wipSafe": true
+}
