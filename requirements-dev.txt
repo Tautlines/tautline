@@ -1,6 +1,6 @@
 # Phase 1 CI safety-net toolchain. Pinned for reproducible CI; bump intentionally.
 # Versions verified green against bin/minervit-methodology on 2026-06-13.
-pytest==8.3.4
+pytest==9.1.1
 mypy==2.1.0
 ruff==0.15.17
 # pytest-cov powers the informational coverage step (arch-validate-tests-5);
