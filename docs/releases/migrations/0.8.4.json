@@ -1,0 +1,64 @@
+{
+  "behaviorChanges": [
+    "The bin/minervit-methodology compat shim is Python again: pre-0.8.0 installs auto-update by re-exec'ing that path with the Python interpreter, so the 0.8.0 bash shim crashed every 0.7.x upgrade mid-flight with a SyntaxError (the update itself applied; only the re-exec failed). The shim now execs bin/tautline from Python and works under both kernel exec and python3 invocation",
+    "Plan-review manifests recorded by the legacy CLI name (minervit-methodology run-plan-review / finalize-plan-review) are trusted again by plan-finalization-precheck: the rename left them untrusted, which rejected every pre-0.8.0 reviewed plan in downstream product repos; record-plan-review imports remain untrusted under both names",
+    "Commands, adapter schema, hooks, lane runtime behavior, and generated adapters are unchanged"
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    },
+    {
+      "name": "rules-audit",
+      "path": "plugins/tautline-core/skills/rules-audit/SKILL.md",
+      "removeAfter": "1.0.0",
+      "replacement": "framework-intake",
+      "section": "skills",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [],
+  "productsTested": [],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "No adapter migration is required; generated adapters do not need to change for this release.",
+    "Stable clients remain on the stable channel unless they explicitly opt into experimental.",
+    "This release is WIP-safe because it changes no runtime surface: only the compat shim implementation changes.",
+    "Pinning back to 0.8.3 restores the bash shim; 0.7.x installs upgrading through it will hit the transient re-exec SyntaxError again (rerun the launcher once to recover)."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.8.4",
+  "wipSafe": true
+}

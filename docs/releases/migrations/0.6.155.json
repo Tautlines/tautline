@@ -1,0 +1,37 @@
+{
+  "behaviorChanges": [
+    "document-context-budget is no longer a packaged skill on the experimental channel",
+    "context-continuity now owns Markdown context loading, bounded audits, archive classification, index hygiene, handoffs, and rotation",
+    "public contract skill metadata removes document-context-budget and points document-context users to context-continuity",
+    "generated adapter text points detailed document-context policy to context-continuity",
+    "setup-runtime docs no longer advertise document-context-budget as a separate Codex skill"
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "document-context-budget",
+      "note": "This stable-status skill surface is removed only on the experimental track in 0.6.155. Stable-channel promotion must preserve the normal deprecation/removal policy or keep a compatibility alias.",
+      "replacement": "context-continuity",
+      "section": "skills",
+      "status": "experimental-removal"
+    }
+  ],
+  "optionalMigrations": [
+    {
+      "description": "AI runtime prompts, docs, or memories that explicitly invoke the document-context-budget skill should invoke context-continuity instead. The document context budget procedure now lives in the context continuity reference.",
+      "id": "replace-document-context-budget-skill-reference"
+    }
+  ],
+  "productsTested": [
+    "example-saas"
+  ],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "No adapter migration is required; generated adapters only change their detailed-policy skill pointer when rerendered.",
+    "Stable clients remain on the stable channel unless they explicitly opt into experimental.",
+    "Because an AI runtime skill surface is removed, this release is not WIP-safe for automatic active-lane upgrades.",
+    "Pinning back to 0.6.154 restores document-context-budget as a separate packaged skill."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.6.155",
+  "wipSafe": false
+}

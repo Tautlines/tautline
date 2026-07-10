@@ -1,0 +1,60 @@
+{
+  "behaviorChanges": [
+    "scripts/validate.sh is now a thin compatibility wrapper around scripts/test.sh",
+    "the legacy shell assertion body has been removed after every substantive assertion group was ported to pytest or marked obsolete",
+    "the validate workflow now installs the pinned dev toolchain before invoking the wrapper so CI continues to exercise the compatibility command",
+    "lane startup, hooks, adapters, generated files, product worktrees, AI-facing policy, and runtime CLI behavior are unchanged"
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [],
+  "productsTested": [
+    "methodology-framework",
+    "example-saas"
+  ],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "No adapter migration is required; generated adapters do not need to change for this release.",
+    "Stable clients remain on the stable channel unless they explicitly opt into experimental.",
+    "This release is WIP-safe because it removes duplicate shell validation after equivalent pytest coverage is already present.",
+    "Pinning back to 0.6.225 restores the previous large validate.sh body if a contributor environment unexpectedly depends on shell-only validation internals."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.6.226",
+  "wipSafe": true
+}

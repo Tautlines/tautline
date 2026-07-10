@@ -1,0 +1,49 @@
+# Tool configuration for the Minervit methodology repo.
+# The checkout still runs through the extension-less executable
+# (bin/tautline), with implementation gradually moving into the
+# repo-local src/minervit_methodology package. It is not an installable package
+# yet, so there is intentionally no [project]/[build-system] table.
+# Dev dependencies live in requirements-dev.txt; this file is the single source of
+# lint/type/test configuration.
+
+[tool.ruff]
+target-version = "py310"   # `match` statements (15x) set the 3.10 floor
+line-length = 100
+
+[tool.ruff.lint]
+# High-signal essentials only. F = real pyflakes bugs, E/W = pycodestyle, B = bugbear.
+# Opinionated families (TRY/EM/PLR/UP/SIM) are deliberately OUT for now (3,000+ legacy hits).
+select = ["E", "F", "W", "B"]
+ignore = ["E501"]          # 2,492 line-length legacy hits — never gate on these day one
+
+[tool.ruff.lint.per-file-ignores]
+# Day-one baseline for the legacy CLI: suppress ONLY the rules it currently violates so
+# CI is green with zero code changes. Delete codes here as they are fixed — that is the
+# ratchet. NEW violations of any OTHER rule, and these rules in any OTHER file, still fail.
+"bin/tautline" = [
+    "F541",  # 5x f-string-missing-placeholders
+    "F841",  # 5x unused-variable
+    "B904",  # 1x raise-without-from-inside-except (line 2084)
+]
+
+[tool.mypy]
+python_version = "3.10"          # match the declared 3.10 floor (mypy verified green at 3.10)
+check_untyped_defs = false
+warn_unused_ignores = false      # 6 existing `# type: ignore` stay; flip true in ratchet step 5
+warn_return_any = false
+warn_unused_configs = true
+# Lenient baseline. The duplicate-def ROOT cause is now FIXED (arch-cli-6): the shadowed
+# slugify/path_is_under defs were deleted, so no-redef and its cascading call-arg errors are gone
+# and those codes are removed from this list. Remaining disabled codes trace to untyped
+# json.load/subprocess output -> Any|None narrowing (union-attr / index / arg-type / dict-item /
+# assignment). Remove codes as the underlying issues are fixed (see spec §9 ratchet).
+disable_error_code = [
+    "union-attr",
+    "index", "arg-type", "dict-item", "assignment",
+    "var-annotated", "operator", "attr-defined",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "-ra -q"

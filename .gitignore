@@ -1,0 +1,24 @@
+__pycache__/
+*.py[cod]
+.DS_Store
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+.ai-runs/
+.ai-work/
+.tmp-session-journal-*/
+adapters/projects/.validate-*.json
+# Public releases ship only the fictional example source adapter. Real product adapters belong in the
+# adopter repo as `.minervit/adapter.json` or in a private adapter repo.
+adapters/projects/*.json
+!adapters/projects/.bootstrap-legacy-allowlist.json
+!adapters/projects/example-saas.json
+# Scratch audit/analysis artifacts must not leak into a public clone (prod-license-gtm-8).
+/*-AUDIT-*.md
+# Staging inbox for incoming proposals; never track a shadow fork of a shipped skill here.
+/incoming/
+.venv/
+
+# Minervit generated Graphify output
+graphify-out/

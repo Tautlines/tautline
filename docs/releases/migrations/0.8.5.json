@@ -1,0 +1,64 @@
+{
+  "behaviorChanges": [
+    "plan-finalization-precheck accepts pre-0.8.0 evidence blocks again: the template-generated Precheck line embeds the CLI name, so byte-exact comparison rejected every legacy-reviewed plan after the rename; exactly that command prefix is normalized and all other evidence drift still fails",
+    "Generated product CLAUDE.md adapters now render the Codex T1 review command WITH the adapter's review wrapper after `--` (previously the line omitted it and following it verbatim errored with 'codex-run requires a command after --'); re-render generated adapters to pick this up",
+    "Commands, adapter schema, hooks, and lane runtime behavior are unchanged"
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    },
+    {
+      "name": "rules-audit",
+      "path": "plugins/tautline-core/skills/rules-audit/SKILL.md",
+      "removeAfter": "1.0.0",
+      "replacement": "framework-intake",
+      "section": "skills",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [],
+  "productsTested": [],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "No adapter migration is required; re-rendering to pick up the corrected Claude review line is recommended but optional.",
+    "Stable clients remain on the stable channel unless they explicitly opt into experimental.",
+    "This release is WIP-safe: it relaxes one legacy-evidence comparison and corrects generated guidance text.",
+    "Pinning back to 0.8.4 restores the byte-exact evidence comparison; legacy-reviewed plans will fail precheck again until re-finalized."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.8.5",
+  "wipSafe": true
+}

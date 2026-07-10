@@ -1,0 +1,59 @@
+{
+  "behaviorChanges": [
+    "Phase 4 productization budgets now have executable regression tests for the rendered reference adapter CLAUDE.md 16000-byte ceiling",
+    "agent-facing policy modules, generated policy projections, and plugin skill Markdown now have a regression test that blocks incident-style ISO dates",
+    "proof-of-done policy remains explicit that @pending tests, skipped tests, disabled tests, quarantined tests, and wrong-target tests are gaps rather than completion proof",
+    "runtime hooks, generated adapters, adapter schema, and operational CLI behavior are unchanged; this release only adds tests and release metadata"
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [],
+  "productsTested": [
+    "example-saas"
+  ],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "No adapter migration is required; generated adapters do not need to change for this release.",
+    "Stable clients remain on the stable channel unless they explicitly opt into experimental.",
+    "This release is WIP-safe because it adds regression tests and release metadata only, without changing runtime hook behavior.",
+    "Pinning back to 0.6.200 removes the new regression tests but does not change lane runtime behavior."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.6.201",
+  "wipSafe": true
+}

@@ -1,0 +1,1218 @@
+{
+  "adapterKeys": [
+    {
+      "name": "$id",
+      "status": "stable"
+    },
+    {
+      "name": "$schema",
+      "status": "stable"
+    },
+    {
+      "name": "_framework",
+      "status": "stable"
+    },
+    {
+      "name": "_generated",
+      "status": "internal"
+    },
+    {
+      "name": "backlogAdapter",
+      "status": "stable"
+    },
+    {
+      "name": "backlogProvider",
+      "status": "stable"
+    },
+    {
+      "name": "behaviorSpecs",
+      "status": "stable"
+    },
+    {
+      "name": "bootstrapEvidence",
+      "status": "stable"
+    },
+    {
+      "name": "bugBacklog",
+      "status": "stable"
+    },
+    {
+      "name": "ciTestGate",
+      "status": "stable"
+    },
+    {
+      "name": "commands",
+      "status": "stable"
+    },
+    {
+      "name": "contextRotation",
+      "status": "stable"
+    },
+    {
+      "name": "continuity",
+      "status": "stable"
+    },
+    {
+      "name": "costPreferences",
+      "status": "stable"
+    },
+    {
+      "name": "coverageFloor",
+      "status": "stable"
+    },
+    {
+      "name": "criticalJourneys",
+      "status": "stable"
+    },
+    {
+      "name": "deploymentNotification",
+      "status": "stable"
+    },
+    {
+      "name": "deploymentTargets",
+      "status": "stable"
+    },
+    {
+      "name": "derivedArtifacts",
+      "status": "stable"
+    },
+    {
+      "name": "developmentEnvironment",
+      "status": "stable"
+    },
+    {
+      "name": "documentContext",
+      "status": "stable"
+    },
+    {
+      "name": "flakyQuarantine",
+      "status": "stable"
+    },
+    {
+      "name": "generatedFiles",
+      "status": "stable"
+    },
+    {
+      "name": "goalArtifacts",
+      "status": "stable"
+    },
+    {
+      "name": "goalExecution",
+      "status": "stable"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "status": "deprecated"
+    },
+    {
+      "name": "graphify",
+      "status": "stable"
+    },
+    {
+      "name": "healthContract",
+      "status": "stable"
+    },
+    {
+      "name": "iterationReview",
+      "status": "stable"
+    },
+    {
+      "name": "knownProjectRules",
+      "status": "stable"
+    },
+    {
+      "name": "laneCoordination",
+      "status": "stable"
+    },
+    {
+      "name": "laneState",
+      "status": "stable"
+    },
+    {
+      "name": "latestCode",
+      "status": "stable"
+    },
+    {
+      "name": "localResourceIsolation",
+      "status": "stable"
+    },
+    {
+      "name": "localResourceLocks",
+      "status": "stable"
+    },
+    {
+      "name": "migrationSafety",
+      "status": "stable"
+    },
+    {
+      "name": "milestoneContinuation",
+      "status": "stable"
+    },
+    {
+      "name": "milestoneUpdate",
+      "status": "stable"
+    },
+    {
+      "name": "modelEffortPolicy",
+      "status": "stable"
+    },
+    {
+      "name": "observabilityEvents",
+      "status": "stable"
+    },
+    {
+      "name": "planAcceptance",
+      "status": "stable"
+    },
+    {
+      "name": "planningArtifacts",
+      "status": "stable"
+    },
+    {
+      "name": "productChat",
+      "status": "stable"
+    },
+    {
+      "name": "productionDeployExists",
+      "status": "stable"
+    },
+    {
+      "name": "project",
+      "status": "stable"
+    },
+    {
+      "name": "readiness",
+      "status": "stable"
+    },
+    {
+      "name": "redGreen",
+      "status": "stable"
+    },
+    {
+      "name": "remediation",
+      "status": "stable"
+    },
+    {
+      "name": "renderBudget",
+      "status": "stable"
+    },
+    {
+      "name": "repo",
+      "status": "stable"
+    },
+    {
+      "name": "responseGuard",
+      "status": "internal"
+    },
+    {
+      "name": "review",
+      "status": "stable"
+    },
+    {
+      "name": "runtimeConfig",
+      "status": "stable"
+    },
+    {
+      "name": "schemaVersion",
+      "status": "stable"
+    },
+    {
+      "name": "sessionJournal",
+      "status": "stable"
+    },
+    {
+      "name": "sideEffectProof",
+      "status": "stable"
+    },
+    {
+      "name": "stakeholderQuestions",
+      "status": "stable"
+    },
+    {
+      "name": "technologyStack",
+      "status": "stable"
+    },
+    {
+      "name": "uiEvidence",
+      "status": "stable"
+    },
+    {
+      "name": "usageAccounting",
+      "status": "stable"
+    },
+    {
+      "name": "workProfiles",
+      "status": "stable"
+    }
+  ],
+  "commands": [
+    {
+      "name": "adapter-bootstrap-questions",
+      "status": "stable"
+    },
+    {
+      "name": "audit",
+      "status": "stable"
+    },
+    {
+      "name": "background-command-hook",
+      "status": "internal"
+    },
+    {
+      "name": "background-run",
+      "status": "stable"
+    },
+    {
+      "name": "backlog-board-adopt",
+      "status": "stable"
+    },
+    {
+      "name": "backlog-board-examine",
+      "status": "stable"
+    },
+    {
+      "name": "backlog-provider-active-check",
+      "status": "internal"
+    },
+    {
+      "name": "backlog-provider-board-check",
+      "status": "stable"
+    },
+    {
+      "name": "backlog-provider-export",
+      "status": "stable"
+    },
+    {
+      "name": "backlog-provider-migration-interview",
+      "status": "stable"
+    },
+    {
+      "name": "backlog-provider-next",
+      "status": "stable"
+    },
+    {
+      "name": "backlog-provider-status",
+      "status": "stable"
+    },
+    {
+      "name": "backlog-provider-sync",
+      "status": "stable"
+    },
+    {
+      "name": "backlog-provider-update",
+      "status": "stable"
+    },
+    {
+      "name": "behavior-spec-status",
+      "status": "stable"
+    },
+    {
+      "name": "blocker-clear",
+      "status": "experimental"
+    },
+    {
+      "name": "blocker-declare",
+      "status": "experimental"
+    },
+    {
+      "name": "blocker-status",
+      "status": "experimental"
+    },
+    {
+      "name": "branch-liveness-check",
+      "status": "stable"
+    },
+    {
+      "name": "branch-liveness-hook",
+      "status": "internal"
+    },
+    {
+      "name": "canonical-policy",
+      "status": "stable"
+    },
+    {
+      "name": "check-name-availability",
+      "status": "stable"
+    },
+    {
+      "name": "ci-health-check",
+      "status": "stable"
+    },
+    {
+      "name": "claude-review",
+      "status": "stable"
+    },
+    {
+      "name": "claude-review-status",
+      "status": "experimental"
+    },
+    {
+      "name": "codex-plan-review",
+      "status": "stable"
+    },
+    {
+      "name": "codex-run",
+      "status": "stable"
+    },
+    {
+      "name": "context-bootstrap",
+      "status": "stable"
+    },
+    {
+      "name": "context-rotation-check",
+      "status": "stable"
+    },
+    {
+      "name": "context-rotation-heartbeat-hook",
+      "status": "internal"
+    },
+    {
+      "name": "context-status",
+      "status": "stable"
+    },
+    {
+      "name": "cut-release",
+      "status": "stable"
+    },
+    {
+      "name": "deploy-health",
+      "status": "stable"
+    },
+    {
+      "name": "deployment-notification-pipeline-snippet",
+      "status": "stable"
+    },
+    {
+      "name": "deployment-notification-status",
+      "status": "stable"
+    },
+    {
+      "name": "diff-coverage-check",
+      "status": "stable"
+    },
+    {
+      "name": "dump-policy-phrases",
+      "status": "internal"
+    },
+    {
+      "name": "emit-iteration-review-workflow",
+      "status": "stable"
+    },
+    {
+      "name": "event-audit",
+      "status": "stable"
+    },
+    {
+      "name": "event-log-path",
+      "status": "stable"
+    },
+    {
+      "name": "event-rotate",
+      "status": "stable"
+    },
+    {
+      "name": "event-tail",
+      "status": "stable"
+    },
+    {
+      "name": "event-viewer",
+      "status": "stable"
+    },
+    {
+      "name": "finalize-implementation-review",
+      "status": "stable"
+    },
+    {
+      "name": "finalize-plan-review",
+      "status": "stable"
+    },
+    {
+      "name": "flaky-quarantine-check",
+      "status": "stable"
+    },
+    {
+      "name": "generate-iteration-review-page",
+      "status": "stable"
+    },
+    {
+      "name": "github-budget-status",
+      "status": "stable"
+    },
+    {
+      "name": "goal-advance",
+      "status": "stable"
+    },
+    {
+      "name": "goal-condition",
+      "status": "stable"
+    },
+    {
+      "name": "goal-kickoff-prompt",
+      "status": "stable"
+    },
+    {
+      "name": "goal-next",
+      "status": "stable"
+    },
+    {
+      "name": "goal-start",
+      "status": "stable"
+    },
+    {
+      "name": "goal-status",
+      "status": "stable"
+    },
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "status": "deprecated"
+    },
+    {
+      "name": "graphify-install",
+      "status": "stable"
+    },
+    {
+      "name": "graphify-status",
+      "status": "stable"
+    },
+    {
+      "name": "guard-check",
+      "status": "experimental"
+    },
+    {
+      "name": "guard-report",
+      "status": "stable"
+    },
+    {
+      "name": "init",
+      "status": "stable"
+    },
+    {
+      "name": "init-project-adapter",
+      "status": "stable"
+    },
+    {
+      "name": "install-claude-launcher",
+      "status": "stable"
+    },
+    {
+      "name": "install-cli",
+      "status": "stable"
+    },
+    {
+      "name": "install-hooks",
+      "status": "stable"
+    },
+    {
+      "name": "iteration-review-delivery-check",
+      "status": "stable"
+    },
+    {
+      "name": "iteration-review-renderer-setup",
+      "status": "stable"
+    },
+    {
+      "name": "iteration-review-status",
+      "status": "stable"
+    },
+    {
+      "name": "lane-coordination-bootstrap",
+      "status": "stable"
+    },
+    {
+      "name": "lane-coordination-note",
+      "status": "stable"
+    },
+    {
+      "name": "lane-coordination-status",
+      "status": "stable"
+    },
+    {
+      "name": "lane-run",
+      "status": "stable"
+    },
+    {
+      "name": "lane-start",
+      "status": "stable"
+    },
+    {
+      "name": "latest-code-hook",
+      "status": "internal"
+    },
+    {
+      "name": "latest-code-status",
+      "status": "stable"
+    },
+    {
+      "name": "lock-methodology",
+      "status": "stable"
+    },
+    {
+      "name": "log-event",
+      "status": "stable"
+    },
+    {
+      "name": "methodology-status",
+      "status": "stable"
+    },
+    {
+      "name": "migrate-adapter",
+      "status": "experimental"
+    },
+    {
+      "name": "milestone-advance",
+      "status": "stable"
+    },
+    {
+      "name": "milestone-next",
+      "status": "stable"
+    },
+    {
+      "name": "milestone-start",
+      "status": "stable"
+    },
+    {
+      "name": "milestone-status",
+      "status": "stable"
+    },
+    {
+      "name": "milestone-update-status",
+      "status": "stable"
+    },
+    {
+      "name": "milestone-watchdog",
+      "status": "stable"
+    },
+    {
+      "name": "monitor-status",
+      "status": "stable"
+    },
+    {
+      "name": "pilot-report",
+      "status": "stable"
+    },
+    {
+      "name": "plan-finalization-hook",
+      "status": "internal"
+    },
+    {
+      "name": "plan-finalization-precheck",
+      "status": "stable"
+    },
+    {
+      "name": "prepare-continuity",
+      "status": "stable"
+    },
+    {
+      "name": "prepare-session-journal",
+      "status": "stable"
+    },
+    {
+      "name": "public-contract",
+      "status": "experimental"
+    },
+    {
+      "name": "public-release-check",
+      "status": "experimental"
+    },
+    {
+      "name": "public-release-export",
+      "status": "experimental"
+    },
+    {
+      "name": "publish-deploy-ready-update",
+      "status": "stable"
+    },
+    {
+      "name": "publish-feature-request-artifact",
+      "status": "stable"
+    },
+    {
+      "name": "publish-iteration-review",
+      "status": "stable"
+    },
+    {
+      "name": "publish-milestone-update",
+      "status": "stable"
+    },
+    {
+      "name": "publish-pending-session-journals",
+      "status": "stable"
+    },
+    {
+      "name": "publish-product-note",
+      "status": "stable"
+    },
+    {
+      "name": "publish-rca-artifact",
+      "status": "stable"
+    },
+    {
+      "name": "publish-release-update",
+      "status": "internal"
+    },
+    {
+      "name": "publish-session-journal",
+      "status": "stable"
+    },
+    {
+      "name": "purge-archive",
+      "status": "stable"
+    },
+    {
+      "name": "readiness-review",
+      "status": "stable"
+    },
+    {
+      "name": "record-plan-review",
+      "status": "stable"
+    },
+    {
+      "name": "record-stage1-sweep",
+      "status": "stable"
+    },
+    {
+      "name": "red-green-check",
+      "status": "stable"
+    },
+    {
+      "name": "release-migration-report",
+      "status": "experimental"
+    },
+    {
+      "name": "release-update-status",
+      "status": "internal"
+    },
+    {
+      "name": "remote-main-status",
+      "status": "stable"
+    },
+    {
+      "name": "render-adapters",
+      "status": "stable"
+    },
+    {
+      "name": "repair-methodology-main",
+      "status": "stable"
+    },
+    {
+      "name": "response-guard",
+      "status": "stable"
+    },
+    {
+      "name": "response-guard-hook",
+      "status": "internal"
+    },
+    {
+      "name": "review-evidence-check",
+      "status": "stable"
+    },
+    {
+      "name": "run-plan-review",
+      "status": "stable"
+    },
+    {
+      "name": "scaffold-test-harness",
+      "status": "stable"
+    },
+    {
+      "name": "set-framework-channel",
+      "status": "stable"
+    },
+    {
+      "name": "stakeholder-question-ask",
+      "status": "stable"
+    },
+    {
+      "name": "stakeholder-question-status",
+      "status": "stable"
+    },
+    {
+      "name": "sync-methodology",
+      "status": "stable"
+    },
+    {
+      "name": "telemetry",
+      "status": "stable"
+    },
+    {
+      "name": "tool-rejection-hook",
+      "status": "internal"
+    },
+    {
+      "name": "ui-evidence-submit",
+      "status": "stable"
+    },
+    {
+      "name": "uninstall-cli",
+      "status": "stable"
+    },
+    {
+      "name": "unlock-methodology",
+      "status": "stable"
+    },
+    {
+      "name": "update-repin",
+      "status": "stable"
+    },
+    {
+      "name": "usage-import-claude",
+      "status": "stable"
+    },
+    {
+      "name": "usage-log-path",
+      "status": "stable"
+    },
+    {
+      "name": "usage-record",
+      "status": "stable"
+    },
+    {
+      "name": "usage-report",
+      "status": "stable"
+    },
+    {
+      "name": "usage-rotate",
+      "status": "stable"
+    },
+    {
+      "name": "validate-adapter",
+      "status": "stable"
+    },
+    {
+      "name": "validate-feature-request-artifact",
+      "status": "stable"
+    },
+    {
+      "name": "validate-grooming",
+      "status": "stable"
+    },
+    {
+      "name": "validate-iteration-review",
+      "status": "stable"
+    },
+    {
+      "name": "validate-rca-artifact",
+      "status": "stable"
+    },
+    {
+      "name": "validate-session-journal",
+      "status": "stable"
+    },
+    {
+      "name": "version",
+      "status": "stable"
+    },
+    {
+      "name": "work-loop",
+      "status": "stable"
+    },
+    {
+      "name": "work-profile-check",
+      "status": "stable"
+    }
+  ],
+  "generatedFiles": [
+    {
+      "name": "AGENTS.md",
+      "runtime": "codex",
+      "status": "stable"
+    },
+    {
+      "name": "CLAUDE.md",
+      "runtime": "claude-code",
+      "status": "stable"
+    },
+    {
+      "name": ".tautline.json",
+      "status": "stable"
+    },
+    {
+      "name": ".tautline/adapter.json",
+      "status": "stable"
+    },
+    {
+      "name": ".minervit/pin.json",
+      "status": "stable"
+    }
+  ],
+  "policyModules": [
+    {
+      "name": "methodology/adapter-schema.json",
+      "path": "methodology/adapter-schema.json",
+      "status": "stable"
+    },
+    {
+      "name": "methodology/bootstrap-legacy-allowlist-schema.json",
+      "path": "methodology/bootstrap-legacy-allowlist-schema.json",
+      "status": "experimental"
+    },
+    {
+      "name": "methodology/canonical-rules.md",
+      "path": "methodology/canonical-rules.md",
+      "status": "stable"
+    },
+    {
+      "name": "methodology/policy/00-introduction.md",
+      "path": "methodology/policy/00-introduction.md",
+      "status": "stable"
+    },
+    {
+      "name": "methodology/policy/01-authority.md",
+      "path": "methodology/policy/01-authority.md",
+      "status": "stable"
+    },
+    {
+      "name": "methodology/policy/02-methodology-repository-governance.md",
+      "path": "methodology/policy/02-methodology-repository-governance.md",
+      "status": "stable"
+    },
+    {
+      "name": "methodology/policy/03-autonomy.md",
+      "path": "methodology/policy/03-autonomy.md",
+      "status": "stable"
+    },
+    {
+      "name": "methodology/policy/04-autonomy-and-status.md",
+      "path": "methodology/policy/04-autonomy-and-status.md",
+      "status": "stable"
+    },
+    {
+      "name": "methodology/policy/04a-rejected-tool-call-recovery.md",
+      "path": "methodology/policy/04a-rejected-tool-call-recovery.md",
+      "status": "stable"
+    },
+    {
+      "name": "methodology/policy/05-current-status-truth.md",
+      "path": "methodology/policy/05-current-status-truth.md",
+      "status": "stable"
+    },
+    {
+      "name": "methodology/policy/06a-stop-and-deferral-red-flags.md",
+      "path": "methodology/policy/06a-stop-and-deferral-red-flags.md",
+      "status": "stable"
+    },
+    {
+      "name": "methodology/policy/08-verified-human-instructions.md",
+      "path": "methodology/policy/08-verified-human-instructions.md",
+      "status": "stable"
+    },
+    {
+      "name": "methodology/policy/09-delivery-summaries.md",
+      "path": "methodology/policy/09-delivery-summaries.md",
+      "status": "stable"
+    },
+    {
+      "name": "methodology/policy/10-goal-orchestration.md",
+      "path": "methodology/policy/10-goal-orchestration.md",
+      "status": "stable"
+    },
+    {
+      "name": "methodology/policy/10a-backlog-provider.md",
+      "path": "methodology/policy/10a-backlog-provider.md",
+      "status": "stable"
+    },
+    {
+      "name": "methodology/policy/10b-board-currency.md",
+      "path": "methodology/policy/10b-board-currency.md",
+      "status": "stable"
+    },
+    {
+      "name": "methodology/policy/11-cross-lane-coordination.md",
+      "path": "methodology/policy/11-cross-lane-coordination.md",
+      "status": "stable"
+    },
+    {
+      "name": "methodology/policy/12-context-rotation.md",
+      "path": "methodology/policy/12-context-rotation.md",
+      "status": "stable"
+    },
+    {
+      "name": "methodology/policy/13-planning.md",
+      "path": "methodology/policy/13-planning.md",
+      "status": "stable"
+    },
+    {
+      "name": "methodology/policy/14-technical-stack-and-platform-defaults.md",
+      "path": "methodology/policy/14-technical-stack-and-platform-defaults.md",
+      "status": "stable"
+    },
+    {
+      "name": "methodology/policy/15-tdd-and-behavior-specs.md",
+      "path": "methodology/policy/15-tdd-and-behavior-specs.md",
+      "status": "stable"
+    },
+    {
+      "name": "methodology/policy/16-early-warning-smoke.md",
+      "path": "methodology/policy/16-early-warning-smoke.md",
+      "status": "stable"
+    },
+    {
+      "name": "methodology/policy/17-review-before-push.md",
+      "path": "methodology/policy/17-review-before-push.md",
+      "status": "stable"
+    },
+    {
+      "name": "methodology/policy/18-merge-and-ci.md",
+      "path": "methodology/policy/18-merge-and-ci.md",
+      "status": "stable"
+    },
+    {
+      "name": "methodology/policy/19-demo-and-staging-deployment.md",
+      "path": "methodology/policy/19-demo-and-staging-deployment.md",
+      "status": "stable"
+    },
+    {
+      "name": "methodology/policy/20-background-work.md",
+      "path": "methodology/policy/20-background-work.md",
+      "status": "stable"
+    },
+    {
+      "name": "methodology/policy/21-lane-lifecycle.md",
+      "path": "methodology/policy/21-lane-lifecycle.md",
+      "status": "stable"
+    },
+    {
+      "name": "methodology/policy/22-unmanaged-project-bootstrap.md",
+      "path": "methodology/policy/22-unmanaged-project-bootstrap.md",
+      "status": "stable"
+    },
+    {
+      "name": "methodology/policy/23-local-resource-isolation.md",
+      "path": "methodology/policy/23-local-resource-isolation.md",
+      "status": "stable"
+    },
+    {
+      "name": "methodology/policy/24-document-context-budget.md",
+      "path": "methodology/policy/24-document-context-budget.md",
+      "status": "stable"
+    },
+    {
+      "name": "methodology/policy/25-graphify-navigation.md",
+      "path": "methodology/policy/25-graphify-navigation.md",
+      "status": "stable"
+    },
+    {
+      "name": "methodology/policy/26-database-migration-collisions.md",
+      "path": "methodology/policy/26-database-migration-collisions.md",
+      "status": "stable"
+    },
+    {
+      "name": "methodology/policy/27-execution-packet-work-loop.md",
+      "path": "methodology/policy/27-execution-packet-work-loop.md",
+      "status": "stable"
+    },
+    {
+      "name": "methodology/policy/28-memory.md",
+      "path": "methodology/policy/28-memory.md",
+      "status": "stable"
+    },
+    {
+      "name": "methodology/policy/29-context-continuity.md",
+      "path": "methodology/policy/29-context-continuity.md",
+      "status": "stable"
+    },
+    {
+      "name": "methodology/policy/30-session-journals.md",
+      "path": "methodology/policy/30-session-journals.md",
+      "status": "stable"
+    },
+    {
+      "name": "methodology/policy/31-automation.md",
+      "path": "methodology/policy/31-automation.md",
+      "status": "stable"
+    },
+    {
+      "name": "methodology/policy/manifest.json",
+      "path": "methodology/policy/manifest.json",
+      "status": "internal"
+    },
+    {
+      "name": "methodology/policy-phrases-reference.md",
+      "path": "methodology/policy-phrases-reference.md",
+      "status": "internal"
+    },
+    {
+      "name": "methodology/policy-phrases.json",
+      "path": "methodology/policy-phrases.json",
+      "status": "internal"
+    },
+    {
+      "name": "methodology/public-contract-manifest.json",
+      "path": "methodology/public-contract-manifest.json",
+      "status": "stable"
+    }
+  ],
+  "schema": "minervit-public-contract-manifest/v1",
+  "semverPolicy": {
+    "major": "breaking removals only after deprecation window and migration path",
+    "minor": "additive or deprecating only; no removals",
+    "patch": "stable bugfixes only; WIP-safe by default when release report declares wipSafe=true"
+  },
+  "skills": [
+    {
+      "name": "background-task-monitoring",
+      "path": "plugins/tautline-core/skills/background-task-monitoring/SKILL.md",
+      "status": "stable"
+    },
+    {
+      "name": "backlog-epic-grooming",
+      "path": "plugins/tautline-core/skills/backlog-epic-grooming/SKILL.md",
+      "status": "stable"
+    },
+    {
+      "name": "behavior-specs",
+      "path": "plugins/tautline-core/skills/behavior-specs/SKILL.md",
+      "status": "stable"
+    },
+    {
+      "name": "board-adoption",
+      "path": "plugins/tautline-core/skills/board-adoption/SKILL.md",
+      "status": "stable"
+    },
+    {
+      "name": "board-item-updates",
+      "path": "plugins/tautline-core/skills/board-item-updates/SKILL.md",
+      "status": "stable"
+    },
+    {
+      "name": "bug-intake-triage",
+      "path": "plugins/tautline-core/skills/bug-intake-triage/SKILL.md",
+      "status": "stable"
+    },
+    {
+      "name": "context-continuity",
+      "path": "plugins/tautline-core/skills/context-continuity/SKILL.md",
+      "status": "stable"
+    },
+    {
+      "name": "delivery-summary",
+      "path": "plugins/tautline-core/skills/delivery-summary/SKILL.md",
+      "status": "stable"
+    },
+    {
+      "name": "examples/example-service-preflight",
+      "path": "plugins/tautline-core/skills/examples/example-service-preflight/SKILL.md",
+      "status": "experimental"
+    },
+    {
+      "name": "execution-packet-work-loop",
+      "path": "plugins/tautline-core/skills/execution-packet-work-loop/SKILL.md",
+      "status": "stable"
+    },
+    {
+      "name": "framework-intake",
+      "path": "plugins/tautline-core/skills/framework-intake/SKILL.md",
+      "status": "stable"
+    },
+    {
+      "name": "goal-orchestration",
+      "path": "plugins/tautline-core/skills/goal-orchestration/SKILL.md",
+      "status": "stable"
+    },
+    {
+      "name": "graphify-navigation",
+      "path": "plugins/tautline-core/skills/graphify-navigation/SKILL.md",
+      "status": "stable"
+    },
+    {
+      "name": "human-instructions",
+      "path": "plugins/tautline-core/skills/human-instructions/SKILL.md",
+      "status": "stable"
+    },
+    {
+      "name": "lane-coordination",
+      "path": "plugins/tautline-core/skills/lane-coordination/SKILL.md",
+      "status": "stable"
+    },
+    {
+      "name": "lane-lifecycle",
+      "path": "plugins/tautline-core/skills/lane-lifecycle/SKILL.md",
+      "status": "stable"
+    },
+    {
+      "name": "merge-queue-monitoring",
+      "path": "plugins/tautline-core/skills/merge-queue-monitoring/SKILL.md",
+      "status": "stable"
+    },
+    {
+      "name": "project-bootstrap",
+      "path": "plugins/tautline-core/skills/project-bootstrap/SKILL.md",
+      "status": "stable"
+    },
+    {
+      "name": "review-before-push",
+      "path": "plugins/tautline-core/skills/review-before-push/SKILL.md",
+      "status": "stable"
+    },
+    {
+      "name": "risk-tier-autonomy",
+      "path": "plugins/tautline-core/skills/risk-tier-autonomy/SKILL.md",
+      "status": "stable"
+    },
+    {
+      "name": "rules-audit",
+      "path": "plugins/tautline-core/skills/rules-audit/SKILL.md",
+      "removeAfter": "1.0.0",
+      "replacement": "framework-intake",
+      "status": "deprecated"
+    },
+    {
+      "name": "stakeholder-questions",
+      "path": "plugins/tautline-core/skills/stakeholder-questions/SKILL.md",
+      "status": "stable"
+    },
+    {
+      "name": "database-migration-collision",
+      "path": "plugins/tautline-ops/skills/database-migration-collision/SKILL.md",
+      "status": "stable"
+    },
+    {
+      "name": "event-observability",
+      "path": "plugins/tautline-ops/skills/event-observability/SKILL.md",
+      "status": "stable"
+    },
+    {
+      "name": "iteration-review",
+      "path": "plugins/tautline-ops/skills/iteration-review/SKILL.md",
+      "status": "stable"
+    },
+    {
+      "name": "milestone-update",
+      "path": "plugins/tautline-ops/skills/milestone-update/SKILL.md",
+      "status": "stable"
+    },
+    {
+      "name": "session-journal",
+      "path": "plugins/tautline-ops/skills/session-journal/SKILL.md",
+      "status": "stable"
+    },
+    {
+      "name": "usage-accounting",
+      "path": "plugins/tautline-ops/skills/usage-accounting/SKILL.md",
+      "status": "stable"
+    }
+  ],
+  "version": "0.8.5"
+}

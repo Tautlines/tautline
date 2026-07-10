@@ -1,0 +1,84 @@
+{
+  "product": "Example SaaS",
+  "goalTitle": "Order Catalog Taxonomy",
+  "kicker": "Example SaaS · Iteration Review",
+  "date": "2026-05-25",
+  "status": "Completed",
+  "videoUrl": "example-saas-order-catalog-taxonomy-iteration-review.mp4",
+  "posterUrl": "poster.png",
+  "why": "We taught the system every way a customer can order an item — by quantity, by weight, by configurable options and more — so the upcoming online ordering experience is built on a foundation that matches how the store really works.",
+  "milestones": [
+    {
+      "id": "W0",
+      "title": "Simpler path for placing an order",
+      "pr": "PR #50",
+      "status": "complete"
+    },
+    {
+      "id": "W1",
+      "title": "Every product gets the right order style",
+      "pr": "PR #51",
+      "status": "complete"
+    }
+  ],
+  "highlight": {
+    "heading": "Seven ways customers order an item — now understood by the system",
+    "items": [
+      "Standard pack",
+      "Counted per-unit",
+      "Custom option",
+      "Target-quantity range",
+      "Fixed-each prepared",
+      "Measured-prepared container",
+      "Made-to-order item"
+    ]
+  },
+  "quality": {
+    "tests": "Tested against the ordering scenarios",
+    "types": "Checked for errors",
+    "review": "Independently reviewed",
+    "discipline": "Delivered in a focused slice"
+  },
+  "next": [
+    {
+      "title": "Catalog Browse",
+      "blurb": "Customers will see the full catalog — including the featured items."
+    },
+    {
+      "title": "Mixed-Request Switch",
+      "blurb": "The ordering flow itself: placing and switching a request across the customer's order and the staff fulfillment queue."
+    }
+  ],
+  "nextWhy": "Foundation first: with the data model settled, each next step changes a smaller part of the system and stays easy to review and trust.",
+  "technical": {
+    "summary": "Introduced an order-catalog taxonomy in the fixture data layer: every product row is now classified by pricing unit (per-unit vs each) and one of seven fulfillment shapes, with per-shape invariants enforced and formatter helpers consuming the classification. No customer- or staff-facing output changed — this is a schema/foundation change.",
+    "changes": [
+      "Added pricingUnit + fulfillmentShape discriminator types (7-shape enum)",
+      "Added VALID_FULFILLMENT_MATRIX constant + validateFulfillment() helper",
+      "Slug-keyed per-product classification across every existing product row",
+      "Propagated the classification through cart and order-line shapes",
+      "Updated the seeded demo-1001 snapshot to carry the new fields"
+    ],
+    "evidence": [
+      "411 tests passing (392 existing + 19 new)",
+      "tsc --strict: 0 errors",
+      "Claude code-reviewer: clean",
+      "Codex cross-model review: clean (1 P2 fixed)",
+      "Scope narrowed 3× during plan-review to keep each step reviewable"
+    ],
+    "prs": [
+      {
+        "id": "PR #50",
+        "title": "Planning supersession — scoped goal artifact + planning index"
+      },
+      {
+        "id": "PR #51",
+        "title": "Schema & classification — discriminators, matrix, helper, propagation"
+      }
+    ]
+  },
+  "outro": {
+    "headline": "Foundation laid.",
+    "subhead": "The system now describes every way customers order an item — the online ordering experience is next."
+  }
+}

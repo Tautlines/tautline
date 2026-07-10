@@ -1,0 +1,37 @@
+{
+  "behaviorChanges": [
+    "methodology-feature-request is no longer a packaged skill on the experimental channel",
+    "methodology-regression-rca now owns framework intake for both regression RCAs and net-new methodology feature requests",
+    "feature-request artifact validation and publication CLI commands remain available",
+    "public contract skill metadata removes methodology-feature-request and points feature-request users to methodology-regression-rca",
+    "setup-runtime docs no longer advertise methodology-feature-request as a separate Codex skill"
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "methodology-feature-request",
+      "note": "This stable-status skill surface is removed only on the experimental track in 0.6.156. Stable-channel promotion must preserve the normal deprecation/removal policy or keep a compatibility alias.",
+      "replacement": "methodology-regression-rca",
+      "section": "skills",
+      "status": "experimental-removal"
+    }
+  ],
+  "optionalMigrations": [
+    {
+      "description": "AI runtime prompts, docs, or memories that explicitly invoke the methodology-feature-request skill should invoke methodology-regression-rca for framework intake instead. Feature-request validation and publication commands remain available.",
+      "id": "replace-methodology-feature-request-skill-reference"
+    }
+  ],
+  "productsTested": [
+    "example-saas"
+  ],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "No adapter migration is required and no generated adapter files change in this release.",
+    "Stable clients remain on the stable channel unless they explicitly opt into experimental.",
+    "Because an AI runtime skill surface is removed, this release is not WIP-safe for automatic active-lane upgrades.",
+    "Pinning back to 0.6.155 restores methodology-feature-request as a separate packaged skill."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.6.156",
+  "wipSafe": false
+}

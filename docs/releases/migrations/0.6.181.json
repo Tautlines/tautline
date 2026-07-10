@@ -1,0 +1,58 @@
+{
+  "behaviorChanges": [
+    "canonical Goal Orchestration policy is ratcheted to a 590-word cap while preserving hierarchy, goal-plan contract, provider-item completion authority, next-goal startup output, goal ledger lifecycle, completion proof, stale-ledger, Claude /goal, sourceAdapterSha256, and dependency-surfacing obligations",
+    "detailed provider workflow, lane ledger commands, /goal procedure, context rotation, completion proof, and end-of-goal closeout remain in the goal-orchestration reference",
+    "canonical-rules.md is regenerated with the smaller goal-orchestration module to reduce the compatibility prompt surface"
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [],
+  "productsTested": [
+    "example-saas"
+  ],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "No adapter migration is required; generated adapters do not need to change for this release.",
+    "Stable clients remain on the stable channel unless they explicitly opt into experimental.",
+    "Because canonical AI-facing goal-orchestration text changed materially, this release is not WIP-safe for automatic active-lane upgrades.",
+    "Pinning back to 0.6.180 restores the previous longer Goal Orchestration policy prose."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.6.181",
+  "wipSafe": false
+}

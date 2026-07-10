@@ -1,0 +1,27 @@
+{
+  "behaviorChanges": [
+    "lane-start preserves repo-local .minervit/adapter.json in generated adapters instead of rewriting it to an absolute filesystem path",
+    "repo-local adapter migration now has an end-to-end regression covering migrate-adapter, render-adapters, lane-start, sourceAdapter, and sourceAdapterSha256",
+    "METH-FU-ADAPTER-IN-ADOPTER-REPO is marked implemented first pass for migration/render/lane-start; zero-config init remains separate follow-up work"
+  ],
+  "deprecatedSurfaces": [],
+  "optionalMigrations": [
+    {
+      "command": "minervit-methodology render-adapters --project .minervit/adapter.json --target <repo> --write --json-only",
+      "description": "Only adopter repos that already migrated their source adapter to .minervit/adapter.json and then ran lane-start on 0.6.123-0.6.132 may have an absolute _generated.sourceAdapter. Re-render at a safe boundary to restore the portable .minervit/adapter.json path.",
+      "id": "rerender-repo-local-generated-adapter",
+      "surface": "generated-adapter"
+    }
+  ],
+  "productsTested": [
+    "example-saas"
+  ],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "Revert to the previous pinned stable release if an adopter workflow depends on absolute _generated.sourceAdapter paths for repo-local adapters.",
+    "No required product adapter migration is introduced; affected repo-local adopters can re-render generated adapters at a safe boundary."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.6.133",
+  "wipSafe": true
+}

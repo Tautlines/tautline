@@ -1,0 +1,31 @@
+{
+  "behaviorChanges": [
+    "set-framework-channel provides a first-class way for lanes to select stable or experimental framework channel through .minervit/pin.json",
+    "stable channel updates target the stable release branch while experimental channel updates target origin/experimental instead of silently following stable main",
+    "methodology reset/auto-rescue preserves tracked private source adapters removed from the public tree and restores them as ignored local files after reset",
+    "non-dev docs/support profiles may opt into direct-main pushes with pushPolicy=direct-main while the default remains pr-branch-only"
+  ],
+  "deprecatedSurfaces": [],
+  "optionalMigrations": [
+    {
+      "description": "Use `minervit-methodology set-framework-channel --target . stable|experimental` to write .minervit/pin.json for a lane/adopter checkout.",
+      "id": "set-framework-channel"
+    },
+    {
+      "description": "Repos with an explicit direct-main docs/support workflow may set workProfiles.profiles.<profile>.pushPolicy=direct-main; the default remains pr-branch-only.",
+      "id": "direct-main-non-dev-profile"
+    }
+  ],
+  "productsTested": [
+    "example-saas"
+  ],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "Delete .minervit/pin.json or run set-framework-channel stable to return a lane to the stable channel.",
+    "Remove pushPolicy=direct-main from workProfiles to restore PR-branch-only non-dev push behavior.",
+    "Private adapters restored under adapters/projects/*.json remain ignored local files; migrate them to .minervit/adapter.json at a safe boundary."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.6.143",
+  "wipSafe": true
+}

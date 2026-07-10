@@ -1,0 +1,8 @@
+## Cross-Lane Coordination
+
+- `laneCoordination` is the repo-tracked coordination backbone. Chat, memories, and branch drift are evidence only; tracked contract, lane board, and lane status files are durable.
+- Default enforcement is strict. `lane-start` bootstraps missing artifacts. Missing, stale, untracked, uncommitted, or unpushed coordination fails `lane-coordination-status`, `methodology-status --strict`, and `methodology-status --fail-on-drift` unless the adapter warns or disables coordination.
+- Run `minervit-methodology lane-coordination-status --target .` at startup, before multi-lane plan finalization, at PR boundaries, and when a lane discovers a dependency on another lane. If artifacts are missing, run `minervit-methodology lane-coordination-bootstrap --target . --write`.
+- Each lane updates only its own status file with `minervit-methodology lane-coordination-note --target . --lane <lane> --goal "<goal>" --current "<current work>" --depends-on "<dependencies>" --provides "<provided interfaces>" --blockers "<blockers>" --pr "<PR or commit>" --write`. Notes name touched contracts/routes/data/API surfaces, dependencies, provided interfaces, blockers, and current PR/commit before multi-lane implementation or PR queue.
+- If a lane changes something another lane owns or consumes, it must not silently implement an incompatible version. Update the contract, open a small shared contract/interface PR, or explicitly take ownership and mark dependent lanes before large PRs proceed.
+- Shared route names, account semantics, order states, storage interfaces, event names, API/server-action shapes, and deployment conventions should land early as small shared contracts before dependent lane implementation PRs.

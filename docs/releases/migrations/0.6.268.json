@@ -1,0 +1,66 @@
+{
+  "behaviorChanges": [
+    "Auto-update trust hardening: new installs default to a pinned update policy (advance via update-repin after review); --dangerously-skip-permissions refuses to run unless the effective policy is pinned or signed (checked at install and at launch)",
+    "Re-exec tokens move to a 0600 file in a 0700 dir under ~/.config/minervit; adapter-configured paths are contained to the project root (schema pattern + runtime backstop, documented scratchPaths/laneCoordination allowlist)",
+    "SECURITY.md rewritten to match shipped behavior; legacy installs without a policy env still fall back to warn"
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    },
+    {
+      "name": "rules-audit",
+      "path": "plugins/minervit-ai-delivery-methodology/skills/rules-audit/SKILL.md",
+      "removeAfter": "1.0.0",
+      "replacement": "framework-intake",
+      "section": "skills",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [],
+  "productsTested": [
+    "methodology-framework"
+  ],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "No adapter migration is required; generated adapters do not need to change for this release.",
+    "Stable clients remain on the stable channel unless they explicitly opt into experimental.",
+    "This release is WIP-safe because existing installs' runtime fallback behavior (warn when no policy env is set) is unchanged; the pinned default and skip-permissions interlock apply to fresh installs and to launcher regeneration.",
+    "Pinning back to 0.6.267 removes the pinned-by-default policy, the skip-permissions interlock, the hardened re-exec token path, and the adapter path containment while changing no runtime behavior for installs that do not opt in."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.6.268",
+  "wipSafe": true
+}

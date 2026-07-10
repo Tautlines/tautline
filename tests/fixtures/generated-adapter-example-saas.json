@@ -1,0 +1,471 @@
+{
+  "$schema": "../../methodology/adapter-schema.json",
+  "_generated": {
+    "doNotEdit": true,
+    "methodologyCommit": "4326be7",
+    "pluginVersion": "0.6.98",
+    "regenerate": "bin/minervit-methodology render-adapters --project adapters/projects/example-saas.json --target <project> --write",
+    "source": "Minervit AI Delivery Methodology",
+    "sourceAdapter": "adapters/projects/example-saas.json",
+    "sourceAdapterSha256": "a1e593e28000208fee28a0a8cf2ca455a25bd9c4b379cfd51317b3d513b1b598"
+  },
+  "backlogAdapter": "Use the Example SaaS repo backlog docs or GitHub issues. Backloggable P2/P3/Nit findings must include file, line, observed risk, recommended fix, and why deferral is acceptable.",
+  "backlogProvider": {
+    "activeStatuses": [
+      "In Progress"
+    ],
+    "authoritativeFor": [
+      "goal-priority",
+      "milestone-order",
+      "goal-status",
+      "bug-status",
+      "task-priority"
+    ],
+    "blockedStatuses": [
+      "Blocked"
+    ],
+    "doneStatuses": [
+      "Done"
+    ],
+    "enabled": false,
+    "exportMode": "interview-approved",
+    "itemTypes": [
+      "goal",
+      "milestone",
+      "bug",
+      "task"
+    ],
+    "linkPolicy": "external backlog item links to reviewed repo source-of-truth plan before execution",
+    "migrationInterviewPath": ".ai-work/BACKLOG_PROVIDER_MIGRATION.md",
+    "milestoneField": "",
+    "owner": "",
+    "priorityField": "",
+    "projectNumber": 0,
+    "provider": "github-projects",
+    "readyStatuses": [
+      "Ready",
+      "Next"
+    ],
+    "repoPlanRequired": true,
+    "scopeQuery": "",
+    "statusField": "Status",
+    "syncMode": "read-select-write-status-links-notes",
+    "tacticalPlanningAuthority": "repo",
+    "typeField": "",
+    "workOrder": "board"
+  },
+  "behaviorSpecs": {
+    "acceptanceHarnesses": [],
+    "exemption": "GHERKIN-EXEMPT: <reason>",
+    "inactiveAcceptanceEnforcement": "strict",
+    "maxPendingScenarios": 0,
+    "paths": [
+      "app/api/routes/*",
+      "frontend/src/pages/**",
+      "frontend/src/components/**",
+      "app/services/auth/**"
+    ],
+    "pendingRequiresOwnerAndTrigger": true,
+    "pendingTags": [
+      "@pending"
+    ],
+    "required": true,
+    "sourceMaterialRule": "If reviewed external/customer/business behavior specs are provided, review and adapt them before authoring new scenarios; preserve business intent and document deviations.",
+    "sourceMaterials": []
+  },
+  "bootstrapEvidence": {
+    "project": "Example SaaS",
+    "status": "legacy-reviewed",
+    "summary": "Existing maintained adapter predates bootstrapEvidence. Values are validated from the Example SaaS repository workflow, gates, review wrappers, backlog paths, and production-readiness methodology history."
+  },
+  "bugBacklog": {
+    "autoP0Categories": [],
+    "autoP1Categories": [
+      "auth",
+      "email",
+      "tenant data",
+      "security",
+      "deploy",
+      "billing",
+      "data loss",
+      "customer-blocking"
+    ],
+    "issueMirrors": [],
+    "requiredFields": [
+      "observed behavior",
+      "expected behavior",
+      "impact",
+      "source files or evidence",
+      "recommended fix",
+      "test plan"
+    ],
+    "rule": "No project-specific bugBacklog configured; route bugs through backlogAdapter and do not open external issues unless project evidence requires them.",
+    "severityTaxonomy": "No project-specific bugBacklog configured; preserve project-local severity labels and do not invent tracker policy.",
+    "sourceOfTruth": "backlogAdapter"
+  },
+  "commands": {
+    "earlyWarningSmoke": "make ci-status-main",
+    "fastPreflight": "make pf-fast",
+    "fullPreflight": "make preflight",
+    "mainStatus": "make ci-status-main",
+    "mergeConflictCheck": "git fetch origin main --quiet && git merge-tree --write-tree HEAD origin/main >/dev/null",
+    "mergeQueue": "gh pr merge <PR> --squash --auto --delete-branch",
+    "openPrCheck": "gh pr list --author '@me' --state open --limit 50 --json number,title,url,createdAt,headRefName,baseRefName,isDraft,mergeStateStatus,statusCheckRollup",
+    "testEnvironment": "make test-env-up"
+  },
+  "contextRotation": {
+    "enabled": true,
+    "hardPercent": 75,
+    "heartbeatBoundary": "goal-heartbeat",
+    "heartbeatMinutes": 15,
+    "safeBoundaries": [
+      "pr-queued",
+      "pr-complete",
+      "milestone-complete",
+      "goal-boundary",
+      "goal-heartbeat",
+      "session-summary",
+      "handoff-for-review"
+    ],
+    "softPercent": 60
+  },
+  "continuity": {
+    "archiveDir": ".ai-continuity/archive",
+    "gitIgnore": true,
+    "path": ".ai-continuity/NEXT_SESSION.md"
+  },
+  "deploymentNotification": {
+    "chatSpace": "Example SaaS iteration reviews",
+    "dedupe": true,
+    "enabled": true,
+    "maxChars": 3000,
+    "pipeline": {
+      "evidencePaths": [],
+      "healthCheckBeforeNotify": true,
+      "mode": "ci-post-deploy",
+      "required": false,
+      "requiredCommand": "minervit-methodology publish-deploy-ready-update"
+    },
+    "provider": "google-chat-webhook",
+    "reuseIterationReviewWebhook": true,
+    "sentStateDir": ".ai-work/deployment-notification-delivery",
+    "trigger": "deploy-ready",
+    "webhookEnv": ""
+  },
+  "deploymentTargets": [],
+  "documentContext": {
+    "enforcement": "warn",
+    "maxIndexBytes": 16000,
+    "maxIndexLines": 250
+  },
+  "generatedFiles": [
+    "CLAUDE.md",
+    "AGENTS.md",
+    ".minervit-ai-delivery.json"
+  ],
+  "goalArtifacts": {
+    "reviewRequired": true,
+    "sourceOfTruth": "docs/product/backlog/example-saas-v1-readiness/specs/goals",
+    "template": "docs/product/backlog/example-saas-v1-readiness/specs/goals/goal.template.md",
+    "templateTrigger": "Substantial multi-milestone, multi-PR, overnight, or ambiguous build/ship/finish work."
+  },
+  "goalExecution": {
+    "claudeGoalGuidance": true,
+    "fallback": "goal-ledger",
+    "preferredClaudeCommand": "/goal"
+  },
+  "goalTracker": {
+    "activeStatuses": [
+      "In Progress"
+    ],
+    "authoritativeFor": [
+      "goal-priority",
+      "milestone-order",
+      "goal-status"
+    ],
+    "blockedStatuses": [
+      "Blocked"
+    ],
+    "doneStatuses": [
+      "Done"
+    ],
+    "enabled": false,
+    "linkPolicy": "repo goal plan links back to project item",
+    "milestoneField": "",
+    "owner": "",
+    "priorityField": "",
+    "projectNumber": 0,
+    "provider": "github-projects",
+    "readyStatuses": [
+      "Ready",
+      "Next"
+    ],
+    "repoPlanRequired": true,
+    "scopeQuery": "",
+    "statusField": "Status",
+    "workOrder": "board"
+  },
+  "graphify": {
+    "allowProjectInstaller": false,
+    "buildCommand": "graphify .",
+    "enabled": true,
+    "explainCommand": "graphify explain",
+    "freshnessEnforcement": "strict-if-present",
+    "freshnessRule": "After every code, docs, schema, route, test, architecture, or other system change, run `graphify . --update` before commit/push and before relying on existing Graphify output; stale graphs are blocking drift.",
+    "gitIgnoreOutput": true,
+    "graphPath": "graphify-out/graph.json",
+    "installCommand": "python3 -m pip install --user graphifyy",
+    "installPackage": "graphifyy",
+    "outputDir": "graphify-out",
+    "pathCommand": "graphify path",
+    "preferWhenPresent": true,
+    "queryCommand": "graphify query",
+    "reportPath": "graphify-out/GRAPH_REPORT.md",
+    "rule": "When enabled and graphify-out/GRAPH_REPORT.md or graphify-out/graph.json exists, use Graphify report/query/path/explain for codebase orientation before broad grep/rg to reduce token-heavy scans; use rg for exact lexical searches or when Graphify is absent. Stale Graphify output must be refreshed before use.",
+    "setupCommand": "graphify install",
+    "updateCommand": "graphify . --update"
+  },
+  "iterationReview": {
+    "boundary": {
+      "announce": true,
+      "autoRunAtBoundary": true
+    },
+    "delivery": {
+      "chatSpace": "Example SaaS iteration reviews",
+      "dedupe": true,
+      "enabled": true,
+      "primaryUrl": "cloudfront-page",
+      "provider": "google-chat-webhook",
+      "sentStateDir": ".ai-work/iteration-review-delivery",
+      "trigger": "after-merge",
+      "webhookEnv": "EXAMPLE_SAAS_ITERATION_REVIEW_GOOGLE_CHAT_WEBHOOK"
+    },
+    "enabled": true,
+    "granularities": [
+      "goal"
+    ],
+    "hosting": {
+      "access": "private-cdn",
+      "baseUrl": "https://d111111abcdef8.cloudfront.net",
+      "bucket": "example-saas-iteration-reviews-000000000000-us-east-1",
+      "cdn": "cloudfront",
+      "keyPattern": "example-saas/iteration-reviews/<target-id>/iteration-review.mp4",
+      "store": "s3"
+    },
+    "outputs": {
+      "page": true,
+      "video": true
+    },
+    "recordDir": "docs/iteration-reviews",
+    "rendererVersion": "0.2.1",
+    "video": {
+      "music": {
+        "defaultUrl": "builtin:example-ambient-loop",
+        "enabled": true,
+        "source": "adapter-approved",
+        "volume": 0.12
+      }
+    }
+  },
+  "knownProjectRules": [
+    "Never combine FastAPI @limiter.limit with response_model= on the same route.",
+    "Never return, log, or store plaintext secrets.",
+    "Credential setup forms require autocomplete protections.",
+    "Every tenant_id endpoint must enforce tenant isolation.",
+    "No raw internal jargon or raw HTTP errors in user-facing text."
+  ],
+  "laneCoordination": {
+    "boardPath": "docs/product/backlog/example-saas-v1-readiness/specs/coordination/lane-board.md",
+    "contractPath": "docs/product/backlog/example-saas-v1-readiness/specs/coordination/cross-lane-contract.md",
+    "enabled": true,
+    "enforcement": "strict",
+    "laneStatusDir": "docs/product/backlog/example-saas-v1-readiness/specs/coordination/lanes",
+    "maxStatusAgeHours": 24,
+    "root": "docs/product/backlog/example-saas-v1-readiness/specs/coordination",
+    "rule": "For simultaneous lanes, use tracked repo coordination artifacts as the source of truth for shared contracts, lane ownership, dependencies, provided interfaces, blockers, and PR refs. Each lane updates its own lane status file; shared contract/interface changes land early before large dependent PRs."
+  },
+  "laneState": {
+    "executionPacket": ".ai-work/EXECUTION_PACKET.md",
+    "gitIgnore": true,
+    "goalRun": ".ai-work/GOAL_RUN.json",
+    "lockPath": ".minervit-methodology-lock.json",
+    "milestoneRun": ".ai-work/MILESTONE_RUN.json",
+    "runsDir": ".ai-runs"
+  },
+  "latestCode": {
+    "base": "main",
+    "enabled": true,
+    "fetchAll": true,
+    "includeOpenPrs": true,
+    "includeRemoteBranches": true,
+    "maxAgeMinutes": 60,
+    "maxAheadBranches": 20,
+    "remote": "origin",
+    "rule": "Before status, deep analysis, planning, implementation, review, or tactical subagent dispatch, fetch current remote state and inspect base plus other remote branches/PRs that may be ahead or deployed. Do not assume local HEAD or origin/main is the product surface when a deployed or active lane branch is ahead.",
+    "statusFile": ".ai-work/LATEST_CODE_BASELINE.json"
+  },
+  "localResourceIsolation": {
+    "composeProjectPrefix": "minervit",
+    "envFile": ".ai-work/lane-env.sh",
+    "envTemplates": {
+      "DATABASE_URL": "postgresql+psycopg://example-saas:example-saas@localhost:{EXAMPLE_PG_PORT}/example-saas",
+      "EXAMPLE_SQS_ENDPOINT_URL": "http://localhost:{EXAMPLE_ELASTICMQ_PORT}",
+      "REDIS_URL": "redis://localhost:{EXAMPLE_REDIS_PORT}/0"
+    },
+    "isolatedCommands": [
+      "make pf-fast",
+      "make test-env-up",
+      "make preflight"
+    ],
+    "portStride": 10,
+    "portVariables": [
+      {
+        "base": 5432,
+        "name": "EXAMPLE_PG_PORT"
+      },
+      {
+        "base": 6379,
+        "name": "EXAMPLE_REDIS_PORT"
+      },
+      {
+        "base": 9324,
+        "name": "EXAMPLE_ELASTICMQ_PORT"
+      },
+      {
+        "base": 9325,
+        "name": "EXAMPLE_ELASTICMQ_UI_PORT"
+      },
+      {
+        "base": 8000,
+        "name": "EXAMPLE_API_PORT"
+      }
+    ]
+  },
+  "localResourceLocks": {
+    "locksDir": "~/.minervit-ai-delivery/locks",
+    "resources": []
+  },
+  "milestoneContinuation": {
+    "watchdogCadenceMinutes": 30,
+    "watchdogEnabled": false
+  },
+  "milestoneUpdate": {
+    "chatSpace": "Product Milestones",
+    "dedupe": true,
+    "enabled": true,
+    "maxChars": 4000,
+    "provider": "google-chat-webhook",
+    "sentStateDir": ".ai-work/milestone-update-delivery",
+    "trigger": "milestone-complete",
+    "webhookEnv": "MINERVIT_PRODUCT_MILESTONES_GOOGLE_CHAT_WEBHOOK"
+  },
+  "observabilityEvents": {
+    "enabled": true,
+    "humanLog": "events.log",
+    "jsonlLog": "events.jsonl",
+    "requiredBoundaryEvents": [
+      "startup",
+      "planning_review_gate",
+      "preflight",
+      "pr_queue_merge",
+      "blocker",
+      "rca",
+      "continuity",
+      "context_rotation",
+      "goal_transition",
+      "milestone_transition"
+    ],
+    "retainedRotations": 5,
+    "rotateBytes": 5000000,
+    "stateDir": "$HOME/.local/state/minervit/repo-events"
+  },
+  "planningArtifacts": {
+    "reviewExemptions": [
+      "doc-only: docs/index/release/backlog/operator-guide changes with no product, runtime, infra, security, data, spec, or test-harness behavior change; implementation review and gates still apply."
+    ],
+    "rule": "Non-trivial PR execution plans/specs must be written under docs/product/backlog/example-saas-v1-readiness/specs/ using the PR execution spec template. Tool default plan paths such as ~/.claude/plans/ are scratch only and are not the source of truth.",
+    "scratchPaths": [
+      "~/.claude/plans/"
+    ],
+    "sourceOfTruth": "docs/product/backlog/example-saas-v1-readiness/specs/",
+    "template": "docs/product/backlog/templates/pr-execution-spec.template.md",
+    "templateTrigger": "Non-trivial, protected-category, infrastructure, customer-facing, or AGENTS-required PR work."
+  },
+  "productChat": {
+    "chatSpace": "Product",
+    "enabled": false,
+    "maxChars": 6000,
+    "provider": "google-chat-webhook",
+    "webhookEnv": ""
+  },
+  "productionDeployExists": true,
+  "project": "Example SaaS",
+  "readiness": {
+    "sources": [
+      "docs/product/backlog/example-saas-v1-readiness.md",
+      "docs/product/example-saas-true-v1-readiness-plan-2026-05-02.md",
+      "docs/product/example-saas-readiness-reassessment-2026-05-02.md"
+    ]
+  },
+  "repo": "example-org/example-saas",
+  "review": {
+    "claudeReview": "Use Claude Superpowers review if installed; otherwise use the configured Claude review agents and project checklist.",
+    "codexFastMode": true,
+    "codexPlanWrapper": "./scripts/codex-review.sh",
+    "codexWrapper": "./scripts/codex-review.sh",
+    "crossModelTiming": "before push",
+    "prePushReviewEvidence": true,
+    "roundBudgets": {
+      "T0": 0,
+      "T1": 1,
+      "T2": 2,
+      "T3": 2
+    }
+  },
+  "sessionJournal": {
+    "archiveDir": "docs/backlog/session-journals",
+    "branch": "methodology-session-archive",
+    "cadence": "milestone",
+    "enabled": true,
+    "gitIgnoreLocal": true,
+    "maxBytes": 12000
+  },
+  "stakeholderQuestions": {
+    "answeredLabel": "stakeholder-answered",
+    "defaultMention": "",
+    "enabled": false,
+    "openLabel": "needs-stakeholder-answer",
+    "projectStatusOnAnswered": "In Progress",
+    "projectStatusOnOpen": "Blocked",
+    "provider": "github-issues",
+    "syncAt": [
+      "startup",
+      "milestone-boundary",
+      "pr-boundary",
+      "blocked"
+    ],
+    "unknownStakeholderPolicy": "ask-human-once"
+  },
+  "technologyStack": {
+    "approvedCloudProviders": [
+      "AWS"
+    ],
+    "awsCliConvention": "For AWS-approved lanes, use AWS CLI: check `aws --version` and `aws sts get-caller-identity` or adapter identity check; install/login if missing; do not ask for SSH keys unless adapter declares SSH/non-AWS deployment.",
+    "cloudProviderDefault": "AWS",
+    "newCloudProviderRequiresApproval": true,
+    "newProjectCloudDefault": "AWS",
+    "nonNegotiable": [
+      "Cloud services default to AWS unless the adapter explicitly overrides approved providers.",
+      "Non-approved cloud/hosting platforms require adapter approval or explicit human approval."
+    ],
+    "rule": "Use adapter-declared stack defaults; tool/framework defaults never authorize a new deployment platform."
+  },
+  "usageAccounting": {
+    "enabled": true,
+    "jsonlLog": "usage.jsonl",
+    "retainedRotations": 5,
+    "rollupJson": "usage-rollup.json",
+    "rotateBytes": 5000000,
+    "stateDir": "$HOME/.local/state/minervit/usage"
+  }
+}

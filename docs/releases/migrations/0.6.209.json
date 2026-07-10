@@ -1,0 +1,59 @@
+{
+  "behaviorChanges": [
+    "public-release-export now excludes internal planning, backlog, and productization docs from clean public repository candidates",
+    "docs/product public export keeps only telemetry-consent.md, sbom-and-dependencies.md, trademark-name-clearance.md, and a11y-i18n.md",
+    "dirty tracked and untracked files under excluded internal public-export paths no longer block clean export creation because those paths are not exported",
+    "public-release-export regression coverage now proves internal docs are absent from the candidate while approved public product docs remain"
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [],
+  "productsTested": [
+    "example-saas"
+  ],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "No adapter migration is required; generated adapters do not need to change for this release.",
+    "Stable clients remain on the stable channel unless they explicitly opt into experimental.",
+    "This release is WIP-safe because it only changes maintainer public-export packaging and does not affect lane startup, hooks, adapters, or product worktrees.",
+    "Pinning back to 0.6.208 restores the previous clean-export file set, which could include internal planning/backlog/productization docs."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.6.209",
+  "wipSafe": true
+}

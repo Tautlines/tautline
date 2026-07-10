@@ -1,0 +1,63 @@
+{
+  "behaviorChanges": [
+    "Channel reconciliation: the 0.7.0 launch boundary fixes that shipped on the stable channel are ported back to experimental so both channels carry identical content (private-codename scrub of export-included surfaces; the framework's own self-adapter files .minervit-ai-delivery.json and .minervit/ are excluded from the public export)",
+    "Commands, adapter schema, hooks, lane runtime behavior, and generated adapters are unchanged; the release only rewords export-included bookkeeping text and extends the public-export exclusion list"
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    },
+    {
+      "name": "rules-audit",
+      "path": "plugins/minervit-ai-delivery-methodology/skills/rules-audit/SKILL.md",
+      "removeAfter": "1.0.0",
+      "replacement": "framework-intake",
+      "section": "skills",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [],
+  "productsTested": [],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "No adapter migration is required; generated adapters do not need to change for this release.",
+    "Stable clients remain on the stable channel unless they explicitly opt into experimental.",
+    "This release is WIP-safe because it changes no runtime surface: it only rewords export-included bookkeeping text and extends the public-export exclusion list.",
+    "Pinning back to 0.7.0 restores identical runtime behavior; the stable channel already carries this release's content."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.7.1",
+  "wipSafe": true
+}

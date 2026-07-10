@@ -1,0 +1,60 @@
+{
+  "behaviorChanges": [
+    "Phase 5.1 CLI package split continues: pure response-guard scan helpers move from bin/minervit-methodology into src/minervit_methodology/guards.py",
+    "bin/minervit-methodology keeps lazy compatibility wrappers with verbatim signatures for text_contains_any, response_guard_policy_scan_text, response_guard_monitor_scan_text, and response_guard_context_scan_text",
+    "hook dispatch now fails open for the guided missing-src package SystemExit raised by extracted helper wrappers, preserving the hook fail-open contract for unsupported standalone bin copies",
+    "cut-release checksums src/minervit_methodology/guards.py so the immutable release boundary covers the newly extracted implementation",
+    "generated adapters, adapter schema, and supported full-checkout command output behavior are unchanged; this is a mechanical extraction for supported installs"
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [],
+  "productsTested": [
+    "example-saas"
+  ],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "No adapter migration is required; generated adapters do not need to change for this release.",
+    "Stable clients remain on the stable channel unless they explicitly opt into experimental.",
+    "This release is WIP-safe because it only moves pure scan helper implementation behind compatibility wrappers without changing guard behavior.",
+    "Pinning back to 0.6.206 restores the response-guard scan helper functions inside bin/minervit-methodology; unsupported standalone bin copies regain in-bin response scan helpers but lose the new missing-src hook fail-open handling."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.6.207",
+  "wipSafe": true
+}

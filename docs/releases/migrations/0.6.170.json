@@ -1,0 +1,59 @@
+{
+  "behaviorChanges": [
+    "canonical Current Status Truth policy is ratcheted to a 550-word contract while preserving latest-code baseline, stale-local-lane, in-band escape, adapter-drift, and freshness self-heal markers",
+    "detailed latest-code, remote evidence, stale-lane, local-only, hook self-heal, and generated-adapter drift procedure remains in docs/reference/operations/status-continuity.md",
+    "canonical-rules.md is regenerated with the smaller Current Status Truth module while preserving current-status answers from fetched evidence and never-wedge guard obligations",
+    "tests now pin Current Status Truth policy size so detailed status procedure cannot silently return to canonical policy"
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [],
+  "productsTested": [
+    "example-saas"
+  ],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "No adapter migration is required; generated adapters do not need to change for this release.",
+    "Stable clients remain on the stable channel unless they explicitly opt into experimental.",
+    "Because canonical AI-facing policy text changed materially, this release is not WIP-safe for automatic active-lane upgrades.",
+    "Pinning back to 0.6.169 restores the previous longer Current Status Truth policy prose."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.6.170",
+  "wipSafe": false
+}

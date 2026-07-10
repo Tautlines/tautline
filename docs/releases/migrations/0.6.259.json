@@ -1,0 +1,80 @@
+{
+  "behaviorChanges": [
+    "The makerkit-implementation skill moved from the core methodology plugin (plugins/minervit-ai-delivery-methodology/skills/examples/makerkit-implementation/) to the delivery-ops plugin (plugins/minervit-delivery-ops/skills/makerkit-implementation/), with git history preserved via git mv; the core plugin's examples/README.md table row for it was removed",
+    "tests/test_skill_split_public_quality.py repoints MAKERKIT_IMPLEMENTATION_SKILL and MAKERKIT_IMPLEMENTATION_REFERENCE at the new ops-plugin location, adds drizzle-kit to CORE_OPS_PROVIDER_TERMS, and drops the examples/ exemption from the core-plugin forbidden-term scan so it now covers the full core skill tree",
+    "the internal productization refactor plan has the makerkit skill-split recommendation's four steps ticked, including the product-chat disposition item (no product-chat/product-chat-notes skill ever existed in this repo's history; publish-product-note has always been the shipping CLI surface)",
+    "lane startup, hooks, adapters, generated files, product worktrees, release tracks, and AI-facing policy are otherwise unchanged"
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    },
+    {
+      "name": "methodology-regression-rca",
+      "path": "plugins/minervit-ai-delivery-methodology/skills/methodology-regression-rca/SKILL.md",
+      "removeAfter": "1.0.0",
+      "replacement": "framework-intake",
+      "section": "skills",
+      "status": "deprecated"
+    },
+    {
+      "name": "rules-audit",
+      "path": "plugins/minervit-ai-delivery-methodology/skills/rules-audit/SKILL.md",
+      "removeAfter": "1.0.0",
+      "replacement": "framework-intake",
+      "section": "skills",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [
+    {
+      "description": "Lanes that invoke the makerkit-implementation skill from their AI runtime should install or enable the minervit-delivery-ops plugin (mirroring the 0.6.150 core-to-ops split); the skill is no longer packaged with the core methodology plugin. CLI commands continue to resolve their assets from the methodology checkout regardless of which plugins are enabled.",
+      "id": "install-minervit-delivery-ops-plugin-for-makerkit"
+    }
+  ],
+  "productsTested": [
+    "methodology-framework"
+  ],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "No adapter migration is required; generated adapters do not need to change for this release.",
+    "Stable clients remain on the stable channel unless they explicitly opt into experimental.",
+    "Because this release removes an AI runtime skill surface from the core plugin (mirroring 0.6.150), it is not WIP-safe for automatic active-lane upgrades: a lane with only the core plugin installed that is mid-work on a MakerKit task would lose access to makerkit-implementation until it also installs/enables minervit-delivery-ops.",
+    "Pinning back to 0.6.258 restores makerkit-implementation under the core plugin's examples/ subtree; any downstream skill-path references to the ops-plugin location would need to be repointed back."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.6.259",
+  "wipSafe": false
+}

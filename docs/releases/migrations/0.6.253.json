@@ -1,0 +1,77 @@
+{
+  "behaviorChanges": [
+    "14 Stop-hook checks in response_guard_errors (13 previously identified plus stop.autonomous_yield_too_terse, found during independent verification) are re-tagged from state to phrase mechanism in guard-events.jsonl telemetry; no predicate logic changed",
+    "response_guard_errors's phraseChecks default flips from blocking to advisory so these prose heuristics no longer hard-block Stop by default; the genuinely state-based gates (response_guard_state_stop_errors, response_guard_goal_boundary_errors) are untouched and still hard-block",
+    "stop.recovery_cancellation_without_explicit_stop reads only transcript text, so it is also re-tagged phrase and now honors phraseChecks (advisory by default; still blocks when phraseChecks is blocking)",
+    "The standalone response-guard CLI subcommand now resolves responseGuard.phraseChecks from the adapter the same way the Stop hook does, with a new --phrase-checks {advisory,blocking,off} override flag",
+    "Fixes a wiring bug where stop.boundary_summary errors bypassed log_guard's return value and always hard-blocked regardless of mode",
+    "lane startup, hooks, adapters, generated files, product worktrees, release tracks, and AI-facing policy are otherwise unchanged"
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    },
+    {
+      "name": "methodology-regression-rca",
+      "path": "plugins/minervit-ai-delivery-methodology/skills/methodology-regression-rca/SKILL.md",
+      "removeAfter": "1.0.0",
+      "replacement": "framework-intake",
+      "section": "skills",
+      "status": "deprecated"
+    },
+    {
+      "name": "rules-audit",
+      "path": "plugins/minervit-ai-delivery-methodology/skills/rules-audit/SKILL.md",
+      "removeAfter": "1.0.0",
+      "replacement": "framework-intake",
+      "section": "skills",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [],
+  "productsTested": [
+    "methodology-framework"
+  ],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "No adapter migration is required; generated adapters do not need to change for this release.",
+    "Stable clients remain on the stable channel unless they explicitly opt into experimental.",
+    "This release is WIP-safe because operators who rely on legacy hard-blocking behavior can pass --phrase-checks blocking or set responseGuard.phraseChecks: blocking in their adapter to restore it.",
+    "Pinning back to 0.6.252 restores the previous state/phrase mechanism tagging and the blocking-by-default phraseChecks behavior."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.6.253",
+  "wipSafe": true
+}

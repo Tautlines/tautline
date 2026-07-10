@@ -1,0 +1,26 @@
+{
+  "behaviorChanges": [
+    "adapter-aware bug intake is now active documented policy through the bug-intake-triage skill",
+    "bug filing/planning should follow adapter bugBacklog source-of-truth, mirror, severity, and required-field policy instead of asking the operator to choose a tracker"
+  ],
+  "deprecatedSurfaces": [],
+  "optionalMigrations": [
+    {
+      "command": "minervit-methodology render-adapters --project <adapter> --target <repo> --write",
+      "description": "No generated-adapter change is expected from this release; regenerate only if the product is already refreshing adapters at a safe boundary.",
+      "id": "regenerate-bug-intake-skill-reference",
+      "surface": "generated-adapter"
+    }
+  ],
+  "productsTested": [
+    "example-saas"
+  ],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "Revert to the previous pinned stable release if a product depends on pre-skill bug intake wording.",
+    "No automatic adapter migration should run during active implementation; existing bugBacklog adapter fields remain compatible."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.6.131",
+  "wipSafe": true
+}

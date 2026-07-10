@@ -1,0 +1,20 @@
+{
+  "behaviorChanges": [
+    "canonical Delivery Summaries policy is now a concise stable contract while detailed closeout procedure lives in the delivery-summary and continuity skills",
+    "generated adapters render a shorter Delivery Summaries section that points to the delivery-summary skill for detailed procedure",
+    "tests now pin the delivery summary policy module at 525 words so detailed closeout prose does not silently return to canonical policy"
+  ],
+  "deprecatedSurfaces": [],
+  "optionalMigrations": [],
+  "productsTested": [
+    "example-saas"
+  ],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "Revert to the previous pinned stable release if a lane depends on generated adapters containing the longer delivery-summary prose.",
+    "No adapter migration is required; this changes policy organization and generated compatibility text only."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.6.138",
+  "wipSafe": true
+}

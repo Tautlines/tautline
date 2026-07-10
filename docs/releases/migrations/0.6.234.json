@@ -1,0 +1,60 @@
+{
+  "behaviorChanges": [
+    "Phase 5.1 CLI package split continues: Google Chat content validation helpers move from bin/minervit-methodology into src/minervit_methodology/chat.py",
+    "bin/minervit-methodology keeps validate_milestone_update_content, validate_product_note, and validate_deployment_notification_content compatibility wrappers",
+    "publish-milestone-update, publish-product-note, and publish-deploy-ready-update validation messages and blocking behavior are unchanged",
+    "lane startup, hooks, adapters, generated files, product worktrees, release tracks, and AI-facing policy are unchanged"
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [],
+  "productsTested": [
+    "methodology-framework",
+    "example-saas"
+  ],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "No adapter migration is required; generated adapters do not need to change for this release.",
+    "Stable clients remain on the stable channel unless they explicitly opt into experimental.",
+    "This release is WIP-safe because it preserves existing notification validation behavior behind compatibility wrappers.",
+    "Pinning back to 0.6.233 restores the previous in-bin validation implementation while keeping the same command behavior."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.6.234",
+  "wipSafe": true
+}

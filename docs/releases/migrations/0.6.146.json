@@ -1,0 +1,22 @@
+{
+  "behaviorChanges": [
+    "blocker-declare writes a lane-local .ai-work/BLOCKER.json true-blocker record with kind, reason, optional artifact, and active goal_id when present",
+    "blocker-status reports blocker freshness and marks records stale when they are older than 30 minutes or no longer match the active goal ledger",
+    "blocker-clear removes the lane-local blocker record",
+    "no-safe-parallel-work blockers now require --checked evidence naming diff review, allowed validation, docs/evidence updates, next queue item, and monitor follow-up"
+  ],
+  "deprecatedSurfaces": [],
+  "optionalMigrations": [],
+  "productsTested": [
+    "example-saas"
+  ],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "Existing products and clients require no migration; these commands are additive and the Stop guard behavior is unchanged in this release.",
+    "Delete .ai-work/BLOCKER.json or run blocker-clear if a lane needs to discard a local blocker record.",
+    "Revert to the previous pinned stable release if a product temporarily cannot tolerate the new blocker command surface."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.6.146",
+  "wipSafe": true
+}

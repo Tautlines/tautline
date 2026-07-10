@@ -1,0 +1,46 @@
+{
+  "author": {
+    "name": "Minervit",
+    "url": "https://github.com/minervit"
+  },
+  "description": "Portable Minervit methodology for AI-assisted software delivery across Claude, Codex, and project adapters.",
+  "homepage": "https://github.com/tautlines/tautline",
+  "interface": {
+    "brandColor": "#2563EB",
+    "capabilities": [
+      "Interactive",
+      "Write"
+    ],
+    "category": "Productivity",
+    "defaultPrompt": [
+      "Audit this repo's AI process rules.",
+      "Install or sync the portable methodology CLI.",
+      "Onboard an unmanaged repo with init, then start an adapter-backed lane.",
+      "Create or advance a source-of-truth goal plan.",
+      "Run the review-before-push workflow.",
+      "Prepare a continuity handoff.",
+      "Submit a Tautline feature request.",
+      "Triage a product bug through adapter bugBacklog policy.",
+      "Check public-release readiness and migration status."
+    ],
+    "developerName": "Minervit",
+    "displayName": "Minervit AI Delivery",
+    "longDescription": "Packages the Minervit AI Delivery Methodology as a Codex skill bundle for adapter-backed software delivery. It helps teams start lanes, pin framework versions, plan and advance goals, coordinate reviews, triage bugs through adapter policy, run migration and public-release checks, capture continuity, publish RCA or feature-request artifacts, and keep long-running AI work visible. Detailed procedures live in the skill files, policy modules, and docs/reference/plugin-capability-catalog.md.",
+    "privacyPolicyURL": "https://github.com/tautlines/tautline/blob/main/PRIVACY.md",
+    "shortDescription": "Canonical AI delivery process, reviews, gates, and adapters.",
+    "termsOfServiceURL": "https://github.com/tautlines/tautline/blob/main/TERMS.md",
+    "websiteURL": "https://github.com/tautlines/tautline"
+  },
+  "keywords": [
+    "ai-delivery",
+    "agentic-development",
+    "review",
+    "codex",
+    "claude"
+  ],
+  "license": "MIT",
+  "name": "tautline-core",
+  "repository": "https://github.com/tautlines/tautline",
+  "skills": "./skills/",
+  "version": "0.8.5"
+}

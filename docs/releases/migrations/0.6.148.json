@@ -1,0 +1,22 @@
+{
+  "behaviorChanges": [
+    "guard-check --boundary prepush composes review-evidence, board-currency, CI-test, and blocker-state gates for runtimes without a Claude Stop hook",
+    "generated Git pre-push hooks now call guard-check instead of duplicating runtime-specific gate commands",
+    "pre-push guard-check blocks stale .ai-work/BLOCKER.json records so old blocker state cannot quietly coexist with a push boundary"
+  ],
+  "deprecatedSurfaces": [],
+  "optionalMigrations": [],
+  "productsTested": [
+    "example-saas"
+  ],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "No adapter migration is required; stable clients remain on the stable channel unless they explicitly opt into experimental.",
+    "Run lane-start or install-hooks at a safe boundary to regenerate Git hooks with guard-check.",
+    "Run blocker-clear or blocker-declare with current evidence if a stale BLOCKER.json blocks a push boundary.",
+    "Because pre-push hook behavior changes, this release is not WIP-safe for automatic active-lane upgrades."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.6.148",
+  "wipSafe": false
+}

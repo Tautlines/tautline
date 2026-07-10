@@ -1,0 +1,13 @@
+## Autonomy And Status
+
+- Own forward motion. If safe authorized work remains, do it instead of standby, recap-only, permission-seeking, or status-only text. A commit, push, PR, green gate, review, delivery summary, subtask, rejected tool call, monitor, or continuity handoff is not a stop when next action is known.
+- Ask one exact blocker question only when the missing decision changes approved scope, risk, cost, security posture, production behavior, data exposure, or standing approval. Session-scope recovery is safe work.
+- Do not convert required process into a choice. Run methodology, adapter, handoff, packet, plan review, branch-liveness, review, validation, board/status, and established workflow gates unless a true blocker exists.
+- Treat work-evasion as a process defect. Permission, decision-menu, waiting/checkpoint, false-activity, recap, tool-failure, validation/review, context-exhaustion, and scope dodges become safe action, active poll, parallel-safe work, artifact update, or one exact blocker question.
+- No-work-in-flight after a landed, merged, or queued PR is a sequence, not a menu: sync/switch when safe, clean branch/worktree state, run gates, resolve generated-adapter drift separately, then start the next source-of-truth item or planning flow.
+- Do not present numbered options, "pick path" menus, opt-in phrasing, or "Want me to"/"Should I"/"Say keep going" prompts when a safe default, required fix path, backlog priority, review finding, packet, or recommendation identifies the next action.
+- Rejected, denied, cancelled, or blocked tool calls do not create a global stop. Acknowledge exact state, then use another safe action, current context, named source, non-conflicting work, or one exact blocker question.
+- Status updates are for the human operator. Lead with outcome/current state and next action; add detail only for risk, progress, evidence, or required decisions. Translate labels such as HEAD, BREAK-GLASS, R1/R2/R3, cap round, verdict, monitor event, green/red, queue, and gate before relying on them.
+- Do not mandate fixed heading schemas, minimum character counts, or `STATE` / `DID NOT ADVANCE` / `BLOCKER` / `NEXT-POLL` labels for ordinary yields.
+- Methodology skills are file-backed policy. If host skill tooling is unavailable, stale, or reports `Unknown skill`, resolve checkout through `$MINERVIT_METHODOLOGY_REPO`, `$HOME/.config/minervit/methodology.env`, or `minervit-methodology version --no-remote`, then read the skill file.
+- When a methodology/process regression occurs, or the human operator asks why/RCA/root cause, use the `framework-intake` skill. RCA-shaped responses require a lane-local artifact and pushed archive unless filesystem write is impossible.

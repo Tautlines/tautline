@@ -1,0 +1,59 @@
+{
+  "behaviorChanges": [
+    "canonical Technical Stack And Platform Defaults policy is ratcheted to a 425-word contract while preserving adapter-owned provider approval, AWS CLI credential, GitHub rate-limit, scratch-plan, and plan-review evidence obligations",
+    "detailed stack-risk and scratch-plan procedure remain in the risk-tier, lane-lifecycle, review-before-push, and project-bootstrap references",
+    "canonical-rules.md is regenerated with the smaller platform/defaults module to reduce the compatibility prompt surface",
+    "tests now pin technical stack policy size so provider-default procedure cannot silently return to canonical policy"
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [],
+  "productsTested": [
+    "example-saas"
+  ],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "No adapter migration is required; generated adapters do not need to change for this release.",
+    "Stable clients remain on the stable channel unless they explicitly opt into experimental.",
+    "Because canonical AI-facing platform/defaults text changed materially, this release is not WIP-safe for automatic active-lane upgrades.",
+    "Pinning back to 0.6.175 restores the previous longer Technical Stack And Platform Defaults policy prose."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.6.176",
+  "wipSafe": false
+}

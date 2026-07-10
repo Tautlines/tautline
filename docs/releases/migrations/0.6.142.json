@@ -1,0 +1,25 @@
+{
+  "behaviorChanges": [
+    "adapters can now declare supported lane runtimes, including WSL2 as the supported Windows path when native win32 shells are not release-evidence runtimes",
+    "lane-start and methodology-status now print the detected development runtime and fail early on explicit native-Windows-unsupported adapters instead of launching incompatible gates",
+    "generated adapters now include a Development Environment section with WSL2 and line-ending guidance for Windows contributors"
+  ],
+  "deprecatedSurfaces": [],
+  "optionalMigrations": [
+    {
+      "description": "Adapters with Windows contributors may add developmentEnvironment.supportedRuntimes and mark native Windows unsupported with WSL2 as the supported Windows runtime.",
+      "id": "declare-wsl2-windows-runtime"
+    }
+  ],
+  "productsTested": [
+    "example-saas"
+  ],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "Remove the optional developmentEnvironment block or revert to the previous pinned stable release if a repo needs to temporarily avoid runtime enforcement.",
+    "Existing adapters without developmentEnvironment remain compatible and do not fail startup solely because this release is installed."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.6.142",
+  "wipSafe": true
+}

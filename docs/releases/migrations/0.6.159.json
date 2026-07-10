@@ -1,0 +1,59 @@
+{
+  "behaviorChanges": [
+    "RCA artifact validation now requires the compact What happened, Evidence, Root cause, Proposed control, and Validation sections",
+    "RCA validation no longer enforces apology/tone blocklists, strict heading order, Methodology Runtime fields, or canned Fix Proposal opener outcomes",
+    "board-structure guard and backlog-provider policy text now state the rule and fix path without private incident/date narrative",
+    "policy and skill Markdown tests now block incident-date strings from shippable methodology surfaces and generated adapter projections"
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [],
+  "productsTested": [
+    "example-saas"
+  ],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "No adapter migration is required; generated adapters do not need to change for this release.",
+    "Stable clients remain on the stable channel unless they explicitly opt into experimental.",
+    "Because RCA artifact validation and AI-facing reference guidance changed, this release is not WIP-safe for automatic active-lane upgrades.",
+    "Pinning back to 0.6.158 restores the previous long RCA artifact validator and reference guidance."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.6.159",
+  "wipSafe": false
+}

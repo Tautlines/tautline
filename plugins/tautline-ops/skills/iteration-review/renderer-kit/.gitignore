@@ -1,0 +1,17 @@
+node_modules/
+out/
+dist/
+build/
+.next/
+.turbo/
+.cache/
+coverage/
+*.mp4
+*.mov
+*.webm
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.webp
+.DS_Store

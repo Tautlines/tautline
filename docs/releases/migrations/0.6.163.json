@@ -1,0 +1,59 @@
+{
+  "behaviorChanges": [
+    "canonical Board Currency And Subtask Status policy is now a concise contract capped at 625 words",
+    "detailed board-status, current-work scope, subtask reconciliation, done-evidence, and customer-facing bug placement procedure remains in the backlog-provider workflow and goal-orchestration references",
+    "canonical-rules.md is regenerated with the smaller board module while preserving scope-aware gating, parent/subtask status, active-claim, done-evidence, and customer-facing bug placement obligations",
+    "tests now pin board-currency policy size so detailed procedure cannot silently return to canonical policy"
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [],
+  "productsTested": [
+    "example-saas"
+  ],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "No adapter migration is required; generated adapters do not need to change for this release.",
+    "Stable clients remain on the stable channel unless they explicitly opt into experimental.",
+    "Because canonical AI-facing policy text changed materially, this release is not WIP-safe for automatic active-lane upgrades.",
+    "Pinning back to 0.6.162 restores the previous longer board-currency policy prose."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.6.163",
+  "wipSafe": false
+}

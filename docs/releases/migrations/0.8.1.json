@@ -1,0 +1,63 @@
+{
+  "behaviorChanges": [
+    "Public repository identity: README badges/clone URL, issue-template links, plugin manifest homepage/repository/policy URLs, and reference-doc clone instructions point at github.com/tautlines/tautline (the public home); scaffolded adapters' $schema URL points at the tautlines/tautline raw path so it resolves for public users",
+    "Commands, adapter schema content, hooks, lane runtime behavior, and generated adapters are unchanged; only public-facing URLs and the scaffold $schema link change"
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    },
+    {
+      "name": "rules-audit",
+      "path": "plugins/tautline-core/skills/rules-audit/SKILL.md",
+      "removeAfter": "1.0.0",
+      "replacement": "framework-intake",
+      "section": "skills",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [],
+  "productsTested": [],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "No adapter migration is required; generated adapters do not need to change for this release.",
+    "Stable clients remain on the stable channel unless they explicitly opt into experimental.",
+    "This release is WIP-safe because it changes no runtime surface: only public-facing URLs and the scaffold $schema link change.",
+    "Pinning back to 0.8.0 restores the previous URLs; nothing functional differs."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.8.1",
+  "wipSafe": true
+}

@@ -1,0 +1,20 @@
+{
+  "behaviorChanges": [
+    "latest-code hook no longer blocks read-only Claude tool calls when the baseline is stale or missing",
+    "install-hooks rewrites legacy latest-code matcher=* entries into state-changing tool matchers for Bash, Edit, MultiEdit, Write, NotebookEdit, ExitPlanMode, and Task",
+    "latest-code stale-baseline guidance now tells lanes to refresh before edits, plan finalization, commits, pushes, or deep/current-status analysis instead of blocking ordinary inspection"
+  ],
+  "deprecatedSurfaces": [],
+  "optionalMigrations": [],
+  "productsTested": [
+    "example-saas"
+  ],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "Revert to the previous pinned stable release if a product depends on latest-code blocking every read-only tool call.",
+    "No adapter migration is required; rerun lane-start or install-hooks at a safe boundary to rewrite old Claude settings away from matcher=*."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.6.135",
+  "wipSafe": true
+}

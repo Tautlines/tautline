@@ -1,0 +1,14 @@
+#!/usr/bin/env python3
+"""Compat shim: the canonical CLI is bin/tautline (renamed in 0.8.0).
+
+This file MUST stay valid Python. Pre-0.8.0 installs auto-update by re-exec'ing
+this exact path with sys.executable (python3 <this file> ...), so the immutable
+0.7.x fleet code re-parses whatever this file becomes after the update. A shell
+shim here broke every 0.7.x -> 0.8.x upgrade mid-flight with a SyntaxError
+(tests/test_cli_shims.py::test_minervit_shim_survives_python_reexec).
+"""
+import os
+import sys
+
+_TAUTLINE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "tautline")
+os.execv(_TAUTLINE, [_TAUTLINE, *sys.argv[1:]])

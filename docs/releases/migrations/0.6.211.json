@@ -1,0 +1,59 @@
+{
+  "behaviorChanges": [
+    "shippable public docs no longer expose internal productization finding IDs or private audit-file references",
+    "root legal, security, privacy, contributing, changelog, reference, and approved public product docs now use public rationale instead of internal audit provenance",
+    "public-boundary regression coverage now rejects internal finding IDs and private audit-document filenames in shippable public text",
+    "lane startup, hooks, adapters, generated files, and product worktrees are unchanged"
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [],
+  "productsTested": [
+    "example-saas"
+  ],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "No adapter migration is required; generated adapters do not need to change for this release.",
+    "Stable clients remain on the stable channel unless they explicitly opt into experimental.",
+    "This release is WIP-safe because it only changes public documentation hygiene, release metadata, and tests.",
+    "Pinning back to 0.6.210 restores the prior public docs, including internal audit references that are unsuitable for public release exports."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.6.211",
+  "wipSafe": true
+}

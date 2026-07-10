@@ -1,0 +1,23 @@
+{
+  "behaviorChanges": [
+    "claude-review is now available on the stable release line as the sanctioned Codex-to-Claude Stage 2 launcher",
+    "claude-review packet preflight rejects incomplete Git-backed review packets before invoking Claude",
+    "claude-review-status summarizes recent clean, blocked, degraded, timeout, parse-error, packet-preflight, and transport-failure artifacts",
+    "claude-review records a structured claude_transport_failure for nonzero Claude CLI exits",
+    "Claude CLI signal exits such as 143 include signal metadata and an explicit recovery next action",
+    "failed Claude transport runs do not write review_result and return a transport-failure exit code, normalizing direct signal returns to 128+signal"
+  ],
+  "deprecatedSurfaces": [],
+  "optionalMigrations": [],
+  "productsTested": [
+    "example-saas"
+  ],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "Revert to 0.6.127 if downstream tooling cannot tolerate the new claude-review command or additional claude_transport_failure artifact field.",
+    "No adapter rollback is required because no adapter schema or generated adapter behavior changed."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.6.128",
+  "wipSafe": true
+}

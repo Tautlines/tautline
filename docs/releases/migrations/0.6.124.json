@@ -1,0 +1,77 @@
+{
+  "behaviorChanges": [
+    "lane-start honors stable/experimental framework pins before auto-update",
+    "stable channel refuses raw main updates without signed or pinned trust",
+    "active goal/milestone/execution/review/branch work blocks automatic minor/major framework updates"
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [
+    {
+      "command": "minervit-methodology migrate-adapter <adapter> --write",
+      "description": "Remove deprecated goalTracker after backlogProvider is present.",
+      "id": "goalTracker-to-backlogProvider",
+      "surface": "adapter"
+    },
+    {
+      "command": "minervit-methodology migrate-adapter <adapter> --adopter-target <repo> --write",
+      "description": "Move product source adapters from methodology adapters/projects/*.json to .minervit/adapter.json in each adopter repo.",
+      "id": "repo-local-adapter",
+      "surface": "adapter"
+    }
+  ],
+  "productsTested": [
+    "example-saas"
+  ],
+  "requiredMigrations": [
+    {
+      "command": "minervit-methodology migrate-adapter <adapter> --write",
+      "description": "Adapters should declare _framework or adopter repos should declare .minervit/pin.json.",
+      "id": "adapter-framework-pin",
+      "surface": "adapter"
+    }
+  ],
+  "rollbackNotes": [
+    "Keep the previous adapter JSON and generated .minervit-ai-delivery.json in git history.",
+    "Revert the adapter migration commit and re-render from the prior pinned framework version.",
+    "Leave lane-local methodology locks in place for active work until the rollback is verified."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.6.124",
+  "wipSafe": false
+}

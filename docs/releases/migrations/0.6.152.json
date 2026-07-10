@@ -1,0 +1,23 @@
+{
+  "behaviorChanges": [
+    "scripts/validate.sh no longer requires the current methodology release-update Google Chat delivery marker",
+    "public-release-check now owns release-update delivery accountability for shipped and current releases",
+    "release-update-status keeps reporting overdue releases, while its current-release failure mode is hidden from normal CLI help and reserved for maintainer release checks",
+    "core validation can run in checkouts with no Minervit announcement webhook configured"
+  ],
+  "deprecatedSurfaces": [],
+  "optionalMigrations": [],
+  "productsTested": [
+    "example-saas"
+  ],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "No adapter migration is required and no generated adapter files change in this release.",
+    "Stable clients remain on the stable channel unless they explicitly opt into experimental.",
+    "This release is WIP-safe because it removes an infrastructure-only validation dependency without changing project adapters, generated files, hooks, or lane startup behavior.",
+    "Pinning back to 0.6.151 restores validation-time release-update marker enforcement."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.6.152",
+  "wipSafe": true
+}

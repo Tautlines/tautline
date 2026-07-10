@@ -1,0 +1,59 @@
+{
+  "behaviorChanges": [
+    "public example generated CLAUDE.md and AGENTS.md are now capped at 16000 bytes as part of Phase 4 generated-adapter budget cleanup",
+    "generated adapters keep startup, channel, WIP, review, local-gate, merge, background, and Windows/WSL2 command anchors while moving repeated walkthrough prose back to canonical policy and skills",
+    "generated adapters now surface the first-class set-framework-channel stable|experimental command so lanes can select a release track without hand-editing pins",
+    "the generated-adapter contract test now enforces the compact public surface and blocks removed mini-manual sections from returning"
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [],
+  "productsTested": [
+    "example-saas"
+  ],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "No adapter migration is required; generated adapters change only when a lane deliberately re-renders them.",
+    "Stable clients remain on the stable channel unless they explicitly opt into experimental.",
+    "Because generated AI prompt surfaces changed materially, this release is not WIP-safe for automatic active-lane upgrades.",
+    "Pinning back to 0.6.159 restores the previous longer generated adapter prose."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.6.160",
+  "wipSafe": false
+}

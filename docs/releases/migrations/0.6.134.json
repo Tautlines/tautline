@@ -1,0 +1,20 @@
+{
+  "behaviorChanges": [
+    "init-project-adapter now writes <target>/.minervit/adapter.json by default instead of methodology_repo/adapters/projects/<project>.json",
+    "repo-local init scaffolds use a stable public adapter-schema URL instead of embedding a local methodology checkout path",
+    "project-bootstrap policy, skills, and operations docs now teach adopter-owned .minervit/adapter.json as the default source adapter path"
+  ],
+  "deprecatedSurfaces": [],
+  "optionalMigrations": [],
+  "productsTested": [
+    "example-saas"
+  ],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "Pass --output <methodology_repo>/adapters/projects/<project>.json explicitly if a framework maintainer needs the legacy scaffold location.",
+    "No existing product/client adapter migration is required; this changes only new init-project-adapter defaults."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.6.134",
+  "wipSafe": true
+}

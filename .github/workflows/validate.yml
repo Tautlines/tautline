@@ -1,0 +1,57 @@
+name: validate
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: "3.12"
+
+      - name: Install dev toolchain
+        run: python -m pip install -r requirements-dev.txt
+
+      - name: Validate methodology
+        run: scripts/validate.sh
+
+      - name: Compile CLI
+        run: python3 -m py_compile bin/tautline
+
+      # arch-validate-tests-1/2: validate.sh is retired to a thin wrapper so it
+      # cannot grow back into grep pins. The
+      # authoritative check lives in tests/test_validate_freeze.py (run in full by
+      # ci-python via scripts/test.sh). This step gives the same fast signal here.
+      - name: Freeze-check validate.sh line budget
+        run: |
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+
+          test_src = Path("tests/test_validate_freeze.py").read_text()
+          budget = int(re.search(r"^BUDGET_LINES = (\d+)", test_src, re.M).group(1))
+          actual = Path("scripts/validate.sh").read_bytes().count(b"\n")
+          if actual > budget:
+              raise SystemExit(
+                  f"scripts/validate.sh grew to {actual} lines (budget {budget}); "
+                  "it is frozen -- put the new validation behavior in a pytest, not a grep pin."
+              )
+          print(f"validate.sh frozen OK: {actual} <= {budget} lines")
+          PY
+
+      - name: Check whitespace in changed files
+        run: |
+          base_ref="${GITHUB_BASE_REF:-main}"
+          git fetch origin "${base_ref}"
+          base="$(git merge-base "origin/${base_ref}" HEAD)"
+          git diff --check "${base}..HEAD"

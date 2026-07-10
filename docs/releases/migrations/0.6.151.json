@@ -1,0 +1,28 @@
+{
+  "behaviorChanges": [
+    "iteration-review renderer dependencies now install into ~/.local/state/minervit/renderer-kit instead of the plugin tree",
+    "iteration-review-status reports both renderer source and renderer cache paths without running npm or blocking startup when the cache is cold",
+    "iteration-review renderer docs, examples, and skill policy now forbid plugin-tree node_modules and generated media",
+    "renderer hygiene tests assert no plugin node_modules are tracked or present and the setup cache remains outside the methodology repo"
+  ],
+  "deprecatedSurfaces": [],
+  "optionalMigrations": [
+    {
+      "description": "Teams that render iteration-review recap videos should run `minervit-methodology iteration-review-renderer-setup` once per machine. The command copies renderer source into ~/.local/state/minervit/renderer-kit/ and installs npm dependencies there instead of inside the plugin tree.",
+      "id": "run-iteration-review-renderer-setup"
+    }
+  ],
+  "productsTested": [
+    "example-saas"
+  ],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "No adapter migration is required and no generated adapter files change in this release.",
+    "Stable clients remain on the stable channel unless they explicitly opt into experimental.",
+    "Because iteration-review video setup changes where npm dependencies live, this release is not WIP-safe for automatic active-lane upgrades.",
+    "Pinning back to 0.6.150 restores the previous renderer instructions; remove ~/.local/state/minervit/renderer-kit if you want to discard the user-state cache."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.6.151",
+  "wipSafe": false
+}

@@ -1,0 +1,20 @@
+{
+  "behaviorChanges": [
+    "canonical Background Work policy is now a concise stable contract while detailed monitor, polling, stale/hung, provider-recovery, and queued-PR procedure lives in the background-task-monitoring skill/reference",
+    "canonical-rules.md is regenerated with the smaller Background Work module while preserving passive-monitor-stop, response-guard, ScheduleWakeup, stale/hung, and terminal-state markers",
+    "tests now pin the Background Work policy module at 690 words so detailed monitoring procedure does not silently return to canonical policy"
+  ],
+  "deprecatedSurfaces": [],
+  "optionalMigrations": [],
+  "productsTested": [
+    "example-saas"
+  ],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "Revert to the previous pinned stable release if a lane depends on canonical-rules.md containing the longer Background Work procedure prose.",
+    "No adapter migration is required; this changes policy organization and generated compatibility text only."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.6.141",
+  "wipSafe": true
+}

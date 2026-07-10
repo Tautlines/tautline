@@ -1,0 +1,59 @@
+{
+  "behaviorChanges": [
+    "canonical Unmanaged Project Bootstrap policy is ratcheted to a 470-word cap while preserving mandatory adapter interview, no-generic-adapter, bootstrapEvidence, repo-local adapter, local/no-remote, and generated-adapter provenance obligations",
+    "detailed unmanaged-repo onboarding and adapter interview procedure remain in the project-bootstrap skill reference and operations docs",
+    "canonical-rules.md is regenerated with the smaller bootstrap module to reduce the compatibility prompt surface",
+    "tests now pin unmanaged project bootstrap policy size so detailed interview walkthroughs cannot silently return to canonical policy"
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [],
+  "productsTested": [
+    "example-saas"
+  ],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "No adapter migration is required; generated adapters do not need to change for this release.",
+    "Stable clients remain on the stable channel unless they explicitly opt into experimental.",
+    "Because canonical AI-facing unmanaged-project bootstrap text changed materially, this release is not WIP-safe for automatic active-lane upgrades.",
+    "Pinning back to 0.6.176 restores the previous longer Unmanaged Project Bootstrap policy prose."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.6.177",
+  "wipSafe": false
+}

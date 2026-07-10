@@ -1,0 +1,36 @@
+{
+  "behaviorChanges": [
+    "early-warning-smoke is no longer a packaged skill on the experimental channel",
+    "background-task-monitoring now owns early-warning smoke trigger, monitor reuse, stale/failure, queued-PR, and final-preflight planning policy",
+    "public contract skill metadata removes early-warning-smoke and points monitoring users to background-task-monitoring",
+    "setup-runtime docs no longer advertise early-warning-smoke as a separate Codex skill"
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "early-warning-smoke",
+      "note": "This stable-status skill surface is removed only on the experimental track in 0.6.153. Stable-channel promotion must preserve the normal deprecation/removal policy or keep a compatibility alias.",
+      "replacement": "background-task-monitoring",
+      "section": "skills",
+      "status": "experimental-removal"
+    }
+  ],
+  "optionalMigrations": [
+    {
+      "description": "AI runtime prompts, docs, or memories that explicitly invoke the early-warning-smoke skill should invoke background-task-monitoring instead. The early-warning smoke procedure now lives in the background monitoring reference.",
+      "id": "replace-early-warning-smoke-skill-reference"
+    }
+  ],
+  "productsTested": [
+    "example-saas"
+  ],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "No adapter migration is required and no generated adapter files change in this release.",
+    "Stable clients remain on the stable channel unless they explicitly opt into experimental.",
+    "Because an AI runtime skill surface is removed, this release is not WIP-safe for automatic active-lane upgrades.",
+    "Pinning back to 0.6.152 restores early-warning-smoke as a separate packaged skill."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.6.153",
+  "wipSafe": false
+}

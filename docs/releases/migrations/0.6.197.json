@@ -1,0 +1,59 @@
+{
+  "behaviorChanges": [
+    "canonical policy modules are further thinned as part of Phase 4 productization, reducing generated canonical-rules.md below 68000 bytes",
+    "governance, autonomy, status, delivery summaries, goal orchestration, backlog provider, board currency, planning, technical stack defaults, merge and CI, background work, lane lifecycle, unmanaged bootstrap, and context continuity policy modules now carry tighter word-count ratchets",
+    "required compatibility markers remain intact, including startup gates, latest-code recovery, planning proof, board currency, merge queue, monitor supervision, and proof-of-done wording that excludes pending tests from completion proof",
+    "canonical-rules.md is regenerated from source modules; runtime hooks, generated adapters, adapter schema, and operational CLI behavior are unchanged, with CLI code touched only to declare this release report"
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [],
+  "productsTested": [
+    "example-saas"
+  ],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "No adapter migration is required; generated adapters do not need to change for this release.",
+    "Stable clients remain on the stable channel unless they explicitly opt into experimental.",
+    "This release is WIP-safe because it changes policy-module wording, generated canonical docs, release metadata, and tests only, without changing runtime hook behavior.",
+    "Pinning back to 0.6.196 restores the previous longer canonical policy wording but does not change lane runtime behavior."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.6.197",
+  "wipSafe": true
+}

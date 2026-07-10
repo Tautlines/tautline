@@ -1,0 +1,20 @@
+{
+  "behaviorChanges": [
+    "canonical Context Continuity policy is now a shorter stable contract while detailed handoff/resume procedure lives in the context-continuity skill and reference",
+    "tests now pin the context continuity policy module at 850 words so detailed startup/handoff procedure does not silently return to canonical policy",
+    "canonical-rules.md is regenerated with the smaller context continuity module while preserving startup-gate ordering markers"
+  ],
+  "deprecatedSurfaces": [],
+  "optionalMigrations": [],
+  "productsTested": [
+    "example-saas"
+  ],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "Revert to the previous pinned stable release if a lane depends on the longer canonical Context Continuity prose.",
+    "No adapter migration is required; this changes policy organization and compatibility text only."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.6.139",
+  "wipSafe": true
+}
