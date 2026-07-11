@@ -1,1392 +1,1422 @@
 {
-  "schema": "minervit-release-update-delivery/v1",
-  "note": "Seeded 2026-06-19. 0.6.108-0.6.113 posted as a consolidated catch-up card to the framework update channel; pre-0.6.108 are a delivered baseline (not independently re-verified). New releases are recorded by publish-release-update.",
-  "delivered": {
-    "0.4.14": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.4.15": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.4.16": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.4.17": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.4.18": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.4.19": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.4.20": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.4.21": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.4.22": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.4.23": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.4.24": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.4.25": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.4.26": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.4.27": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.4.28": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.4.29": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.4.30": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.4.31": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.4.32": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.4.33": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.4.34": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.4.35": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.4.36": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.4.37": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.4.38": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.4.39": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.4.40": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.5.1": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.5.2": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.5.3": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.5.4": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.5.5": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.5.6": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.2": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.3": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.4": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.5": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.6": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.7": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.8": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.9": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.10": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.11": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.12": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.13": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.14": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.15": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.16": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.17": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.18": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.19": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.20": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.21": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.22": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.23": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.24": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.25": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.26": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.27": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.28": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.29": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.30": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.31": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.32": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.33": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.34": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.35": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.36": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.37": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.38": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.39": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.40": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.41": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.42": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.43": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.44": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.45": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.46": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.47": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.48": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.49": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.50": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.51": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.52": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.53": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.54": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.55": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.56": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.57": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.58": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.59": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.60": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.61": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.62": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.63": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.64": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.65": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.66": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.67": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.68": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.69": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.70": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.71": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.72": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.73": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.74": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.75": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.76": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.77": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.78": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.79": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.80": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.81": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.82": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.83": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.84": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.85": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.86": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.87": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.88": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.89": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.90": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.91": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.92": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.93": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.94": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.95": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.96": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.97": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.98": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.99": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.100": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.101": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.102": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.103": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.104": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.105": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.106": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.107": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "bootstrap"
-    },
-    "0.6.108": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "catchup"
-    },
-    "0.6.109": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "catchup"
-    },
-    "0.6.110": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "catchup"
-    },
-    "0.6.111": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "catchup"
-    },
-    "0.6.112": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "catchup"
-    },
-    "0.6.113": {
-      "at": "2026-06-20T03:07:23Z",
-      "via": "catchup"
-    },
-    "0.6.114": {
-      "at": "2026-06-21T05:44:09Z",
-      "via": "publish-release-update"
-    },
-    "0.6.115": {
-      "at": "2026-06-22T14:35:38.662870+00:00",
-      "via": "publish-release-update"
-    },
-    "0.6.116": {
-      "at": "2026-06-22T14:35:39.585434+00:00",
-      "via": "publish-release-update"
-    },
-    "0.6.117": {
-      "at": "2026-06-24T21:29:08.873142+00:00",
-      "via": "publish-release-update"
-    },
-    "0.6.118": {
-      "at": "2026-06-25T02:47:42.032173+00:00",
-      "via": "publish-release-update"
-    },
-    "0.6.119": {
-      "at": "2026-06-25T14:47:40.253744+00:00",
-      "via": "publish-release-update"
-    },
-    "0.6.120": {
-      "at": "2026-06-25T21:15:26.070021+00:00",
-      "via": "publish-release-update"
-    },
-    "0.6.121": {
-      "at": "2026-06-25T21:56:18.306399+00:00",
-      "via": "publish-release-update"
-    },
-    "0.6.122": {
-      "at": "2026-06-26T00:40:26.193510+00:00",
-      "via": "publish-release-update"
-    },
-    "0.6.123": {
-      "at": "2026-06-27T18:40:44.276767+00:00",
-      "via": "publish-release-update"
-    },
-    "0.6.124": {
-      "at": "2026-06-30T19:16:07.077513+00:00",
-      "via": "publish-release-update"
-    },
-    "0.6.125": {
-      "at": "2026-07-01T13:48:57.241790+00:00",
-      "via": "publish-release-update"
-    },
-    "0.6.126": {
-      "at": "2026-07-02T07:49:55.587864+00:00",
-      "via": "publish-release-update"
-    },
-    "0.6.127": {
-      "at": "2026-07-03T00:06:36.206672+00:00",
-      "via": "publish-release-update"
-    },
-    "0.6.130": {
-      "at": "2026-07-03T00:58:52.489018+00:00",
-      "via": "publish-release-update"
-    },
-    "0.6.131": {
-      "at": "2026-07-03T03:28:49.314023+00:00",
-      "via": "publish-release-update"
-    },
-    "0.6.132": {
-      "at": "2026-07-03T03:52:03.358717+00:00",
-      "via": "publish-release-update"
-    },
-    "0.6.133": {
-      "at": "2026-07-03T04:27:06.261373+00:00",
-      "via": "publish-release-update"
-    },
-    "0.6.134": {
-      "at": "2026-07-03T04:48:10.879135+00:00",
-      "via": "publish-release-update"
-    },
-    "0.6.135": {
-      "at": "2026-07-03T05:10:05.500417+00:00",
-      "via": "publish-release-update"
-    },
-    "0.6.136": {
-      "at": "2026-07-03T05:46:26.354471+00:00",
-      "via": "publish-release-update"
-    },
-    "0.6.137": {
-      "at": "2026-07-03T06:17:43.867959+00:00",
-      "via": "publish-release-update"
-    },
-    "0.6.138": {
-      "at": "2026-07-03T14:26:02.105053+00:00",
-      "via": "publish-release-update"
-    },
-    "0.6.139": {
-      "at": "2026-07-03T14:50:50.529651+00:00",
-      "via": "publish-release-update"
-    },
-    "0.6.140": {
-      "at": "2026-07-03T15:38:24.447764+00:00",
-      "via": "publish-release-update"
-    },
-    "0.6.141": {
-      "at": "2026-07-03T17:12:11.706803+00:00",
-      "via": "publish-release-update"
-    },
-    "0.6.142": {
-      "at": "2026-07-03T18:18:20.342824+00:00",
-      "via": "publish-release-update"
-    },
-    "0.6.143": {
-      "at": "2026-07-03T20:53:43.896841+00:00",
-      "via": "publish-release-update"
-    },
-    "0.6.144": {
-      "at": "2026-07-03T21:25:05.422374+00:00",
-      "via": "publish-release-update"
-    },
-    "0.6.145": {
-      "at": "2026-07-03T21:54:26.707845+00:00",
-      "via": "publish-release-update"
-    },
-    "0.6.146": {
-      "at": "2026-07-03T22:20:49.400428+00:00",
-      "via": "publish-release-update"
-    },
-    "0.6.147": {
-      "at": "2026-07-03T22:47:23.954797+00:00",
-      "via": "publish-release-update"
-    },
-    "0.6.148": {
-      "at": "2026-07-03T23:47:17.397471+00:00",
-      "via": "publish-release-update"
-    },
-    "0.6.149": {
-      "at": "2026-07-04T00:02:30.167223+00:00",
-      "via": "publish-release-update"
-    },
-    "0.6.150": {
-      "at": "2026-07-04T00:28:38.651275+00:00",
-      "via": "publish-release-update"
-    },
-    "0.6.151": {
-      "at": "2026-07-04T00:55:33.502722+00:00",
-      "via": "publish-release-update"
-    }
+ "schema": "minervit-release-update-delivery/v1",
+ "note": "Seeded 2026-06-19. 0.6.108-0.6.113 posted as a consolidated catch-up card to the framework update channel; pre-0.6.108 are a delivered baseline (not independently re-verified). New releases are recorded by publish-release-update.",
+ "delivered": {
+  "0.4.14": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
   },
-  "suspended": {
-    "0.6.129": {
-      "at": "2026-07-05T00:00:00+00:00",
-      "via": "maintainer-backfill",
-      "scope": "legacy-release-card-suspension",
-      "reason": "Legacy release-update card was not posted during rapid methodology stabilization; release accountability is retained through changelog and repository history instead of a retroactive chat card."
-    },
-    "0.6.152": {
-      "at": "2026-07-05T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.153": {
-      "at": "2026-07-05T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.154": {
-      "at": "2026-07-05T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.155": {
-      "at": "2026-07-05T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.156": {
-      "at": "2026-07-05T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.157": {
-      "at": "2026-07-05T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.158": {
-      "at": "2026-07-05T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.159": {
-      "at": "2026-07-05T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.176": {
-      "at": "2026-07-05T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.177": {
-      "at": "2026-07-05T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.178": {
-      "at": "2026-07-05T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.179": {
-      "at": "2026-07-05T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.180": {
-      "at": "2026-07-05T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.181": {
-      "at": "2026-07-05T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.182": {
-      "at": "2026-07-05T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.183": {
-      "at": "2026-07-05T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.184": {
-      "at": "2026-07-05T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.185": {
-      "at": "2026-07-05T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.186": {
-      "at": "2026-07-05T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.187": {
-      "at": "2026-07-05T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.188": {
-      "at": "2026-07-05T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.189": {
-      "at": "2026-07-05T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.190": {
-      "at": "2026-07-05T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.191": {
-      "at": "2026-07-05T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.192": {
-      "at": "2026-07-05T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.193": {
-      "at": "2026-07-05T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.194": {
-      "at": "2026-07-05T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.195": {
-      "at": "2026-07-05T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.196": {
-      "at": "2026-07-05T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.197": {
-      "at": "2026-07-05T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.198": {
-      "at": "2026-07-05T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.199": {
-      "at": "2026-07-05T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.200": {
-      "at": "2026-07-05T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.201": {
-      "at": "2026-07-05T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.202": {
-      "at": "2026-07-05T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.203": {
-      "at": "2026-07-05T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.204": {
-      "at": "2026-07-05T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.205": {
-      "at": "2026-07-05T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.206": {
-      "at": "2026-07-05T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.207": {
-      "at": "2026-07-05T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.208": {
-      "at": "2026-07-05T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.209": {
-      "at": "2026-07-05T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.210": {
-      "at": "2026-07-05T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.211": {
-      "at": "2026-07-05T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.212": {
-      "at": "2026-07-05T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.213": {
-      "at": "2026-07-06T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.214": {
-      "at": "2026-07-06T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.215": {
-      "at": "2026-07-06T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.216": {
-      "at": "2026-07-06T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.217": {
-      "at": "2026-07-06T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.218": {
-      "at": "2026-07-06T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.219": {
-      "at": "2026-07-06T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.220": {
-      "at": "2026-07-06T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.221": {
-      "at": "2026-07-06T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.222": {
-      "at": "2026-07-06T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.223": {
-      "at": "2026-07-06T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.224": {
-      "at": "2026-07-06T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.225": {
-      "at": "2026-07-06T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.226": {
-      "at": "2026-07-06T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.227": {
-      "at": "2026-07-06T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.228": {
-      "at": "2026-07-06T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.229": {
-      "at": "2026-07-06T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.230": {
-      "at": "2026-07-06T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.231": {
-      "at": "2026-07-06T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.232": {
-      "at": "2026-07-06T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.233": {
-      "at": "2026-07-06T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.234": {
-      "at": "2026-07-06T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.235": {
-      "at": "2026-07-06T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.236": {
-      "at": "2026-07-06T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.237": {
-      "at": "2026-07-06T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.238": {
-      "at": "2026-07-06T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.239": {
-      "at": "2026-07-06T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.240": {
-      "at": "2026-07-06T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.241": {
-      "at": "2026-07-06T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.242": {
-      "at": "2026-07-06T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.243": {
-      "at": "2026-07-06T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.244": {
-      "at": "2026-07-06T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.245": {
-      "at": "2026-07-07T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.246": {
-      "at": "2026-07-07T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.247": {
-      "at": "2026-07-07T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.248": {
-      "at": "2026-07-07T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.249": {
-      "at": "2026-07-07T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.250": {
-      "at": "2026-07-07T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.251": {
-      "at": "2026-07-07T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.252": {
-      "at": "2026-07-07T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.253": {
-      "at": "2026-07-07T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.254": {
-      "at": "2026-07-07T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.255": {
-      "at": "2026-07-07T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.256": {
-      "at": "2026-07-07T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.257": {
-      "at": "2026-07-07T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.258": {
-      "at": "2026-07-07T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.259": {
-      "at": "2026-07-07T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.260": {
-      "at": "2026-07-07T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.261": {
-      "at": "2026-07-07T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.262": {
-      "at": "2026-07-07T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.263": {
-      "at": "2026-07-07T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.264": {
-      "at": "2026-07-07T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.265": {
-      "at": "2026-07-07T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.266": {
-      "at": "2026-07-08T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.267": {
-      "at": "2026-07-08T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.6.268": {
-      "at": "2026-07-08T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "productization-refactor-release-card-suspension",
-      "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.7.0": {
-      "at": "2026-07-08T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "oss-launch-release-card-suspension",
-      "reason": "Google Chat release cards remain suspended through the OSS launch readiness work; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.7.1": {
-      "at": "2026-07-09T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "oss-launch-release-card-suspension",
-      "reason": "Google Chat release cards remain suspended through the OSS launch readiness work; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.8.0": {
-      "at": "2026-07-09T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "oss-launch-release-card-suspension",
-      "reason": "Google Chat release cards remain suspended through the OSS launch readiness work; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.8.1": {
-      "at": "2026-07-09T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "oss-launch-release-card-suspension",
-      "reason": "Google Chat release cards remain suspended through the OSS launch readiness work; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.8.2": {
-      "at": "2026-07-09T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "oss-launch-release-card-suspension",
-      "reason": "Google Chat release cards remain suspended through the OSS launch readiness work; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.8.3": {
-      "at": "2026-07-09T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "oss-launch-release-card-suspension",
-      "reason": "Google Chat release cards remain suspended through the OSS launch readiness work; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.8.4": {
-      "at": "2026-07-09T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "oss-launch-release-card-suspension",
-      "reason": "Google Chat release cards remain suspended through the OSS launch readiness work; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    },
-    "0.8.5": {
-      "at": "2026-07-09T00:00:00+00:00",
-      "via": "operator-instruction",
-      "scope": "oss-launch-release-card-suspension",
-      "reason": "Google Chat release cards remain suspended through the OSS launch readiness work; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
-    }
+  "0.4.15": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.4.16": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.4.17": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.4.18": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.4.19": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.4.20": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.4.21": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.4.22": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.4.23": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.4.24": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.4.25": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.4.26": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.4.27": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.4.28": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.4.29": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.4.30": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.4.31": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.4.32": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.4.33": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.4.34": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.4.35": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.4.36": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.4.37": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.4.38": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.4.39": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.4.40": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.5.1": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.5.2": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.5.3": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.5.4": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.5.5": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.5.6": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.2": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.3": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.4": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.5": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.6": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.7": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.8": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.9": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.10": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.11": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.12": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.13": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.14": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.15": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.16": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.17": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.18": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.19": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.20": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.21": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.22": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.23": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.24": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.25": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.26": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.27": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.28": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.29": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.30": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.31": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.32": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.33": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.34": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.35": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.36": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.37": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.38": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.39": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.40": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.41": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.42": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.43": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.44": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.45": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.46": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.47": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.48": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.49": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.50": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.51": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.52": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.53": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.54": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.55": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.56": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.57": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.58": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.59": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.60": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.61": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.62": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.63": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.64": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.65": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.66": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.67": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.68": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.69": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.70": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.71": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.72": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.73": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.74": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.75": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.76": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.77": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.78": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.79": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.80": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.81": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.82": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.83": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.84": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.85": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.86": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.87": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.88": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.89": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.90": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.91": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.92": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.93": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.94": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.95": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.96": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.97": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.98": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.99": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.100": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.101": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.102": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.103": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.104": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.105": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.106": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.107": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "bootstrap"
+  },
+  "0.6.108": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "catchup"
+  },
+  "0.6.109": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "catchup"
+  },
+  "0.6.110": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "catchup"
+  },
+  "0.6.111": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "catchup"
+  },
+  "0.6.112": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "catchup"
+  },
+  "0.6.113": {
+   "at": "2026-06-20T03:07:23Z",
+   "via": "catchup"
+  },
+  "0.6.114": {
+   "at": "2026-06-21T05:44:09Z",
+   "via": "publish-release-update"
+  },
+  "0.6.115": {
+   "at": "2026-06-22T14:35:38.662870+00:00",
+   "via": "publish-release-update"
+  },
+  "0.6.116": {
+   "at": "2026-06-22T14:35:39.585434+00:00",
+   "via": "publish-release-update"
+  },
+  "0.6.117": {
+   "at": "2026-06-24T21:29:08.873142+00:00",
+   "via": "publish-release-update"
+  },
+  "0.6.118": {
+   "at": "2026-06-25T02:47:42.032173+00:00",
+   "via": "publish-release-update"
+  },
+  "0.6.119": {
+   "at": "2026-06-25T14:47:40.253744+00:00",
+   "via": "publish-release-update"
+  },
+  "0.6.120": {
+   "at": "2026-06-25T21:15:26.070021+00:00",
+   "via": "publish-release-update"
+  },
+  "0.6.121": {
+   "at": "2026-06-25T21:56:18.306399+00:00",
+   "via": "publish-release-update"
+  },
+  "0.6.122": {
+   "at": "2026-06-26T00:40:26.193510+00:00",
+   "via": "publish-release-update"
+  },
+  "0.6.123": {
+   "at": "2026-06-27T18:40:44.276767+00:00",
+   "via": "publish-release-update"
+  },
+  "0.6.124": {
+   "at": "2026-06-30T19:16:07.077513+00:00",
+   "via": "publish-release-update"
+  },
+  "0.6.125": {
+   "at": "2026-07-01T13:48:57.241790+00:00",
+   "via": "publish-release-update"
+  },
+  "0.6.126": {
+   "at": "2026-07-02T07:49:55.587864+00:00",
+   "via": "publish-release-update"
+  },
+  "0.6.127": {
+   "at": "2026-07-03T00:06:36.206672+00:00",
+   "via": "publish-release-update"
+  },
+  "0.6.130": {
+   "at": "2026-07-03T00:58:52.489018+00:00",
+   "via": "publish-release-update"
+  },
+  "0.6.131": {
+   "at": "2026-07-03T03:28:49.314023+00:00",
+   "via": "publish-release-update"
+  },
+  "0.6.132": {
+   "at": "2026-07-03T03:52:03.358717+00:00",
+   "via": "publish-release-update"
+  },
+  "0.6.133": {
+   "at": "2026-07-03T04:27:06.261373+00:00",
+   "via": "publish-release-update"
+  },
+  "0.6.134": {
+   "at": "2026-07-03T04:48:10.879135+00:00",
+   "via": "publish-release-update"
+  },
+  "0.6.135": {
+   "at": "2026-07-03T05:10:05.500417+00:00",
+   "via": "publish-release-update"
+  },
+  "0.6.136": {
+   "at": "2026-07-03T05:46:26.354471+00:00",
+   "via": "publish-release-update"
+  },
+  "0.6.137": {
+   "at": "2026-07-03T06:17:43.867959+00:00",
+   "via": "publish-release-update"
+  },
+  "0.6.138": {
+   "at": "2026-07-03T14:26:02.105053+00:00",
+   "via": "publish-release-update"
+  },
+  "0.6.139": {
+   "at": "2026-07-03T14:50:50.529651+00:00",
+   "via": "publish-release-update"
+  },
+  "0.6.140": {
+   "at": "2026-07-03T15:38:24.447764+00:00",
+   "via": "publish-release-update"
+  },
+  "0.6.141": {
+   "at": "2026-07-03T17:12:11.706803+00:00",
+   "via": "publish-release-update"
+  },
+  "0.6.142": {
+   "at": "2026-07-03T18:18:20.342824+00:00",
+   "via": "publish-release-update"
+  },
+  "0.6.143": {
+   "at": "2026-07-03T20:53:43.896841+00:00",
+   "via": "publish-release-update"
+  },
+  "0.6.144": {
+   "at": "2026-07-03T21:25:05.422374+00:00",
+   "via": "publish-release-update"
+  },
+  "0.6.145": {
+   "at": "2026-07-03T21:54:26.707845+00:00",
+   "via": "publish-release-update"
+  },
+  "0.6.146": {
+   "at": "2026-07-03T22:20:49.400428+00:00",
+   "via": "publish-release-update"
+  },
+  "0.6.147": {
+   "at": "2026-07-03T22:47:23.954797+00:00",
+   "via": "publish-release-update"
+  },
+  "0.6.148": {
+   "at": "2026-07-03T23:47:17.397471+00:00",
+   "via": "publish-release-update"
+  },
+  "0.6.149": {
+   "at": "2026-07-04T00:02:30.167223+00:00",
+   "via": "publish-release-update"
+  },
+  "0.6.150": {
+   "at": "2026-07-04T00:28:38.651275+00:00",
+   "via": "publish-release-update"
+  },
+  "0.6.151": {
+   "at": "2026-07-04T00:55:33.502722+00:00",
+   "via": "publish-release-update"
   }
+ },
+ "suspended": {
+  "0.6.129": {
+   "at": "2026-07-05T00:00:00+00:00",
+   "via": "maintainer-backfill",
+   "scope": "legacy-release-card-suspension",
+   "reason": "Legacy release-update card was not posted during rapid methodology stabilization; release accountability is retained through changelog and repository history instead of a retroactive chat card."
+  },
+  "0.6.152": {
+   "at": "2026-07-05T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.153": {
+   "at": "2026-07-05T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.154": {
+   "at": "2026-07-05T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.155": {
+   "at": "2026-07-05T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.156": {
+   "at": "2026-07-05T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.157": {
+   "at": "2026-07-05T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.158": {
+   "at": "2026-07-05T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.159": {
+   "at": "2026-07-05T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.176": {
+   "at": "2026-07-05T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.177": {
+   "at": "2026-07-05T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.178": {
+   "at": "2026-07-05T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.179": {
+   "at": "2026-07-05T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.180": {
+   "at": "2026-07-05T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.181": {
+   "at": "2026-07-05T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.182": {
+   "at": "2026-07-05T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.183": {
+   "at": "2026-07-05T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.184": {
+   "at": "2026-07-05T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.185": {
+   "at": "2026-07-05T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.186": {
+   "at": "2026-07-05T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.187": {
+   "at": "2026-07-05T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.188": {
+   "at": "2026-07-05T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.189": {
+   "at": "2026-07-05T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.190": {
+   "at": "2026-07-05T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.191": {
+   "at": "2026-07-05T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.192": {
+   "at": "2026-07-05T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.193": {
+   "at": "2026-07-05T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.194": {
+   "at": "2026-07-05T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.195": {
+   "at": "2026-07-05T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.196": {
+   "at": "2026-07-05T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.197": {
+   "at": "2026-07-05T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.198": {
+   "at": "2026-07-05T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.199": {
+   "at": "2026-07-05T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.200": {
+   "at": "2026-07-05T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.201": {
+   "at": "2026-07-05T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.202": {
+   "at": "2026-07-05T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.203": {
+   "at": "2026-07-05T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.204": {
+   "at": "2026-07-05T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.205": {
+   "at": "2026-07-05T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.206": {
+   "at": "2026-07-05T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.207": {
+   "at": "2026-07-05T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.208": {
+   "at": "2026-07-05T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.209": {
+   "at": "2026-07-05T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.210": {
+   "at": "2026-07-05T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.211": {
+   "at": "2026-07-05T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.212": {
+   "at": "2026-07-05T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.213": {
+   "at": "2026-07-06T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.214": {
+   "at": "2026-07-06T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.215": {
+   "at": "2026-07-06T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.216": {
+   "at": "2026-07-06T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.217": {
+   "at": "2026-07-06T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.218": {
+   "at": "2026-07-06T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.219": {
+   "at": "2026-07-06T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.220": {
+   "at": "2026-07-06T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.221": {
+   "at": "2026-07-06T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.222": {
+   "at": "2026-07-06T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.223": {
+   "at": "2026-07-06T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.224": {
+   "at": "2026-07-06T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.225": {
+   "at": "2026-07-06T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.226": {
+   "at": "2026-07-06T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.227": {
+   "at": "2026-07-06T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.228": {
+   "at": "2026-07-06T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.229": {
+   "at": "2026-07-06T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.230": {
+   "at": "2026-07-06T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.231": {
+   "at": "2026-07-06T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.232": {
+   "at": "2026-07-06T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.233": {
+   "at": "2026-07-06T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.234": {
+   "at": "2026-07-06T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.235": {
+   "at": "2026-07-06T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.236": {
+   "at": "2026-07-06T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.237": {
+   "at": "2026-07-06T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.238": {
+   "at": "2026-07-06T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.239": {
+   "at": "2026-07-06T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.240": {
+   "at": "2026-07-06T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.241": {
+   "at": "2026-07-06T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.242": {
+   "at": "2026-07-06T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.243": {
+   "at": "2026-07-06T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.244": {
+   "at": "2026-07-06T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.245": {
+   "at": "2026-07-07T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.246": {
+   "at": "2026-07-07T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.247": {
+   "at": "2026-07-07T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.248": {
+   "at": "2026-07-07T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.249": {
+   "at": "2026-07-07T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.250": {
+   "at": "2026-07-07T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.251": {
+   "at": "2026-07-07T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.252": {
+   "at": "2026-07-07T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.253": {
+   "at": "2026-07-07T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.254": {
+   "at": "2026-07-07T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.255": {
+   "at": "2026-07-07T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.256": {
+   "at": "2026-07-07T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.257": {
+   "at": "2026-07-07T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.258": {
+   "at": "2026-07-07T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.259": {
+   "at": "2026-07-07T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.260": {
+   "at": "2026-07-07T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.261": {
+   "at": "2026-07-07T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.262": {
+   "at": "2026-07-07T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.263": {
+   "at": "2026-07-07T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.264": {
+   "at": "2026-07-07T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.265": {
+   "at": "2026-07-07T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.266": {
+   "at": "2026-07-08T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.267": {
+   "at": "2026-07-08T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.6.268": {
+   "at": "2026-07-08T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "productization-refactor-release-card-suspension",
+   "reason": "Google Chat release cards are suspended for rapid productization refactor releases; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.7.0": {
+   "at": "2026-07-08T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "oss-launch-release-card-suspension",
+   "reason": "Google Chat release cards remain suspended through the OSS launch readiness work; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.7.1": {
+   "at": "2026-07-09T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "oss-launch-release-card-suspension",
+   "reason": "Google Chat release cards remain suspended through the OSS launch readiness work; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.8.0": {
+   "at": "2026-07-09T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "oss-launch-release-card-suspension",
+   "reason": "Google Chat release cards remain suspended through the OSS launch readiness work; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.8.1": {
+   "at": "2026-07-09T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "oss-launch-release-card-suspension",
+   "reason": "Google Chat release cards remain suspended through the OSS launch readiness work; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.8.2": {
+   "at": "2026-07-09T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "oss-launch-release-card-suspension",
+   "reason": "Google Chat release cards remain suspended through the OSS launch readiness work; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.8.3": {
+   "at": "2026-07-09T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "oss-launch-release-card-suspension",
+   "reason": "Google Chat release cards remain suspended through the OSS launch readiness work; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.8.4": {
+   "at": "2026-07-09T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "oss-launch-release-card-suspension",
+   "reason": "Google Chat release cards remain suspended through the OSS launch readiness work; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.8.5": {
+   "at": "2026-07-09T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "oss-launch-release-card-suspension",
+   "reason": "Google Chat release cards remain suspended through the OSS launch readiness work; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.8.6": {
+   "at": "2026-07-10T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "oss-launch-release-card-suspension",
+   "reason": "Google Chat release cards remain suspended through the OSS launch readiness work; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.8.7": {
+   "at": "2026-07-10T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "oss-launch-release-card-suspension",
+   "reason": "Google Chat release cards remain suspended through the OSS launch readiness work; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.8.8": {
+   "at": "2026-07-10T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "oss-launch-release-card-suspension",
+   "reason": "Google Chat release cards remain suspended through the OSS launch readiness work; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.8.9": {
+   "at": "2026-07-11T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "oss-launch-release-card-suspension",
+   "reason": "Google Chat release cards remain suspended through the OSS launch readiness work; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.9.0": {
+   "at": "2026-07-11T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "oss-launch-release-card-suspension",
+   "reason": "Google Chat release cards remain suspended through the OSS launch readiness work; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  }
+ }
 }

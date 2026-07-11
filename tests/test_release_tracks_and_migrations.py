@@ -1731,6 +1731,75 @@ def test_release_migration_report_is_release_specific(cli):
         cli.release_migration_report_data(version="0.7.2")
 
 
+def test_release_migration_report_0_8_9_startup_remediation(cli):
+    current = cli.release_migration_report_data(
+        version="0.8.9",
+        products_tested=["methodology-framework"],
+    )
+    assert current["version"] == "0.8.9"
+    assert current["wipSafe"] is False
+    assert any(
+        item["id"] == "reinstall-claude-launcher" and item["command"] == "tautline install-claude-launcher --force"
+        for item in current["requiredMigrations"]
+    )
+    assert any("type -a <launcher-name>" in item["description"] for item in current["requiredMigrations"])
+    assert any(
+        "three-way exit contract: 0 clean, 1 integrity" in change and "2 debt-only" in change
+        for change in current["behaviorChanges"]
+    )
+    assert any("methodology_status_blocking:" in change for change in current["behaviorChanges"])
+    assert any("!= 0" in change for change in current["behaviorChanges"])
+    assert any("SUPPRESSES user-provided launcher arguments" in change for change in current["behaviorChanges"])
+    assert any("MINERVIT_PREPUSH_RECORDS_FILE" in change for change in current["behaviorChanges"])
+    assert any("lane_coordination_stale_other_lanes" in change for change in current["behaviorChanges"])
+    assert any("treated exit code 1 as the only failure signal" in note for note in current["rollbackNotes"])
+
+    with pytest.raises(SystemExit, match="not declared for 0.8.10"):
+        cli.release_migration_report_data(version="0.8.10")
+
+    # 0.8.7 and 0.8.8 shipped their own migration-report branches (session-journal
+    # opt-in, pending-journal gate) between this branch's fork point and this
+    # release; both resolve, not raise, once merged in.
+    report_0_8_7 = cli.release_migration_report_data(version="0.8.7")
+    assert report_0_8_7["version"] == "0.8.7"
+    assert report_0_8_7["wipSafe"] is True
+
+    report_0_8_8 = cli.release_migration_report_data(version="0.8.8")
+    assert report_0_8_8["version"] == "0.8.8"
+    assert report_0_8_8["wipSafe"] is True
+
+
+def test_release_migration_report_0_9_0_sanitized_instrumentation(cli):
+    # Pin the 0.9.0 content explicitly: test_current_release_migration_report_exists_and_is_fresh
+    # only asserts committed==generated (both from the same generator), so it cannot catch a wrong
+    # wipSafe or a missing behavior-change note. This release changes security-sensitive publishing
+    # behavior, so its migration contract must be nailed down.
+    current = cli.release_migration_report_data(
+        version="0.9.0",
+        products_tested=["methodology-framework"],
+    )
+    assert current["version"] == "0.9.0"
+    assert current["wipSafe"] is False
+    assert any(
+        item["id"] == "migrate-off-narrative-journal-publication"
+        and item["command"] == "tautline publish-instrumentation-record --target ."
+        for item in current["requiredMigrations"]
+    )
+    assert any(
+        "disabled in 0.9.0" in item["description"] and "publish-instrumentation-record" in item["description"]
+        for item in current["requiredMigrations"]
+    )
+    assert any("security behavior change" in change and "refuse for every adapter" in change for change in current["behaviorChanges"])
+    assert any("zero product-information" in change and "tautline-telemetry-archive" in change for change in current["behaviorChanges"])
+    assert any("instrumentation.enabled requires observabilityEvents.enabled" in change for change in current["behaviorChanges"])
+    assert any("security-exception clause" in change for change in current["behaviorChanges"])
+    assert any("Pinning back to 0.8.9 restores narrative session-journal publication" in note for note in current["rollbackNotes"])
+
+    # Upper boundary: the next patch is not declared until it ships its own report.
+    with pytest.raises(SystemExit, match="not declared for 0.9.1"):
+        cli.release_migration_report_data(version="0.9.1")
+
+
 def test_current_release_migration_report_exists_and_is_fresh(cli):
     version = cli.methodology_version()
     path = Path(__file__).resolve().parents[1] / "docs" / "releases" / "migrations" / f"{version}.json"

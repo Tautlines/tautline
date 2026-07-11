@@ -39,7 +39,7 @@ def test_repository_templates_schema_and_governance_contracts():
     _assert_contains_all(ROOT / "methodology" / "adapter-schema.json", ["deploymentTargets", "reviewExemptions"])
     _assert_contains_all(
         ROOT / "docs" / "governance" / "methodology-change-governance.md",
-        ["Methodology Repository Governance", "methodology-session-archive"],
+        ["Methodology Repository Governance", "Session Journal Evidence"],
     )
 
 

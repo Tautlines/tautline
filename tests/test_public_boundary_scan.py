@@ -272,6 +272,47 @@ def test_shippable_public_text_excludes_internal_audit_finding_ids():
     assert errors == []
 
 
+STALE_ADAPTER_DRIFT_CATCH_ALL = "refusing to start Claude with adapter drift"
+# Historical, dated design-history snapshots (this design's own planning-round archive) and the
+# reader-facing changelog's past entries are allowed to quote the retired catch-all message while
+# describing what it replaced; every other tracked surface -- the launcher template itself, docs,
+# and policy/reference text -- must not carry it (0.8.9 startup remediation: T4 replaced the
+# catch-all with the truthful `methodology_status_blocking` refusal; see
+# docs/reference/startup-remediation.md).
+STALE_ADAPTER_DRIFT_EXEMPT_PATHS = {
+    ROOT / "CHANGELOG.md",
+    # This scanner's own source necessarily quotes the retired string to check for it.
+    Path(__file__).resolve(),
+}
+STALE_ADAPTER_DRIFT_EXEMPT_DIRS = {
+    ROOT / "docs" / "superpowers" / "plans",
+    ROOT / "docs" / "releases",
+    ROOT / "docs" / "productization",
+}
+
+
+def test_repository_text_excludes_retired_adapter_drift_catch_all_refusal():
+    errors = []
+    for path in sorted(ROOT.rglob("*")):
+        relative = path.relative_to(ROOT)
+        if IGNORED_PARTS.intersection(relative.parts):
+            continue
+        if not path.is_file():
+            continue
+        if path in STALE_ADAPTER_DRIFT_EXEMPT_PATHS:
+            continue
+        if any(exempt_dir in path.parents for exempt_dir in STALE_ADAPTER_DRIFT_EXEMPT_DIRS):
+            continue
+        try:
+            text = path.read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            continue
+        if STALE_ADAPTER_DRIFT_CATCH_ALL in text:
+            errors.append(f"{relative}: still contains the retired catch-all refusal string")
+
+    assert errors == []
+
+
 def test_shippable_surfaces_unify_contact_domain_to_minervit_com():
     """Verify that shippable surfaces use minervit.com (not minervit.ai or minervit.dev)."""
     assert DOMAIN_REFERENCE_RE.search("contact@minervit.ai")

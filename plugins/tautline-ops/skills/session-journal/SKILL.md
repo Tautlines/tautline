@@ -1,40 +1,32 @@
 ---
 name: session-journal
-description: Prepare, validate, and publish compact session journals for methodology improvement evidence without adding normal-session noise to main or startup context.
+description: Prepare and validate compact LOCAL session journals for methodology-improvement evidence; remote publication is disabled (0.9.0), so journals never leave the machine.
 ---
 
 # Session Journal
 
 Use this skill at every milestone, delivery summary, queued-delivery summary, session summary, handoff-for-review, or completed execution packet.
 
-Read `references/session-journal-policy.md` in full before writing, validating, publishing, leaving pending, or auditing session journals.
+Read `references/session-journal-policy.md` in full before writing, validating, leaving local, or auditing session journals.
 
 Session journals are evidence only. They are not process authority, product docs, continuity handoffs, or normal startup context.
+
+**Local-only as of 0.9.0.** A session journal narrates the adopter's product work, so it can never be proven safe to publish. Narrative journals can no longer reach any remote — `publish-session-journal` and `publish-pending-session-journals` are disabled and refuse in every mode. Journals stay on this machine.
 
 ## Fast Path
 
 Write or refresh the continuity handoff first when the boundary also requires continuity.
 
-Prepare a compact journal:
-
 ```bash
 minervit-methodology prepare-session-journal --target . --stdin
-```
-
-Validate and publish the written journal:
-
-```bash
 minervit-methodology validate-session-journal --file .ai-runs/session-journals/<utc>-session-journal.md
-minervit-methodology publish-session-journal --file .ai-runs/session-journals/<utc>-session-journal.md --commit --push
 ```
 
-If `minervit-methodology` is initially missing from `PATH`, resolve it through the lane-lifecycle fallback instead of skipping the journal.
+The journal stays lane-local; there is no publish step.
 
-After startup gates pass, publish pending journals:
+## Contribute upstream: sanitized instrumentation
 
-```bash
-minervit-methodology publish-pending-session-journals --target .
-```
+The only session evidence that can reach a remote is the sanitized instrumentation record — enumerated event codes plus numbers with zero product-information capacity. Opt in with `"instrumentation": {"enabled": true}` and run `publish-instrumentation-record --target .`. See `docs/reference/instrumentation.md`.
 
 ## Required Content
 
@@ -44,10 +36,4 @@ Keep the body compact and summary-only. Include the required journal sections na
 
 ## Boundaries
 
-Do not paste raw command dumps, full review logs, full CI output, secrets, or person-specific machine paths. Treat validation as detection, not proof that no secret exists. Raw `.ai-runs/` logs stay lane-local and ignored.
-
-Publish to `methodology-session-archive`, not `main`. `publish-session-journal --commit --push` uses isolated archive-branch publication; do not write archive copies into the active release checkout.
-
-If publish fails, leave the lane-local journal pending, record the exact publish blocker and machine-local loss risk in the continuity handoff, and continue authorized work unless current methodology analysis depends on the archive.
-
-Do not fetch/read the archive branch during normal startup.
+Do not paste raw command dumps, full review logs, full CI output, secrets, or person-specific machine paths. Treat validation as detection, not proof that no secret exists. Never write a journal into any git worktree that could stage it to a remote.

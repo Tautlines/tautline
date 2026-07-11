@@ -21,7 +21,13 @@ SUBCOMMAND_HELP_TOKENS = {
     ("claude-review", "--help"): ("--packet", "--timeout-seconds", "--fail-on-blockers", "--no-fail-on-blockers"),
     ("claude-review-status", "--help"): ("--review-dir", "--limit"),
     ("iteration-review-renderer-setup", "--help"): ("--no-install", "--timeout-seconds"),
-    ("methodology-status", "--help"): ("--strict",),
+    ("methodology-status", "--help"): (
+        "--strict",
+        "Exit 0 clean, 1 integrity",
+        "2 debt-only",
+        "methodology_status_blocking:",
+        "docs/reference/startup-remediation.md",
+    ),
     ("publish-rca-artifact", "--help"): (
         "--commit",
         "--push",

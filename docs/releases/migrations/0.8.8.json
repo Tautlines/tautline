@@ -1,0 +1,64 @@
+{
+  "behaviorChanges": [
+    "publish-pending-session-journals refuses to publish when sessionJournal.enabled is false: pending LOCAL journals previously still committed and pushed to the framework checkout's journal branch after the adopter disabled the feature, defeating the 0.8.7 opt-in guarantee; publish-session-journal --file remains as an explicit operator override",
+    "Generated shims, Claude launchers, and git hooks suspend set -eu while sourcing methodology.env and the user's secrets file: an unset-variable reference there (cron, hooks, CI environments) previously killed every CLI invocation with 'unbound variable'; re-run tautline install-cli to regenerate existing installs",
+    "Commands, adapter schema, and other lane runtime behavior are unchanged"
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    },
+    {
+      "name": "rules-audit",
+      "path": "plugins/tautline-core/skills/rules-audit/SKILL.md",
+      "removeAfter": "1.0.0",
+      "replacement": "framework-intake",
+      "section": "skills",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [],
+  "productsTested": [],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "No adapter migration is required.",
+    "Stable clients remain on the stable channel unless they explicitly opt into experimental.",
+    "This release is WIP-safe: it only removes an unwanted publication path; nothing depends on pending journals auto-publishing while disabled.",
+    "Pinning back to 0.8.7 restores the leak: pending local journals publish at startup even for adapters that disabled session journals."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.8.8",
+  "wipSafe": true
+}

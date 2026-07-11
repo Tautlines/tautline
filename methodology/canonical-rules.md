@@ -139,7 +139,7 @@ These rules are the canonical process authority. Open Brain, memories, old proje
 ## Cross-Lane Coordination
 
 - `laneCoordination` is the repo-tracked coordination backbone. Chat, memories, and branch drift are evidence only; tracked contract, lane board, and lane status files are durable.
-- Default enforcement is strict. `lane-start` bootstraps missing artifacts. Missing, stale, untracked, uncommitted, or unpushed coordination fails `lane-coordination-status`, `methodology-status --strict`, and `methodology-status --fail-on-drift` unless the adapter warns or disables coordination.
+- Default enforcement is strict. `lane-start` bootstraps missing artifacts. Missing, stale, untracked, uncommitted, or unpushed state in the current lane's status file, the shared contract, or the lane board fails `lane-coordination-status`, `methodology-status --strict`, and `methodology-status --fail-on-drift` unless the adapter warns or disables coordination. Other lanes' stale/untracked/dirty files are informational only.
 - Run `minervit-methodology lane-coordination-status --target .` at startup, before multi-lane plan finalization, at PR boundaries, and when a lane discovers a dependency on another lane. If artifacts are missing, run `minervit-methodology lane-coordination-bootstrap --target . --write`.
 - Each lane updates only its own status file with `minervit-methodology lane-coordination-note --target . --lane <lane> --goal "<goal>" --current "<current work>" --depends-on "<dependencies>" --provides "<provided interfaces>" --blockers "<blockers>" --pr "<PR or commit>" --write`. Notes name touched contracts/routes/data/API surfaces, dependencies, provided interfaces, blockers, and current PR/commit before multi-lane implementation or PR queue.
 - If a lane changes something another lane owns or consumes, it must not silently implement an incompatible version. Update the contract, open a small shared contract/interface PR, or explicitly take ownership and mark dependent lanes before large PRs proceed.
@@ -246,6 +246,7 @@ These rules are the canonical process authority. Open Brain, memories, old proje
 - Adapter-backed lanes run `lane-start --target .` at session start, then `methodology-status --target . --fail-on-drift` before planning, implementation, review, commit, push, or delivery.
 - Before running startup gates, resolve the methodology CLI. Use `minervit-methodology` from `PATH`; if it is missing from `PATH` or exits 127/command-not-found, use `$HOME/.config/minervit/methodology.env` or `$MINERVIT_METHODOLOGY_REPO/bin/minervit-methodology`, then rerun the same gate. A missing `PATH` entry is not a failed methodology gate, not permission for ad hoc checks, and not a reason to ask for a person-specific checkout path. Install with `bin/minervit-methodology install-cli`.
 - Startup refreshes adapters, installs hooks, writes lane-local state, and reports profile, ledgers, release-track, and latest-code. Missing hooks, render failure, drift, or stale unlocked methodology blocks unless locked or `--skip-update` was explicit.
+- A debt-class startup failure (`methodology-status --fail-on-drift` exit 2) starts a remediation session: only fixing the issues or declaring a blocker is permitted; break-glass stays operator-only. Integrity failures (exit 1) never start a session. See `docs/reference/startup-remediation.md`.
 - Never overwrite hand-written lane `CLAUDE.md` or `AGENTS.md`. Use `render-adapters --write --json-only` for JSON-only changes. Work profiles keep `development` strict; non-dev profiles relax implementation gates only for approved docs/assets and still block code/config/generated/secrets/base-branch pushes.
 - Unlocked adapter-backed product/client lanes do not raw-pull latest methodology by default; existing lanes default to stable/manual/dry-run pins. `lane-start` and `methodology-status` report pin, available update, WIP reasons, and migration-report state. Deliberate `sync-methodology --target .` honors track, WIP, trust, and rescue checks.
 - After methodology status, run adapter health, open-PR, branch-liveness, merge-conflict, and latest-code checks. Failed checks and inactive current PR branches are top priority until resolved or proven unrelated.
@@ -333,10 +334,10 @@ These rules are the canonical process authority. Open Brain, memories, old proje
 
 ## Session Journals
 
-- Session journals are compact branch-published evidence for methodology improvement. They are not process authority, product docs, continuity handoffs, or normal startup context.
-- The ops-owned `session-journal` skill owns journal creation, validation, archive publication, runtime evidence, pending-journal recovery, and hygiene procedure.
-- Adapter-backed lanes that enable journals must handle pending local evidence after startup/status gates and record publication blockers in continuity.
-- Normal project startup must not fetch, read, or broad-load journal archives.
+- Session journals are compact LOCAL evidence for methodology improvement, not process authority, product docs, continuity handoffs, or normal startup context.
+- Local-only as of 0.9.0: journals narrate adopter product work and can never be proven safe to publish, so remote publication is disabled and `publish-session-journal`/`publish-pending-session-journals` refuse in every mode (deprecated, removal >=1.0.0).
+- The sanitized instrumentation record is the only session evidence that can ever be published (zero product-information capacity): opt in via `instrumentation.enabled` and `publish-instrumentation-record`.
+- Journals stay disabled unless the source adapter enables them; previews must never be written into a git worktree that could stage them to a remote, and startup must not fetch any remote archive.
 
 ## Automation
 

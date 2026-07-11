@@ -20,6 +20,13 @@ Use `--help` for available subcommands:
 bin/tautline --help
 ```
 
+`methodology-status --fail-on-drift` returns a three-way exit contract (0 clean, 1
+integrity, 2 debt-only) and prints a `methodology_status_blocking:` summary line
+whenever it is nonzero; the generated Claude launcher dispatches on that exit code
+into startup remediation mode on debt. See
+[Startup Remediation](../startup-remediation.md) for the marker schema, the
+remediation contract, and the non-interactive-caller scope.
+
 ### Render Project Adapters
 
 Create a fail-closed scaffold for a project that does not have an adapter yet:
@@ -184,41 +191,34 @@ Record `minervit-methodology version --no-remote` and
 `Evidence` when stale methodology, adapter drift, missing hooks, or locked lanes
 may have contributed.
 
-### Session Journal Archive Publishing
+### Session Journals (Local-Only)
 
-Session journals are compact summaries of normal AI delivery sessions. They are evidence for framework improvement, not product documentation, continuity handoffs, or process authority. They publish to `methodology-session-archive` so `main` stays focused on the framework itself.
+Session journals are compact summaries of normal AI delivery sessions. They are evidence for framework improvement, not product documentation, continuity handoffs, or process authority. As of 0.9.0 they are **local-only**: a journal narrates the adopter's product work, so it can never be proven safe to publish. `publish-session-journal` and `publish-pending-session-journals` are disabled and refuse in every mode; there is no session-archive branch.
 
-The CLI-generated `Session Runtime` block includes Graphify freshness evidence: whether Graphify is enabled, the output path, the freshness state, latest graph timestamp/path, newer files, gate pass/fail, and any Graphify issues. This makes the archive useful for auditing whether lanes kept their code graph current without loading lane-local `graphify-out/` artifacts.
+The CLI-generated `Session Runtime` block includes Graphify freshness evidence: whether Graphify is enabled, the output path, the freshness state, latest graph timestamp/path, newer files, gate pass/fail, and any Graphify issues. This makes a journal useful for the adopter's own audit of whether lanes kept their code graph current, without loading lane-local `graphify-out/` artifacts.
 
-Prepare a journal from an agent-written summary:
+Prepare a journal from an agent-written summary and validate it in place:
 
 ```bash
 minervit-methodology prepare-session-journal --target <lane_path> --stdin
-```
-
-Validate and publish it:
-
-```bash
 minervit-methodology validate-session-journal --file <lane_path>/.ai-runs/session-journals/<utc>-session-journal.md
-minervit-methodology publish-session-journal \
-  --file <lane_path>/.ai-runs/session-journals/<utc>-session-journal.md \
-  --commit \
-  --push
 ```
 
-Branch publication uses an isolated temporary clone and does not mutate the active methodology release checkout. Local release-checkout writes require `--allow-release-checkout-write` and are validation/preview-only.
+Both commands write only under the lane's gitignored `.ai-runs/`; nothing leaves the lane.
 
-At the next startup, publish journals that were left pending because of network or remote failure:
+To contribute sanitized signal upstream, enable `"instrumentation": {"enabled": true}` in the source adapter and publish an instrumentation record, a closed-vocabulary record with zero product-information capacity:
 
 ```bash
-minervit-methodology publish-pending-session-journals --target <lane_path>
+minervit-methodology publish-instrumentation-record --target .
 ```
+
+See [Instrumentation](../instrumentation.md) for the record schema and vocabulary.
 
 Journal validation rejects raw terminal dumps, secret-looking values, person-specific absolute paths, oversized content, missing Graphify evidence, and wording that presents the journal as current process authority. Required sections are `Session Runtime`, `Starting Context`, `Work Delivered Or Advanced`, `Planning And Review Gates`, `Human Interruptions Or Questions`, `Delays, Waits, Or Autonomy Breakdowns`, `Validation And PR State`, `Continuity Outcome`, and `Methodology Improvement Signals`.
 
 ### Methodology Repository Governance
 
-The framework repository is centrally governed. Lanes may suggest changes by branch and pull request, but they must not push directly to `main`. `main` contains reusable policy, adapters, skills, CLI code, validation, and concise backlog. RCA evidence belongs on the dedicated `methodology-rca-archive` branch unless a specific summary is promoted into reusable policy. Normal session evidence belongs on `methodology-session-archive`, not `main`.
+The framework repository is centrally governed. Lanes may suggest changes by branch and pull request, but they must not push directly to `main`. `main` contains reusable policy, adapters, skills, CLI code, validation, and concise backlog. RCA evidence belongs on the dedicated `methodology-rca-archive` branch unless a specific summary is promoted into reusable policy. Normal session journals are local-only as of 0.9.0 and are never published; sanitized upstream signal comes from instrumentation records instead.
 
 Every framework PR should include:
 

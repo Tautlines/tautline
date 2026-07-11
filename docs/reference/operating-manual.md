@@ -76,7 +76,7 @@ Keep advanced bootstrap details in
 - [Delivery Summaries](#delivery-summaries)
 - [Readiness Automation](#readiness-automation)
 - [Context Continuity](#context-continuity)
-- [Session Journal Archive](#session-journal-archive)
+- [Session Journals (Local-Only)](#session-journals-local-only)
 - [Repo Event Logs](#repo-event-logs)
 - [Usage Accounting](#usage-accounting)
 - [Review And Merge Policy](#review-and-merge-policy)
@@ -222,11 +222,11 @@ RCA publishing validates methodology regression evidence and publishes it to the
 dedicated archive branch. Keep detailed commands in
 [CLI Operations](operations/cli-operations.md#rca-archive-publishing).
 
-### Session Journal Archive Publishing
+### Session Journals (Local-Only)
 
-Session journal publishing prepares, validates, and publishes normal-session
-evidence to the dedicated archive branch. Keep detailed commands in
-[CLI Operations](operations/cli-operations.md#session-journal-archive-publishing).
+Session journals are prepared and validated as normal-session evidence that stays
+local — remote publication is disabled as of 0.9.0. Keep detailed commands in
+[CLI Operations](operations/cli-operations.md#session-journals-local-only).
 
 ### Methodology Repository Governance
 
@@ -488,7 +488,11 @@ rules in [Backlog Provider Workflow](operations/backlog-provider-workflow.md#bac
 Cross-lane coordination keeps ownership, shared contracts, dependencies, and
 status visible through git-tracked artifacts. Keep detailed adapter defaults,
 bootstrap/status commands, lane note format, and strict enforcement rules in
-[Goal Execution](operations/goal-execution.md#cross-lane-coordination).
+[Goal Execution](operations/goal-execution.md#cross-lane-coordination). Only the
+current lane's own status file (plus the shared contract/board) blocks startup;
+other lanes' stale, untracked, or dirty status is informational. Debt-class startup
+failures, the remediation marker and contract, and the pre-push coordination
+allowance are documented in [Startup Remediation](startup-remediation.md).
 
 ## Iteration Reviews
 
@@ -609,12 +613,12 @@ prompts, and are required at workflow boundaries. Keep detailed trigger,
 handoff body, startup-gate, portable CLI, archive, and no-stop-menu rules in
 [Context Continuity](operations/context-continuity.md#context-continuity).
 
-## Session Journal Archive
+## Session Journals (Local-Only)
 
 Session journals are compact framework-improvement evidence for normal
-delivery sessions. Keep detailed command usage, publishing failure behavior, and
-default adapter config in
-[Runtime Evidence](operations/runtime-evidence.md#session-journal-archive).
+delivery sessions. They are local-only as of 0.9.0 (no remote publication). Keep
+detailed command usage, the local-only rationale, and default adapter config in
+[Runtime Evidence](operations/runtime-evidence.md#session-journals-local-only).
 
 ## Repo Event Logs
 

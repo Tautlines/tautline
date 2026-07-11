@@ -764,6 +764,14 @@
         }
       }
     },
+    "instrumentation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "cadence": { "type": "string", "enum": ["milestone", "session", "off"] }
+      }
+    },
     "usageAccounting": {
       "type": "object",
       "properties": {

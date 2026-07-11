@@ -1,0 +1,118 @@
+{
+  "additionalProperties": false,
+  "if": {
+    "properties": {
+      "window_gap": {
+        "const": false
+      }
+    }
+  },
+  "properties": {
+    "emitted_at": {
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,6})?\\+00:00$",
+      "type": "string"
+    },
+    "end_seq": {
+      "minimum": 0,
+      "type": "integer"
+    },
+    "events": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "enum": [
+              "startup",
+              "preflight",
+              "planning_review_gate",
+              "plan_review_round",
+              "plan_review_clean",
+              "plan_review_blocked",
+              "implementation_review_round",
+              "implementation_review_clean",
+              "implementation_review_blocked",
+              "gate_block",
+              "autonomy_stop",
+              "human_question",
+              "blocker_declared",
+              "blocker_cleared",
+              "rca",
+              "continuity_written",
+              "context_rotation",
+              "goal_transition",
+              "milestone_transition",
+              "pr_opened",
+              "pr_queue_merge",
+              "pr_merged",
+              "ci_wait",
+              "merge_queue_wait",
+              "task_started",
+              "task_completed",
+              "session_end"
+            ],
+            "type": "string"
+          },
+          "count": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "ordinal": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "round": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "total_seconds": {
+            "minimum": 0,
+            "type": "number"
+          }
+        },
+        "required": [
+          "code",
+          "count"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "lane_id": {
+      "pattern": "^[0-9a-f]{16}$",
+      "type": "string"
+    },
+    "plugin_version": {
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "type": "string"
+    },
+    "schema": {
+      "const": "tautline-instrumentation/v1",
+      "type": "string"
+    },
+    "window_gap": {
+      "type": "boolean"
+    },
+    "window_seconds": {
+      "minimum": 0,
+      "type": "number"
+    }
+  },
+  "required": [
+    "schema",
+    "emitted_at",
+    "lane_id",
+    "plugin_version",
+    "window_seconds",
+    "window_gap",
+    "end_seq",
+    "events"
+  ],
+  "then": {
+    "properties": {
+      "events": {
+        "minItems": 1
+      }
+    }
+  },
+  "type": "object"
+}

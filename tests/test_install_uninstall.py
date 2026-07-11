@@ -34,7 +34,7 @@ if [ "$1" = "lane-start" ]; then
 fi
 if [ "$1" = "methodology-status" ]; then
   echo "fake methodology-status $*"
-  exit 0
+  exit "${FAKE_METHODOLOGY_STATUS_EXIT:-0}"
 fi
 echo "unexpected methodology command: $*" >&2
 exit 2
@@ -42,6 +42,11 @@ exit 2
         encoding="utf-8",
     )
     methodology.chmod(0o755)
+    # Launchers resolve `tautline` FIRST: without this twin, a machine with a real
+    # installed tautline shim leaks its user config into the hermetic test run.
+    tautline = path / "tautline"
+    tautline.write_text(methodology.read_text(encoding="utf-8"), encoding="utf-8")
+    tautline.chmod(0o755)
     claude = path / "claude"
     claude.write_text(
         """#!/bin/sh
@@ -76,6 +81,40 @@ def test_install_cli_sources_optional_secrets_file(run_cli, tmp_path):
     assert "MINERVIT_SECRETS_ENV=" in text
     assert "secrets.zsh" in text
     assert '. "$MINERVIT_SECRETS_ENV"' in text
+
+
+def test_shim_survives_unbound_variable_in_user_secrets(run_cli, tmp_path):
+    """The shim runs set -eu and sources methodology.env -> the user's secrets file.
+    A secrets line referencing a variable that is unset in the invoking environment
+    (cron, git hooks, CI) must degrade gracefully, not kill every CLI invocation."""
+    bin_dir = tmp_path / "bin"
+    env = tmp_path / "cfg" / "methodology.env"
+    res = run_cli("install-cli", "--bin-dir", str(bin_dir), "--config-env", str(env))
+    assert res.returncode == 0, res.stderr
+
+    secrets_line = next(
+        line for line in env.read_text(encoding="utf-8").splitlines()
+        if line.startswith("MINERVIT_SECRETS_ENV=")
+    )
+    secrets_path = Path(secrets_line.split("=", 1)[1].strip("'\""))
+    secrets_path.parent.mkdir(parents=True, exist_ok=True)
+    secrets_path.write_text('export MY_TOKEN="$USER-suffix"\n', encoding="utf-8")
+
+    shim = bin_dir / "tautline"
+    run = subprocess.run(
+        [str(shim), "version"],
+        env={
+            "PATH": os.environ["PATH"],
+            "HOME": str(tmp_path / "shim-home"),
+            "MINERVIT_METHODOLOGY_REPO": str(REPO_ROOT),
+            # deliberately NO USER in the environment
+        },
+        text=True,
+        capture_output=True,
+        timeout=60,
+    )
+    assert run.returncode == 0, f"stdout:\n{run.stdout}\nstderr:\n{run.stderr}"
+    assert "unbound variable" not in run.stderr
 
 
 def test_uninstall_removes_shim_and_env(run_cli, tmp_path):
@@ -330,6 +369,112 @@ def test_installed_claude_launcher_starts_adapter_lane_from_nested_directory(run
     assert f"fake methodology-status methodology-status --target {lane_real} --fail-on-drift" in run.stdout
     assert "autocompact:85" in run.stdout
     assert "claude_args: [--dangerously-skip-permissions] [--model] [sonnet]" in run.stdout
+
+
+# --- T4 (0.8.9 startup remediation): three-way $? dispatch on methodology-status -------------
+#
+# See .superpowers/sdd/task-089-T4-brief.md ("Launcher behavior (template change + truthful
+# refusal)"). The fake methodology-status branch in _write_fake_launcher_bin honors
+# FAKE_METHODOLOGY_STATUS_EXIT (default 0, unset by every test above this section, so those stay
+# on the unchanged exit-0 path).
+
+
+def _adapter_lane(tmp_path: Path) -> Path:
+    adapter_lane = tmp_path / "adapter-backed-lane"
+    adapter_lane.mkdir(parents=True)
+    (adapter_lane / ".minervit-ai-delivery.json").write_text("{}\n", encoding="utf-8")
+    return adapter_lane
+
+
+def test_launcher_text_never_mentions_adapter_drift(run_cli, tmp_path):
+    install = run_cli("install-cli")
+    assert install.returncode == 0, install.stderr
+    launcher_bin = tmp_path / "launcher-bin"
+    res = run_cli("install-claude-launcher", "--bin-dir", str(launcher_bin), "--name", "minervit-claude-test")
+    assert res.returncode == 0, res.stderr
+    launcher_text = (launcher_bin / "minervit-claude-test").read_text(encoding="utf-8")
+    assert "adapter drift" not in launcher_text
+    assert "methodology status failed (integrity); see the methodology_status_blocking line above; refusing to start Claude" in launcher_text
+    assert "--enter-remediation-on-debt" in launcher_text
+    assert "--defer-debt-preflights" in launcher_text
+    assert "Startup remediation required for this lane." in launcher_text
+
+
+def test_installed_claude_launcher_exit_2_execs_remediation_prompt_only(run_cli, tmp_path):
+    install = run_cli("install-cli")
+    assert install.returncode == 0, install.stderr
+    home = tmp_path / "home"
+    launcher_bin = tmp_path / "launcher-bin"
+    res = run_cli("install-claude-launcher", "--bin-dir", str(launcher_bin), "--name", "minervit-claude-test")
+    assert res.returncode == 0, res.stderr
+    fake_bin = tmp_path / "fake-launcher-bin"
+    _write_fake_launcher_bin(fake_bin)
+    adapter_lane = _adapter_lane(tmp_path)
+
+    launcher = launcher_bin / "minervit-claude-test"
+    run = subprocess.run(
+        [str(launcher), "--model", "opus", "a user-typed prompt"],
+        cwd=adapter_lane,
+        env={
+            **_shim_env(home),
+            "PATH": f"{fake_bin}:{os.environ['PATH']}",
+            "MINERVIT_METHODOLOGY_CLI": str(fake_bin / "minervit-methodology"),
+            "FAKE_METHODOLOGY_STATUS_EXIT": "2",
+        },
+        text=True,
+        capture_output=True,
+        timeout=60,
+    )
+    lane_real = adapter_lane.resolve()
+    assert run.returncode == 0, run.stderr
+    assert "fake sync" in run.stdout
+    assert f"fake lane-start lane-start --target {lane_real} --defer-debt-preflights" in run.stdout
+    assert (
+        f"fake methodology-status methodology-status --target {lane_real} --fail-on-drift --enter-remediation-on-debt"
+        in run.stdout
+    )
+    assert "fake prompt" not in run.stdout, "goal-kickoff-prompt must be skipped on the exit-2 path"
+    claude_lines = [line for line in run.stdout.splitlines() if line.startswith("claude_args:")]
+    assert len(claude_lines) == 1
+    args_line = claude_lines[0]
+    assert args_line.count("[") == 1, f"exactly one positional argument must reach claude: {args_line}"
+    assert args_line.startswith("claude_args: [Startup remediation required for this lane.")
+    assert f"--target {lane_real} --fail-on-drift" in args_line
+    assert "a user-typed prompt" not in args_line
+    assert "--model" not in args_line
+    assert "opus" not in args_line
+
+
+def test_installed_claude_launcher_exit_1_refuses_without_exec(run_cli, tmp_path):
+    install = run_cli("install-cli")
+    assert install.returncode == 0, install.stderr
+    home = tmp_path / "home"
+    launcher_bin = tmp_path / "launcher-bin"
+    res = run_cli("install-claude-launcher", "--bin-dir", str(launcher_bin), "--name", "minervit-claude-test")
+    assert res.returncode == 0, res.stderr
+    fake_bin = tmp_path / "fake-launcher-bin"
+    _write_fake_launcher_bin(fake_bin)
+    adapter_lane = _adapter_lane(tmp_path)
+
+    launcher = launcher_bin / "minervit-claude-test"
+    run = subprocess.run(
+        [str(launcher), "--model", "opus"],
+        cwd=adapter_lane,
+        env={
+            **_shim_env(home),
+            "PATH": f"{fake_bin}:{os.environ['PATH']}",
+            "MINERVIT_METHODOLOGY_CLI": str(fake_bin / "minervit-methodology"),
+            "FAKE_METHODOLOGY_STATUS_EXIT": "1",
+        },
+        text=True,
+        capture_output=True,
+        timeout=60,
+    )
+    assert run.returncode == 1
+    assert "claude_args:" not in run.stdout, "exit 1 must never exec claude"
+    combined = run.stdout + run.stderr
+    assert "methodology status failed (integrity); see the methodology_status_blocking line above; refusing to start Claude" in combined
+    assert "adapter drift" not in combined
 
 
 def test_install_claude_launcher_refuses_non_generated_collision(run_cli, tmp_path):

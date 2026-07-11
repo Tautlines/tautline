@@ -1450,7 +1450,11 @@ def test_lane_lifecycle_reference_retains_detailed_policy():
     assert "If no active goal exists or the prior goal ledger is complete, use the printed `next_goal_name`, `next_goal_short_description`, `next_goal_claude_prompt`, and `next_goal_next_action`" in normalized
     assert "Lane startup also reports milestone run state" in text
     assert "Lane startup also reports cross-lane coordination state and bootstraps missing coordination artifacts by default" in text
-    assert "missing, stale, untracked, uncommitted, or unpushed coordination state fails" in text
+    assert (
+        "missing, stale, untracked, uncommitted, or unpushed state in the current lane's own status file, "
+        "or in the shared contract or lane board, fails"
+    ) in text
+    assert "other lanes' stale, untracked, or dirty" in normalized.lower()
     assert "lane-coordination-note --target ." in text
     assert "Lane startup also reports repo event-log paths" in text
     assert "adapter-approved event commands" in text
@@ -1510,7 +1514,11 @@ def test_lane_coordination_reference_retains_detailed_policy():
     assert "the stale-status threshold" in text
     assert "enforcement mode, which defaults to `strict`" in text
     assert "lane-start` creates missing coordination artifacts" in text
-    assert "missing, stale, untracked, uncommitted, or unpushed coordination state fails" in normalized
+    assert (
+        "missing, stale, untracked, uncommitted, or unpushed state in the current lane's own status file, "
+        "or in the shared contract or lane board, fails"
+    ) in normalized
+    assert "other lanes' stale, untracked, or dirty" in normalized.lower()
     assert "Do not have every lane edit one large status document" in normalized
     assert "tracked, clean in Git, current for the active branch, and pushed" in normalized
     assert "what files, routes, contracts, data records, or APIs it touches" in text
@@ -1581,7 +1589,6 @@ def test_event_observability_reference_retains_detailed_policy():
 def test_session_journal_skill_is_concise_entrypoint():
     text = SESSION_JOURNAL_SKILL.read_text(encoding="utf-8")
     lines = _stripped_lines(text)
-    normalized = " ".join(text.split())
 
     assert len(text.split()) <= 350
     assert "name: session-journal" in lines
@@ -1590,18 +1597,17 @@ def test_session_journal_skill_is_concise_entrypoint():
     assert "Session journals are evidence only" in text
     assert "minervit-methodology prepare-session-journal --target . --stdin" in text
     assert "validate-session-journal --file .ai-runs/session-journals/<utc>-session-journal.md" in text
-    assert "publish-session-journal --file .ai-runs/session-journals/<utc>-session-journal.md --commit --push" in text
-    assert "publish-pending-session-journals --target ." in text
+    # 0.9.0: publication is disabled; the skill must document the refusal + name the replacement.
+    assert "Local-only as of 0.9.0" in text
+    assert "publish-session-journal` and `publish-pending-session-journals` are disabled" in text
+    assert "publish-instrumentation-record --target ." in text
     assert "do not freehand `graphify_*` fields" in text
     assert "estimated percent of planned work complete" in text
     assert "Keep the estimate rounded and grounded" in text
     assert "state `percent unknown` and name the exact blocker" in text
-    assert "Publish to `methodology-session-archive`, not `main`" in text
-    assert "Do not fetch/read the archive branch during normal startup" in text
+    assert "there is no publish step" in text
     assert "Treat validation as detection, not proof that no secret exists" in text
-    assert "leave the lane-local journal pending" in text
-    assert "machine-local loss risk" in text
-    assert "continue authorized work unless current methodology analysis depends on the archive" in normalized
+    assert "Never write a journal into any git worktree that could stage it to a remote" in text
 
 
 def test_session_journal_reference_retains_detailed_policy():
@@ -1616,10 +1622,10 @@ def test_session_journal_reference_retains_detailed_policy():
     assert "$MINERVIT_METHODOLOGY_REPO/bin/minervit-methodology" in text
     assert "Do not skip journal writing just because the command is not initially on `PATH`" in normalized
     assert "Include only high-level summary evidence, not raw terminal transcripts" in text
-    assert "If publish fails, do not ask whether to retry later" in text
-    assert "Pending journals are ignored lane-local state" in text
+    assert "Local-only as of 0.9.0" in normalized
+    assert "publish-instrumentation-record" in text
+    assert "refuse in every mode" in normalized
     assert "machine, checkout, or ephemeral workspace is discarded" in normalized
-    assert "At startup after `lane-start` and `methodology-status --fail-on-drift` pass" in text
     assert "`## Starting Context`" in text
     assert "`## Work Delivered Or Advanced`" in text
     assert "`## Planning And Review Gates`" in text
@@ -1630,8 +1636,8 @@ def test_session_journal_reference_retains_detailed_policy():
     assert "`## Methodology Improvement Signals`" in text
     assert "The CLI adds `## Session Runtime`, including Graphify freshness evidence" in normalized
     assert "Treat validation as detection, not proof that no secret exists" in text
-    assert "`--allow-release-checkout-write` is validation/preview-only" in text
-    assert "Do not fetch/read the archive branch during normal startup" in text
+    assert "there is no archive branch and no publish step" in normalized
+    assert "Do not fetch/read any remote archive branch during normal startup" in text
 
 
 def test_background_monitoring_skill_is_concise_entrypoint():
@@ -2062,7 +2068,8 @@ def test_migrated_prose_policy_validate_pins_are_preserved():
                 "minervit-methodology goal-next --target .",
                 "Lane startup also reports milestone run state",
                 "Lane startup also reports cross-lane coordination state and bootstraps missing coordination artifacts by default",
-                "missing, stale, untracked, uncommitted, or unpushed coordination state fails",
+                "missing, stale, untracked, uncommitted, or unpushed state in the current lane's own status file, "
+                "or in the shared contract or lane board, fails",
                 "lane-coordination-note --target .",
                 "Lane startup also reports repo event-log paths",
                 "adapter-approved event commands",

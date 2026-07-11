@@ -26,9 +26,11 @@ The adapter config `laneCoordination` defines:
 - the enforcement mode, which defaults to `strict`.
 
 `lane-start` creates missing coordination artifacts. With default strict
-enforcement, missing, stale, untracked, uncommitted, or unpushed coordination
-state fails `lane-coordination-status`, `methodology-status --strict`, and
-`methodology-status --fail-on-drift`.
+enforcement, missing, stale, untracked, uncommitted, or unpushed state in the
+current lane's own status file, or in the shared contract or lane board, fails
+`lane-coordination-status`, `methodology-status --strict`, and
+`methodology-status --fail-on-drift`. Other lanes' stale, untracked, or dirty
+status files are informational only and never block startup.
 
 Run:
 

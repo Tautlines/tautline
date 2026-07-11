@@ -115,6 +115,10 @@
       "status": "stable"
     },
     {
+      "name": "instrumentation",
+      "status": "experimental"
+    },
+    {
       "name": "iterationReview",
       "status": "stable"
     },
@@ -393,6 +397,10 @@
       "status": "stable"
     },
     {
+      "name": "dump-instrumentation-schema",
+      "status": "internal"
+    },
+    {
       "name": "dump-policy-phrases",
       "status": "internal"
     },
@@ -625,6 +633,10 @@
       "status": "stable"
     },
     {
+      "name": "prepare-instrumentation-record",
+      "status": "experimental"
+    },
+    {
       "name": "prepare-session-journal",
       "status": "stable"
     },
@@ -649,6 +661,10 @@
       "status": "stable"
     },
     {
+      "name": "publish-instrumentation-record",
+      "status": "experimental"
+    },
+    {
       "name": "publish-iteration-review",
       "status": "stable"
     },
@@ -658,7 +674,9 @@
     },
     {
       "name": "publish-pending-session-journals",
-      "status": "stable"
+      "removeAfter": "1.0.0",
+      "replacement": "publish-instrumentation-record",
+      "status": "deprecated"
     },
     {
       "name": "publish-product-note",
@@ -674,7 +692,9 @@
     },
     {
       "name": "publish-session-journal",
-      "status": "stable"
+      "removeAfter": "1.0.0",
+      "replacement": "publish-instrumentation-record",
+      "status": "deprecated"
     },
     {
       "name": "purge-archive",
@@ -809,6 +829,10 @@
       "status": "stable"
     },
     {
+      "name": "validate-instrumentation-record",
+      "status": "experimental"
+    },
+    {
       "name": "validate-iteration-review",
       "status": "stable"
     },
@@ -872,6 +896,11 @@
       "name": "methodology/canonical-rules.md",
       "path": "methodology/canonical-rules.md",
       "status": "stable"
+    },
+    {
+      "name": "methodology/instrumentation-schema.json",
+      "path": "methodology/instrumentation-schema.json",
+      "status": "experimental"
     },
     {
       "name": "methodology/policy/00-introduction.md",
@@ -1068,7 +1097,8 @@
   "semverPolicy": {
     "major": "breaking removals only after deprecation window and migration path",
     "minor": "additive or deprecating only; no removals",
-    "patch": "stable bugfixes only; WIP-safe by default when release report declares wipSafe=true"
+    "patch": "stable bugfixes only; WIP-safe by default when release report declares wipSafe=true",
+    "securityException": "a stable surface CONFIRMED to expose adopter data to a remote MAY be hard-disabled ahead of the normal deprecation window in any release, with a REQUIRED migration note and a named replacement; the surface's REMOVAL still follows the normal major-release window"
   },
   "skills": [
     {
@@ -1214,5 +1244,5 @@
       "status": "stable"
     }
   ],
-  "version": "0.8.5"
+  "version": "0.9.0"
 }

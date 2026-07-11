@@ -1,0 +1,63 @@
+{
+  "behaviorChanges": [
+    "Text-mode subprocess captures (gh, git, ps, tasklist, review wrappers) decode as UTF-8 with errors=replace instead of the locale codec: on Windows the charmap codec crashed the pre-push hook with UnicodeDecodeError + NoneType.strip when gh output contained non-ASCII bytes (issue #186); run_command also tolerates a missing stdout stream",
+    "Commands, adapter schema, hooks, lane runtime behavior, and generated adapters are unchanged"
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    },
+    {
+      "name": "rules-audit",
+      "path": "plugins/tautline-core/skills/rules-audit/SKILL.md",
+      "removeAfter": "1.0.0",
+      "replacement": "framework-intake",
+      "section": "skills",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [],
+  "productsTested": [],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "No adapter migration is required; generated adapters do not need to change for this release.",
+    "Stable clients remain on the stable channel unless they explicitly opt into experimental.",
+    "This release is WIP-safe: it only hardens subprocess output decoding; on UTF-8 locales the decoded text is byte-identical to before.",
+    "Pinning back to 0.8.5 restores locale-codec decoding; Windows pushes will crash again when gh output contains non-ASCII bytes."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.8.6",
+  "wipSafe": true
+}

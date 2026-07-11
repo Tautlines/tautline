@@ -1,6 +1,6 @@
 {
-  "privateTermsCount": 5,
-  "privateTermsSource": "env",
+  "privateTermsCount": 3,
+  "privateTermsSource": "file",
   "schema": "minervit-public-release-export/v1",
-  "version": "0.8.5"
+  "version": "0.9.0"
 }

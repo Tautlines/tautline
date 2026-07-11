@@ -105,9 +105,10 @@ Lane startup also reports milestone run state. If
 `next_action`. At PR boundaries, run `minervit-methodology milestone-advance --target . --event <event>` before treating a delivery summary as complete. The
 optional watchdog only surfaces stale runs; it is not process authority.
 
-Lane startup also reports cross-lane coordination state and bootstraps missing coordination artifacts by default. With default strict enforcement, missing, stale, untracked, uncommitted, or unpushed coordination state fails
+Lane startup also reports cross-lane coordination state and bootstraps missing coordination artifacts by default. With default strict enforcement, missing, stale, untracked, uncommitted, or unpushed state in the current lane's own status file, or in the shared contract or lane board, fails
 `lane-coordination-status`, `methodology-status --strict`, and
-`methodology-status --fail-on-drift`. Before PR queue, cross-lane contract
+`methodology-status --fail-on-drift`. Other lanes' stale, untracked, or dirty
+status files are informational only and never block startup. Before PR queue, cross-lane contract
 changes, blocker summaries, or any work touching shared routes, actors,
 schemas, state machines, APIs, storage contracts, deployment conventions, or
 another lane's ownership boundary, update this lane's own status file with

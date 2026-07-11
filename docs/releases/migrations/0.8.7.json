@@ -1,0 +1,69 @@
+{
+  "behaviorChanges": [
+    "Session journals default to disabled: a journal narrates the adopter's product work and publishes to the framework checkout's journal branch, so it is never collected without an explicit sessionJournal.enabled=true declaration in the source adapter",
+    "lane-start and methodology-status print a one-line session_journal_optin hint while the source adapter is silent about sessionJournal; an explicit enabled=false declaration silences it; docs/reference/session-journals.md documents contents, destination, and opt-in",
+    "Commands, adapter schema, hooks, and other lane runtime behavior are unchanged"
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    },
+    {
+      "name": "rules-audit",
+      "path": "plugins/tautline-core/skills/rules-audit/SKILL.md",
+      "removeAfter": "1.0.0",
+      "replacement": "framework-intake",
+      "section": "skills",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [
+    {
+      "description": "Session journals are now opt-in: adopters who relied on the old default-on collection must add \"sessionJournal\": {\"enabled\": true} to their source adapter and re-render (tautline render-adapters --project <source adapter> --target <repo> --write). Declaring {\"enabled\": false} records the opt-out and silences the startup hint.",
+      "id": "declare-session-journal-opt-in"
+    }
+  ],
+  "productsTested": [],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "No adapter migration is required to keep running; adapters that already declare sessionJournal keep their exact behavior.",
+    "Stable clients remain on the stable channel unless they explicitly opt into experimental.",
+    "This release is WIP-safe: lanes without a sessionJournal declaration simply stop creating NEW journals mid-work (already-written pending journals still publish); no gate depends on journal creation.",
+    "Pinning back to 0.8.6 restores default-on collection for undeclared adapters."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.8.7",
+  "wipSafe": true
+}

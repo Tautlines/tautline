@@ -1,0 +1,88 @@
+{
+  "behaviorChanges": [
+    "Narrative session-journal publication is DISABLED (security behavior change, deprecation security exception): publish-session-journal (--commit --push, bare --file, and --allow-release-checkout-write) and publish-pending-session-journals refuse for every adapter in every mode, naming publish-instrumentation-record as the replacement. Both commands are deprecated in the public contract (removal >=1.0.0). Narrative journals remain local-only evidence; no new narrative content can reach any remote from any adapter.",
+    "New sanitized instrumentation record: publish-instrumentation-record recomputes a closed-vocabulary record (enumerated event codes plus numbers, zero product-information capacity) from the local observability event log and publishes it to the constant tautline-telemetry-archive branch via a hardened push path (pinned adopter-neutral commit identity/date, whole-branch fail-closed hygiene, closed-set commit-object parse, byte-compare readback, branch-tip ancestry guard, recompute-at-publish so a tampered preview cannot influence what publishes). prepare-instrumentation-record and validate-instrumentation-record round out the surface. All three commands are experimental in the public contract.",
+    "New additive adapter key instrumentation.{enabled(default false), cadence(default milestone)} (experimental). enabled alone permits publishing; cadence gates only boundary prompting. instrumentation.enabled requires observabilityEvents.enabled (validated as a configuration error); unknown instrumentation.* subkeys are rejected (remote metadata is a fixed constant, so there are no branch/archiveDir knobs). Default lanes render no net new guidance and are never prompted.",
+    "The generated methodology/instrumentation-schema.json artifact is registered as public contract surface, so any record-shape or event-vocabulary change is a reviewed public-surface change. The deprecation policy gains an explicit security-exception clause: a stable surface confirmed to expose adopter data to a remote may be hard-disabled ahead of its deprecation window with a required migration note and named replacement; removal still follows the major-release window."
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "publish-pending-session-journals",
+      "removeAfter": "1.0.0",
+      "replacement": "publish-instrumentation-record",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "publish-session-journal",
+      "removeAfter": "1.0.0",
+      "replacement": "publish-instrumentation-record",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    },
+    {
+      "name": "rules-audit",
+      "path": "plugins/tautline-core/skills/rules-audit/SKILL.md",
+      "removeAfter": "1.0.0",
+      "replacement": "framework-intake",
+      "section": "skills",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [],
+  "productsTested": [
+    "example-saas"
+  ],
+  "requiredMigrations": [
+    {
+      "command": "tautline publish-instrumentation-record --target .",
+      "description": "Narrative session-journal publication is disabled in 0.9.0: publish-session-journal and publish-pending-session-journals refuse in every mode (they narrate adopter product work and can never be proven safe to publish). Journals stay LOCAL (prepare-session-journal + validate-session-journal under the lane's gitignored .ai-runs/). Adopters who relied on remote narrative publication must stop invoking those commands; to contribute sanitized upstream signal instead, opt in with \"instrumentation\": {\"enabled\": true} and run publish-instrumentation-record. This repo's own self-adapter framework-dev journals stop publishing and stay local.",
+      "id": "migrate-off-narrative-journal-publication",
+      "surface": "session-journal"
+    }
+  ],
+  "rollbackNotes": [
+    "Pinning back to 0.8.9 restores narrative session-journal publication end to end. Note that any narrative content re-published after rollback again carries the pre-0.9.0 leak exposure the security change was introduced to eliminate.",
+    "The instrumentation adapter key and commands are additive and default-off; a lane that never set instrumentation.enabled: true is never prompted and publishes nothing new. One caveat: a lane with observabilityEvents.enabled gains a per-lane lane_id and a monotonic seq on each local event-log entry regardless of instrumentation.enabled, so the local event log is not byte-for-byte identical to 0.8.9 -- the fields are local-only and never leave the machine unless the lane explicitly opts into publishing.",
+    "Stable clients remain on the stable channel unless they explicitly opt into experimental.",
+    "This release is not WIP-safe: it changes security-sensitive publishing behavior (a previously stable publish surface now refuses), so non-interactive callers relying on narrative publication must migrate before adopting it during active automated work."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.9.0",
+  "wipSafe": false
+}

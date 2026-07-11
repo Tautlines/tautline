@@ -322,7 +322,10 @@ def test_board_currency_policy_module_stays_concise():
 def test_lane_coordination_policy_module_stays_concise():
     words = LANE_COORDINATION_POLICY_MODULE.read_text(encoding="utf-8").split()
 
-    assert len(words) <= 220
+    # Ceiling raised (0.8.9 T6) to cover the T2 foreign-file re-scope qualifier:
+    # only the current lane's own status file (plus the shared contract/board)
+    # blocks; other lanes' stale/untracked/dirty status is informational only.
+    assert len(words) <= 250
 
 
 def test_backlog_provider_policy_module_stays_concise():
@@ -358,7 +361,10 @@ def test_demo_and_staging_policy_module_stays_concise():
 def test_lane_lifecycle_policy_module_stays_concise():
     words = LANE_LIFECYCLE_POLICY_MODULE.read_text(encoding="utf-8").split()
 
-    assert len(words) <= 365
+    # Ceiling raised (0.8.9 T6) for the startup-remediation-mode contract bullet: debt-class
+    # startup failures start a remediation session instead of refusing to start; break-glass
+    # stays operator-only; integrity failures never start a session.
+    assert len(words) <= 450
 
 
 def test_autonomy_and_status_policy_module_stays_concise():

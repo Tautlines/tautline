@@ -27,6 +27,173 @@ Pre-launch history through 0.6.265 is preserved privately (maintainer-only) at
 
 ### Security
 
+## [0.9.0] - 2026-07-11
+
+Sanitized instrumentation replaces narrative session-journal publication. A
+session journal narrates the adopter's product work, so it can never be proven
+safe to publish; 0.9.0 disables narrative publication entirely and introduces a
+closed-vocabulary instrumentation record with zero product-information capacity
+as the only session evidence that can reach a remote.
+
+### Added
+
+- Sanitized instrumentation record and CLI (experimental):
+  `publish-instrumentation-record` recomputes a closed-vocabulary record
+  (enumerated event codes plus numbers, no repo/branch/project/path/freeform
+  fields) from the local observability event log and publishes it to the
+  constant `tautline-telemetry-archive` branch via a hardened push path — pinned
+  adopter-neutral commit identity/date, whole-branch fail-closed hygiene,
+  closed-set commit-object parse, byte-compare readback, branch-tip ancestry
+  guard, and recompute-at-publish so a tampered preview cannot influence what
+  publishes. `prepare-instrumentation-record` and
+  `validate-instrumentation-record` round out the surface.
+- Additive `instrumentation` adapter key (experimental):
+  `{enabled (default false), cadence (default milestone)}`. `enabled` alone
+  permits publishing; `cadence` gates only boundary prompting.
+  `instrumentation.enabled` requires `observabilityEvents.enabled`, and unknown
+  `instrumentation.*` subkeys are rejected (remote metadata is a fixed constant).
+- `docs/reference/instrumentation.md` documenting the record shape, guarantees,
+  and the explicit threat model; the generated
+  `methodology/instrumentation-schema.json` is registered as public-contract
+  surface.
+
+### Changed
+
+- The session-journal opt-in hint, generated-adapter guidance, goal kickoff
+  prompt, and lane-start/status lines now describe the local-only reality and
+  point at instrumentation for upstream contribution.
+
+### Deprecated
+
+- `publish-session-journal` and `publish-pending-session-journals` are deprecated
+  (removal >= 1.0.0), replaced by `publish-instrumentation-record`.
+
+### Security
+
+- Narrative session-journal publication is disabled: both publish commands refuse
+  for every adapter in every mode (`--commit --push`, bare `--file`,
+  `--allow-release-checkout-write`). No new narrative content can reach any remote
+  from any adapter; journals remain local-only evidence. This invokes a new
+  deprecation security-exception clause allowing a stable surface confirmed to
+  expose adopter data to a remote to be hard-disabled ahead of its deprecation
+  window with a required migration note and named replacement.
+
+## [0.8.9] - 2026-07-11
+
+Startup remediation mode: a debt-only lane-startup failure now opens a guided
+remediation session instead of refusing to start; lane-coordination staleness
+checks are re-scoped so a dead or unrelated lane's status file can no longer
+block another lane's startup.
+
+### Added
+
+- Startup remediation mode: a debt-only `methodology-status --fail-on-drift`
+  failure (agent-fixable lane debt such as missing hooks, stale goal/milestone
+  state, lane-coordination notes, review evidence, or CI gaps) now starts the
+  generated Claude launcher in a remediation session instead of refusing to
+  start Claude, prompted to fix every printed issue and rerun until it exits 0,
+  or declare a blocker if a fix is genuinely operator-only. Integrity failures
+  (adapter drift the render pipeline could not self-heal, or an unsupported
+  runtime) still refuse to start. See
+  `docs/reference/startup-remediation.md`, which also documents the marker
+  schema, the remediation contract, and the CLI's exit contract. Motivated by
+  a 2026-07-10 startup-deadlock incident in which strict lane-coordination and
+  pre-push review-evidence enforcement could each independently strand a
+  lane's own startup or its ability to push a coordination-only fix; three
+  remaining compositions (mixed-WIP coordination pushes, multi-ref
+  review-evidence evaluation, and marker-aware Claude-hook enforcement) are
+  tracked as `METH-FU-COORDINATION-DEADLOCK-FOLLOWUPS` in
+  `docs/backlog/methodology-backlog.md`.
+- `methodology-status --fail-on-drift` returns a three-way exit contract (0
+  clean, 1 integrity, 2 debt-only) and prints a truthful
+  `methodology_status_blocking: <integrity|debt> - <gate names>` summary line
+  whenever it exits nonzero.
+- The pre-push review-evidence gate gains a tightly-scoped allowance for a
+  single-ref, coordination-artifacts-only push (a lane status note or an
+  update to the shared cross-lane contract/board), so a strict-coordination
+  lane can push that fix without full review evidence for the rest of the
+  branch. Multi-ref pushes and any push that also touches a non-coordination
+  path keep today's ordinary gating.
+
+### Changed
+
+- Lane-coordination staleness and strict-mode untracked/uncommitted checks
+  are re-scoped to the current lane's own status file. Other lanes' stale,
+  untracked, or dirty status files are now informational only
+  (`lane_coordination_stale_other_lanes` / `lane_coordination_foreign_status_git`)
+  and never block startup; the shared cross-lane contract and lane board
+  checks are unchanged.
+- The generated Claude launcher's exit-2 (debt-only) path suppresses
+  user-provided launcher arguments so the remediation prompt is not competing
+  with a stale prompt; a clean (exit 0) launch keeps full argument
+  pass-through unchanged. The launcher's catch-all refusal message no longer
+  blames every non-zero, non-debt failure on "adapter drift" and instead
+  points at the actual `methodology_status_blocking` line.
+- Third-party callers of `methodology-status --fail-on-drift` that compared
+  the exit code to `== 1` to detect any failure must compare `!= 0` instead;
+  nonzero-means-stop is unchanged, but exit 2 (debt-only) is a new nonzero
+  outcome that `== 1` alone will miss.
+- Reinstall the generated Claude launcher after upgrading
+  (`tautline install-claude-launcher --force`) to pick up the three-way exit
+  dispatch, then run `type -a <launcher-name>` to confirm no shell function or
+  alias shadows the regenerated launcher script. Git pre-push hooks pick up
+  the coordination-push allowance automatically at the next `lane-start`.
+
+### Deprecated
+
+### Removed
+
+### Fixed
+
+### Security
+
+## [0.8.8] - 2026-07-10
+
+Session-journal privacy hardening follow-up to 0.8.7.
+
+### Fixed
+
+- `publish-pending-session-journals` now respects `sessionJournal.enabled: false`:
+  previously it committed and pushed pending LOCAL journals even after the
+  adapter disabled the feature, defeating the 0.8.7 opt-in guarantee. Pending
+  journals now stay local when disabled; `publish-session-journal --file`
+  remains as an explicit operator override.
+- Generated shims, Claude launchers, and git hooks suspend `set -eu` while
+  sourcing `methodology.env` (which sources the user's private secrets file):
+  a secrets line referencing a variable unset in the invoking environment —
+  cron, git hooks, CI — previously killed every CLI invocation with
+  `unbound variable`. Re-run `tautline install-cli` (and re-render hooks) to
+  regenerate existing installs with the hardened wrappers.
+
+## [0.8.7] - 2026-07-10
+
+Session journals become opt-in; no other adapter or command-surface changes.
+
+### Changed
+
+- Session journals are now **disabled by default**. A journal narrates the
+  session's product work and publishes to the framework checkout's journal
+  branch, so it is never collected without an explicit
+  `"sessionJournal": {"enabled": true}` declaration in the source adapter.
+  Lane startup and `methodology-status` print a one-line opt-in hint while the
+  source adapter is silent about the feature (an explicit `false` silences it);
+  `docs/reference/session-journals.md` documents contents, destination, and
+  how to opt in. Adopters who relied on the old default-on behavior must add
+  the explicit declaration and re-render.
+
+## [0.8.6] - 2026-07-10
+
+Windows subprocess-encoding hotfix; no adapter or command-surface changes.
+
+### Fixed
+
+- Pre-push hook no longer crashes on Windows with `UnicodeDecodeError` +
+  `NoneType.strip` when `gh` output contains non-ASCII bytes (issue #186).
+  Every text-mode subprocess capture (`gh`, `git`, `ps`, `tasklist`, review
+  wrappers) now decodes as UTF-8 with replacement instead of the locale codec
+  (`charmap` on Windows), and `run_command` tolerates a missing stdout stream.
+  A repo-wide AST policy test keeps locale-dependent captures from returning.
+
 ## [0.8.5] - 2026-07-09
 
 Legacy plan-review evidence + generated-adapter guidance hotfixes; no runtime changes.

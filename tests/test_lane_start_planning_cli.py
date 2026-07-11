@@ -21,11 +21,13 @@ def _run_cli(
     home: Path,
     adapter_root: Path,
     timeout: int = 60,
+    extra_env: dict[str, str] | None = None,
 ) -> subprocess.CompletedProcess[str]:
     env = {
         **os.environ,
         "HOME": str(home),
         "MINERVIT_METHODOLOGY_ADAPTER_ROOT": str(adapter_root),
+        **(extra_env or {}),
     }
     return subprocess.run(
         [sys.executable, str(CLI_PATH), *args],
@@ -99,6 +101,16 @@ def test_methodology_status_reports_planning_source_and_template_drift(tmp_path)
     adapter = _write_planning_adapter(adapter_root)
     _init_target(target, create_source=True, create_template=False)
 
+    # The autocompact gate is required only when MINERVIT_CLAUDE_AUTOCOMPACT_REQUIRED (or
+    # CLAUDECODE=1) is present -- true on a managed-launcher dev machine, false on bare CI.
+    # Pin it explicitly (required, no env override, hermetic HOME has no settings file) so the
+    # gate fails DETERMINISTICALLY on every host and the blocking-summary assertion below does
+    # not depend on the invoking session's environment.
+    autocompact_env = {
+        "MINERVIT_CLAUDE_AUTOCOMPACT_REQUIRED": "1",
+        "TAUTLINE_CLAUDE_AUTOCOMPACT_REQUIRED": "1",
+        "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "",
+    }
     status = _run_cli(
         "methodology-status",
         "--project",
@@ -108,6 +120,7 @@ def test_methodology_status_reports_planning_source_and_template_drift(tmp_path)
         "--no-remote",
         home=home,
         adapter_root=adapter_root,
+        extra_env=autocompact_env,
     )
     strict = _run_cli(
         "methodology-status",
@@ -119,13 +132,19 @@ def test_methodology_status_reports_planning_source_and_template_drift(tmp_path)
         "--fail-on-drift",
         home=home,
         adapter_root=adapter_root,
+        extra_env=autocompact_env,
     )
 
     assert status.returncode == 0, status.stdout + status.stderr
     assert "planning_source_of_truth: present" in status.stdout
     assert "planning_template: missing" in status.stdout
+    # This fixture's target was never rendered through lane-start, so adapter_drift (an
+    # INTEGRITY gate) is also present alongside the planning/hook/autocompact DEBT gates; the
+    # integrity failure dominates the exit code (still 1, unchanged from baseline) but the
+    # truthful summary line lists every failing gate of both classes, integrity first.
     assert strict.returncode == 1
     assert "template path missing:" in strict.stdout
+    assert "methodology_status_blocking: integrity - drift, planning, hook, autocompact" in strict.stdout
 
 
 def test_lane_start_migrates_relevant_scratch_plan_and_clears_status_drift(tmp_path):

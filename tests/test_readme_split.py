@@ -145,7 +145,7 @@ def test_operating_manual_retains_detailed_reference_content():
     assert "operations/adapter-lane-lifecycle.md#release-tracks-and-adapter-migrations" in text
     assert "operations/adapter-lane-lifecycle.md#github-api-budget" in text
     assert "operations/adapter-lane-lifecycle.md#local-resource-isolation" in text
-    assert "operations/runtime-evidence.md#session-journal-archive" in text
+    assert "operations/runtime-evidence.md#session-journals-local-only" in text
     assert "operations/runtime-evidence.md#repo-event-logs" in text
     assert "operations/runtime-evidence.md#usage-accounting" in text
     assert "operations/workflow-guardrails.md#review-and-merge-policy" in text
@@ -305,7 +305,7 @@ def test_operating_manual_documents_review_and_chat_workflows():
         "Boundary notices are non-blocking",
         "Milestone updates are internal operator visibility artifacts",
         "MINERVIT_PRODUCT_MILESTONES_GOOGLE_CHAT_WEBHOOK",
-        "Session Journal Archive",
+        "Session Journals (Local-Only)",
     ]
     _assert_contains_all(text, required_phrases)
 
@@ -353,12 +353,12 @@ def test_operating_manual_documents_goal_context_and_archive_workflows():
         "Claude Code `v2.1.139+`",
         ".ai-work/GOAL_RUN.json",
         "## Plain English",
-        "methodology-session-archive",
+        "there is no session-archive branch",
         "minervit-methodology prepare-session-journal --target <lane_path> --stdin",
-        "minervit-methodology publish-session-journal",
-        "minervit-methodology publish-pending-session-journals --target <lane_path>",
+        "are disabled and refuse in every mode",
+        "minervit-methodology publish-instrumentation-record --target .",
         "Journal validation rejects raw terminal dumps",
-        "Branch publication uses an isolated temporary clone and does not mutate the active methodology release checkout",
+        "sanitized upstream signal comes from instrumentation records",
         "Methodology skills are file-backed policy",
         "run `minervit-methodology version --no-remote` and use its `methodology_repo`",
         "Unknown skill` is not a blocker unless those concrete resolution steps fail",

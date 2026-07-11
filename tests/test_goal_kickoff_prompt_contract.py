@@ -15,7 +15,6 @@ GOAL_KICKOFF_MARKERS = (
     "goal-condition --target /tmp/example-lane",
     "backlog-provider-next --target /tmp/example-lane",
     "backlog-provider-sync --target /tmp/example-lane",
-    "publish-pending-session-journals --target /tmp/example-lane",
     "adapter-declared exemption",
     "review-before-push gates",
     "goal-next --target /tmp/example-lane",

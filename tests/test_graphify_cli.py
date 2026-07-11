@@ -157,8 +157,12 @@ def test_graphify_status_detects_missing_stale_fresh_and_tracked_output(tmp_path
         env=env,
         check=False,
     )
-    assert tracked.returncode == 1
+    # graphify_failures is a DEBT gate (0.8.9 startup remediation); no INTEGRITY gate fires here
+    # (lane-start already rendered the adapter cleanly), so bare --fail-on-drift exits 2
+    # (remediation mode) instead of 1.
+    assert tracked.returncode == 2
     assert "graphify_issue: tracked Graphify output must be removed from git" in tracked.stdout
+    assert "methodology_status_blocking: debt - planning, milestone_update, graphify" in tracked.stdout
 
 
 def test_installed_hooks_enforce_graphify_freshness_and_keep_prepush_guard(tmp_path):

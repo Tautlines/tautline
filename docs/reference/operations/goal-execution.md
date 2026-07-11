@@ -99,7 +99,7 @@ At startup, the order is: lane gates, pending journal publication, `goal-next` w
 
 ## Cross-Lane Coordination
 
-Lane coordination is mandatory by default for adapter-backed projects. Use git-tracked coordination artifacts as the shared source of truth so lane ownership, shared contracts, and dependencies are visible to every lane. Chat is useful for alerts, but the repo artifacts are the durable coordination record.
+Lane coordination is mandatory by default for adapter-backed projects. Use git-tracked coordination artifacts as the shared source of truth so lane ownership, shared contracts, and dependencies are visible to every lane. Chat is useful for alerts, but the repo artifacts are the durable coordination record. What a `--fail-on-drift` debt-only outcome does at startup, the remediation marker/contract, and the pre-push coordination-only push allowance are documented in [Startup Remediation](../startup-remediation.md).
 
 Adapters default `laneCoordination` to enabled and derive paths from `planningArtifacts.sourceOfTruth`:
 
@@ -123,7 +123,7 @@ Adapters default `laneCoordination` to enabled and derive paths from `planningAr
 minervit-methodology lane-coordination-bootstrap --target . --write
 ```
 
-Check status at startup, PR boundaries, and before multi-lane plan finalization. With default strict enforcement, missing, stale, untracked, uncommitted, or unpushed coordination artifacts fail `lane-coordination-status`, `methodology-status --strict`, and `methodology-status --fail-on-drift`. Feature branches must have a current lane status file for the active branch, and that status must be committed and pushed unless the state already exists on the shared base:
+Check status at startup, PR boundaries, and before multi-lane plan finalization. With default strict enforcement, missing, stale, untracked, uncommitted, or unpushed state in the current lane's own status file, or in the shared cross-lane contract or lane board, fails `lane-coordination-status`, `methodology-status --strict`, and `methodology-status --fail-on-drift`. Other lanes' stale, untracked, or dirty status files are informational only and never block startup. Feature branches must have a current lane status file for the active branch, and that status must be committed and pushed unless the state already exists on the shared base:
 
 ```bash
 minervit-methodology lane-coordination-status --target .

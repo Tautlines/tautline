@@ -200,12 +200,12 @@ Historical evidence only. Not current process, scope, or execution authority. St
 When creating, completing, moving, or archiving Markdown work artifacts, update the relevant context index before workflow completion
 Session journals are evidence only
 prepare-session-journal --target . --stdin
-publish-session-journal --file .ai-runs/session-journals/<utc>-session-journal.md --commit --push
-publish-session-journal --commit --push` uses isolated archive-branch publication
-publish-pending-session-journals --target .
-Do not fetch/read the archive branch during normal startup
+Local-only as of 0.9.0
+refuse in every mode
+publish-instrumentation-record
+Do not fetch/read any remote archive branch during normal startup
 Treat validation as detection, not proof that no secret exists
-Pending journals are ignored lane-local state
+ignored lane-local state and may be lost
 Milestone continuation state lives in the lane-local milestone run ledger
 PR boundaries are ledger transitions, not stop points
 At PR boundaries, `milestone-next` is the controller

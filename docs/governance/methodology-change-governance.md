@@ -25,13 +25,14 @@ The default target is the `methodology-rca-archive` branch under `docs/backlog/m
 
 ## Session Journal Evidence
 
-Normal session journals are compact evidence for methodology improvement, not product docs or process authority. Publish them with:
+Normal session journals are compact evidence for methodology improvement, not product docs or process authority. As of 0.9.0 they are **local-only**: a journal narrates the adopter's product work, so it can never be proven safe to publish. `publish-session-journal` and `publish-pending-session-journals` are disabled and refuse in every mode; there is no session-archive branch. Create and inspect journals in place with:
 
 ```bash
-minervit-methodology publish-session-journal --file <path> --commit --push
+minervit-methodology prepare-session-journal --target . --stdin
+minervit-methodology validate-session-journal --file <path>
 ```
 
-The default target is the `methodology-session-archive` branch under `docs/backlog/session-journals/`. Fetch or inspect that branch only for methodology audits, RCA pattern review, or explicit process-improvement work.
+Both write only under the lane's gitignored `.ai-runs/`. To contribute sanitized signal upstream, enable `"instrumentation": {"enabled": true}` in the source adapter and run `publish-instrumentation-record --target .`, a closed-vocabulary record with zero product-information capacity. See [`instrumentation.md`](../reference/instrumentation.md).
 
 ## Break Glass
 

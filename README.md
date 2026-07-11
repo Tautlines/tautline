@@ -151,4 +151,4 @@ general questions can go to `hello@minervit.com`.
 
 Released under the [MIT License](LICENSE).
 
-Maintained by [Minervit](https://minervit.ai).
+Maintained by [Minervit](https://minervit.com).

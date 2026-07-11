@@ -35,12 +35,12 @@ The adapter defines:
 - Goal source-of-truth paths, template, trigger, Claude `/goal` preference, and lane-local goal ledger path.
 - Behavior-spec requirements.
 - Continuity handoff path and archive policy.
-- Session journal policy, archive branch, archive directory, cadence, and local ignore behavior.
+- Session journal policy, cadence, and local ignore behavior (local-only evidence as of 0.9.0; no archive branch).
 - Lane-local state paths for methodology locks, run evidence, execution packets, goal/milestone run ledgers, and ignore policy.
 - Lane-local resource isolation settings for local service gates.
 - Readiness source paths for GitHub-only status reviews.
 - Optional document context budget settings for indexes, tracked doc roots, historical paths, ignored paths, and warn/strict enforcement.
-- Optional session journal settings for branch-published summary evidence.
+- Optional session journal settings for local-only summary evidence.
 - Optional milestone continuation settings for watchdog recovery visibility.
 - Optional iteration review settings for completed goal review records, pages, video output, and approved media hosting.
 - Optional milestone update settings for internal Product Milestones Google Chat cards.
@@ -163,7 +163,7 @@ If startup still shows `methodology_update: failed - methodology checkout has lo
 
 Lane startup never overwrites hand-written `CLAUDE.md` or `AGENTS.md`. If those files do not carry the framework's generated header, startup reports `generated_markdown_protected` and leaves them untouched while still refreshing `.tautline.json`. Methodology status reports the protected Markdown under `adapter_markdown_protected` instead of treating it as generated-adapter drift. Agents must not ask whether to overwrite such files; for a small config enablement, use `render-adapters --write --json-only`, and for full adapter-backed Markdown, run a separate migration that preserves the old rules before rendering.
 
-The status command is the startup health gate before planning work. With `--fail-on-drift`, it fails on adapter drift, missing planning source/template paths, relevant scratch plans that still require migration, and strict document-context issues. Use `methodology-status --strict --fail-on-drift` during project context migration to temporarily enforce document-context strictness without changing the adapter. If pending session journals exist after status passes, run `minervit-methodology publish-pending-session-journals --target .`; if publishing still fails, record the exact blocker in the next continuity handoff and continue authorized work.
+The status command is the startup health gate before planning work. With `--fail-on-drift`, it fails on adapter drift, missing planning source/template paths, relevant scratch plans that still require migration, and strict document-context issues. Use `methodology-status --strict --fail-on-drift` during project context migration to temporarily enforce document-context strictness without changing the adapter. Session journals are local-only as of 0.9.0: they stay under the lane's gitignored `.ai-runs/` and are never published, so there is no pending-publish step (`publish-session-journal`/`publish-pending-session-journals` are disabled). To contribute sanitized signal upstream, enable `"instrumentation": {"enabled": true}` in the source adapter and run `publish-instrumentation-record --target .`.
 
 If `lane-start` reports `No project adapter found`, the lane is unmanaged. Use the new-project bootstrap flow in [Project Administration](project-administration.md#adding-a-new-project) instead of asking whether to skip the framework. The missing adapter is the prerequisite setup task.
 

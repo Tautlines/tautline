@@ -42,7 +42,7 @@ single-file surface for existing consumers while the source policy stays modular
 | [18-merge-and-ci](../../methodology/policy/18-merge-and-ci.md) | Main health, branch liveness, pre-push/pre-merge validation, merge queue, auto-merge, and admin-merge boundaries. |
 | [19-demo-and-staging-deployment](../../methodology/policy/19-demo-and-staging-deployment.md) | Adapter-owned deploy targets, standing approval for deploy closeout, and credential/setup blockers. |
 | [20-background-work](../../methodology/policy/20-background-work.md) | Background command supervision, monitor status, stale process recovery, wakeup cadence, and terminal monitor states. |
-| [21-lane-lifecycle](../../methodology/policy/21-lane-lifecycle.md) | Lane startup, methodology sync, stable/experimental pins, generated adapter protection, work profiles, WIP update blockers, and GitHub API budget. |
+| [21-lane-lifecycle](../../methodology/policy/21-lane-lifecycle.md) | Lane startup, methodology sync, stable/experimental pins, generated adapter protection, work profiles, WIP update blockers, GitHub API budget, and the startup-remediation-mode contract. |
 | [22-unmanaged-project-bootstrap](../../methodology/policy/22-unmanaged-project-bootstrap.md) | Required bootstrap flow when a repo has no adapter and no generic operational adapter can safely apply. |
 | [23-local-resource-isolation](../../methodology/policy/23-local-resource-isolation.md) | Lane-local ports, compose names, service env, `lane-run`, and port-contention recovery. |
 | [24-document-context-budget](../../methodology/policy/24-document-context-budget.md) | Markdown context indexes, archive headers, strict/warn enforcement, and bounded document audits. |

@@ -49,9 +49,9 @@ commit `graphify-out/`
 prepare-continuity --target . --stdin
 Context indexes:
 Context rotate:
-^## Session Journal
-publish-session-journal --commit --push
-publish-pending-session-journals --target .
+^## Session Signal
+prepare-session-journal
+publish-instrumentation-record
 ^## Goal Orchestration
 Goal -> Milestone -> PR/tactical item
 Project `Status` drift blocks

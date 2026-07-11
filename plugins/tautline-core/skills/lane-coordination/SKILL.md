@@ -13,7 +13,7 @@ Read `references/lane-coordination-policy.md` in full before resolving stale coo
 
 Use the git repo as the coordination backbone. Chat is for alerts and discussion; tracked coordination artifacts are the durable source of truth. Lane coordination is mandatory by default for adapter-backed projects.
 
-Adapter `laneCoordination` config defines the cross-lane contract path, lane board path, per-lane status directory, stale-status threshold, and enforcement mode. With default strict enforcement, missing, stale, untracked, uncommitted, or unpushed coordination state fails `lane-coordination-status`, `methodology-status --strict`, and `methodology-status --fail-on-drift`.
+Adapter `laneCoordination` config defines the cross-lane contract path, lane board path, per-lane status directory, stale-status threshold, and enforcement mode. With default strict enforcement, missing, stale, untracked, uncommitted, or unpushed state in the current lane's own status file, or in the shared contract or lane board, fails `lane-coordination-status`, `methodology-status --strict`, and `methodology-status --fail-on-drift`. Other lanes' stale, untracked, or dirty status files are informational only and never block startup.
 
 ## Commands
 

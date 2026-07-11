@@ -11,6 +11,14 @@ session summary, handoff-for-review, or completed execution packet.
 Session journals are evidence only. They are not process authority, product
 docs, continuity handoffs, or normal startup context.
 
+**Local-only as of 0.9.0.** A session journal narrates the adopter's product
+work, so it can never be proven safe to publish. Remote publication is disabled:
+`publish-session-journal` and `publish-pending-session-journals` refuse in every
+mode. Journals stay on this machine as local evidence. The only session evidence
+that can reach a remote is the sanitized instrumentation record (zero
+product-information capacity) — `publish-instrumentation-record`; see
+`docs/reference/instrumentation.md`.
+
 ## Workflow
 
 1. Write or refresh the continuity handoff first when the event also requires
@@ -27,24 +35,21 @@ minervit-methodology prepare-session-journal --target . --stdin
 ```
 
 4. Include only high-level summary evidence, not raw terminal transcripts.
-5. Validate and publish the written journal:
+5. Validate the written journal (read-only; there is no publish step):
 
 ```bash
 minervit-methodology validate-session-journal --file .ai-runs/session-journals/<utc>-session-journal.md
-minervit-methodology publish-session-journal --file .ai-runs/session-journals/<utc>-session-journal.md --commit --push
 ```
 
-6. If publish fails, do not ask whether to retry later. Leave the lane-local
-   journal pending, record the exact publish blocker in the continuity handoff,
-   and continue authorized work unless the current task is methodology analysis
-   that depends on the archive. Pending journals are ignored lane-local state
-   and may be lost if the machine, checkout, or ephemeral workspace is
-   discarded; name that risk in the handoff when publication is still blocked.
-7. At startup after `lane-start` and `methodology-status --fail-on-drift` pass,
-   publish pending journals:
+6. The journal stays lane-local. It is ignored lane-local state and may be lost
+   if the machine, checkout, or ephemeral workspace is discarded — that is
+   expected, because narrative journals never leave the machine. Do not attempt
+   to publish or archive it to any remote.
+7. To contribute sanitized signal upstream, opt in with
+   `"instrumentation": {"enabled": true}` and run:
 
 ```bash
-minervit-methodology publish-pending-session-journals --target .
+minervit-methodology publish-instrumentation-record --target .
 ```
 
 ## Required Sections
@@ -79,11 +84,10 @@ name the exact blocker.
 - Treat validation as detection, not proof that no secret exists. The primary
   control is summary-only content with no raw logs.
 - Raw `.ai-runs/` logs stay lane-local and ignored.
-- Publish to `methodology-session-archive`, not `main`.
-- `publish-session-journal --commit --push` uses isolated archive-branch
-  publication. Do not write journal archive copies into the active methodology
-  release checkout; `--allow-release-checkout-write` is validation/preview-only
-  and is not cross-machine durable publication.
-- Do not fetch/read the archive branch during normal startup. Fetch/read it only
-  for methodology audits, RCA pattern review, or explicit process-improvement
-  work.
+- Journals are local evidence only; there is no archive branch and no publish
+  step. `publish-session-journal`/`publish-pending-session-journals` are disabled
+  and refuse in every mode (removal at >=1.0.0).
+- Never write a journal (or a copy of one) into any git worktree.
+  `prepare-session-journal` refuses to write a preview that is not git-ignored,
+  so a broad `git add` can never stage narrative toward a remote.
+- Do not fetch/read any remote archive branch during normal startup.

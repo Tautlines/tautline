@@ -5,22 +5,26 @@ operating manual. These surfaces support observability, accounting, and
 framework improvement; they are not product documentation and not process
 authority.
 
-## Session Journal Archive
+## Session Journals (Local-Only)
 
-Adapter-backed lanes default to `sessionJournal.enabled: true`. Local journal
-drafts live under `.ai-runs/session-journals/` and are ignored lane-local state.
-Published copies live on the `methodology-session-archive` branch under
-`docs/backlog/session-journals/<project>/<year>/`.
+Adapter-backed lanes default to `sessionJournal.enabled: true`. Journals are
+**local-only** as of 0.9.0: a journal narrates the adopter's product work, so it
+can never be proven safe to publish. Drafts live under
+`.ai-runs/session-journals/` and are ignored lane-local state. There is no
+archive branch, and `publish-session-journal` / `publish-pending-session-journals` are disabled
+and refuse in every mode.
 
 At every milestone, delivery summary, queued-delivery summary, session summary,
 handoff-for-review, or completed execution packet, the agent must refresh
-continuity, prepare and validate a compact session journal, and publish it:
+continuity, then prepare and validate a compact session journal in place:
 
 ```bash
 minervit-methodology prepare-session-journal --target . --stdin
 minervit-methodology validate-session-journal --file .ai-runs/session-journals/<utc>-session-journal.md
-minervit-methodology publish-session-journal --file .ai-runs/session-journals/<utc>-session-journal.md --commit --push
 ```
+
+Both commands write only under the lane's gitignored `.ai-runs/`; nothing leaves
+the lane.
 
 The journal is summary-only. It captures what advanced, where the work sits in
 the lifecycle, gates/reviews, delays/autonomy breakdowns, continuity outcome,
@@ -28,17 +32,15 @@ and methodology improvement signals. It must not include raw logs unless a
 methodology RCA explicitly needs a short quote, must not contain secrets, and
 must not claim authority over process.
 
-Publishing failure is visible but not a stop signal. Leave the lane-local journal
-pending, record the exact publish blocker in `.ai-continuity/NEXT_SESSION.md`,
-and run:
+To contribute sanitized signal upstream, enable `"instrumentation": {"enabled":
+true}` in the source adapter and publish an instrumentation record, a
+closed-vocabulary record with zero product-information capacity:
 
 ```bash
-minervit-methodology publish-pending-session-journals --target .
+minervit-methodology publish-instrumentation-record --target .
 ```
 
-after the next session's startup gates pass. Agents should fetch/read
-`methodology-session-archive` only for methodology audits, RCA pattern review, or
-explicit process-improvement work.
+See [`instrumentation.md`](../instrumentation.md) for the record schema.
 
 Default adapter config:
 
@@ -46,8 +48,6 @@ Default adapter config:
 {
   "sessionJournal": {
     "enabled": true,
-    "branch": "methodology-session-archive",
-    "archiveDir": "docs/backlog/session-journals",
     "cadence": "milestone",
     "gitIgnoreLocal": true,
     "maxBytes": 12000

@@ -1,0 +1,72 @@
+{
+  "behaviorChanges": [
+    "methodology-status --fail-on-drift now returns a three-way exit contract: 0 clean, 1 integrity (adapter drift the render pipeline could not self-heal, or an unsupported runtime that cannot run proof gates; the launcher still refuses), 2 debt-only (every other gate list -- agent-fixable lane debt). A truthful summary line prints last when nonzero: `methodology_status_blocking: <integrity|debt> - <comma-separated gate names>`. Third-party callers that treated exit code 1 as the only failure signal must treat any nonzero exit (compare != 0) as failure instead; nonzero-still-means-stop is unchanged, and --strict semantics (never returns 2, including --strict --fail-on-drift) are exactly preserved.",
+    "The generated launcher's status invocation gains --enter-remediation-on-debt (internal, launcher-only): on a debt-only outcome it execs Claude with a remediation prompt instead of the goal-kickoff prompt, and SUPPRESSES user-provided launcher arguments on that path -- only the configured claude args plus the remediation prompt are passed, so the remediation instruction is not competing with a stale prompt. A clean (exit 0) launch keeps full argument pass-through unchanged. lane-start also gains an internal --defer-debt-preflights flag, passed only by the generated launcher; without it lane-start behavior is byte-for-byte unchanged.",
+    "Git pre-push hooks regenerate automatically at the next lane-start to add the coordination-only push allowance's stdin handshake (MINERVIT_PREPUSH_RECORDS_FILE); no manual action is required, but a hook that has not yet regenerated simply keeps today's HEAD-based evidence behavior until it does.",
+    "Lane-coordination staleness and strict-mode untracked/uncommitted checks are re-scoped to the current lane's own status file; other lanes' stale, untracked, or dirty status files are now informational only (lane_coordination_stale_other_lanes / lane_coordination_foreign_status_git) and never block startup. The shared cross-lane contract and lane board checks are unchanged."
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    },
+    {
+      "name": "rules-audit",
+      "path": "plugins/tautline-core/skills/rules-audit/SKILL.md",
+      "removeAfter": "1.0.0",
+      "replacement": "framework-intake",
+      "section": "skills",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [],
+  "productsTested": [],
+  "requiredMigrations": [
+    {
+      "command": "tautline install-claude-launcher --force",
+      "description": "Regenerate the generated Claude launcher so it three-way-dispatches on the new methodology-status --fail-on-drift exit contract (0 clean / 1 integrity / 2 debt-only) and enters startup remediation mode on debt-only failures instead of refusing to start. After reinstalling (or on rollback), run `type -a <launcher-name>` to confirm no shell function or alias shadows the generated launcher script.",
+      "id": "reinstall-claude-launcher",
+      "surface": "launcher"
+    }
+  ],
+  "rollbackNotes": [
+    "Keep the previous adapter JSON and generated .minervit-ai-delivery.json/.tautline.json in git history; no adapter schema or generated-adapter render output changes in this release.",
+    "Stable clients remain on the stable channel unless they explicitly opt into experimental.",
+    "This release is not WIP-safe: exit 2 is a new nonzero outcome from methodology-status --fail-on-drift, and non-interactive callers that treated exit code 1 as the only failure signal must treat any nonzero exit (compare != 0) as failure before relying on this release during active automated work.",
+    "Pinning back to 0.8.8 (the previous release) restores the two-way exit contract end-to-end without undoing the 0.8.7/0.8.8 session-journal and shim fixes; reinstall the launcher again after rollback (tautline install-claude-launcher --force) and re-check with `type -a <launcher-name>` so no shadowing shell function silently keeps the newer launcher live."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.8.9",
+  "wipSafe": false
+}

@@ -12,6 +12,8 @@ def infer_repo_slug(target: Path) -> str:
         remote = subprocess.check_output(
             ["git", "-C", str(target), "config", "--get", "remote.origin.url"],
             text=True,
+            encoding="utf-8",
+            errors="replace",
             stderr=subprocess.DEVNULL,
         ).strip()
     except subprocess.CalledProcessError:
@@ -34,6 +36,8 @@ def target_is_git_worktree(target: Path) -> bool:
         result = subprocess.check_output(
             ["git", "-C", str(target), "rev-parse", "--is-inside-work-tree"],
             text=True,
+            encoding="utf-8",
+            errors="replace",
             stderr=subprocess.DEVNULL,
         ).strip()
     except subprocess.CalledProcessError:
@@ -45,6 +49,8 @@ def run_git(target: Path, args: list[str]) -> str:
     proc = subprocess.run(
         ["git", "-C", str(target), *args],
         text=True,
+        encoding="utf-8",
+        errors="replace",
         stdout=subprocess.PIPE,
         stderr=subprocess.DEVNULL,
         check=False,
