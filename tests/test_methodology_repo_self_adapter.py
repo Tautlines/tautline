@@ -36,7 +36,7 @@ def test_methodology_repo_source_adapter_is_public_safe_and_json_only():
     assert "BOOTSTRAP REQUIRED" not in raw_text
     assert "goalTracker" not in data
     assert data["project"] == "Minervit AI Delivery Methodology"
-    assert data["repo"] == "minervit/minervit-ai-delivery-methodology"
+    assert data["repo"] == "tautlines/tautline-dev"
     assert data["productionDeployExists"] is False
     assert data["_framework"]["channel"] == "stable"
     assert data["_framework"]["updatePolicy"] == "manual"

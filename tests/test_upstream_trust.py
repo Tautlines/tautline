@@ -347,9 +347,61 @@ def test_update_leaves_head_unchanged_when_upstream_untrusted(cli, tmp_path, mon
     assert _git_head(work) == first
     status, detail = cli.update_methodology_repo(False)
 
-    assert status == "failed"
+    # No dead ends (operator directive 2026-07-11): the checkout never advanced, so it still runs
+    # trusted pinned code -- a safe launch state. The hold is reported as "held" (launch continues)
+    # instead of "failed" (launch blocked), and the remedy ships alongside the error text.
+    assert status == "held"
+    assert "held by the trust policy" in detail
+    assert "trusted retained checkout" in detail
+    assert "update-repin" in detail, "the remedy must ship alongside the error text"
     assert "refus" in detail.lower()
     assert _git_head(work) == first, "checkout must NOT advance to unverified upstream code"
+
+
+def test_untrusted_retained_head_stays_fail_closed(cli, tmp_path, monkeypatch):
+    # Codex 0.9.1 R1 P1: `held` is only safe when the RETAINED head itself passes the trust
+    # policy. With an allowlist containing NEITHER head (empty/replaced pins), the update must
+    # stay a fail-closed `failed`, never a `held` launch labeled trusted.
+    work, first, second = _init_repo_with_upstream(tmp_path)
+    monkeypatch.setattr(cli, "REPO_ROOT", work)
+    monkeypatch.setenv("MINERVIT_METHODOLOGY_UPDATE_POLICY", "pinned")
+    monkeypatch.setenv("MINERVIT_METHODOLOGY_UPDATE_PINS", "c" * 40)  # neither head is pinned
+    monkeypatch.setattr(cli, "METHODOLOGY_UPDATE_PINS_FILE", cli.Path("/nonexistent/pins"))
+    monkeypatch.setattr(cli, "consume_methodology_reexec_token", lambda: None)
+
+    def _no_execve(*a, **k):
+        raise AssertionError("os.execve must NOT run when upstream trust is denied")
+
+    monkeypatch.setattr(cli.os, "execve", _no_execve)
+
+    status, detail = cli.update_methodology_repo(False)
+
+    assert status == "failed"
+    assert "does not pass" in detail and "retained checkout" in detail
+    assert _git_head(work) == first, "checkout must NOT advance to unverified upstream code"
+
+
+def test_held_update_does_not_block_sync_methodology_launch(cli, monkeypatch):
+    # The launcher keys on sync-methodology's exit code: "held" must exit 0 (launch proceeds on
+    # the trusted pinned checkout) while "failed" stays 1. Paired with the test above so the
+    # held-vs-failed boundary cannot silently regress in either direction.
+    import argparse
+
+    monkeypatch.setattr(cli, "update_methodology_repo", lambda *a, **k: ("held", "update available but held by the trust pin"))
+    monkeypatch.setattr(cli, "install_methodology_release_guards", lambda: "guards ok")
+    monkeypatch.setattr(cli, "run_git", lambda root, args: "abc1234")
+    args = argparse.Namespace(
+        target=None,
+        skip_update=False,
+        allow_non_main=False,
+        auto_rescue_local_changes=False,
+        no_auto_rescue_local_changes=False,
+        no_remote=True,
+    )
+    assert cli.sync_methodology(args) == 0
+
+    monkeypatch.setattr(cli, "update_methodology_repo", lambda *a, **k: ("failed", "checkout is wedged"))
+    assert cli.sync_methodology(args) == 1
 
 
 def test_update_advances_when_upstream_is_trusted(cli, tmp_path, monkeypatch):

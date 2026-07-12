@@ -1417,6 +1417,12 @@
    "via": "operator-instruction",
    "scope": "oss-launch-release-card-suspension",
    "reason": "Google Chat release cards remain suspended through the OSS launch readiness work; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
+  },
+  "0.9.1": {
+   "at": "2026-07-11T00:00:00+00:00",
+   "via": "operator-instruction",
+   "scope": "oss-launch-release-card-suspension",
+   "reason": "Google Chat release cards remain suspended through the OSS launch readiness work; release accountability is tracked by PR, CI, changelog, and migration report evidence instead."
   }
  }
 }

@@ -48,7 +48,9 @@ RELEASE_NOTES_ARCHIVE_PATH = "docs/releases/minervit-ai-delivery-methodology.md"
 RELEASE_UPDATE_WEBHOOK_ENV = "MINERVIT_METHODOLOGY_RELEASE_GOOGLE_CHAT_WEBHOOK"
 RELEASE_UPDATE_DELIVERY_FILE = REPO_ROOT / "docs" / "releases" / "release-update-delivery.json"
 RELEASE_UPDATE_DELIVERY_SCHEMA = "minervit-release-update-delivery/v1"
-METHODOLOGY_REPO_SLUG = "minervit/minervit-ai-delivery-methodology"
+METHODOLOGY_REPO_SLUG = "tautlines/tautline-dev"
+# Pre-rebrand slug; unconverted machines/adapters still carry it (removal: METH-FU-TAUTLINE-FALLBACK-REMOVAL).
+LEGACY_METHODOLOGY_REPO_SLUGS = ("minervit/minervit-ai-delivery-methodology",)
 METHODOLOGY_MAIN_COMMIT_OVERRIDE_ENV = "MINERVIT_METHODOLOGY_ALLOW_MAIN_COMMIT"
 USER_CONFIG_ENV = Path.home() / ".config" / "minervit" / "methodology.env"
 USER_SECRETS_ENV = Path.home() / ".config" / "minervit" / "secrets.zsh"
@@ -2617,6 +2619,11 @@ def validate_adapter_repo_matches_target(data: dict, target: Path, require_targe
             "whose repo field explicitly documents the no-remote workflow."
         )
     if expected != actual:
+        # Rebrand transition: the methodology repo's own new/legacy slugs are equivalent, so an
+        # unconverted checkout (legacy origin URL) still starts under the updated self-adapter.
+        methodology_slugs = {normalize_repo_slug(slug) for slug in methodology_repo_slugs()}
+        if expected in methodology_slugs and actual in methodology_slugs:
+            return
         raise SystemExit(
             "Project adapter repo does not match the target git remote "
             f"({data.get('repo')} != {actual_raw}). Do not use another project's adapter; "
@@ -5935,7 +5942,7 @@ def release_migration_report_data(
             len(deprecated_surfaces),
         )
         deprecated_surfaces.insert(insert_at, historical_rca_surface)
-    if parsed_version > version_tuple("0.9.0"):
+    if parsed_version > version_tuple("0.9.1"):
         raise SystemExit(
             f"release migration report data is not declared for {version}; "
             "add a release-specific branch before cutting the release"
@@ -5960,7 +5967,60 @@ def release_migration_report_data(
             f"release migration report data is not declared for {version}; "
             "add a release-specific branch before cutting the release"
         )
-    if parsed_version == version_tuple("0.9.0"):
+    if parsed_version == version_tuple("0.9.1"):
+        wip_safe = True
+        required_migrations = []
+        optional_migrations = [
+            {
+                "id": "repoint-origin-to-tautline-dev",
+                "surface": "checkout",
+                "description": (
+                    "The framework dev repository moved to tautlines/tautline-dev (renamed + transferred "
+                    "from minervit/minervit-ai-delivery-methodology). GitHub serves redirects, so existing "
+                    "checkouts keep working; repoint origin when convenient."
+                ),
+                "command": "git remote set-url origin https://github.com/tautlines/tautline-dev.git",
+            },
+            {
+                "id": "reinstall-claude-launcher-gate-repair",
+                "surface": "launcher",
+                "description": (
+                    "Regenerate the generated Claude launcher to pick up the no-dead-ends contract: every "
+                    "launch-gate failure prints its exact remedy, and an interactive launch starts a Claude "
+                    "repair session instead of stranding the operator (disable with "
+                    "TAUTLINE_NO_REPAIR_SESSION=1)."
+                ),
+                "command": "tautline install-claude-launcher --force",
+            },
+        ]
+        behavior_changes = [
+            "Trust-pin holds no longer block launch (no-dead-ends): when an update is available but the "
+            "upstream head is not in the pinned allowlist, sync-methodology reports `held` (exit 0) and the "
+            "launch continues on the trusted retained checkout, with the update-repin remedy printed "
+            "alongside. Held requires the RETAINED head itself to pass the active trust policy; an "
+            "empty/replaced allowlist or an unsigned local commit stays fail-closed. The checkout still "
+            "never advances to unverified code, and re-exec of unverified code still refuses; only the "
+            "launch-blocking behavior changed. A wedged/dirty checkout still fails.",
+            "Generated Claude launchers print an exact executable remedy with every gate failure and, when "
+            "interactive, start a Claude repair session for the failed gate (methodology auto-rescue, "
+            "methodology sync, lane-start, methodology-status integrity) instead of a bare refusal. "
+            "TAUTLINE_NO_REPAIR_SESSION=1 (or MINERVIT_NO_REPAIR_SESSION=1) prints the remedy and exits 1.",
+            "Rebrand identity: METHODOLOGY_REPO_SLUG is now tautlines/tautline-dev; the legacy "
+            "minervit/minervit-ai-delivery-methodology slug remains accepted everywhere the framework "
+            "identifies its own repo (self-adapter repo field, inferred origin remote, adapter-vs-remote "
+            "match), so unconverted checkouts and adapters keep starting during the transition.",
+            "Commands, adapter schema, hooks, and product-lane runtime behavior are otherwise unchanged.",
+        ]
+        rollback_notes = [
+            "Pinning back to 0.9.0 restores fail-closed launch on trust-pin holds and the old launcher "
+            "refusal text; both slugs resolve to the same repository either way.",
+            "No adapter migration is required for product lanes; only the framework's own self-adapter "
+            "recorded the new repo slug.",
+            "Stable clients remain on the stable channel unless they explicitly opt into experimental.",
+            "This release is WIP-safe: launch gating becomes strictly more permissive (held continues on "
+            "already-trusted code) and the slug change is legacy-compatible.",
+        ]
+    elif parsed_version == version_tuple("0.9.0"):
         wip_safe = False
         required_migrations = [
             {
@@ -15392,8 +15452,12 @@ def invoked_from_methodology_repo() -> bool:
     return path_is_under(cwd, REPO_ROOT)
 
 
+def methodology_repo_slugs() -> set[str]:
+    return {METHODOLOGY_REPO_SLUG.lower(), *(slug.lower() for slug in LEGACY_METHODOLOGY_REPO_SLUGS)}
+
+
 def adapter_is_methodology_repo(data: dict) -> bool:
-    return str(data.get("repo", "")).strip().lower() == METHODOLOGY_REPO_SLUG.lower()
+    return str(data.get("repo", "")).strip().lower() in methodology_repo_slugs()
 
 
 def should_auto_rescue_methodology_for_project_startup() -> bool:
@@ -15538,7 +15602,23 @@ def update_methodology_repo(
                 if upstream_sha != old_head:
                     refusal = gate_methodology_upstream_advance(upstream_sha)
                     if refusal is not None:
-                        return "failed", refusal
+                        # HELD, not failed: the checkout never advanced, so it still runs code the
+                        # active trust policy accepts -- a safe launch state. Blocking startup here
+                        # left operators dead in the water with no remedy (operator directive
+                        # 2026-07-11: the remedy must always ship alongside the error). Held is
+                        # only safe when the RETAINED head itself passes the trust policy (Codex
+                        # 0.9.1 R1 P1): an empty/replaced allowlist or an unsigned local commit
+                        # must stay fail-closed, not launch under a "trusted" label.
+                        retained_allowed, _retained_msg = verify_upstream_trust(old_head)
+                        if retained_allowed:
+                            return "held", (
+                                f"update available but held by the trust policy; continuing on the "
+                                f"trusted retained checkout {old_head[:12]}. {refusal}"
+                            )
+                        return "failed", (
+                            f"update refused and the retained checkout {old_head[:12]} does not pass "
+                            f"the active trust policy either; {refusal}"
+                        )
                 code, stdout, stderr = run_command(["git", "-C", str(REPO_ROOT), "merge", "--ff-only", upstream_sha])
     else:
         # No resolvable release upstream (e.g. no origin remote): fall back to the tracking-configured
@@ -15658,6 +15738,12 @@ def lane_start(args: argparse.Namespace) -> int:
         if status == "failed":
             print("startup: methodology update must be resolved before lane startup can continue")
             return 1
+        if status == "held":
+            print(
+                "methodology_update_held: startup continues on the trusted pinned checkout; "
+                f"to advance, review the incoming commits then run `{CLI_NAME} update-repin "
+                "--channel <stable|experimental>`"
+            )
         print(f"methodology_release_guard: {install_methodology_release_guards()}")
     print(f"plugin_version: {plugin_version()}")
     print(f"methodology_commit: {run_git(REPO_ROOT, ['rev-parse', '--short', 'HEAD'])}")
@@ -22767,27 +22853,36 @@ def claude_launcher_content(dangerously_skip_permissions: bool) -> str:
             "  launcher_restore_private_adapters_after_reset || return 1",
             "  printf '%s\\n' \"methodology_update: launcher_auto_rescue - preserved local methodology checkout on $rescue_branch and reset main to origin/main$LAUNCHER_MAIN_PRESERVE_DETAIL$LAUNCHER_PRIVATE_ADAPTER_DETAIL\"",
             "}",
-            'if [ -z "$METHODOLOGY_CLI_PRESET" ]; then',
-            'launcher_auto_rescue_methodology_repo "$METHODOLOGY_REPO" || {',
-            "  printf '%s\\n' 'methodology sync failed; refusing to start Claude with stale methodology' >&2",
+            "# No dead ends (operator directive 2026-07-11): every gate failure prints its exact",
+            "# remedy, and an interactive launch starts a Claude repair session instead of stranding",
+            "# the operator. Set TAUTLINE_NO_REPAIR_SESSION=1 (or MINERVIT_NO_REPAIR_SESSION=1) to",
+            "# print the remedy and exit 1 without the repair session.",
+            "launcher_gate_repair() {",
+            '  stage="$1"',
+            '  remedy="$2"',
+            "  printf '%s\\n' \"launch gate failed: $stage\" >&2",
+            "  printf '%s\\n' \"remedy: $remedy\" >&2",
+            '  no_repair="${TAUTLINE_NO_REPAIR_SESSION:-${MINERVIT_NO_REPAIR_SESSION:-0}}"',
+            '  if [ -t 0 ] && [ -t 1 ] && [ "$no_repair" != "1" ]; then',
+            "    printf '%s\\n' 'starting a Claude repair session (set TAUTLINE_NO_REPAIR_SESSION=1 to disable)...' >&2",
+            f'    exec claude{claude_args} "Launch gate \'$stage\' failed on this machine. Fix it now: $remedy Re-run the failed command until it exits 0, then tell the operator to relaunch. Do not bypass gates: --no-verify pushes and gate relaxation are operator break-glass decisions - if one is genuinely required, declare a blocker (blocker-declare) and stop with a report."',
+            "  fi",
             "  exit 1",
             "}",
+            "# The remedy defers to sync-methodology's own failure-specific guidance (pin holds name",
+            "# update-repin, signed-policy rejections name signature repair per SECURITY.md, rescue",
+            "# failures name the wedged state) -- a static repin hint would mislead non-pin failures",
+            "# and could loop the repair session (Codex 0.9.1 R1 P2).",
+            'SYNC_REMEDY="in $METHODOLOGY_REPO run \'tautline sync-methodology --auto-rescue-local-changes\' and follow the failure-specific remedy it prints alongside the error; if the same remedy fails twice, stop and declare a blocker with the exact output instead of retrying."',
+            'if [ -z "$METHODOLOGY_CLI_PRESET" ]; then',
+            'launcher_auto_rescue_methodology_repo "$METHODOLOGY_REPO" || launcher_gate_repair "methodology auto-rescue" "$SYNC_REMEDY"',
             "fi",
             'if [ "${METHODOLOGY_INSIDE_REPO:-0}" = "1" ]; then',
-            '  "$METHODOLOGY_CLI" sync-methodology || {',
-            "    printf '%s\\n' 'methodology sync failed; refusing to start Claude with stale methodology' >&2",
-            "    exit 1",
-            "  }",
+            '  "$METHODOLOGY_CLI" sync-methodology || launcher_gate_repair "methodology sync" "$SYNC_REMEDY"',
             'elif [ "${MINERVIT_METHODOLOGY_DISABLE_AUTO_RESCUE:-0}" = "1" ]; then',
-            '  "$METHODOLOGY_CLI" sync-methodology --no-auto-rescue-local-changes || {',
-            "    printf '%s\\n' 'methodology sync failed; refusing to start Claude with stale methodology' >&2",
-            "    exit 1",
-            "  }",
+            '  "$METHODOLOGY_CLI" sync-methodology --no-auto-rescue-local-changes || launcher_gate_repair "methodology sync" "$SYNC_REMEDY"',
             "else",
-            '  "$METHODOLOGY_CLI" sync-methodology --auto-rescue-local-changes || {',
-            "    printf '%s\\n' 'methodology sync failed; refusing to start Claude with stale methodology' >&2",
-            "    exit 1",
-            "  }",
+            '  "$METHODOLOGY_CLI" sync-methodology --auto-rescue-local-changes || launcher_gate_repair "methodology sync" "$SYNC_REMEDY"',
             "fi",
             'LANE_TARGET=""',
             'SEARCH_DIR="$(pwd -P 2>/dev/null || pwd)"',
@@ -22806,18 +22901,14 @@ def claude_launcher_content(dangerously_skip_permissions: bool) -> str:
             '  SEARCH_DIR="$NEXT_DIR"',
             "done",
             'if [ -n "$LANE_TARGET" ]; then',
-            '  "$METHODOLOGY_CLI" lane-start --target "$LANE_TARGET" --defer-debt-preflights || {',
-            "    printf '%s\\n' 'lane startup failed; refusing to start Claude with stale lane methodology' >&2",
-            "    exit 1",
-            "  }",
+            '  "$METHODOLOGY_CLI" lane-start --target "$LANE_TARGET" --defer-debt-preflights || launcher_gate_repair "lane-start" "run \'tautline lane-start --target $LANE_TARGET --defer-debt-preflights\', read the printed failure, and fix exactly what it names."',
             '  "$METHODOLOGY_CLI" methodology-status --target "$LANE_TARGET" --fail-on-drift --enter-remediation-on-debt',
             '  METHODOLOGY_STATUS_EXIT=$?',
             '  if [ "$METHODOLOGY_STATUS_EXIT" = "2" ]; then',
             "    REMEDIATION_PROMPT=\"Startup remediation required for this lane. Run 'tautline methodology-status --target $LANE_TARGET --fail-on-drift', fix every printed issue, and rerun until it exits 0 before any project work. Do not bypass gates: --no-verify pushes and gate relaxation are operator break-glass decisions - if one is genuinely required, declare a blocker (blocker-declare) and stop with a report.\"",
             f'    exec claude{claude_args} "$REMEDIATION_PROMPT"',
             '  elif [ "$METHODOLOGY_STATUS_EXIT" != "0" ]; then',
-            "    printf '%s\\n' 'methodology status failed (integrity); see the methodology_status_blocking line above; refusing to start Claude' >&2",
-            "    exit 1",
+            '    launcher_gate_repair "methodology-status integrity" "run \'tautline methodology-status --target $LANE_TARGET --fail-on-drift\', read the methodology_status_blocking line, and fix exactly what it names."',
             "  fi",
             "fi",
             'GOAL_TARGET="${LANE_TARGET:-.}"',
@@ -22914,6 +23005,12 @@ def sync_methodology(args: argparse.Namespace) -> int:
         channel=framework_pin["channel"],
     )
     print(f"methodology_update: {status} - {detail}")
+    if status == "held":
+        print(
+            "methodology_update_held: launch continues on the trusted pinned checkout; "
+            f"to advance, review the incoming commits then run `{CLI_NAME} update-repin "
+            "--channel <stable|experimental>`"
+        )
     print(f"plugin_version: {plugin_version()}")
     print(f"methodology_commit: {run_git(REPO_ROOT, ['rev-parse', '--short', 'HEAD'])}")
     if status != "failed":
@@ -25266,7 +25363,8 @@ def adapter_target_is_methodology_repo(data: dict, target: Path | None = None) -
         return False
     if target is None or not target_is_git_worktree(target):
         return False
-    return normalize_repo_slug(infer_repo_slug(target)) == normalize_repo_slug(METHODOLOGY_REPO_SLUG)
+    inferred = normalize_repo_slug(infer_repo_slug(target))
+    return inferred in {normalize_repo_slug(slug) for slug in methodology_repo_slugs()}
 
 
 def adapter_base_branch_names(data: dict, target: Path | None = None) -> set[str]:

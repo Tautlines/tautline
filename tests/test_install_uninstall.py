@@ -394,7 +394,9 @@ def test_launcher_text_never_mentions_adapter_drift(run_cli, tmp_path):
     assert res.returncode == 0, res.stderr
     launcher_text = (launcher_bin / "minervit-claude-test").read_text(encoding="utf-8")
     assert "adapter drift" not in launcher_text
-    assert "methodology status failed (integrity); see the methodology_status_blocking line above; refusing to start Claude" in launcher_text
+    assert 'launcher_gate_repair "methodology-status integrity"' in launcher_text
+    assert "launcher_gate_repair" in launcher_text
+    assert "remedy: $remedy" in launcher_text, "the remedy must ship alongside the error text"
     assert "--enter-remediation-on-debt" in launcher_text
     assert "--defer-debt-preflights" in launcher_text
     assert "Startup remediation required for this lane." in launcher_text
@@ -473,7 +475,8 @@ def test_installed_claude_launcher_exit_1_refuses_without_exec(run_cli, tmp_path
     assert run.returncode == 1
     assert "claude_args:" not in run.stdout, "exit 1 must never exec claude"
     combined = run.stdout + run.stderr
-    assert "methodology status failed (integrity); see the methodology_status_blocking line above; refusing to start Claude" in combined
+    assert "launch gate failed: methodology-status integrity" in combined
+    assert "remedy:" in combined, "the remedy must ship alongside the error text"
     assert "adapter drift" not in combined
 
 

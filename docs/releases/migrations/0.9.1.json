@@ -1,0 +1,92 @@
+{
+  "behaviorChanges": [
+    "Trust-pin holds no longer block launch (no-dead-ends): when an update is available but the upstream head is not in the pinned allowlist, sync-methodology reports `held` (exit 0) and the launch continues on the trusted retained checkout, with the update-repin remedy printed alongside. Held requires the RETAINED head itself to pass the active trust policy; an empty/replaced allowlist or an unsigned local commit stays fail-closed. The checkout still never advances to unverified code, and re-exec of unverified code still refuses; only the launch-blocking behavior changed. A wedged/dirty checkout still fails.",
+    "Generated Claude launchers print an exact executable remedy with every gate failure and, when interactive, start a Claude repair session for the failed gate (methodology auto-rescue, methodology sync, lane-start, methodology-status integrity) instead of a bare refusal. TAUTLINE_NO_REPAIR_SESSION=1 (or MINERVIT_NO_REPAIR_SESSION=1) prints the remedy and exits 1.",
+    "Rebrand identity: METHODOLOGY_REPO_SLUG is now tautlines/tautline-dev; the legacy minervit/minervit-ai-delivery-methodology slug remains accepted everywhere the framework identifies its own repo (self-adapter repo field, inferred origin remote, adapter-vs-remote match), so unconverted checkouts and adapters keep starting during the transition.",
+    "Commands, adapter schema, hooks, and product-lane runtime behavior are otherwise unchanged."
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "publish-pending-session-journals",
+      "removeAfter": "1.0.0",
+      "replacement": "publish-instrumentation-record",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "publish-session-journal",
+      "removeAfter": "1.0.0",
+      "replacement": "publish-instrumentation-record",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    },
+    {
+      "name": "rules-audit",
+      "path": "plugins/tautline-core/skills/rules-audit/SKILL.md",
+      "removeAfter": "1.0.0",
+      "replacement": "framework-intake",
+      "section": "skills",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [
+    {
+      "command": "git remote set-url origin https://github.com/tautlines/tautline-dev.git",
+      "description": "The framework dev repository moved to tautlines/tautline-dev (renamed + transferred from minervit/minervit-ai-delivery-methodology). GitHub serves redirects, so existing checkouts keep working; repoint origin when convenient.",
+      "id": "repoint-origin-to-tautline-dev",
+      "surface": "checkout"
+    },
+    {
+      "command": "tautline install-claude-launcher --force",
+      "description": "Regenerate the generated Claude launcher to pick up the no-dead-ends contract: every launch-gate failure prints its exact remedy, and an interactive launch starts a Claude repair session instead of stranding the operator (disable with TAUTLINE_NO_REPAIR_SESSION=1).",
+      "id": "reinstall-claude-launcher-gate-repair",
+      "surface": "launcher"
+    }
+  ],
+  "productsTested": [],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "Pinning back to 0.9.0 restores fail-closed launch on trust-pin holds and the old launcher refusal text; both slugs resolve to the same repository either way.",
+    "No adapter migration is required for product lanes; only the framework's own self-adapter recorded the new repo slug.",
+    "Stable clients remain on the stable channel unless they explicitly opt into experimental.",
+    "This release is WIP-safe: launch gating becomes strictly more permissive (held continues on already-trusted code) and the slug change is legacy-compatible."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.9.1",
+  "wipSafe": true
+}

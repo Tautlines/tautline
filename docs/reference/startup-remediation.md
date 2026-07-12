@@ -18,7 +18,11 @@ two closed classes and returns one of three exit codes:
 - **1 (integrity):** `drift` (a generated-adapter render failure `lane-start` could
   not self-heal) or `development_environment_failures` (an unsupported runtime that
   cannot run proof gates). Integrity failures mean the agent cannot prove anything,
-  so the launcher still refuses to start Claude.
+  so the launcher never starts a project-work session. Since 0.9.1 (no-dead-ends),
+  an interactive launch instead prints the exact remedy and offers a Claude repair
+  session confined to fixing the named gate or declaring a blocker
+  (`TAUTLINE_NO_REPAIR_SESSION=1` opts out and restores the bare exit-1 refusal);
+  non-interactive launches still exit 1 with the remedy printed.
 - **2 (debt-only):** every other failing gate — agent-fixable lane debt such as
   missing hooks, stale goal/milestone state, lane-coordination notes, review
   evidence, CI gaps, or Graphify staleness. Debt does not mean the agent cannot

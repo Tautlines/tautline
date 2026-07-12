@@ -27,6 +27,24 @@ Pre-launch history through 0.6.265 is preserved privately (maintainer-only) at
 
 ### Security
 
+## [0.9.1] - 2026-07-11
+
+### Changed
+
+- No dead ends at launch: a trust-policy hold on an available update now reports
+  `held` (exit 0) and launch continues on the trusted retained checkout with the
+  repair command printed alongside — provided the retained head itself passes the
+  active trust policy (otherwise still fail-closed). Generated Claude launchers
+  print an exact executable remedy with every gate failure and, when interactive,
+  start a Claude repair session instead of a bare refusal
+  (`TAUTLINE_NO_REPAIR_SESSION=1` opts out). The checkout still never advances to
+  unverified code.
+- Rebrand identity: the framework's dev repository moved to `tautlines/tautline-dev`
+  (renamed + transferred from `minervit/minervit-ai-delivery-methodology`; GitHub serves
+  redirects). The self-adapter and `METHODOLOGY_REPO_SLUG` now record the new slug; the
+  legacy slug stays accepted everywhere the framework identifies its own repo, so
+  unconverted checkouts keep starting during the transition.
+
 ## [0.9.0] - 2026-07-11
 
 Sanitized instrumentation replaces narrative session-journal publication. A

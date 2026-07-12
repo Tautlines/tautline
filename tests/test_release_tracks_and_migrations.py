@@ -1796,8 +1796,33 @@ def test_release_migration_report_0_9_0_sanitized_instrumentation(cli):
     assert any("Pinning back to 0.8.9 restores narrative session-journal publication" in note for note in current["rollbackNotes"])
 
     # Upper boundary: the next patch is not declared until it ships its own report.
-    with pytest.raises(SystemExit, match="not declared for 0.9.1"):
-        cli.release_migration_report_data(version="0.9.1")
+    with pytest.raises(SystemExit, match="not declared for 0.9.2"):
+        cli.release_migration_report_data(version="0.9.2")
+
+
+def test_release_migration_report_0_9_1_no_dead_ends_and_repo_slug(cli):
+    # Pin the 0.9.1 contract: trust-pin holds stop blocking launch (held, exit 0, remedy printed),
+    # generated launchers gain the gate-repair path, and the dev-repo slug moves to
+    # tautlines/tautline-dev with the legacy slug still accepted.
+    current = cli.release_migration_report_data(
+        version="0.9.1",
+        products_tested=["methodology-framework"],
+    )
+    assert current["version"] == "0.9.1"
+    assert current["wipSafe"] is True
+    assert current["requiredMigrations"] == []
+    assert any(
+        item["id"] == "reinstall-claude-launcher-gate-repair"
+        and item["command"] == "tautline install-claude-launcher --force"
+        for item in current["optionalMigrations"]
+    )
+    assert any(
+        item["id"] == "repoint-origin-to-tautline-dev" for item in current["optionalMigrations"]
+    )
+    assert any("`held` (exit 0)" in change and "update-repin" in change for change in current["behaviorChanges"])
+    assert any("never advances to unverified code" in change for change in current["behaviorChanges"])
+    assert any("exact executable remedy" in change for change in current["behaviorChanges"])
+    assert any("legacy" in change and "tautlines/tautline-dev" in change for change in current["behaviorChanges"])
 
 
 def test_current_release_migration_report_exists_and_is_fresh(cli):
