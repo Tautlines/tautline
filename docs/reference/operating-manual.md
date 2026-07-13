@@ -14,11 +14,11 @@ editing surface.
 
 ## Onboarding A New Project
 
-Use `minervit-methodology init` as the front door for unmanaged repos.
+Use `tautline init` as the front door for unmanaged repos.
 
 ```bash
 cd <target-repo>
-minervit-methodology init --target .
+tautline init --target .
 ```
 
 The command writes `.ai-work/ADAPTER_BOOTSTRAP_INTERVIEW.md` and prints only the
@@ -29,7 +29,7 @@ boundaries.
 After the interview artifact is answered, continue:
 
 ```bash
-minervit-methodology init --target . --continue
+tautline init --target . --continue
 ```
 
 The continuation writes `.tautline/adapter.json`, renders `CLAUDE.md`,
@@ -122,9 +122,9 @@ Keep install checks and GitHub auth notes in
 ## Initial Setup
 
 Validate fresh checkouts with `scripts/test.sh` and `scripts/validate.sh`, then
-install the portable shim with `bin/minervit-methodology install-cli`.
+install the portable shim with `bin/tautline install-cli`.
 Generated adapters and handoffs must not hard-code person-specific checkout
-paths; they resolve `minervit-methodology` from `PATH`, then fall back through
+paths; they resolve `tautline` from `PATH`, then fall back through
 `MINERVIT_METHODOLOGY_REPO`. Keep clone, validation, and shim details in
 [Setup And Runtime](operations/setup-runtime.md#initial-setup).
 
@@ -167,7 +167,7 @@ template and install commands in [Setup And Runtime](operations/setup-runtime.md
 ## Claude Launcher Helper
 
 The managed launcher keeps Claude startup portable: update the framework, install
-the shim, then run `minervit-methodology install-claude-launcher --name minervit-claude`.
+the shim, then run `tautline install-claude-launcher --name minervit-claude`.
 The installed launcher lives in
 `~/.local/bin/minervit-claude` by default, runs sync/startup/status gates, and
 starts Claude only after lane checks. The high-autonomy command remains
@@ -190,7 +190,7 @@ and
 
 ## Core CLI Usage
 
-The CLI entrypoint is `bin/minervit-methodology`. Keep detailed command usage in
+The CLI entrypoint is `bin/tautline`. Keep detailed command usage in
 [CLI Operations](operations/cli-operations.md#core-cli-usage).
 
 ### Render Project Adapters
@@ -333,7 +333,7 @@ Adapters may declare `behaviorSpecs.sourceMaterials` for reviewed business/custo
 Behavior-spec-required projects also have acceptance integrity checks:
 
 ```bash
-minervit-methodology behavior-spec-status --target .
+tautline behavior-spec-status --target .
 ```
 
 This status checks adapter-declared `.feature` files, inactive tags such as `@pending`, and adapter-declared acceptance harnesses. Customer-facing behavior is not covered when scenarios are inactive or the harness drives the wrong application package. Inactive scenarios require owner, reason, and un-pend trigger within the adapter policy; "pending because no harness exists" is a P1 coverage gap until the harness executes the changed app.
@@ -391,10 +391,10 @@ For an existing framework checkout:
 ```bash
 cd <methodology_repo>
 git pull --ff-only origin main
-bin/minervit-methodology install-cli
-source "$HOME/.config/minervit/methodology.env"
-minervit-methodology sync-methodology
-minervit-methodology version
+bin/tautline install-cli
+source "$HOME/.config/tautline/tautline.env"
+tautline sync-methodology
+tautline version
 ```
 
 For first-time setup on a machine:
@@ -403,9 +403,9 @@ For first-time setup on a machine:
 cd <projects_parent>
 git clone https://github.com/tautlines/tautline.git
 cd tautline
-bin/minervit-methodology install-cli
-source "$HOME/.config/minervit/methodology.env"
-minervit-methodology version
+bin/tautline install-cli
+source "$HOME/.config/tautline/tautline.env"
+tautline version
 ```
 
 All projects on the machine can use the same shared framework clone unless a lane is intentionally locked.
@@ -416,25 +416,25 @@ Start in warn mode:
 
 ```bash
 cd <lane_path>
-minervit-methodology lane-start --target .
-minervit-methodology context-bootstrap --target . --write
-minervit-methodology context-bootstrap --target . --classify --write
-minervit-methodology context-status --target .
-minervit-methodology methodology-status --target . --fail-on-drift
+tautline lane-start --target .
+tautline context-bootstrap --target . --write
+tautline context-bootstrap --target . --classify --write
+tautline context-status --target .
+tautline methodology-status --target . --fail-on-drift
 ```
 
 Then review the generated index, move every `Needs Classification` entry into the right section, and add archive headers:
 
 ```bash
-minervit-methodology context-bootstrap --target . --add-archive-headers --write
+tautline context-bootstrap --target . --add-archive-headers --write
 ```
 
 After the index is clean, set `documentContext.enforcement` to `strict` in the project adapter and validate:
 
 ```bash
-minervit-methodology lane-start --target .
-minervit-methodology context-status --target . --strict
-minervit-methodology methodology-status --target . --strict --fail-on-drift
+tautline lane-start --target .
+tautline context-status --target . --strict
+tautline methodology-status --target . --strict --fail-on-drift
 ```
 
 Existing unmanaged projects must bootstrap the project adapter first, then run the same context migration sequence. Do not use another project's paths or assumptions.
@@ -454,7 +454,7 @@ Default behavior:
 Install when asked:
 
 ```bash
-minervit-methodology graphify-install --target .
+tautline graphify-install --target .
 ```
 
 Build or refresh from the project root:
@@ -654,7 +654,7 @@ forbidden authority roles, and conflict handling in
 ## Adding A New Project
 
 For normal unmanaged repos, use
-[`minervit-methodology init`](#onboarding-a-new-project). Keep the lower-level
+[`tautline init`](#onboarding-a-new-project). Keep the lower-level
 repo inspection, interview binding, scaffold, render, startup, and drift details
 in [Project Administration](operations/project-administration.md#adding-a-new-project).
 

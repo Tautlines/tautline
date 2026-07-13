@@ -220,7 +220,7 @@ def test_install_cli_defaults_to_pinned_policy(run_cli, tmp_path):
     assert res.returncode == 0, res.stderr
     text = config_env.read_text(encoding="utf-8")
     assert "MINERVIT_METHODOLOGY_UPDATE_POLICY=pinned" in text
-    assert f"MINERVIT_METHODOLOGY_UPDATE_PINS={_repo_head()}" in text
+    assert f"MINERVIT_METHODOLOGY_UPDATE_PINS={_repo_head()}" in text  # shlex-quoted: a plain sha needs no quotes
 
 
 def test_install_cli_update_policy_flag_overrides(run_cli, tmp_path):
@@ -432,9 +432,9 @@ def test_reexec_token_created_0600_in_private_config_dir(cli, tmp_path, monkeypa
     monkeypatch.setenv("HOME", str(tmp_path))
     token = cli.create_methodology_reexec_token("c" * 40)
     token_path = cli.Path(token)
-    token_dir = tmp_path / ".config" / "minervit" / "reexec-tokens"
+    token_dir = tmp_path / ".config" / "tautline" / "reexec-tokens"
 
-    assert token_path.parent == token_dir, "token must live under ~/.config/minervit, not the shared tempdir"
+    assert token_path.parent == token_dir, "token must live under ~/.config/tautline, not the shared tempdir"
     assert stat.S_IMODE(token_path.stat().st_mode) == 0o600
     assert stat.S_IMODE(token_dir.stat().st_mode) == 0o700
 

@@ -32,14 +32,14 @@ Milestone continuation is tracked in lane-local state:
 Start or refresh the milestone ledger after the milestone plan is approved:
 
 ```bash
-minervit-methodology milestone-start --target . --plan <source-of-truth-plan>
+tautline milestone-start --target . --plan <source-of-truth-plan>
 ```
 
 After every queued-delivery summary, PR merge, PR abandonment, item completion, or item blocking, advance the ledger and start the returned `next_action`:
 
 ```bash
-minervit-methodology milestone-advance --target . --event pr-queued --pr <PR>
-minervit-methodology milestone-next --target .
+tautline milestone-advance --target . --event pr-queued --pr <PR>
+tautline milestone-next --target .
 ```
 
 The milestone ledger is the durable local controller across PR boundaries. A PR boundary is not a stop point: the agent marks the item state, reads the next action, and either starts the next packet item, creates/updates the next source-of-truth PR plan, runs Codex review and `plan-finalization-precheck`, or names a true blocker. A milestone is complete only when the ledger shows all items complete, merged, queued, or policy-deferred and the execution packet, backlog/readiness state, open PR state, continuity handoff, and session journal support that conclusion.
@@ -65,18 +65,18 @@ Adapter-declared review exemptions can skip cross-model plan review only when th
 Before any T2/T3 or explicitly review-required plan-finalization action, run:
 
 ```bash
-minervit-methodology plan-finalization-precheck --target . --plan <source-of-truth-plan>
+tautline plan-finalization-precheck --target . --plan <source-of-truth-plan>
 ```
 
 If the precheck fails because review evidence is missing, run the configured cross-model review through the methodology CLI exactly once for the round, classify the printed log, finalize that existing log into a manifest, address blockers, and retry. Start with the recovery command the hook/precheck prints; the common sequence is:
 
 ```bash
-minervit-methodology run-plan-review \
+tautline run-plan-review \
   --target . \
   --plan <source-of-truth-plan> \
   --round R1
 
-minervit-methodology finalize-plan-review \
+tautline finalize-plan-review \
   --target . \
   --plan <source-of-truth-plan> \
   --log <printed-plan-review-log> \
@@ -94,11 +94,11 @@ Plan-review convergence has a hard budget. A single source-of-truth plan gets at
 
 The captured review command must start with the adapter `review.codexPlanWrapper`, include the `--plan <source-of-truth-plan>` binding appended by `run-plan-review`, appear verbatim in the captured log, and match the CLI-written review-run metadata. The wrapper output itself must reference the reviewed plan path or plan hash.
 
-Codex fast mode defaults to enabled for adapter-backed projects. `run-plan-review`, `codex-run`, `lane-run`, and adapter-backed `background-run` prepend a framework-managed `codex` shim that delegates to the real CLI with `--enable fast_mode`; set `review.codexFastMode` to `false` only for a project-specific opt-out. Generated adapters tell operators to invoke T1 implementation Codex review through `minervit-methodology codex-run --target . --risk-tier T1 --review-round R1 -- <review.codexWrapper>` and T2/T3 review with `--native-review-note` plus `--stage1-sweep`, so adapter policy is applied even when the project wrapper itself calls plain `codex review`.
+Codex fast mode defaults to enabled for adapter-backed projects. `run-plan-review`, `codex-run`, `lane-run`, and adapter-backed `background-run` prepend a framework-managed `codex` shim that delegates to the real CLI with `--enable fast_mode`; set `review.codexFastMode` to `false` only for a project-specific opt-out. Generated adapters tell operators to invoke T1 implementation Codex review through `tautline codex-run --target . --risk-tier T1 --review-round R1 -- <review.codexWrapper>` and T2/T3 review with `--native-review-note` plus `--stage1-sweep`, so adapter policy is applied even when the project wrapper itself calls plain `codex review`.
 
-Implementation review evidence is push-time enforced for adapter-backed lanes by default. T0 uses self-review plus tests/preflight and does not run cross-model implementation review. T1 keeps one cross-model implementation review round. T2/T3 review additionally requires Stage 1 native review on the exact current assembled diff, then an exhaustive class sweep recorded with `minervit-methodology record-stage1-sweep --target . --native-review-note "<native review result>" --class "<defect class>: <members checked>"`. For Claude-authored code, use Superpowers review plus configured project review agents where available; if unavailable, run a structured self-review checklist and state the fallback. The sweep should enumerate touched classes such as input bounding, output/render sinks, validation/error paths, array dimensions, deterministic fallbacks, rollout sequencing, public API leakage, atomicity/concurrency, breaking-change caller fan-out, idempotency/unique-index behavior, migration/seed ordering, generated/derived artifact freshness, and review-evidence/process integrity. When source files have committed generated mirrors, behavior catalogs, snapshots, indexes, compiled docs, or other derived artifacts, Stage 1 must regenerate or prove those artifacts are current before Codex/Stage 2 spends a round. Project `review.codexWrapper` scripts should review the committed outgoing diff from the adapter/base branch to `HEAD` and ignore untracked scratch files unless explicitly added to the PR scope. After fixing Codex Critical/P1 findings on a T2/T3 diff, rerun native review and record a fresh Stage 1 sweep on the updated assembled diff before the next Codex round. `cap`, `final`, and `retry` labels do not waive this for T2/T3.
+Implementation review evidence is push-time enforced for adapter-backed lanes by default. T0 uses self-review plus tests/preflight and does not run cross-model implementation review. T1 keeps one cross-model implementation review round. T2/T3 review additionally requires Stage 1 native review on the exact current assembled diff, then an exhaustive class sweep recorded with `tautline record-stage1-sweep --target . --native-review-note "<native review result>" --class "<defect class>: <members checked>"`. For Claude-authored code, use Superpowers review plus configured project review agents where available; if unavailable, run a structured self-review checklist and state the fallback. The sweep should enumerate touched classes such as input bounding, output/render sinks, validation/error paths, array dimensions, deterministic fallbacks, rollout sequencing, public API leakage, atomicity/concurrency, breaking-change caller fan-out, idempotency/unique-index behavior, migration/seed ordering, generated/derived artifact freshness, and review-evidence/process integrity. When source files have committed generated mirrors, behavior catalogs, snapshots, indexes, compiled docs, or other derived artifacts, Stage 1 must regenerate or prove those artifacts are current before Codex/Stage 2 spends a round. Project `review.codexWrapper` scripts should review the committed outgoing diff from the adapter/base branch to `HEAD` and ignore untracked scratch files unless explicitly added to the PR scope. After fixing Codex Critical/P1 findings on a T2/T3 diff, rerun native review and record a fresh Stage 1 sweep on the updated assembled diff before the next Codex round. `cap`, `final`, and `retry` labels do not waive this for T2/T3.
 
-Successful implementation Codex review through `codex-run --risk-tier <tier> --review-round Rn` writes `.ai-runs/review-evidence/` manifests bound to the current outgoing diff, HEAD, adapter `review.codexWrapper`, review log hash, wrapper exit code, and the tier-required native-review/Stage 1 sweep fields. After reading and classifying the log, run `minervit-methodology finalize-implementation-review --target . --manifest <manifest> --verdict <clean|clean-with-deferrals|blocked> --unresolved-critical-count <n> --unresolved-p1-count <n>`. Finalization also writes a tracked implementation-review ledger under `<planningArtifacts.sourceOfTruth>/.impl-reviews/`; ignored `.ai-runs` evidence alone is not push-eligible. `minervit-methodology review-evidence-check --target . --strict` verifies that the tier-required evidence and tracked ledger are matching, classified, committed clean, and have zero unresolved Critical/P1 findings; the lane-local Git `pre-push` hook blocks pushes that lack it. Subagent or per-item reviews do not replace the assembled-diff review for the exact diff being pushed.
+Successful implementation Codex review through `codex-run --risk-tier <tier> --review-round Rn` writes `.ai-runs/review-evidence/` manifests bound to the current outgoing diff, HEAD, adapter `review.codexWrapper`, review log hash, wrapper exit code, and the tier-required native-review/Stage 1 sweep fields. After reading and classifying the log, run `tautline finalize-implementation-review --target . --manifest <manifest> --verdict <clean|clean-with-deferrals|blocked> --unresolved-critical-count <n> --unresolved-p1-count <n>`. Finalization also writes a tracked implementation-review ledger under `<planningArtifacts.sourceOfTruth>/.impl-reviews/`; ignored `.ai-runs` evidence alone is not push-eligible. `tautline review-evidence-check --target . --strict` verifies that the tier-required evidence and tracked ledger are matching, classified, committed clean, and have zero unresolved Critical/P1 findings; the lane-local Git `pre-push` hook blocks pushes that lack it. Subagent or per-item reviews do not replace the assembled-diff review for the exact diff being pushed.
 
 Implementation review round budgets are risk-tiered by adapter `review.roundBudgets`, defaulting to zero Codex rounds for T0, one round for T1, and two rounds for T2/T3. When running implementation review, pass `--risk-tier <T1|T2|T3> --review-round Rn` to `codex-run`; the CLI rejects T0 review and rounds beyond the adapter budget. For low-risk PRs, fix Critical/P1 from the single Codex round, route P2/P3/Nit findings by policy, and do not keep buying extra Codex rounds unless the work is reclassified or split.
 
@@ -107,7 +107,7 @@ Plan-review evidence is tracked under `<planningArtifacts.sourceOfTruth>/.plan-r
 Claude Code `PreToolUse: ExitPlanMode` hooks are mandatory for Claude plan-mode lanes. Claude `PreToolUse: Task` branch-liveness hooks are mandatory for Claude tactical subagent dispatch. Claude `PreToolUse: Bash` background-command hooks are mandatory so fake monitor shell loops are blocked before launch. Claude `Stop` response guards are mandatory but runtime-scoped to live active goal sessions: a stale `.ai-work/GOAL_RUN.json` alone is not enough. When no live goal is active in the current chat window, the hook no-ops so normal conversation and clarification can yield; during live active goals it bounces passive-monitor stops, chat-only RCA-shaped responses, status-report-as-stop on derivable-next-action prompts, terminal continuity omission, and false-active status after rejected tools before the turn is yielded. Claude `PostToolUseFailure` tool-rejection hooks are mandatory so rejected/cancelled/denied tool calls inject the correct recovery instruction before the next response. Lane-local Git `pre-commit` and `pre-push` hooks are mandatory for Git worktrees so queued, auto-merge-enabled, merged, or closed PR branches block before more local branch work; `pre-push` also runs `review-evidence-check --strict` when adapter `review.prePushReviewEvidence` is enabled. The portable CLI precheck remains the primary plan control, and the Git hooks bind commit/push to branch liveness and implementation review evidence. `lane-start` installs the hook automatically for Claude plan mode and installs the Claude Task, Bash background-command, Stop response guard, tool-rejection, and Git branch-liveness/review-evidence hooks for Git worktrees; `methodology-status --fail-on-drift` fails if any required hook is missing. Manual install:
 
 ```bash
-minervit-methodology install-hooks --target .
+tautline install-hooks --target .
 ```
 
 If several candidate next items exist and the adapter, backlog priority, ready-for-development status, or execution-packet order can resolve the choice, choose the highest-priority ready item and begin planning. If claiming the choice cannot be resolved or no candidate exists, first inspect the adapter, backlog/source-of-truth plan path, current execution packet, latest delivery summary or continuity handoff, and relevant readiness marker; then name exactly what each artifact said and ask one exact blocker question only if the choice changes scope/risk.
@@ -115,5 +115,5 @@ If several candidate next items exist and the adapter, backlog priority, ready-f
 For parser/fixture validation of a packet:
 
 ```bash
-minervit-methodology work-loop --target . --dry-run
+tautline work-loop --target . --dry-run
 ```

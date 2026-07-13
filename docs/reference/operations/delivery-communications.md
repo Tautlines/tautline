@@ -51,14 +51,14 @@ Adapters control the capability through `iterationReview`. Existing projects def
 Check the active lane configuration with:
 
 ```bash
-minervit-methodology iteration-review-status --target .
+tautline iteration-review-status --target .
 ```
 
 The workflow is text-first. Compose a `GoalReview` JSON record in its own review folder under `iterationReview.recordDir`, validate it, and generate the static page:
 
 ```bash
-minervit-methodology validate-iteration-review --target . --file docs/iteration-reviews/<id>/goal-review.json
-minervit-methodology generate-iteration-review-page --target . --record docs/iteration-reviews/<id>/goal-review.json --write
+tautline validate-iteration-review --target . --file docs/iteration-reviews/<id>/goal-review.json
+tautline generate-iteration-review-page --target . --record docs/iteration-reviews/<id>/goal-review.json --write
 ```
 
 Iteration reviews are customer-facing product communication. The main record fields must read like a short product launch note: what changed for users, why it matters, what capability it unlocks, why the reader can trust it, and what comes next. Keep PR numbers, repository links, file paths, routes, schemas, databases, behavior contracts, specs, Gherkin, test tiers, review rounds, commits, CI mechanics, and implementation jargon out of `why`, `highlight`, `milestones`, `quality`, `next`, `outro`, and top-level `links`; put that detail only in the optional collapsed `technical` appendix. `validate-iteration-review` enforces length limits and rejects technical/process jargon in customer-facing fields.
@@ -70,7 +70,7 @@ When `iterationReview.outputs.video` is true, adapter-aware validation and publi
 After the review lands on the base branch, publish the stakeholder-facing page:
 
 ```bash
-minervit-methodology publish-iteration-review --target . --record docs/iteration-reviews/<id>/goal-review.json
+tautline publish-iteration-review --target . --record docs/iteration-reviews/<id>/goal-review.json
 ```
 
 `publish-iteration-review` uploads `goal-review.json` and `index.html` to the adapter's S3/CloudFront path and prints the CloudFront page URL. When an active goal ledger exists, validate/publish/delivery-check reject review folders whose slug does not match the active `goal_id` before any Chat post, so recovery cannot create duplicate cards under a wrong key. When `iterationReview.delivery.enabled` is true, it posts that CloudFront page URL to the configured Google Chat webhook and dedupes repeated sends. The primary stakeholder link is the S3/CloudFront page, not GitHub, because customers, operators, and business reviewers may not have repository access.
@@ -78,7 +78,7 @@ minervit-methodology publish-iteration-review --target . --record docs/iteration
 At goal close-out, run:
 
 ```bash
-minervit-methodology iteration-review-delivery-check --target . --record docs/iteration-reviews/<id>/goal-review.json
+tautline iteration-review-delivery-check --target . --record docs/iteration-reviews/<id>/goal-review.json
 ```
 
 This verifies the required page/video outputs and the Google Chat delivery marker when delivery is enabled. Do not declare the completed-goal review done until this check passes.
@@ -113,7 +113,7 @@ Adapters control this through `deploymentNotification`. For existing projects th
       "required": true,
       "mode": "ci-post-deploy",
       "evidencePaths": [".github/workflows/deploy.yml"],
-      "requiredCommand": "minervit-methodology publish-deploy-ready-update",
+      "requiredCommand": "tautline publish-deploy-ready-update",
       "healthCheckBeforeNotify": true
     }
   }
@@ -125,19 +125,19 @@ Auto-inherited support is intentionally advisory for existing projects: strict p
 Check configuration with:
 
 ```bash
-minervit-methodology deployment-notification-status --target .
+tautline deployment-notification-status --target .
 ```
 
 The reliable path is the build/deploy pipeline itself. The notification step belongs after deploy completion and live-site health checks in the real CI/deploy workflow. Generate a copy/paste shell step with:
 
 ```bash
-minervit-methodology deployment-notification-pipeline-snippet --target .
+tautline deployment-notification-pipeline-snippet --target .
 ```
 
 The pipeline step should run:
 
 ```bash
-minervit-methodology publish-deploy-ready-update \
+tautline publish-deploy-ready-update \
   --target . \
   --environment dev \
   --url <live-dev-url> \
@@ -157,7 +157,7 @@ must treat deployment history as current work health, not as optional
 background context. Run:
 
 ```bash
-minervit-methodology deploy-health --target .
+tautline deploy-health --target .
 ```
 
 A latest failed deploy, repeated deploy failures, no recent successful deploy,
@@ -190,13 +190,13 @@ Adapters control the capability through `milestoneUpdate`. Current project adapt
 Check the active lane configuration with:
 
 ```bash
-minervit-methodology milestone-update-status --target .
+tautline milestone-update-status --target .
 ```
 
 At a completed milestone boundary, compose a concise internal update with these headings and publish it:
 
 ```bash
-minervit-methodology publish-milestone-update --target . --milestone <milestone-id-or-title> --stdin
+tautline publish-milestone-update --target . --milestone <milestone-id-or-title> --stdin
 ```
 
 Required headings:
@@ -212,7 +212,7 @@ Required headings:
 
 `publish-milestone-update` posts a professional Google Chat card to the configured webhook and dedupes repeated sends by milestone/content hash. When an active goal ledger exists, short milestone keys such as `M3` are canonicalized to the active milestone title before the delivery marker is written, so the completion gate and publisher share one identity. Store the webhook URL in the environment variable named by `milestoneUpdate.webhookEnv`; never commit webhook URLs. For Minervit product lanes that use the shared Product Milestones space, use `MINERVIT_PRODUCT_MILESTONES_GOOGLE_CHAT_WEBHOOK`.
 
-`milestone-update-status --strict` and `methodology-status --fail-on-drift` fail when `milestoneUpdate.enabled` is true and the configured webhook env value is missing. `goal-advance --event milestone-complete` also refuses to mark a milestone complete until the Product Milestones update delivery marker exists. Install the webhook once per machine as a local export; `install-cli` preserves non-managed local exports in `~/.config/minervit/methodology.env` so this value survives normal methodology updates.
+`milestone-update-status --strict` and `methodology-status --fail-on-drift` fail when `milestoneUpdate.enabled` is true and the configured webhook env value is missing. `goal-advance --event milestone-complete` also refuses to mark a milestone complete until the Product Milestones update delivery marker exists. Install the webhook once per machine as a local export; `install-cli` preserves non-managed local exports in `~/.config/tautline/tautline.env` so this value survives normal methodology updates.
 
 ## Product Chat Notes
 
@@ -235,7 +235,7 @@ Adapters control the capability through `productChat`. Existing projects default
 Publish a note with:
 
 ```bash
-minervit-methodology publish-product-note --target . --title "Short title" --stdin
+tautline publish-product-note --target . --title "Short title" --stdin
 ```
 
 The command also supports `--summary "..."` and `--content-file <path>`. It validates that the note is non-empty, below the configured size limit, and does not contain webhook URLs or secret-looking values. Store the webhook URL in the environment variable named by `productChat.webhookEnv`; never commit webhook URLs.

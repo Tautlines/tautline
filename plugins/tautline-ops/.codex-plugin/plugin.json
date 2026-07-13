@@ -38,5 +38,5 @@
   "name": "tautline-ops",
   "repository": "https://github.com/tautlines/tautline",
   "skills": "./skills/",
-  "version": "0.9.1"
+  "version": "0.9.6"
 }

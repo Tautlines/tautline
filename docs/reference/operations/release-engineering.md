@@ -11,17 +11,17 @@ Run the core repository checks before publishing a framework release:
 ```bash
 scripts/test.sh
 scripts/validate.sh
-minervit-methodology public-contract --check
-minervit-methodology canonical-policy --check
-minervit-methodology public-release-check
+tautline public-contract --check
+tautline canonical-policy --check
+tautline public-release-check
 ```
 
 The public contract manifest marks framework surfaces as `stable`,
 `experimental`, `deprecated`, or `internal`:
 
 ```bash
-minervit-methodology public-contract
-minervit-methodology public-contract --check
+tautline public-contract
+tautline public-contract --check
 ```
 
 Stable surfaces follow semver expectations even before 1.0: patch releases are
@@ -37,9 +37,9 @@ clean public-release check as a release prerequisite.
 For clean-repo publication, export a candidate repository:
 
 ```bash
-minervit-methodology public-release-export \
+tautline public-release-export \
   --private-terms-file ~/.config/minervit/public-release-private-terms.txt \
-  --destination ../minervit-ai-delivery-methodology-public \
+  --destination ../tautline-dev-public \
   --write
 ```
 
@@ -58,7 +58,7 @@ source and count; it must not print or write the private term values.
 candidate checkout directly:
 
 ```bash
-minervit-methodology public-release-check \
+tautline public-release-check \
   --private-terms-file ~/.config/minervit/public-release-private-terms.txt
 ```
 
@@ -77,7 +77,7 @@ product docs, squashed changelogs, and no maintainer-identifying paths).
 
 ```bash
 # 1. Export a clean candidate from a committed tree into a scratch destination.
-minervit-methodology public-release-export \
+tautline public-release-export \
   --destination /path/to/scratch/export \
   --write --allow-empty-private-terms
 # (drop --allow-empty-private-terms and pass --private-terms-file once
@@ -114,8 +114,8 @@ Use the first-class channel command instead of hand-editing JSON. The default
 writes a lane-local `.minervit/pin.json` override:
 
 ```bash
-minervit-methodology set-framework-channel --target . stable
-minervit-methodology set-framework-channel --target . experimental
+tautline set-framework-channel --target . stable
+tautline set-framework-channel --target . experimental
 ```
 
 To change the repo-local adapter contract itself, update `_framework.channel`
@@ -123,8 +123,8 @@ through the same command and let it validate and re-render the generated lane
 config:
 
 ```bash
-minervit-methodology set-framework-channel --target . --source adapter stable
-minervit-methodology set-framework-channel --target . --source adapter experimental
+tautline set-framework-channel --target . --source adapter stable
+tautline set-framework-channel --target . --source adapter experimental
 ```
 
 Before promoting experimental work to stable, verify that migration reports,
@@ -140,13 +140,13 @@ plugin's configured notification channel. Publish a concise plain-language
 release update with:
 
 ```bash
-minervit-methodology publish-release-update --version "$(cat VERSION)"
+tautline publish-release-update --version "$(cat VERSION)"
 ```
 
 The ops plugin (typically `plugins/tautline-ops/`) can configure
 announcement delivery via the `MINERVIT_METHODOLOGY_RELEASE_GOOGLE_CHAT_WEBHOOK`
 environment variable for Google Chat integration, the fallback in
-`$HOME/.config/minervit/methodology.env`, or an explicitly supplied webhook URL.
+`$HOME/.config/tautline/tautline.env`, or an explicitly supplied webhook URL.
 Framework release gates do not depend on successful announcement delivery;
 announcement mechanisms are an ops-only concern.
 
@@ -175,9 +175,9 @@ a release is complete and public.
 Use migration and status commands to inspect drift before changing a lane:
 
 ```bash
-minervit-methodology methodology-status --target .
-minervit-methodology migrate-adapter .tautline/adapter.json --dry-run
-minervit-methodology migrate-adapter .tautline/adapter.json --write
+tautline methodology-status --target .
+tautline migrate-adapter .tautline/adapter.json --dry-run
+tautline migrate-adapter .tautline/adapter.json --write
 ```
 
 Migration writes must be explicit, deterministic, validated, and idempotent.

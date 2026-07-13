@@ -32,12 +32,12 @@ remediation contract, and the non-interactive-caller scope.
 Create a fail-closed scaffold for a project that does not have an adapter yet:
 
 ```bash
-bin/minervit-methodology adapter-bootstrap-questions \
+bin/tautline adapter-bootstrap-questions \
   --target <lane_path>
 ```
 
 ```bash
-bin/minervit-methodology init-project-adapter \
+bin/tautline init-project-adapter \
   --target <lane_path>
 ```
 
@@ -48,7 +48,7 @@ Generic executor banners such as "greenfield execution mode", "auto mode", "choo
 Print generated files to stdout:
 
 ```bash
-bin/minervit-methodology render-adapters \
+bin/tautline render-adapters \
   --project <lane_path>/.tautline/adapter.json \
   --target <lane_path>
 ```
@@ -56,7 +56,7 @@ bin/minervit-methodology render-adapters \
 Check whether target generated files match the adapter:
 
 ```bash
-bin/minervit-methodology render-adapters \
+bin/tautline render-adapters \
   --project <lane_path>/.tautline/adapter.json \
   --target <lane_path> \
   --check
@@ -65,7 +65,7 @@ bin/minervit-methodology render-adapters \
 Write generated files:
 
 ```bash
-bin/minervit-methodology render-adapters \
+bin/tautline render-adapters \
   --project <lane_path>/.tautline/adapter.json \
   --target <lane_path> \
   --write
@@ -74,7 +74,7 @@ bin/minervit-methodology render-adapters \
 Write only the lane JSON/config file, preserving existing `CLAUDE.md` and `AGENTS.md`:
 
 ```bash
-bin/minervit-methodology render-adapters \
+bin/tautline render-adapters \
   --project <lane_path>/.tautline/adapter.json \
   --target <lane_path> \
   --write \
@@ -96,7 +96,7 @@ AGENTS.md
 Run a known-pattern process drift audit:
 
 ```bash
-bin/minervit-methodology audit \
+bin/tautline audit \
   --project <lane_path>/.tautline/adapter.json \
   --target <lane_path>
 ```
@@ -114,7 +114,7 @@ The audit currently flags patterns such as:
 Fetch readiness evidence without touching a local checkout:
 
 ```bash
-bin/minervit-methodology readiness-review --project <lane_path>/.tautline/adapter.json
+bin/tautline readiness-review --project <lane_path>/.tautline/adapter.json
 ```
 
 This command uses `gh api` to inspect:
@@ -131,7 +131,7 @@ It does not run `git fetch` and does not inspect an active development lane.
 Start a long-running command with a log and monitor instructions:
 
 ```bash
-bin/minervit-methodology background-run \
+bin/tautline background-run \
   --log /tmp/my-command.log \
   --timeout-seconds 900 \
   -- make preflight
@@ -152,7 +152,7 @@ This helper is intentionally small. It does not replace project-specific monitor
 Check whether a log-backed command is actually healthy before reporting it active:
 
 ```bash
-bin/minervit-methodology monitor-status \
+bin/tautline monitor-status \
   --target <lane_path> \
   --log /tmp/my-command.log \
   --pid <pid-if-known> \
@@ -163,14 +163,14 @@ bin/minervit-methodology monitor-status \
 
 Transient provider outages are recovery-loop work. Anthropic/Claude/Codex/GitHub/API overloads, API errors, 429/500/502/503/504/529 responses, rate limits, websocket/network failures, service-degraded messages, and "try again" failures require `ScheduleWakeup` or host self-wakeup at an initial cadence no longer than 5 minutes, with backoff capped at 15 minutes. Lanes should retry until the provider responds or the failure becomes a real credential/access/scope/risk blocker; they should not stop for the night because Anthropic or another provider is temporarily down. Do not cancel the recovery loop, scheduled retry, wakeup, or autonomous goal loop merely because the human operator is angry or uses profanity; cancellation requires an explicit stop, cancel, pause, abort, or `/goal clear` instruction.
 
-Short form for status checks: `minervit-methodology monitor-status --target <lane_path> --log <log> --pid <pid-if-known> --strict`.
+Short form for status checks: `tautline monitor-status --target <lane_path> --log <log> --pid <pid-if-known> --strict`.
 
 ### RCA Archive Publishing
 
 Validate a methodology regression RCA and publish it to the dedicated RCA archive branch for other machines:
 
 ```bash
-bin/minervit-methodology publish-rca-artifact \
+bin/tautline publish-rca-artifact \
   --file <lane_path>/.ai-runs/<utc>-methodology-regression-rca.md \
   --commit \
   --push
@@ -186,8 +186,8 @@ Methodology RCA artifacts use compact substance sections:
 - `## Proposed control`
 - `## Validation`
 
-Record `minervit-methodology version --no-remote` and
-`minervit-methodology methodology-status --target . --fail-on-drift` output in
+Record `tautline version --no-remote` and
+`tautline methodology-status --target . --fail-on-drift` output in
 `Evidence` when stale methodology, adapter drift, missing hooks, or locked lanes
 may have contributed.
 
@@ -200,8 +200,8 @@ The CLI-generated `Session Runtime` block includes Graphify freshness evidence: 
 Prepare a journal from an agent-written summary and validate it in place:
 
 ```bash
-minervit-methodology prepare-session-journal --target <lane_path> --stdin
-minervit-methodology validate-session-journal --file <lane_path>/.ai-runs/session-journals/<utc>-session-journal.md
+tautline prepare-session-journal --target <lane_path> --stdin
+tautline validate-session-journal --file <lane_path>/.ai-runs/session-journals/<utc>-session-journal.md
 ```
 
 Both commands write only under the lane's gitignored `.ai-runs/`; nothing leaves the lane.
@@ -209,7 +209,7 @@ Both commands write only under the lane's gitignored `.ai-runs/`; nothing leaves
 To contribute sanitized signal upstream, enable `"instrumentation": {"enabled": true}` in the source adapter and publish an instrumentation record, a closed-vocabulary record with zero product-information capacity:
 
 ```bash
-minervit-methodology publish-instrumentation-record --target .
+tautline publish-instrumentation-record --target .
 ```
 
 See [Instrumentation](../instrumentation.md) for the record schema and vocabulary.
@@ -235,7 +235,7 @@ For T2/T3 or explicitly review-required plans, run one authoring-model native/se
 Run the configured cross-model review through the methodology CLI. `run-plan-review` starts exactly one plan-only Codex review round and writes the trusted log plus sidecar metadata:
 
 ```bash
-bin/minervit-methodology run-plan-review \
+bin/tautline run-plan-review \
   --target <lane_path> \
   --plan <source-of-truth-plan> \
   --round R1
@@ -246,7 +246,7 @@ Plan review is capped at two rounds. R3 is accepted only with `--allow-r3-struct
 `run-plan-review` has a no-output watchdog so a wedged Codex/review process cannot be mistaken for active work. The default threshold is 720 seconds without log growth; override only for a known slow reviewer:
 
 ```bash
-bin/minervit-methodology run-plan-review \
+bin/tautline run-plan-review \
   --target <lane_path> \
   --plan <source-of-truth-plan> \
   --round R1 \
@@ -260,7 +260,7 @@ When the watchdog fires, the CLI terminates the review process group, returns ex
 After reading the log and classifying findings, bind that existing trusted run into the tracked manifest and in-plan evidence section:
 
 ```bash
-bin/minervit-methodology finalize-plan-review \
+bin/tautline finalize-plan-review \
   --target <lane_path> \
   --plan <source-of-truth-plan> \
   --log <printed-plan-review-log> \
@@ -276,7 +276,7 @@ The captured review command must start with the adapter `review.codexPlanWrapper
 Block every plan-finalization path until the manifest matches the current plan and review log:
 
 ```bash
-bin/minervit-methodology plan-finalization-precheck \
+bin/tautline plan-finalization-precheck \
   --target <lane_path> \
   --plan <source-of-truth-plan>
 ```
@@ -284,7 +284,7 @@ bin/minervit-methodology plan-finalization-precheck \
 Install the Claude Code `ExitPlanMode` hook, Claude `Task` branch-liveness hook, Claude `Bash` background-command hook, Claude `Stop` response guard, Claude tool-rejection hook, and lane-local Git branch-liveness hooks. `lane-start` installs these automatically, and `methodology-status --fail-on-drift` fails if required hooks are missing:
 
 ```bash
-bin/minervit-methodology install-hooks --target <lane_path>
+bin/tautline install-hooks --target <lane_path>
 ```
 
 ### Document Context Commands
@@ -292,26 +292,26 @@ bin/minervit-methodology install-hooks --target <lane_path>
 Bootstrap context indexes without moving project docs:
 
 ```bash
-bin/minervit-methodology context-bootstrap --target <lane_path> --write
+bin/tautline context-bootstrap --target <lane_path> --write
 ```
 
 Classify existing Markdown candidates into the generated index for human/agent review:
 
 ```bash
-bin/minervit-methodology context-bootstrap --target <lane_path> --classify --write
+bin/tautline context-bootstrap --target <lane_path> --classify --write
 ```
 
 Add historical headers to archived Markdown after the index is reviewed:
 
 ```bash
-bin/minervit-methodology context-bootstrap --target <lane_path> --add-archive-headers --write
+bin/tautline context-bootstrap --target <lane_path> --add-archive-headers --write
 ```
 
 Inspect budget state:
 
 ```bash
-bin/minervit-methodology context-status --target <lane_path>
-bin/minervit-methodology context-status --target <lane_path> --strict
+bin/tautline context-status --target <lane_path>
+bin/tautline context-status --target <lane_path> --strict
 ```
 
 Warn mode reports issues and exits zero. Strict mode exits non-zero for missing indexes, oversized indexes, unclassified tracked Markdown, missing archive headers, or generated adapter drift.
@@ -323,13 +323,13 @@ Graphify is adapter-backed, optional per project, and enabled by default. It giv
 Inspect Graphify state:
 
 ```bash
-bin/minervit-methodology graphify-status --target <lane_path>
+bin/tautline graphify-status --target <lane_path>
 ```
 
 Install Graphify CLI support when asked:
 
 ```bash
-bin/minervit-methodology graphify-install --target <lane_path>
+bin/tautline graphify-install --target <lane_path>
 ```
 
 Build or refresh the graph from the project root:

@@ -8,8 +8,8 @@ Edit policy in the module that owns the behavior, then regenerate the
 compatibility artifact:
 
 ```bash
-minervit-methodology canonical-policy --write
-minervit-methodology canonical-policy --check
+tautline canonical-policy --write
+tautline canonical-policy --check
 ```
 
 Do not hand-edit `methodology/canonical-rules.md`. It remains a generated
@@ -61,6 +61,6 @@ single-file surface for existing consumers while the source policy stays modular
   need it in the generated `canonical-rules.md` artifact.
 - Update plugin skills or reference docs only when the procedural surface also
   changes; do not copy full canonical policy into skills.
-- Run `minervit-methodology canonical-policy --write` after policy module edits.
+- Run `tautline canonical-policy --write` after policy module edits.
 - Run `scripts/test.sh` and `scripts/validate.sh` before publishing policy
   changes.

@@ -235,8 +235,7 @@ automatic at the next lane start.
 
 ## Deferred Follow-Ups
 
-Three follow-ups from this release are tracked as a named backlog entry
-(`METH-FU-COORDINATION-DEADLOCK-FOLLOWUPS` in `docs/backlog/methodology-backlog.md`)
+Three follow-ups from this release are tracked in the maintainer backlog
 rather than shipped here: a dedicated coordination-branch or git-notes design for
 mixed-WIP status pushes, per-ref review-evidence evaluation for multi-ref pushes,
 and marker-aware Claude-hook enforcement extending remediation blocking to direct

@@ -1,6 +1,6 @@
 ---
 name: merge-queue-monitoring
-description: Use merge queue or auto-merge safely: no routine admin merge, queue after local gates, stop watching clean queued PRs, and let startup gates catch later failures/conflicts.
+description: "Use merge queue or auto-merge safely: no routine admin merge, queue after local gates, stop watching clean queued PRs, and let startup gates catch later failures/conflicts."
 ---
 
 # Merge Queue Monitoring

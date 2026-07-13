@@ -18,7 +18,7 @@ Keep this example generalized and customer-safe. Do not add proprietary MakerKit
 1. Run the active Minervit adapter startup/status gates before planning or implementation in adapter-backed repos.
 2. Identify the installed kit shape first: inspect root/package rules, workspace config, `apps/web`, key packages, `apps/e2e`, and local kit docs.
 3. Read `references/current-lessons.md` for architecture, auth, tenant/owner isolation, deployment, branding, testing, billing, porting, or skill refresh work.
-4. Read `references/example-engine-g10-makerkit.md` for the worked Example Engine SaaS-port case, personal/guest ownership, legacy logic ports, one-off guest checkout, or follow-on conventions.
+4. Read `references/example-engine-makerkit.md` for the worked Example Engine SaaS-port case, personal/guest ownership, legacy logic ports, one-off guest checkout, or follow-on conventions.
 5. Prefer installed kit source and local docs over memory. Use official external docs only for touched behavior, then reconcile with local source.
 6. Apply the active adapter and Minervit gates. This skill adds MakerKit judgment; it does not replace project process.
 

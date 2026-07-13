@@ -4,6 +4,10 @@ name: renderer-ci
 # the renderer-kit path changes so unrelated PRs stay fast. Installs with `npm ci` for a
 # reproducible, lockfile-exact tree (never `npm install`), then typechecks and tests.
 on:
+  # Path-filtered triggers mean this workflow may never have run on the default branch, which
+  # leaves the README badge with no status to render. workflow_dispatch allows a manual run to
+  # populate it.
+  workflow_dispatch:
   pull_request:
     paths:
       - "plugins/tautline-ops/skills/iteration-review/renderer-kit/**"

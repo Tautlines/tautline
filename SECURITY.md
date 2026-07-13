@@ -45,8 +45,9 @@ We credit reporters in the release notes unless you ask us not to. We support a 
 embargo window and will keep you updated through the fix.
 
 **Supported versions.** Security fixes target the latest released version (currently the
-`0.6.x` line). Because installs run the live release artifact, the most reliable mitigation
-is to update to the latest signed release once one is available (see
+`0.9.x` line). Because installs run the live git tree rather than an immutable release
+artifact, the most reliable mitigation is to review the incoming upstream commits and advance
+your pin (`update-repin`) under a `pinned` or `signed` update policy (see
 [Supply-Chain Posture](#supply-chain-posture-signing--provenance)).
 
 ---
@@ -66,12 +67,12 @@ resolves to**, so the integrity of that checkout is your responsibility.
 1. **The generated launcher** (`install-claude-launcher`). The launcher is a `/bin/sh`
    script that resolves the framework repository, runs `sync-methodology`, runs
    `lane-start` / `methodology-status`, and finally `exec`s your agent
-   (`bin/minervit-methodology`, `claude_launcher_content`). Resolution order is:
-   an operator-set `MINERVIT_METHODOLOGY_REPO` preset, then a **cwd-ancestor walk for any
-   directory named `minervit-ai-delivery-methodology`**, then the `methodology.env`
+   (`bin/tautline`, `claude_launcher_content`). Resolution order is:
+   an operator-set `TAUTLINE_METHODOLOGY_REPO` preset, then a **cwd-ancestor walk for any
+   directory named `tautline` (or the legacy checkout name)**, then the `methodology.env`
    fallback. The cwd-walk step is convenient but means that **a
    directory of that name planted under your working tree can be adopted as the privileged
-   checkout**. Prefer an operator-controlled `MINERVIT_METHODOLOGY_REPO` /
+   checkout**. Prefer an operator-controlled `TAUTLINE_METHODOLOGY_REPO` /
    `methodology.env` and do not run lanes from directories you do not control.
 
 2. **The pre-push git hook.** `install-cli` writes a `pre-push` hook that invokes the
@@ -79,7 +80,7 @@ resolves to**, so the integrity of that checkout is your responsibility.
    push is allowed. The hook executes the same resolved CLI as the launcher. A compromised checkout therefore
    compromises every `git push` from that repository.
 
-3. **`methodology.env`.** The launcher currently **`source`s** `~/.config/minervit/methodology.env`
+3. **`methodology.env`.** The launcher currently **`source`s** `~/.config/tautline/tautline.env`
    as a shell script rather than parsing it as strict `KEY=VALUE`
    pairs. Any code in that file runs at launch. Treat `methodology.env` as
    trusted, write it `0600`, and never accept one from an untrusted source. The target
@@ -91,7 +92,7 @@ resolves to**, so the integrity of that checkout is your responsibility.
   tree of a checkout you control. If you point that checkout at a third-party fork or a
   shared upstream, you are trusting that party with code execution as your user on every
   lane start and every push.
-- **Control the resolution path.** Set `MINERVIT_METHODOLOGY_REPO` explicitly. Do not rely
+- **Control the resolution path.** Set `TAUTLINE_METHODOLOGY_REPO` explicitly. Do not rely
   on the cwd-ancestor walk in shared or multi-user directories.
 - **Protect `methodology.env`.** Keep it `0600` and owned by you.
 
@@ -112,7 +113,11 @@ decides whether the freshly-fetched HEAD may run **before** `os.execve`.
 
 - **`signed`** — the new HEAD must carry a valid signature (`git verify-commit`), optionally
   from a key on the `MINERVIT_METHODOLOGY_UPDATE_SIGNERS` allowlist. An unsigned or
-  wrongly-signed HEAD **fails closed** (the re-exec is refused).
+  wrongly-signed HEAD **fails closed** (the re-exec is refused). This lever is for an upstream
+  **you** control and sign: the canonical `tautlines/tautline` upstream does **not** sign its
+  commits today, so a `signed` policy pointed at it refuses every update, and there is no
+  upstream fix you can apply. Signing the canonical upstream is a roadmap item, not something
+  to rely on today — against it, use `pinned`.
 - **`pinned`** — the new HEAD must match a commit in the pin allowlist
   (`MINERVIT_METHODOLOGY_UPDATE_PINS`, or `~/.config/minervit/methodology.update-pins`). Any
   other HEAD **fails closed**. A `pinned` policy with no configured pins also fails closed.
@@ -161,23 +166,61 @@ Only enable it on a machine and against a checkout you fully trust.
 
 ## Supply-Chain Posture (Signing & Provenance)
 
-**Current state.** The CLI and plugin are
-distributed and executed today with **no signing, checksum, or provenance**, and hooks exec
-the launcher/CLI from an env-resolved path. There is no immutable release artifact — adopters
-run the live git tree.
+This repository is public and has published releases. The controls below are the ones that
+**exist today** — read this section before enabling auto-update against an upstream you do not
+control.
 
-**Target state (the public-distribution gate).**
+**What ships today.**
 
-- **Signed, checksummed releases.** Releases will be cut as immutable tags / GitHub Releases
-  with **SHA-256 checksums** and **signing/provenance via Sigstore/cosign or
-  `gh attestation`**.
-- **Verify-before-exec.** The launcher and auto-update path will **verify the shipped
-  checksum/signature before `exec`**. Verification failure fails closed.
-- **No public release until the trust layer lands.** Signing + verify-before-exec +
-  signed/pinned auto-update are prerequisites for flipping this repository public.
+- **A trust-gated auto-update.** Every re-exec of freshly-pulled code is gated by
+  `verify_upstream_trust`, and the checkout itself refuses to advance to a commit the policy
+  would reject (`gate_methodology_upstream_advance`). Under `pinned` — the `install-cli`
+  default — the new HEAD must match a configured pin; under `signed` it must carry a valid
+  commit signature (`git verify-commit`), optionally from an allowlisted signer. Both **fail
+  closed**. Note that `signed` presumes an upstream you sign yourself; see
+  [Auto-Update Safety](#auto-update-safety) for the full lever set and that caveat.
+- **Verify-before-exec, at the *commit* level.** What gets verified is a **git commit** — its
+  identity against your pin allowlist, or its signature — checked **before** the working tree
+  advances and **before** `os.execve`. It is *not* a checksum or signature over a downloaded
+  release artifact. That distinction is the whole of the limits below.
 
-When SBOMs ship, they will cover the optional renderer toolchain (which uses npm); the core
-CLI needs none (see below).
+**What does not ship yet.**
+
+- **The current releases carry no checksum manifest, and the release tags are not signed.** The
+  `cut-release` command *can* compute **SHA-256 checksums** of the distributed artifacts and
+  write them under `docs/releases/`, and *can* create a **signed git tag** for the release commit
+  (with `--create-tag --sign`; `--sign` on its own only changes the tag command it *prints*).
+  Neither has been done for the current release line: `docs/releases/` carries checksum files for
+  older `0.6.x` tags only, and the published `v0.9.x` tags are unsigned. Do not go looking for a
+  manifest or a tag signature to verify against — there is not one to find.
+- **Nothing would verify such a manifest anyway.** No install, launcher, or update path reads a
+  checksum manifest back; what `cut-release` writes is a maintainer-side record. A checksum
+  nobody checks is not a trust control, and you should not count it as one.
+- **There is no immutable release artifact.** The published GitHub Releases carry no attached
+  build; adopters still run the **live git tree** of a checkout they control. Your integrity
+  guarantee comes from the pin or signature on the commit, not from a downloaded tarball.
+- **No provenance attestation.** There is no Sigstore/cosign or `gh attestation` wiring in CI.
+- **No SBOM** is generated, for the core CLI or for the optional renderer toolchain.
+
+**What this means for adopters.** The upstream you point at can run code as your user, so
+**only enable auto-update against an upstream you control**. A `pinned` policy guarantees
+exactly one thing, and it is a useful one: the code that re-executes is the specific commit you
+pinned, and any other HEAD fails closed until you review the incoming commits and advance the
+pin (`update-repin`). A `signed` policy guarantees the new HEAD carries a valid signature from a
+key you trust. Neither authenticates a *release artifact*, and neither protects a `warn` or
+`unverified` install.
+
+**Target state (roadmap).**
+
+- **Verified release artifacts.** Immutable builds attached to GitHub Releases, with their
+  published **SHA-256 checksums verified by the install and update path before `exec`**, failing
+  closed on mismatch.
+- **A signed canonical upstream.** Signed release commits and tags on `tautlines/tautline`, so
+  `--update-policy signed` becomes a usable lever against the canonical upstream and not only
+  against one you sign yourself.
+- **Signing/provenance in CI.** Sigstore/cosign or `gh attestation` over those artifacts.
+- **SBOMs.** Covering the optional renderer toolchain (which uses npm); the core CLI needs none
+  (see below).
 
 ---
 

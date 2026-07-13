@@ -41,13 +41,20 @@ cd tautline
 bin/tautline install-cli
 ```
 
-`install-cli` writes a portable launcher to `~/.local/bin/minervit-methodology` (the
-compatibility-named launcher for the `tautline` CLI), an
-environment file at `~/.config/minervit/methodology.env`, a pre-commit guard in the
+`install-cli` writes a portable launcher to `~/.local/bin/tautline` (plus the
+legacy `minervit-methodology` compatibility alias), an
+environment file at `~/.config/tautline/tautline.env`, a pre-commit guard in the
 framework checkout, and autocompact settings in `~/.claude/settings.json`. Pass `--dry-run`
 to see every mutation before it happens; `uninstall-cli` removes the launcher and
 environment file (the `~/.claude/settings.json` autocompact settings and any installed
 git guards stay in place — remove those by hand if you want a full rollback).
+
+Then activate the environment (or restart your shell) and make sure `~/.local/bin` is on your
+`PATH`:
+
+```bash
+source ~/.config/tautline/tautline.env
+```
 
 Then initialize a project you want the agent to work in:
 
@@ -66,6 +73,23 @@ tautline lane-start --target .
 
 The legacy `minervit-methodology` command name keeps working as a compatibility shim for
 existing installs and generated adapters.
+
+## Install the Claude Code plugin
+
+Tautline ships its own Claude Code plugin marketplace. Inside Claude Code:
+
+```
+/plugin marketplace add tautlines/tautline
+/plugin install tautline-core@tautline
+```
+
+- **`tautline-core`** — enforced completion gates, lane lifecycle, review-before-push, and the
+  blocking in-session hooks.
+- **`tautline-ops`** — delivery-ops surfaces: iteration review, milestone updates, session
+  journals, usage accounting, event observability. Install it with
+  `/plugin install tautline-ops@tautline`.
+
+The plugins drive the CLI installed in the quickstart above, so install the CLI first.
 
 ## How it compares
 

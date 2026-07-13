@@ -1,0 +1,80 @@
+{
+  "behaviorChanges": [
+    "Documentation truth pass on the public surface: TERMS.md now describes the auto-update trust model that actually ships (install-cli pins the update source to the installing commit by default, --update-policy signed verifies the upstream commit signature, both fail closed, and install-claude-launcher refuses --dangerously-skip-permissions unless one of those policies is in effect) instead of describing it as a pre-launch target.",
+    "A Claude Code plugin marketplace manifest ships at .claude-plugin/marketplace.json, so `/plugin marketplace add tautlines/tautline` offers the tautline-core and tautline-ops plugins directly from the repository. The README documents the install flow and the shell activation/PATH step the quickstart previously omitted.",
+    "Public documentation no longer points at maintainer-only paths a reader of this repository cannot open; those references now name the maintainer repository or its backlog in prose. The render-adapters deprecation warning for the legacy goalTracker adapter key drops its pointer to a maintainer-only design document and keeps the actionable instruction (migrate to backlogProvider). The renderer-ci workflow accepts workflow_dispatch so its default-branch badge can render a status.",
+    "SECURITY.md states the supply-chain posture that actually ships: the commit-level trust gate on every auto-update re-exec is real and fails closed, but the current releases carry no checksum manifest and the published release tags are not signed. cut-release can compute a SHA-256 manifest and can create a signed tag with the right flags; that is now described as a capability rather than as something an adopter can verify against today.",
+    "SECURITY.md and TERMS.md note that --update-policy signed applies to an upstream you control and sign. The canonical upstream does not sign its commits yet, so a signed policy pointed at it refuses every update (fail-closed, with no upstream fix available to the adopter); pinned, the install default, remains the working lever against it. Signing the canonical upstream is listed as a roadmap item.",
+    "ROADMAP.md speaks of the public repository in the present tense, backlinks its work items to their public issues, and carries a Recently shipped section that is current through the 0.9.x line."
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "publish-pending-session-journals",
+      "removeAfter": "1.0.0",
+      "replacement": "publish-instrumentation-record",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "publish-session-journal",
+      "removeAfter": "1.0.0",
+      "replacement": "publish-instrumentation-record",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    },
+    {
+      "name": "rules-audit",
+      "path": "plugins/tautline-core/skills/rules-audit/SKILL.md",
+      "removeAfter": "1.0.0",
+      "replacement": "framework-intake",
+      "section": "skills",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [],
+  "productsTested": [],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "Documentation, workflow-trigger, and plugin-manifest changes only: pinning back to 0.9.4 restores the previous prose and removes the marketplace manifest; no runtime or configuration surface changes either way.",
+    "Stable clients remain on the stable channel unless they explicitly opt into experimental.",
+    "This release is WIP-safe: it carries no executable behavior change."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.9.5",
+  "wipSafe": true
+}

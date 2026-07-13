@@ -1176,7 +1176,7 @@ def test_methodology_regression_rca_reference_retains_feature_request_policy():
     assert "Immediate Next Action` must name a specific file path" in normalized
     assert "methodology-feature-request-archive" in text
     assert "Do not include person-specific machine paths" in text
-    assert "`docs/backlog/methodology-backlog.md`" in text
+    assert "entries in the maintainer backlog" in text
     assert "provider-backed backlog items through the existing sanctioned backlog flow" in normalized
 
 
@@ -2395,7 +2395,7 @@ def test_makerkit_implementation_skill_is_concise_entrypoint():
     assert "## Non-Negotiables" in text
     assert "## Common Wrong Turns" in text
     assert "references/current-lessons.md" in text
-    assert "references/example-engine-g10-makerkit.md" in text
+    assert "references/example-engine-makerkit.md" in text
     assert "Treat MakerKit as the owned SaaS platform, not a blank Next.js app" in text
     assert "Use the installed kit's monorepo shape unless local source proves otherwise" in text
     assert "Use the correct auth surface for the file type" in text

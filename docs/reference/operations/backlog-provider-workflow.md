@@ -16,7 +16,7 @@ but it does not replace repo source-of-truth planning or tactical PR planning.
 Validate GitHub CLI auth and configured Project fields with:
 
 ```bash
-minervit-methodology backlog-provider-status --target .
+tautline backlog-provider-status --target .
 ```
 
 With no active goal ledger or provider item, select the next ready Project item,
@@ -24,8 +24,8 @@ sync it into the repo source of truth, and review the repo plan before
 execution:
 
 ```bash
-minervit-methodology backlog-provider-next --target .
-minervit-methodology backlog-provider-sync --target . --item <id-or-url> --write
+tautline backlog-provider-next --target .
+tautline backlog-provider-sync --target . --item <id-or-url> --write
 ```
 
 The synced plan links back to the GitHub Project item and preserves the board's
@@ -55,8 +55,8 @@ in a separate review/QA column just because the board has one.
 Board currency is a blocking gate, not advisory:
 
 ```bash
-minervit-methodology backlog-provider-board-check --target .
-minervit-methodology methodology-status --target . --strict --fail-on-drift
+tautline backlog-provider-board-check --target .
+tautline methodology-status --target . --strict --fail-on-drift
 ```
 
 The check reconciles in-scope board items against real issue/PR state. A
@@ -91,7 +91,7 @@ internal technical sub-issues stay in the repo backlog unless they are also
 customer-facing board work. Parent issue status is not a substitute for board-backed subtask status, and a board-backed subtask in an active status means its parent issue must be active too. The normal active-claim path is:
 
 ```bash
-minervit-methodology backlog-provider-sync --item <id-or-url> --write
+tautline backlog-provider-sync --item <id-or-url> --write
 ```
 
 That write refreshes the repo plan and moves the selected board item plus any board-backed native subtasks to the first adapter-approved active status before planning/review work proceeds. Later sanctioned parent status moves reconcile board-backed subtasks too; sanctioned subtask active-status moves reconcile the native parent active too.
@@ -107,7 +107,7 @@ When stakeholders should answer clarifying questions in GitHub, enable adapter
 configured stakeholder:
 
 ```bash
-minervit-methodology stakeholder-question-ask --target . \
+tautline stakeholder-question-ask --target . \
   --issue <issue-number-or-url> \
   --question "<one clear question>" \
   --why "<why the answer changes the build>" \
@@ -120,7 +120,7 @@ status when the issue is on the board. At startup and PR/milestone/blocked
 boundaries, run:
 
 ```bash
-minervit-methodology stakeholder-question-status --target . --sync
+tautline stakeholder-question-status --target . --sync
 ```
 
 The sync command detects later comments from the tagged stakeholder, records an
@@ -134,8 +134,8 @@ For projects with an existing repo backlog, migrate deliberately rather than
 replacing the backlog wholesale:
 
 ```bash
-minervit-methodology backlog-provider-migration-interview --target . --write
-minervit-methodology backlog-provider-export --target . --item-path <repo-plan.md> --type <goal|milestone|bug|task> --write
+tautline backlog-provider-migration-interview --target . --write
+tautline backlog-provider-export --target . --item-path <repo-plan.md> --type <goal|milestone|bug|task> --write
 ```
 
 The migration interview lists candidate repo goals, milestones, bugs, and tasks

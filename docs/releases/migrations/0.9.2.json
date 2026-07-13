@@ -1,0 +1,86 @@
+{
+  "behaviorChanges": [
+    "Config surface rebrand: the CLI reads ~/.config/tautline/tautline.env first with the legacy ~/.config/minervit/methodology.env as fallback; install-cli emits TAUTLINE_METHODOLOGY_REPO and TAUTLINE_CLAUDE_AUTOCOMPACT_PCT aliases and writes a byte-identical legacy mirror; emitted shims, launchers, and git hooks source the tautline path first and honor TAUTLINE_METHODOLOGY_REPO. Trust configuration (update policy/pins) keeps its 0.9.1 names and semantics; TAUTLINE trust aliases and pin-set preservation ship separately as a focused security change.",
+    "Lane and codex child environments dual-write TAUTLINE_* aliases for every MINERVIT_* variable so mixed-version process trees agree during the transition.",
+    "The held-update banners defer to the active trust policy's remedy in the hold detail (deferred R2 P2 from 0.9.1, now landed).",
+    "Commands, adapter schema, and product-lane gates are otherwise unchanged."
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "publish-pending-session-journals",
+      "removeAfter": "1.0.0",
+      "replacement": "publish-instrumentation-record",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "publish-session-journal",
+      "removeAfter": "1.0.0",
+      "replacement": "publish-instrumentation-record",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    },
+    {
+      "name": "rules-audit",
+      "path": "plugins/tautline-core/skills/rules-audit/SKILL.md",
+      "removeAfter": "1.0.0",
+      "replacement": "framework-intake",
+      "section": "skills",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [
+    {
+      "command": "tautline install-cli && tautline install-claude-launcher --force",
+      "description": "The machine config surface moves to ~/.config/tautline/tautline.env (secrets: ~/.config/tautline/secrets.zsh; re-exec tokens: ~/.config/tautline/reexec-tokens). install-cli writes the new file, migrates preserved values from the legacy ~/.config/minervit/methodology.env, and keeps that legacy path as a byte-identical compatibility mirror so pre-0.9.2 launchers/hooks keep resolving. update-repin keeps both surfaces' pins in step. Re-running install-cli + install-claude-launcher adopts the new surface; nothing breaks without it (legacy fallbacks remain until METH-FU-TAUTLINE-FALLBACK-REMOVAL).",
+      "id": "reinstall-cli-for-tautline-config",
+      "surface": "config"
+    }
+  ],
+  "productsTested": [],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "Pinning back to 0.9.1 keeps working: the legacy config mirror is byte-identical, so pre-0.9.2 code resolves the same values from the legacy path.",
+    "No adapter migration is required for product lanes.",
+    "Stable clients remain on the stable channel unless they explicitly opt into experimental.",
+    "This release is WIP-safe: resolution order adds a preferred path without removing any legacy surface."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.9.2",
+  "wipSafe": true
+}

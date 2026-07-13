@@ -10,16 +10,16 @@ Keep future updates evidence-backed, but do not copy machine-local checkout path
 
 ## Installed Kit Snapshot
 
-The Example Engine Phase 0 used `makerkit/next-drizzle-saas-kit-turbo`, version `1.7.1`.
+The Example Engine Phase 0 used `makerkit/next-drizzle-saas-kit-turbo`, at the kit's current minor version.
 
-Core stack:
+Core stack, pinned to each project's then-current versions at the time of the port:
 
-- Next.js 16 App Router and RSC.
-- React 19 and TypeScript.
+- Next.js App Router and RSC, on the framework's then-current major version.
+- React and TypeScript, on React's then-current major version.
 - Better Auth for auth, sessions, anonymous users, accounts, subscriptions, and multi-tenancy.
 - Drizzle ORM with PostgreSQL.
-- Tailwind CSS 4, Base UI, Lucide React.
-- pnpm 11.5.0 and Turborepo.
+- Tailwind CSS, Base UI, Lucide React, on Tailwind's then-current major version.
+- pnpm and Turborepo, on the kit's pinned pnpm minor version.
 
 Workspace map:
 
@@ -41,7 +41,7 @@ saas/
   turbo/*
 ```
 
-## Locked G10 Conventions
+## Locked Conventions
 
 The goal plan's conventions became the cross-plan authority after multiple review/reconciliation rounds.
 
@@ -127,13 +127,13 @@ pnpm run build
 Lane-wrapped form:
 
 ```bash
-minervit-methodology lane-run --target . -- cd saas && <command>
+tautline lane-run --target . -- cd saas && <command>
 ```
 
 Legacy untouched gate:
 
 ```bash
-minervit-methodology lane-run --target . -- cd phase3/eas-app && npm run lint && npx tsc --noEmit && npm test && npm run build
+tautline lane-run --target . -- cd phase3/eas-app && npm run lint && npx tsc --noEmit && npm test && npm run build
 git diff --quiet -- phase3/eas-app
 ```
 
@@ -185,7 +185,7 @@ Pure logic:
 
 - Keep pure modules byte-identical where practical.
 - Normalize only intentional import-source tokens.
-- Port the full transitive Prisma-free import closure, not only obvious files.
+- Port the full transitive import closure when porting an existing app to the kit, not only the obvious files.
 - Add a checksum or `git diff --no-index` gate for the byte-identical set.
 
 Schema:
@@ -243,7 +243,7 @@ One-off checkout contract:
 
 Use two buckets:
 
-- Product deferrals: `G10-PL`.
+- Product deferrals: `PL-01`.
 - Accepted review findings: `P1-08`.
 
 Accepted review finding entries need file path, line, observed risk, recommended fix, why deferral is acceptable, and discovery tag.

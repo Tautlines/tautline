@@ -1,6 +1,6 @@
 ---
 name: example-service-preflight
-description: Apply stack-specific preflight gates for a Make/CI-driven API service: main status, open PR check, fast preflight, full preflight, Gherkin coverage, security invariants, and GitHub-only readiness automation.
+description: "Apply stack-specific preflight gates for a Make/CI-driven API service: main status, open PR check, fast preflight, full preflight, Gherkin coverage, security invariants, and GitHub-only readiness automation."
 ---
 
 > EXAMPLE / STACK-SPECIFIC SKILL. This is a worked example for one project stack

@@ -1796,8 +1796,8 @@ def test_release_migration_report_0_9_0_sanitized_instrumentation(cli):
     assert any("Pinning back to 0.8.9 restores narrative session-journal publication" in note for note in current["rollbackNotes"])
 
     # Upper boundary: the next patch is not declared until it ships its own report.
-    with pytest.raises(SystemExit, match="not declared for 0.9.2"):
-        cli.release_migration_report_data(version="0.9.2")
+    with pytest.raises(SystemExit, match="not declared for 0.9.7"):
+        cli.release_migration_report_data(version="0.9.7")
 
 
 def test_release_migration_report_0_9_1_no_dead_ends_and_repo_slug(cli):
@@ -2010,6 +2010,78 @@ def test_public_release_check_current_tree_json_blocks_only_history_with_private
         "release-update-current-missing",
     }
     assert "private-adapter-history" in codes or "git-history-shallow" in codes
+
+
+def test_public_release_issues_export_marker_skips_release_update_gate_without_ledger(cli, tmp_path):
+    """Inside an export candidate the ledger is deliberately export-excluded, so the
+    release-update accountability gate (a maintainer-side check) must not fire there
+    even though the scanned tree has a VERSION but no delivery ledger at all."""
+    (tmp_path / "VERSION").write_text("1.2.3\n", encoding="utf-8")
+    (tmp_path / "CHANGELOG.md").write_text("## 1.2.3 - 2026-07-12\n\n- did a thing\n", encoding="utf-8")
+    (tmp_path / cli.PUBLIC_RELEASE_EXPORT_MARKER).write_text(
+        cli.public_release_export_marker_text(), encoding="utf-8"
+    )
+
+    issues = cli.public_release_issues(tmp_path)
+
+    assert not [issue for issue in issues if issue["code"].startswith("release-update-")]
+
+
+def test_public_release_issues_normal_repo_still_blocks_on_missing_release_update(cli, tmp_path):
+    """A normal maintainer repo (no export marker) whose current VERSION has no delivery
+    marker in its ledger must still be blocked; the export-marker skip must not neuter
+    the gate for repos that are not export candidates."""
+    (tmp_path / "VERSION").write_text("1.2.3\n", encoding="utf-8")
+    (tmp_path / "CHANGELOG.md").write_text("## 1.2.3 - 2026-07-12\n\n- did a thing\n", encoding="utf-8")
+
+    issues = cli.public_release_issues(tmp_path)
+
+    codes = {issue["code"] for issue in issues}
+    assert "release-update-current-missing" in codes
+
+
+def test_public_release_issues_stray_export_marker_does_not_disable_gate(cli, tmp_path):
+    """Regression: a normal maintainer checkout that happens to contain a stray
+    export marker (untracked, accidentally copied, or left over from a prior
+    export run) still has its delivery ledger present -- it is not a genuine
+    export candidate. The release-update gate must not key on marker presence
+    alone, or any stray file with this name could silently disable the gate
+    for the whole checkout."""
+    (tmp_path / "VERSION").write_text("1.2.3\n", encoding="utf-8")
+    (tmp_path / "CHANGELOG.md").write_text(
+        "## 1.2.3 - 2026-07-12\n\n- did a thing\n", encoding="utf-8"
+    )
+    ledger_dir = tmp_path / "docs" / "releases"
+    ledger_dir.mkdir(parents=True)
+    (ledger_dir / "release-update-delivery.json").write_text(
+        '{"schema":"minervit-release-update-delivery/v1","delivered":{}}\n',
+        encoding="utf-8",
+    )
+    (tmp_path / cli.PUBLIC_RELEASE_EXPORT_MARKER).write_text(
+        cli.public_release_export_marker_text(), encoding="utf-8"
+    )
+
+    issues = cli.public_release_issues(tmp_path)
+
+    codes = {issue["code"] for issue in issues}
+    assert "release-update-current-missing" in codes
+
+
+def test_public_release_issues_export_marker_and_absent_ledger_still_skips_gate(cli, tmp_path):
+    """Companion to the regression test above: a genuine export candidate --
+    marker present AND the export-excluded ledger genuinely absent -- must
+    still skip the release-update gate cleanly, preserving prior behavior."""
+    (tmp_path / "VERSION").write_text("1.2.3\n", encoding="utf-8")
+    (tmp_path / "CHANGELOG.md").write_text(
+        "## 1.2.3 - 2026-07-12\n\n- did a thing\n", encoding="utf-8"
+    )
+    (tmp_path / cli.PUBLIC_RELEASE_EXPORT_MARKER).write_text(
+        cli.public_release_export_marker_text(), encoding="utf-8"
+    )
+
+    issues = cli.public_release_issues(tmp_path)
+
+    assert not [issue for issue in issues if issue["code"].startswith("release-update-")]
 
 
 def test_public_release_check_blocks_private_adapter_fixture(cli, tmp_path):
@@ -2506,6 +2578,11 @@ def test_public_release_export_excludes_internal_docs_but_keeps_public_product_d
         ".minervit-ai-delivery.json": '{"project": "self"}\n',
         ".tautline/adapter.json": '{"project": "self"}\n',
         ".tautline.json": '{"project": "self"}\n',
+        # The release-update delivery ledger is an internal ops record (who was
+        # notified about which release, and when); the rest of docs/releases/ is
+        # public release material and must still ship.
+        "docs/releases/release-update-delivery.json": '{"schema":"minervit-release-update-delivery/v1","delivered":{}}\n',
+        "docs/releases/checksums-v0.9.1.txt": "abc123  tautline-0.9.1.tar.gz\n",
     }
     for rel, text in tracked_files.items():
         path = source / rel
@@ -2518,6 +2595,8 @@ def test_public_release_export_excludes_internal_docs_but_keeps_public_product_d
 
     assert result["issues"] == []
     assert (tmp_path / "public" / "README.md").exists()
+    assert (tmp_path / "public" / "docs/releases/checksums-v0.9.1.txt").exists()
+    assert not (tmp_path / "public" / "docs/releases/release-update-delivery.json").exists()
     assert not (tmp_path / "public" / "docs/backlog/methodology-backlog.md").exists()
     assert not (tmp_path / "public" / "docs/productization/audit-disposition-register.md").exists()
     assert not (tmp_path / "public" / "docs/superpowers/plans/refactor.md").exists()
@@ -2904,10 +2983,7 @@ def test_public_release_export_cli_refuses_missing_private_terms(tmp_path):
     assert not destination.exists()
 
 
-def test_public_release_export_command_reports_exported_tree_release_update_blockers(
-    cli, tmp_path, monkeypatch, capsys
-):
-    source = tmp_path / "source"
+def _write_release_update_export_source(source: Path, delivered: str) -> None:
     source.mkdir()
     _init_git_repo(source)
     (source / "VERSION").write_text("0.1.0\n", encoding="utf-8")
@@ -2918,11 +2994,21 @@ def test_public_release_export_command_reports_exported_tree_release_update_bloc
     delivery = source / "docs" / "releases" / "release-update-delivery.json"
     delivery.parent.mkdir(parents=True)
     delivery.write_text(
-        '{"schema":"minervit-release-update-delivery/v1","delivered":{}}\n',
+        '{"schema":"minervit-release-update-delivery/v1","delivered":' + delivered + "}\n",
         encoding="utf-8",
     )
     subprocess.run(["git", "add", "-A"], cwd=source, check=True)
     subprocess.run(["git", "commit", "-q", "-m", "source"], cwd=source, check=True)
+
+
+def test_public_release_export_command_reports_source_repo_release_update_blockers(
+    cli, tmp_path, monkeypatch, capsys
+):
+    # The delivery ledger is export-excluded, so the exported tree never carries
+    # it. The release-update gate must therefore read the SOURCE repository: an
+    # undelivered release still blocks the export.
+    source = tmp_path / "source"
+    _write_release_update_export_source(source, "{}")
     monkeypatch.setattr(cli, "REPO_ROOT", source)
 
     code = cli.public_release_export(
@@ -2941,6 +3027,150 @@ def test_public_release_export_command_reports_exported_tree_release_update_bloc
     assert "public_release_export_check: blocked" in captured.out
     assert "release-update-current-missing" in captured.out
     assert "docs/releases/release-update-delivery.json" in captured.out
+    assert not (tmp_path / "public" / "docs/releases/release-update-delivery.json").exists()
+
+
+def test_public_release_export_command_passes_when_source_ledger_is_delivered(
+    cli, tmp_path, monkeypatch, capsys
+):
+    # Regression: excluding the ledger from the export must not make the
+    # release-update gate read a now-absent file in the export tree and report
+    # every release as undelivered, which would block every export forever.
+    source = tmp_path / "source"
+    _write_release_update_export_source(
+        source,
+        '{"0.1.0":{"at":"2026-07-05T00:00:00+00:00","via":"publish-release-update"}}',
+    )
+    monkeypatch.setattr(cli, "REPO_ROOT", source)
+
+    code = cli.public_release_export(
+        Namespace(
+            destination=tmp_path / "public",
+            write=True,
+            force=False,
+            include_untracked=False,
+            include_working_tree=False,
+            allow_empty_private_terms=True,
+        )
+    )
+
+    captured = capsys.readouterr()
+    assert code == 0, captured.out
+    assert "public_release_export_check: ok" in captured.out
+    assert "release-update" not in captured.out
+    assert (tmp_path / "public" / "CHANGELOG.md").exists()
+    assert not (tmp_path / "public" / "docs/releases/release-update-delivery.json").exists()
+
+
+def test_public_release_export_refuses_uncommitted_release_update_delivery_marker(cli, tmp_path):
+    # Regression: the ledger is export-excluded, so it is no longer among the
+    # export-included paths that public_release_dirty_tracked_paths() scans.
+    # But the release-update gate is re-rooted to read that same ledger from
+    # the SOURCE working tree (release_update_root=source), including
+    # uncommitted content. Without this test's fix, someone could write a
+    # delivery marker into the ledger, leave it uncommitted, and still pass
+    # the export's release-update gate on the strength of content that was
+    # never committed. Before the ledger became export-excluded this was
+    # impossible: a dirty ledger made the export refuse outright.
+    source = tmp_path / "source"
+    _write_release_update_export_source(source, "{}")
+    delivery = source / "docs" / "releases" / "release-update-delivery.json"
+    delivery.write_text(
+        '{"schema":"minervit-release-update-delivery/v1","delivered":'
+        '{"0.1.0":{"at":"2026-07-05T00:00:00+00:00","via":"publish-release-update"}}}\n',
+        encoding="utf-8",
+    )
+
+    try:
+        cli.public_release_export_repository(source, tmp_path / "public")
+    except SystemExit as exc:
+        message = str(exc)
+    else:
+        raise AssertionError(
+            "an uncommitted release-update delivery marker must not let the export "
+            "pass its release-update gate"
+        )
+
+    assert "dirty tracked files are not exported by default" in message
+    assert not (tmp_path / "public").exists()
+
+
+def test_public_release_export_succeeds_when_release_update_delivery_marker_is_committed(cli, tmp_path):
+    # Companion to the refusal test above: once the delivery marker is
+    # actually committed to the source branch, the ledger is clean and the
+    # export must proceed normally (guards against over-correcting into an
+    # export that always refuses because of the ledger).
+    source = tmp_path / "source"
+    _write_release_update_export_source(
+        source,
+        '{"0.1.0":{"at":"2026-07-05T00:00:00+00:00","via":"publish-release-update"}}',
+    )
+
+    result = cli.public_release_export_repository(source, tmp_path / "public")
+
+    assert result["issues"] == []
+    assert not (tmp_path / "public" / "docs/releases/release-update-delivery.json").exists()
+
+
+def test_public_release_export_repository_refuses_untracked_release_update_delivery_marker(cli, tmp_path):
+    # public_release_export_repository() is the helper the CLI wrapper calls,
+    # and it re-roots the release-update gate to read the ledger from the
+    # SOURCE working tree (release_update_root=source). public_release_dirty_
+    # tracked_paths() only ever sees tracked files (it shells out to `git
+    # diff`), so an untracked ledger -- written but never `git add`ed --
+    # sails past that check entirely. Without a dedicated untracked check in
+    # the helper itself, someone could run `publish-release-update`, never
+    # stage the ledger, and still pass the export's release-update gate on
+    # the strength of delivery evidence that exists in neither the committed
+    # source nor the exported tree.
+    source = tmp_path / "source"
+    source.mkdir()
+    _init_git_repo(source)
+    (source / "VERSION").write_text("0.1.0\n", encoding="utf-8")
+    (source / "CHANGELOG.md").write_text(
+        "# Changelog\n\n## [0.1.0] - 2026-07-05\n\n### Changed\n\n- Test release.\n",
+        encoding="utf-8",
+    )
+    subprocess.run(["git", "add", "-A"], cwd=source, check=True)
+    subprocess.run(["git", "commit", "-q", "-m", "source"], cwd=source, check=True)
+    delivery = source / "docs" / "releases" / "release-update-delivery.json"
+    delivery.parent.mkdir(parents=True)
+    delivery.write_text(
+        '{"schema":"minervit-release-update-delivery/v1","delivered":'
+        '{"0.1.0":{"at":"2026-07-05T00:00:00+00:00","via":"publish-release-update"}}}\n',
+        encoding="utf-8",
+    )
+    # deliberately never `git add`ed: untracked, not dirty-tracked.
+
+    try:
+        cli.public_release_export_repository(source, tmp_path / "public")
+    except SystemExit as exc:
+        message = str(exc)
+    else:
+        raise AssertionError(
+            "an untracked release-update delivery marker must not let the export "
+            "pass its release-update gate on the strength of uncommitted, unstaged content"
+        )
+
+    assert "docs/releases/release-update-delivery.json" in message
+    assert not (tmp_path / "public").exists()
+
+
+def test_public_release_export_repository_succeeds_when_release_update_delivery_marker_is_tracked(cli, tmp_path):
+    # Companion to the refusal test above: once the ledger is `git add`ed
+    # (tracked), the untracked-ledger check must not fire, guarding against
+    # over-correcting the fix into refusing every export regardless of
+    # whether the ledger is actually tracked.
+    source = tmp_path / "source"
+    _write_release_update_export_source(
+        source,
+        '{"0.1.0":{"at":"2026-07-05T00:00:00+00:00","via":"publish-release-update"}}',
+    )
+
+    result = cli.public_release_export_repository(source, tmp_path / "public")
+
+    assert result["issues"] == []
+    assert not (tmp_path / "public" / "docs/releases/release-update-delivery.json").exists()
 
 
 def test_public_release_export_command_refuses_untracked_by_default(cli, tmp_path, monkeypatch, capsys):

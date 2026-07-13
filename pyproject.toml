@@ -14,7 +14,7 @@ line-length = 100
 # High-signal essentials only. F = real pyflakes bugs, E/W = pycodestyle, B = bugbear.
 # Opinionated families (TRY/EM/PLR/UP/SIM) are deliberately OUT for now (3,000+ legacy hits).
 select = ["E", "F", "W", "B"]
-ignore = ["E501"]          # 2,492 line-length legacy hits — never gate on these day one
+ignore = ["E501"]          # frozen legacy baseline, pinned by tests/test_lint_ratchet.py
 
 [tool.ruff.lint.per-file-ignores]
 # Day-one baseline for the legacy CLI: suppress ONLY the rules it currently violates so

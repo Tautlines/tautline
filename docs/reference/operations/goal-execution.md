@@ -47,30 +47,30 @@ status in [Backlog Provider Workflow](backlog-provider-workflow.md).
 Start or refresh a lane-local goal ledger:
 
 ```bash
-minervit-methodology goal-start --target . --goal <source-of-truth-goal-plan>
-minervit-methodology goal-status --target .
-minervit-methodology goal-next --target .
+tautline goal-start --target . --goal <source-of-truth-goal-plan>
+tautline goal-status --target .
+tautline goal-next --target .
 ```
 
 Advance the ledger at milestone boundaries:
 
 ```bash
-minervit-methodology goal-advance --target . --event milestone-complete --detail "<validation proof>"
-minervit-methodology goal-advance --target . --event milestone-deferred --reason "<policy deferral reason>"
-minervit-methodology goal-advance --target . --event milestone-blocked --reason "<true blocker>"
-minervit-methodology goal-advance --target . --event goal-complete --detail "<completion proof>" --iteration-review-record docs/iteration-reviews/<goal-id>/goal-review.json
+tautline goal-advance --target . --event milestone-complete --detail "<validation proof>"
+tautline goal-advance --target . --event milestone-deferred --reason "<policy deferral reason>"
+tautline goal-advance --target . --event milestone-blocked --reason "<true blocker>"
+tautline goal-advance --target . --event goal-complete --detail "<completion proof>" --iteration-review-record docs/iteration-reviews/<goal-id>/goal-review.json
 ```
 
 Claude lanes should prefer Claude Code `/goal` for substantial reviewed goal work when available, but `/goal` is not the source of truth. Per [Claude Code Goals](https://code.claude.com/docs/en/goal), it is session-scoped, requires Claude Code `v2.1.139+`, and its evaluator judges evidence surfaced in the conversation rather than independently inspecting files/tools. Generate a measurable condition from the ledger:
 
 ```bash
-minervit-methodology goal-condition --target .
+tautline goal-condition --target .
 ```
 
 To show a copy/paste Claude startup prompt before launching Claude, use:
 
 ```bash
-minervit-methodology goal-kickoff-prompt --target .
+tautline goal-kickoff-prompt --target .
 ```
 
 In an adapter-backed lane, this command is context-aware. If a goal is active, it prints the active goal condition. If no goal is active or the previous goal ledger is complete, it prints `next_goal_name`, `next_goal_short_description`, and `next_goal_claude_prompt` so the next Claude `/goal` can be started without asking the lane to invent the wording.
@@ -78,10 +78,10 @@ In an adapter-backed lane, this command is context-aware. If a goal is active, i
 Launcher functions can print that prompt after framework sync and lane startup, then pause before `claude` starts so the prompt stays visible:
 
 ```zsh
-minervit-methodology sync-methodology || return 1
-minervit-methodology lane-start --target . || return 1
-minervit-methodology methodology-status --target . --fail-on-drift || return 1
-minervit-methodology goal-kickoff-prompt --target .
+tautline sync-methodology || return 1
+tautline lane-start --target . || return 1
+tautline methodology-status --target . --fail-on-drift || return 1
+tautline goal-kickoff-prompt --target .
 printf '\nCopy the prompt above if you want goal-led startup, then press Return to start Claude...'
 read -r _
 claude --dangerously-skip-permissions "$@"
@@ -120,19 +120,19 @@ Adapters default `laneCoordination` to enabled and derive paths from `planningAr
 `lane-start` bootstraps the coordination docs when they are missing:
 
 ```bash
-minervit-methodology lane-coordination-bootstrap --target . --write
+tautline lane-coordination-bootstrap --target . --write
 ```
 
 Check status at startup, PR boundaries, and before multi-lane plan finalization. With default strict enforcement, missing, stale, untracked, uncommitted, or unpushed state in the current lane's own status file, or in the shared cross-lane contract or lane board, fails `lane-coordination-status`, `methodology-status --strict`, and `methodology-status --fail-on-drift`. Other lanes' stale, untracked, or dirty status files are informational only and never block startup. Feature branches must have a current lane status file for the active branch, and that status must be committed and pushed unless the state already exists on the shared base:
 
 ```bash
-minervit-methodology lane-coordination-status --target .
+tautline lane-coordination-status --target .
 ```
 
 Each lane updates only its own status file, then commits and pushes it before multi-lane implementation or PR queue:
 
 ```bash
-minervit-methodology lane-coordination-note --target . \
+tautline lane-coordination-note --target . \
   --lane lane-1 \
   --goal "First shop launch" \
   --current "Owner access routes and role checks" \
@@ -150,7 +150,7 @@ If a lane discovers it must change something another lane owns or consumes, it m
 Long-running goal work should rotate context routinely instead of waiting for the human operator to ask for a continuity prompt. The default adapter policy enables rotation with a soft threshold of `60%` visible context usage, a hard threshold of `75%`, and a `15m` heartbeat for long Claude `/goal` work. This context-rotation heartbeat for long Claude `/goal` runs must fire before final goal completion when thresholds require rotation. Managed startup sets `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=85` both in the launcher env and in Claude's durable settings file, so Claude Code keeps a safety margin while avoiding the throughput churn of half-context compaction even when a session is launched through raw `claude`. Reinstall the launcher or rerun `lane-start` after upgrading the framework to repair this setting:
 
 ```bash
-minervit-methodology install-claude-launcher --name yolo --dangerously-skip-permissions --force
+tautline install-claude-launcher --name yolo --dangerously-skip-permissions --force
 ```
 
 `methodology-status` reports both `claude_autocompact_pct_override` and `claude_autocompact_settings`. If a fresh Claude session still reaches 80-90% context with both lines reporting `ok`, collect that status output and the visible context percentage; that is evidence that the host is not honoring its documented auto-compact setting, not evidence that the framework setting is absent.
@@ -160,8 +160,8 @@ At every PR queued/completed boundary, milestone completion, goal boundary, work
 Use the helper when a visible percent is available:
 
 ```bash
-minervit-methodology context-rotation-check --target . --boundary pr-queued --context-percent 63 --context-percent-source estimate
-minervit-methodology context-rotation-check --target . --boundary goal-heartbeat --context-percent 63 --context-percent-source estimate
+tautline context-rotation-check --target . --boundary pr-queued --context-percent 63 --context-percent-source estimate
+tautline context-rotation-check --target . --boundary goal-heartbeat --context-percent 63 --context-percent-source estimate
 ```
 
 Pass `--context-percent-source host` only if the host literally exposes a context-window counter; a host counter is the only source that can make rotation mandatory, so `estimate` is the safe default.

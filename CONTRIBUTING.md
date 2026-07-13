@@ -25,7 +25,7 @@ Learn these five anchors and you can find anything:
 
 Other notable paths: `scripts/` (the test and validation gates), `tests/` (the behavior
 suite), `pyproject.toml` (all lint/type/test configuration), and `docs/` (releases and
-backlog).
+reference documentation).
 
 ### The three-layer authority model
 

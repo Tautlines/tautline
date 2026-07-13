@@ -142,11 +142,11 @@ CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=85
 At every PR queued/completed boundary, milestone completion, goal boundary, workflow summary, session summary, handoff-for-review, or long `/goal` heartbeat, check visible context pressure
 next_goal_name
 Milestone updates are internal, professional, text-only Google Chat cards
-minervit-methodology publish-milestone-update --target . --milestone <milestone-id-or-title> --stdin
-minervit-methodology publish-deploy-ready-update
+tautline publish-milestone-update --target . --milestone <milestone-id-or-title> --stdin
+tautline publish-deploy-ready-update
 deployment-notification-status --strict
-minervit-methodology deploy-health --target .
-minervit-methodology publish-product-note --target . --title "Short title" --stdin
+tautline deploy-health --target .
+tautline publish-product-note --target . --title "Short title" --stdin
 A transient external dependency is not a terminal handoff
 Anthropic/Claude/Codex/GitHub/API overloads
 Memory-sourced process: treating Open Brain, Claude memories, local memories, or feedback-memory files as the authority

@@ -18,18 +18,18 @@ The methodology repository is the product surface for reusable AI delivery proce
 Methodology regression RCAs are evidence, not product docs. Publish them with:
 
 ```bash
-minervit-methodology publish-rca-artifact --file <path> --commit --push
+tautline publish-rca-artifact --file <path> --commit --push
 ```
 
-The default target is the `methodology-rca-archive` branch under `docs/backlog/methodology-regressions/`.
+The default target is the `methodology-rca-archive` branch in the maintainer repository.
 
 ## Session Journal Evidence
 
 Normal session journals are compact evidence for methodology improvement, not product docs or process authority. As of 0.9.0 they are **local-only**: a journal narrates the adopter's product work, so it can never be proven safe to publish. `publish-session-journal` and `publish-pending-session-journals` are disabled and refuse in every mode; there is no session-archive branch. Create and inspect journals in place with:
 
 ```bash
-minervit-methodology prepare-session-journal --target . --stdin
-minervit-methodology validate-session-journal --file <path>
+tautline prepare-session-journal --target . --stdin
+tautline validate-session-journal --file <path>
 ```
 
 Both write only under the lane's gitignored `.ai-runs/`. To contribute sanitized signal upstream, enable `"instrumentation": {"enabled": true}` in the source adapter and run `publish-instrumentation-record --target .`, a closed-vocabulary record with zero product-information capacity. See [`instrumentation.md`](../reference/instrumentation.md).

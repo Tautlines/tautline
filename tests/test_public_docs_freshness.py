@@ -92,6 +92,6 @@ def test_release_engineering_documents_framework_channel_pins():
     ).read_text(encoding="utf-8")
 
     assert "docs/reference/operations/release-engineering.md" in readme
-    assert "minervit-methodology set-framework-channel --target . stable" in release_engineering
-    assert "minervit-methodology set-framework-channel --target . experimental" in release_engineering
+    assert "tautline set-framework-channel --target . stable" in release_engineering
+    assert "tautline set-framework-channel --target . experimental" in release_engineering
     assert "wipSafe: true" in release_engineering

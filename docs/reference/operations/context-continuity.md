@@ -25,7 +25,7 @@ Default configured path:
 Prepare a handoff:
 
 ```bash
-bin/minervit-methodology prepare-continuity \
+bin/tautline prepare-continuity \
   --project <lane_path>/.tautline/adapter.json \
   --target <lane_path> \
   --stdin
@@ -40,10 +40,10 @@ The handoff content is read from stdin and wrapped with:
 - Current HEAD.
 - Last commit.
 - Current `git status --short --branch`.
-- Required startup gates, including `minervit-methodology lane-start --target .`.
-- `minervit-methodology methodology-status --target . --fail-on-drift` as a required startup gate.
+- Required startup gates, including `tautline lane-start --target .`.
+- `tautline methodology-status --target . --fail-on-drift` as a required startup gate.
 - A statement that ad hoc `git status`, `git log`, CI checks, or local tests do not replace the methodology status gate.
-- A portable fallback through `$HOME/.config/minervit/methodology.env` or `$MINERVIT_METHODOLOGY_REPO/bin/minervit-methodology` when `minervit-methodology` is missing from `PATH` or exits 127/command-not-found, including the requirement to rerun the same gate with the resolved portable CLI.
+- A portable fallback through `$HOME/.config/tautline/tautline.env` or `$TAUTLINE_METHODOLOGY_REPO/bin/tautline` when `tautline` is missing from `PATH` or exits 127/command-not-found, including the requirement to rerun the same gate with the resolved portable CLI.
 
 The handoff body should include:
 
@@ -62,12 +62,12 @@ When a new handoff is prepared and an older one exists, the old handoff is moved
 
 For lane-local continuity, `.ai-continuity/` is added to `.git/info/exclude` instead of tracked `.gitignore`. That keeps handoff state local to the lane and avoids leaking session-specific context into normal commits.
 
-New Claude/Codex sessions generated from this framework are instructed to check the continuity file at session start before starting new work. They should read it, resolve the methodology CLI, run `minervit-methodology lane-start --target .` or the resolved portable CLI equivalent, run `minervit-methodology methodology-status --target . --fail-on-drift` or the resolved portable CLI equivalent, then resume from the documented next action only after the status gate exits clean. Before those gates pass, they must not ask clarifying questions, report substantive status, or start analysis from the handoff content. If `minervit-methodology` is not on PATH, they should source `$HOME/.config/minervit/methodology.env` when present or use `$MINERVIT_METHODOLOGY_REPO/bin/minervit-methodology`; missing CLI access is a true blocker only after the portable checkout fallback cannot be found, not permission to substitute ad hoc checks or ask for a person-specific path.
+New Claude/Codex sessions generated from this framework are instructed to check the continuity file at session start before starting new work. They should read it, resolve the methodology CLI, run `tautline lane-start --target .` or the resolved portable CLI equivalent, run `tautline methodology-status --target . --fail-on-drift` or the resolved portable CLI equivalent, then resume from the documented next action only after the status gate exits clean. Before those gates pass, they must not ask clarifying questions, report substantive status, or start analysis from the handoff content. If `tautline` is not on PATH, they should source `$HOME/.config/tautline/tautline.env` (or the legacy minervit env) when present or use `${TAUTLINE_METHODOLOGY_REPO:-$MINERVIT_METHODOLOGY_REPO}/bin/tautline`; missing CLI access is a true blocker only after the portable checkout fallback cannot be found, not permission to substitute ad hoc checks or ask for a person-specific path.
 
 The agent must not ask whether to run the required startup gates, whether to "kick those off", or whether to proceed with a named path after the gates. It should run the gates immediately and continue with the handoff next action unless a true blocker occurs.
 
 The agent must not ask the human operator to say `keep going`, `continue`, `stop here`, or `pick up next session` after writing a handoff. If an explicit stop request prevents continuing, it should report the handoff path and exact next action without opt-in language. Context exhaustion should have already triggered rotation; for Claude Code that means continuity, journal handling, `/compact` or host compaction when directly invokable, or a non-optional fresh-session startup instruction when not directly invokable, then resuming the active goal.
 
-If no execution packet, handoff next action, or implementation-ready tactical PR plan is on deck after startup gates, the agent should inspect the adapter, backlog/source-of-truth planning path, readiness markers, and latest delivery or continuity handoff. T0/T1 work uses brief inline/packet planning or the minimal adapter-required artifact before implementation gates. T2/T3 work creates or updates the source-of-truth plan, runs Codex plan review through `minervit-methodology run-plan-review`, passes `minervit-methodology plan-finalization-precheck`, and verifies explicit or standing approval before implementation. No implementation-ready plan on deck is not a stop condition. Planning is automatic and routine; the agent must not ask whether to plan.
+If no execution packet, handoff next action, or implementation-ready tactical PR plan is on deck after startup gates, the agent should inspect the adapter, backlog/source-of-truth planning path, readiness markers, and latest delivery or continuity handoff. T0/T1 work uses brief inline/packet planning or the minimal adapter-required artifact before implementation gates. T2/T3 work creates or updates the source-of-truth plan, runs Codex plan review through `tautline run-plan-review`, passes `tautline plan-finalization-precheck`, and verifies explicit or standing approval before implementation. No implementation-ready plan on deck is not a stop condition. Planning is automatic and routine; the agent must not ask whether to plan.
 
 If startup finds the previous PR is already on main and no work is in flight, the agent should perform safe cleanup, sync main, handle generated adapter drift as adapter hygiene only when the project tracks those files and the diff is solely methodology-generated, and continue into the next source-of-truth backlog/planning item without presenting cleanup/backlog/something-else options.

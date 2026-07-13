@@ -131,7 +131,7 @@ def test_prepare_continuity_writes_handoff_with_startup_gate_order(tmp_path):
         "Do not replace the methodology status gate with ad hoc",
         "Methodology CLI resolver:",
         "if it is missing from `PATH` or exits 127/command-not-found",
-        "source `$HOME/.config/minervit/methodology.env` when present or use `$MINERVIT_METHODOLOGY_REPO/bin/minervit-methodology`",
+        "source `$HOME/.config/tautline/tautline.env` (or the legacy minervit env) when present or use `${TAUTLINE_METHODOLOGY_REPO:-$MINERVIT_METHODOLOGY_REPO}/bin/tautline`",
         "rerun the same gate",
         "not a failed methodology gate",
         "not a reason to ask for a person-specific path",

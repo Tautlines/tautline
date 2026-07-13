@@ -12,7 +12,7 @@ SLA tiers, incident response (security/CVE), and a clean uninstall story — inc
 previewable `--dry-run` / `uninstall` path that never silently mutates global settings.
 
 The running example is the fictional `example-saas` adapter. The CLI is invoked as
-`minervit-methodology`. The behavior-test gate is `scripts/test.sh` (ruff + mypy + pytest).
+`tautline`. The behavior-test gate is `scripts/test.sh` (ruff + mypy + pytest).
 `scripts/validate.sh` is a legacy grep-pin gate being frozen and is **not** a
 support or security boundary.
 
@@ -41,7 +41,7 @@ Community support is **best-effort, with no response-time guarantee.**
 
 **Before you file an issue**
 
-- Include `minervit-methodology version`, your platform, and your agent runtime
+- Include `tautline version`, your platform, and your agent runtime
   (Claude vs Codex — enforcement differs by tier, see `docs/product/positioning.md`).
 - State whether you ran with `--dangerously-skip-permissions` and whether auto-update was
   enabled, since both change the blast radius of a failure.
@@ -161,12 +161,12 @@ This is a hard requirement, not a nice-to-have.
 
 ### 4a. What `install-cli` changes (the exact surface to reverse)
 
-`install-cli` (`bin/minervit-methodology`, `install_cli` at ~`:11904`) creates or mutates:
+`install-cli` (`bin/tautline`, `install_cli` at ~`:11904`) creates or mutates:
 
 1. **The launcher shim** — `minervit-methodology` written into the chosen `--bin-dir`
    (a `/bin/sh` script that resolves the framework repo and `exec`s the real CLI).
-2. **`methodology.env`** — `~/.config/minervit/methodology.env` (default), holding
-   `MINERVIT_METHODOLOGY_REPO`, autocompact percentages, and a `PATH` export. It also
+2. **`methodology.env`** — `~/.config/tautline/tautline.env` (default), holding
+   `TAUTLINE_METHODOLOGY_REPO`, autocompact percentages, and a `PATH` export. It also
    **preserves** any local user/project exports it found, so it is not always safe to delete
    wholesale.
 3. **Global `~/.claude/settings.json`** — `write_claude_autocompact_settings` (~`:10720`)
@@ -184,7 +184,7 @@ This is a hard requirement, not a nice-to-have.
 Ship a first-class inverse command:
 
 ```
-minervit-methodology uninstall-cli [--dry-run] [--keep-settings] [--target <repo>]
+tautline uninstall-cli [--dry-run] [--keep-settings] [--target <repo>]
 ```
 
 - **`--dry-run` (must also be added to `install-cli`).** Prints every change that *would* be
@@ -217,17 +217,17 @@ points are removed manually, and the steps are fully deterministic:
 
 1. **Remove the hook entries from `~/.claude/settings.json`.** Back up the file first, then
    delete the `Stop` / `PreToolUse` hook entries whose `command` invokes
-   `minervit-methodology` (response-guard, plan-finalization, branch-liveness), plus the
+   `tautline` or the legacy `minervit-methodology` (response-guard, plan-finalization, branch-liveness), plus the
    autocompact keys this tool added under `env`. Leave everything else intact.
 2. **Restore or remove the `pre-push` hook.** In the affected repo's hooks dir: if
    `pre-push.before-minervit` exists, move it back to `pre-push`; otherwise delete the
    minervit `pre-push` hook.
 3. **Remove the launcher shim** from your `--bin-dir` (and the `PATH` export it added in
    `methodology.env`).
-4. **Clean `~/.config/minervit/methodology.env`** — delete the minervit-generated lines but
+4. **Clean `~/.config/tautline/tautline.env`** — delete the minervit-generated lines but
    keep any "Preserved local user/project environment" block you still rely on.
 5. **Disable auto-update** by removing the launcher and not running lanes from inside the
-   methodology checkout's resolution path. Re-confirm with `minervit-methodology version` no
+   methodology checkout's resolution path. Re-confirm with `tautline version` no
    longer resolving (or removing the checkout if you are fully done).
 
 After manual removal, your agent runtime returns to its prior state: interactive permission

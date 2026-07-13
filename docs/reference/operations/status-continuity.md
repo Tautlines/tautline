@@ -10,7 +10,7 @@ navigation entries for these workflows.
 When the human operator asks for current project status, whether something is complete, what is next, or work that may have happened in another lane, the latest-code baseline is the first evidence source. Run:
 
 ```bash
-minervit-methodology latest-code-status --target . --write
+tautline latest-code-status --target . --write
 ```
 
 The command fetches the adapter-configured remote base (`origin/main` by default), writes `.ai-work/LATEST_CODE_BASELINE.json`, reports local-vs-base divergence, lists remote branches ahead of base, and lists open PRs when GitHub CLI access is available. A branch that is ahead of `origin/main` may be the deployed or stakeholder-visible surface, so status answers must not stop at local HEAD or remote main.
@@ -18,7 +18,7 @@ The command fetches the adapter-configured remote base (`origin/main` by default
 For a narrow remote-main path check, the older helper remains available:
 
 ```bash
-minervit-methodology remote-main-status --target . --path backlog/_index.md --path docs/product/backlog/status.md
+tautline remote-main-status --target . --path backlog/_index.md --path docs/product/backlog/status.md
 ```
 
 Answer from fetched `origin/main`, GitHub PR/check evidence, ahead remote-branch evidence, deploy/build identity, and source-of-truth files on the relevant ref before trusting the local worktree. If the local lane is behind, dirty, detached, on a PR branch, or another remote branch is ahead and may be deployed/stakeholder-visible, state that plainly. Use `git show origin/main:<path>`, `git show <remote-branch>:<path>`, or `gh` for current artifacts. Pull/rebase local only when preparing to work; a read-only status answer should fetch and inspect remote without mutating unrelated lane state.
@@ -39,10 +39,10 @@ same fetch it would otherwise demand. If refresh succeeds, the tool proceeds
 and surfaces relevant ahead-branch/open-PR or soft-offline heads-up output. It
 blocks only when the refresh genuinely cannot self-heal, such as offline with
 no cached base ref, and it must still allow the recovery command forms agents
-actually use: `cd <lane>; minervit-methodology latest-code-status --target .
+actually use: `cd <lane>; tautline latest-code-status --target .
 --write`, read-only pagers around that command, the installed
 `$HOME/.config/minervit/methodology.env` shim, and the trusted
-`$MINERVIT_METHODOLOGY_REPO/bin/minervit-methodology` launcher.
+`$TAUTLINE_METHODOLOGY_REPO/bin/tautline` launcher.
 
 ## Plain-Language Status
 
@@ -124,7 +124,7 @@ Rules:
 Example for an adapter-backed lane:
 
 ```bash
-minervit-methodology background-run \
+tautline background-run \
   --log ".ai-runs/early-warning-smoke-$(date -u +%Y%m%dT%H%M%SZ).log" \
   -- bash -lc '<earlyWarningSmoke command>'
 ```
@@ -206,7 +206,7 @@ Correct design:
 Current starting command:
 
 ```bash
-bin/minervit-methodology readiness-review --project <lane_path>/.tautline/adapter.json
+bin/tautline readiness-review --project <lane_path>/.tautline/adapter.json
 ```
 
 If a future automation truly needs a checkout, use a dedicated clone. Do not use a shared worktree, because worktrees share Git refs and fetch state.

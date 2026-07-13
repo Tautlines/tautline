@@ -8,10 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 This file is the concise, reader-facing changelog. It is intentionally short:
 each entry summarizes user-visible behavior, not every commit. The full,
 narrative per-release log (Executive Summary, Why It Matters, Operator/Developer
-Impact, Validation, Residual Risk) is archived at
-`methodology-release-notes-archive:docs/releases/minervit-ai-delivery-methodology.md`.
-Pre-launch history through 0.6.265 is preserved privately (maintainer-only) at
-`docs/productization/archive/changelog-prelaunch-root.md`.
+Impact, Validation, Residual Risk) is archived in the maintainer's release-notes
+archive.
+Pre-launch history through 0.6.265 is preserved in the maintainer's private
+development repository.
 
 ## [Unreleased]
 
@@ -26,6 +26,112 @@ Pre-launch history through 0.6.265 is preserved privately (maintainer-only) at
 ### Fixed
 
 ### Security
+
+## [0.9.6] - 2026-07-13
+
+### Added
+
+- A regression test now freezes the project's line-length lint exclusion (E501)
+  at its current hit count, so the previously-unbounded exclusion cannot grow
+  further. Lowering the pinned count remains a manual follow-up as overlong
+  lines are cleaned up over time.
+
+## [0.9.5] - 2026-07-12
+
+### Added
+
+- Claude Code plugin marketplace manifest (`.claude-plugin/marketplace.json`), so
+  `/plugin marketplace add tautlines/tautline` offers `tautline-core` and
+  `tautline-ops` directly from the repository. The README documents the install
+  flow.
+- The quickstart names the shell activation and `PATH` step that the CLI install
+  depends on, so a fresh clone reaches a working `tautline` command without
+  guesswork.
+
+### Changed
+
+- `TERMS.md` now describes the auto-update trust model that actually ships rather
+  than a pre-launch target: `install-cli` pins the update source to the commit it
+  installed from by default, `--update-policy signed` verifies the upstream commit
+  signature against a trusted key, and both policies fail closed. Baking
+  `--dangerously-skip-permissions` into a launcher is refused unless one of them is
+  in effect.
+- `SECURITY.md` states the supply-chain posture that actually ships. It opens by
+  noting the repository is public with published releases, and its trust-posture
+  section separates what exists from what does not: the commit-level trust gate on
+  every auto-update re-exec is real and fails closed, but the current releases carry
+  **no checksum manifest** and the published release tags are **not signed**.
+  `cut-release` can compute a SHA-256 manifest and can create a signed tag with the
+  right flags, and that capability is now described as a capability rather than as
+  something an adopter can go and verify against today.
+- `SECURITY.md` and `TERMS.md` now note that `--update-policy signed` applies to an
+  upstream you control and sign. The canonical upstream does not sign its commits
+  yet, so a `signed` policy pointed at it refuses every update (fail-closed, with no
+  upstream fix available to the adopter); `pinned`, the install default, is the
+  working lever against it. Signing the canonical upstream is listed as a roadmap
+  item.
+- Public documentation no longer points at maintainer-only paths that a reader of
+  this repository cannot open; those references now name the maintainer repository
+  or its backlog in prose instead. The `render-adapters` deprecation warning for the
+  legacy `goalTracker` adapter key drops its pointer to a maintainer-only design
+  document and keeps the actionable instruction (migrate to `backlogProvider`).
+- `ROADMAP.md` speaks of the public repository in the present tense — its work items
+  are tracked as issues there and are now backlinked — and its "Recently shipped"
+  section is current through the 0.9.x line.
+- `ROADMAP.md` retitles the near-term section to 0.9.x instead of naming a fixed
+  0.9.0 target, and states the compatibility sunset explicitly: the legacy
+  `minervit-methodology` launcher name, `MINERVIT_*` environment fallbacks, and the
+  `.minervit-ai-delivery.json` marker stay supported through 0.x and are removed in
+  1.0.
+- The renderer-ci workflow accepts `workflow_dispatch`, so its default-branch badge
+  can render a status.
+
+## [0.9.4] - 2026-07-12
+
+### Changed
+
+- Public-surface scrub: the changelog and the startup-remediation reference no
+  longer carry private-tracker issue numbers, incident dates, or internal
+  backlog/archive paths; the affected passages now describe the same behavior
+  and follow-up tracking in maintainer-neutral terms. A stray internal
+  codename was dropped from a `.gitignore` comment.
+- The MakerKit community example (`examples/community-skills/makerkit-implementation`)
+  is fully de-identified: the internal example codename is gone from its
+  filename and headings, and exact kit/dependency version pins are replaced
+  with relative phrasing (the kit's previous and current minor versions). The
+  Stripe and Better Auth teaching patterns are unchanged.
+- The internal release-update delivery ledger is excluded from the public
+  release export, alongside the repo's other maintainer-only records. The
+  release-update accountability gate now evaluates against the maintainer's
+  source repository instead of the exported tree, so `public-release-export`
+  stays gated on release-update delivery rather than tripping on the ledger's
+  absence from the export.
+
+## [0.9.3] - 2026-07-12
+
+### Changed
+
+- Brand copy sweep: live reader-facing docs teach the `tautline` CLI, the
+  `tautlines/tautline-dev` repository, and the `~/.config/tautline/tautline.env`
+  config surface; a guard test bans the retired "minervit methodology" brand on
+  those surfaces. Documentation and test expectations only — no runtime changes.
+
+## [0.9.2] - 2026-07-12
+
+### Changed
+
+- Config surface rebrand: the CLI, emitted shims, launchers, and git hooks read
+  `~/.config/tautline/tautline.env` first (legacy `~/.config/minervit/methodology.env`
+  kept as a byte-identical mirror and fallback); `TAUTLINE_METHODOLOGY_REPO` and
+  `TAUTLINE_CLAUDE_AUTOCOMPACT_PCT` aliases are emitted, and lane/codex child
+  environments dual-write both families. Re-exec tokens move to
+  `~/.config/tautline/reexec-tokens`. Trust configuration (update policy and pins)
+  keeps its 0.9.1 names and semantics: `install-cli` pins at the installing HEAD and
+  `update-repin` afterward widens trust; `update-repin` keeps both config surfaces'
+  pins in step. TAUTLINE trust aliases and pin-set preservation ship separately as a
+  focused security change.
+- Held-update banners defer to the active trust policy's remedy in the hold detail
+  (lands the deferred 0.9.1 R2 finding).
 
 ## [0.9.1] - 2026-07-11
 
@@ -115,13 +221,10 @@ block another lane's startup.
   runtime) still refuse to start. See
   `docs/reference/startup-remediation.md`, which also documents the marker
   schema, the remediation contract, and the CLI's exit contract. Motivated by
-  a 2026-07-10 startup-deadlock incident in which strict lane-coordination and
+  a startup-deadlock failure mode in which strict lane-coordination and
   pre-push review-evidence enforcement could each independently strand a
-  lane's own startup or its ability to push a coordination-only fix; three
-  remaining compositions (mixed-WIP coordination pushes, multi-ref
-  review-evidence evaluation, and marker-aware Claude-hook enforcement) are
-  tracked as `METH-FU-COORDINATION-DEADLOCK-FOLLOWUPS` in
-  `docs/backlog/methodology-backlog.md`.
+  lane's own startup or its ability to push a coordination-only fix; the
+  remaining enforcement compositions are tracked in the maintainer backlog.
 - `methodology-status --fail-on-drift` returns a three-way exit contract (0
   clean, 1 integrity, 2 debt-only) and prints a truthful
   `methodology_status_blocking: <integrity|debt> - <gate names>` summary line
@@ -206,7 +309,7 @@ Windows subprocess-encoding hotfix; no adapter or command-surface changes.
 ### Fixed
 
 - Pre-push hook no longer crashes on Windows with `UnicodeDecodeError` +
-  `NoneType.strip` when `gh` output contains non-ASCII bytes (issue #186).
+  `NoneType.strip` when `gh` output contains non-ASCII bytes.
   Every text-mode subprocess capture (`gh`, `git`, `ps`, `tasklist`, review
   wrappers) now decodes as UTF-8 with replacement instead of the locale codec
   (`charmap` on Windows), and `run_command` tolerates a missing stdout stream.

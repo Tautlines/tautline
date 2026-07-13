@@ -596,11 +596,16 @@ def test_launcher_rechecks_skip_permissions_policy_at_launch(run_cli, tmp_path):
     assert proceeds.returncode == 0, proceeds.stderr
     assert "fake sync" in proceeds.stdout
 
-    methodology_env = home / ".config" / "minervit" / "methodology.env"
-    downgraded = methodology_env.read_text(encoding="utf-8").replace(
-        "MINERVIT_METHODOLOGY_UPDATE_POLICY=pinned", "MINERVIT_METHODOLOGY_UPDATE_POLICY=warn"
-    )
-    methodology_env.write_text(downgraded, encoding="utf-8")
+    # 0.9.2 rebrand: install-cli writes the tautline env + a byte-identical legacy mirror; the
+    # launcher reads the tautline path first. Downgrade both, as install-cli/update-repin keep both.
+    for env_file in (
+        home / ".config" / "tautline" / "tautline.env",
+        home / ".config" / "minervit" / "methodology.env",
+    ):
+        downgraded = env_file.read_text(encoding="utf-8").replace(
+            "MINERVIT_METHODOLOGY_UPDATE_POLICY=pinned", "MINERVIT_METHODOLOGY_UPDATE_POLICY=warn"
+        )
+        env_file.write_text(downgraded, encoding="utf-8")
 
     refused = subprocess.run(
         [str(launcher)], cwd=tmp_path, env=launch_env, text=True, capture_output=True, timeout=60

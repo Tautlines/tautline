@@ -1,0 +1,77 @@
+{
+  "behaviorChanges": [
+    "Public-surface scrub: the changelog and the startup-remediation reference no longer carry private-tracker issue numbers, incident dates, or internal backlog/archive paths; the affected passages describe the same behavior and follow-up tracking in maintainer-neutral terms. A stray internal codename was dropped from a .gitignore comment.",
+    "The MakerKit community example is fully de-identified: the internal example codename is gone from its filename and headings, and exact kit/dependency version pins are replaced with relative phrasing. The Stripe and Better Auth teaching patterns are unchanged.",
+    "The internal release-update delivery ledger is excluded from the public release export. The release-update accountability gate now evaluates against the maintainer's source repository instead of the exported tree, so public-release-export stays gated on release-update delivery rather than tripping on the ledger's absence from the export."
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "publish-pending-session-journals",
+      "removeAfter": "1.0.0",
+      "replacement": "publish-instrumentation-record",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "publish-session-journal",
+      "removeAfter": "1.0.0",
+      "replacement": "publish-instrumentation-record",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    },
+    {
+      "name": "rules-audit",
+      "path": "plugins/tautline-core/skills/rules-audit/SKILL.md",
+      "removeAfter": "1.0.0",
+      "replacement": "framework-intake",
+      "section": "skills",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [],
+  "productsTested": [],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "Documentation and example-content changes only: pinning back to 0.9.3 restores the previous prose; no configuration or runtime surface changes either way.",
+    "Stable clients remain on the stable channel unless they explicitly opt into experimental.",
+    "This release is WIP-safe: the only executable change is a new optional keyword argument with a backward-compatible default and an export-exclusion list entry."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.9.4",
+  "wipSafe": true
+}

@@ -19,8 +19,8 @@ handoff-for-review, or completed execution packet, the agent must refresh
 continuity, then prepare and validate a compact session journal in place:
 
 ```bash
-minervit-methodology prepare-session-journal --target . --stdin
-minervit-methodology validate-session-journal --file .ai-runs/session-journals/<utc>-session-journal.md
+tautline prepare-session-journal --target . --stdin
+tautline validate-session-journal --file .ai-runs/session-journals/<utc>-session-journal.md
 ```
 
 Both commands write only under the lane's gitignored `.ai-runs/`; nothing leaves
@@ -37,7 +37,7 @@ true}` in the source adapter and publish an instrumentation record, a
 closed-vocabulary record with zero product-information capacity:
 
 ```bash
-minervit-methodology publish-instrumentation-record --target .
+tautline publish-instrumentation-record --target .
 ```
 
 See [`instrumentation.md`](../instrumentation.md) for the record schema.
@@ -73,12 +73,12 @@ print both paths.
 Useful commands:
 
 ```bash
-minervit-methodology event-log-path --target .
-minervit-methodology log-event --target . --event preflight_passed --severity ok --plain "Full preflight is green" --next "Push the branch"
-minervit-methodology event-tail --target . --lines 80
-minervit-methodology event-viewer --target .
-minervit-methodology event-audit --target . --since 24h --strict
-minervit-methodology event-rotate --target . --force
+tautline event-log-path --target .
+tautline log-event --target . --event preflight_passed --severity ok --plain "Full preflight is green" --next "Push the branch"
+tautline event-tail --target . --lines 80
+tautline event-viewer --target .
+tautline event-audit --target . --since 24h --strict
+tautline event-rotate --target . --force
 ```
 
 `event-viewer` starts a simple local HTTP viewer, auto-refreshes the running
@@ -137,12 +137,12 @@ print both paths plus the default report command.
 Useful commands:
 
 ```bash
-minervit-methodology usage-log-path --target .
-minervit-methodology usage-record --target . --provider claude --model claude-opus --activity plan-review --source manual --confidence estimated --total-tokens 120000
-minervit-methodology usage-import-claude --target . --path ~/.claude/projects/<project>/<session>.jsonl --since 7d --activity goal-execution
-minervit-methodology usage-report --target . --since 7d --by product
-minervit-methodology usage-report --target . --since 30d --by activity
-minervit-methodology usage-rotate --target . --force
+tautline usage-log-path --target .
+tautline usage-record --target . --provider claude --model claude-opus --activity plan-review --source manual --confidence estimated --total-tokens 120000
+tautline usage-import-claude --target . --path ~/.claude/projects/<project>/<session>.jsonl --since 7d --activity goal-execution
+tautline usage-report --target . --since 7d --by product
+tautline usage-report --target . --since 30d --by activity
+tautline usage-rotate --target . --force
 ```
 
 Usage records include provider, model, activity, source, confidence, token

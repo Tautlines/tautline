@@ -60,11 +60,17 @@ def test_cwd_discovery_is_warned_fallback(tmp_path):
     shim = _install(home)
     product = _plant_sibling(tmp_path / "near")
     # Remove the configured repo so nothing operator-controlled resolves; cwd discovery must win.
-    env_file = home / ".config" / "minervit" / "methodology.env"
-    kept = [ln for ln in env_file.read_text(encoding="utf-8").splitlines()
-            if "MINERVIT_METHODOLOGY_REPO=" not in ln]
-    env_file.write_text("\n".join(kept) + "\n", encoding="utf-8")
-    env = {**os.environ, "HOME": str(home), "MINERVIT_METHODOLOGY_REPO": ""}
+    # 0.9.2 rebrand: both config surfaces and both env-var families must be cleared.
+    for env_file in (
+        home / ".config" / "tautline" / "tautline.env",
+        home / ".config" / "minervit" / "methodology.env",
+    ):
+        if not env_file.is_file():
+            continue
+        kept = [ln for ln in env_file.read_text(encoding="utf-8").splitlines()
+                if "MINERVIT_METHODOLOGY_REPO=" not in ln and "TAUTLINE_METHODOLOGY_REPO=" not in ln]
+        env_file.write_text("\n".join(kept) + "\n", encoding="utf-8")
+    env = {**os.environ, "HOME": str(home), "MINERVIT_METHODOLOGY_REPO": "", "TAUTLINE_METHODOLOGY_REPO": ""}
     res = subprocess.run(
         [str(shim), "version", "--no-remote"],
         cwd=str(product), env=env, capture_output=True, text=True, timeout=60,

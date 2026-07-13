@@ -194,7 +194,7 @@
     "goalTracker": {
       "type": "object",
       "deprecated": true,
-      "description": "DEPRECATED: superseded by `backlogProvider`. Retained for backward compatibility; the CLI warns at render time when an adapter still declares it. Migrate to `backlogProvider` (see docs/productization/designs/migration-upgrade-path.md).",
+      "description": "DEPRECATED: superseded by `backlogProvider`. Retained for backward compatibility; the CLI warns at render time when an adapter still declares it. Migrate to `backlogProvider`.",
       "properties": {
         "enabled": { "type": "boolean" },
         "provider": { "type": "string", "enum": ["github-projects"] },

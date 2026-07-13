@@ -52,8 +52,37 @@ METHODOLOGY_REPO_SLUG = "tautlines/tautline-dev"
 # Pre-rebrand slug; unconverted machines/adapters still carry it (removal: METH-FU-TAUTLINE-FALLBACK-REMOVAL).
 LEGACY_METHODOLOGY_REPO_SLUGS = ("minervit/minervit-ai-delivery-methodology",)
 METHODOLOGY_MAIN_COMMIT_OVERRIDE_ENV = "MINERVIT_METHODOLOGY_ALLOW_MAIN_COMMIT"
-USER_CONFIG_ENV = Path.home() / ".config" / "minervit" / "methodology.env"
-USER_SECRETS_ENV = Path.home() / ".config" / "minervit" / "secrets.zsh"
+USER_CONFIG_ENV = Path.home() / ".config" / "tautline" / "tautline.env"
+USER_SECRETS_ENV = Path.home() / ".config" / "tautline" / "secrets.zsh"
+# Pre-rebrand config surfaces; still written as compatibility mirrors and read as fallbacks so
+# pre-0.9.2 launchers/hooks keep resolving (removal: METH-FU-TAUTLINE-FALLBACK-REMOVAL).
+LEGACY_USER_CONFIG_ENV = Path.home() / ".config" / "minervit" / "methodology.env"
+LEGACY_USER_SECRETS_ENV = Path.home() / ".config" / "minervit" / "secrets.zsh"
+
+
+def resolve_user_config_env() -> Path:
+    """The effective config env file: the tautline path once it exists, else the legacy path."""
+    if USER_CONFIG_ENV.is_file():
+        return USER_CONFIG_ENV
+    if LEGACY_USER_CONFIG_ENV.is_file():
+        return LEGACY_USER_CONFIG_ENV
+    return USER_CONFIG_ENV
+
+
+def brand_env_pairs(env: dict) -> dict:
+    """Mirror each MINERVIT_* entry as its TAUTLINE_* alias (rebrand transition dual-write).
+
+    Children read either family via resolve_env; dual-writing keeps mixed-version process
+    trees consistent until METH-FU-TAUTLINE-FALLBACK-REMOVAL drops the legacy names.
+    """
+    for name in [key for key in env if isinstance(key, str) and key.startswith("MINERVIT_")]:
+        # Overwrite, not setdefault (Codex 92a R1 P2): these writers own the MINERVIT_ value they
+        # just set, so an inherited divergent TAUTLINE_ alias is stale by definition -- keeping it
+        # would make resolve_env consumers disagree with legacy-name consumers in one process tree.
+        env["TAUTLINE_" + name[len("MINERVIT_"):]] = env[name]
+    return env
+
+
 USER_BIN_DIR = Path.home() / ".local" / "bin"
 MANAGED_USER_CONFIG_ENV_KEYS = {
     "MINERVIT_METHODOLOGY_REPO",
@@ -61,6 +90,8 @@ MANAGED_USER_CONFIG_ENV_KEYS = {
     "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE",
     "MINERVIT_METHODOLOGY_UPDATE_POLICY",
     "MINERVIT_METHODOLOGY_UPDATE_PINS",
+    "TAUTLINE_METHODOLOGY_REPO",
+    "TAUTLINE_CLAUDE_AUTOCOMPACT_PCT",
     "PATH",
 }
 GENERATED_HEADER_TEMPLATE = "<!-- GENERATED -->\n"
@@ -93,6 +124,7 @@ PUBLIC_RELEASE_EXPORT_MARKER = ".minervit-public-release-export.json"
 PUBLIC_RELEASE_EXPORT_MARKER_SCHEMA = "minervit-public-release-export/v1"
 PUBLIC_RELEASE_PLACEHOLDER_ACCOUNT_IDS = {"000000000000", "111111111111", "123456789012"}
 PUBLIC_RELEASE_MAX_ISSUES_PER_RULE = 25
+RELEASE_UPDATE_DELIVERY_EXPORT_RELATIVE_PATH = "docs/releases/release-update-delivery.json"
 PUBLIC_RELEASE_EXPORT_EXCLUDED_PREFIXES = (
     # The framework's own self-adapter files are maintainer-lane config that
     # references private planning conventions; the self-adapter gates skip in
@@ -110,6 +142,16 @@ PUBLIC_RELEASE_EXPORT_EXCLUDED_PREFIXES = (
     ".tautline/",
     "docs/backlog/",
     "docs/productization/",
+    # The release-update delivery ledger is an internal ops record of who was
+    # notified about which release, and when. The rest of docs/releases/ is
+    # public release material and still ships. Because the export tree cannot
+    # carry the ledger, the release-update gate in public_release_issues() is
+    # re-rooted to the source repository via release_update_root. NOTE: being
+    # export-excluded ("don't ship it") is independent of being dirty-state-
+    # excluded ("don't gate the export on its working-tree state") — see
+    # public_release_dirty_state_path_included(), which deliberately does NOT
+    # reuse this tuple for the ledger path.
+    RELEASE_UPDATE_DELIVERY_EXPORT_RELATIVE_PATH,
     "docs/superpowers/",
 )
 PUBLIC_RELEASE_EXPORT_ALLOWED_PRODUCT_DOCS = (
@@ -5717,7 +5759,7 @@ def render_adapters(args: argparse.Namespace) -> int:
         # authoring/render boundary (not on every load) so the migration is visible without noise.
         print(
             "render_adapters_warning: adapter key 'goalTracker' is DEPRECATED; migrate to "
-            "'backlogProvider' (see docs/productization/designs/migration-upgrade-path.md)",
+            "'backlogProvider'",
             file=sys.stderr,
         )
     validate_render_adapter_provenance(data, args.project)
@@ -5942,7 +5984,7 @@ def release_migration_report_data(
             len(deprecated_surfaces),
         )
         deprecated_surfaces.insert(insert_at, historical_rca_surface)
-    if parsed_version > version_tuple("0.9.1"):
+    if parsed_version > version_tuple("0.9.6"):
         raise SystemExit(
             f"release migration report data is not declared for {version}; "
             "add a release-specific branch before cutting the release"
@@ -5967,7 +6009,155 @@ def release_migration_report_data(
             f"release migration report data is not declared for {version}; "
             "add a release-specific branch before cutting the release"
         )
-    if parsed_version == version_tuple("0.9.1"):
+    if parsed_version == version_tuple("0.9.6"):
+        wip_safe = True
+        required_migrations = []
+        optional_migrations = []
+        behavior_changes = [
+            "A regression test now freezes the project's line-length lint exclusion (E501) at "
+            "its current hit count, so the previously-unbounded exclusion cannot grow further; "
+            "lowering the pinned count remains a manual follow-up as overlong lines are "
+            "cleaned up.",
+        ]
+        rollback_notes = [
+            "Test-suite and lint-configuration-comment changes only: pinning back to 0.9.5 "
+            "removes the new regression test; no runtime or configuration surface changes "
+            "either way.",
+            "Stable clients remain on the stable channel unless they explicitly opt into "
+            "experimental.",
+            "This release is WIP-safe: it carries no executable behavior change.",
+        ]
+    elif parsed_version == version_tuple("0.9.5"):
+        wip_safe = True
+        required_migrations = []
+        optional_migrations = []
+        behavior_changes = [
+            "Documentation truth pass on the public surface: TERMS.md now describes the auto-update "
+            "trust model that actually ships (install-cli pins the update source to the installing "
+            "commit by default, --update-policy signed verifies the upstream commit signature, both "
+            "fail closed, and install-claude-launcher refuses --dangerously-skip-permissions unless "
+            "one of those policies is in effect) instead of describing it as a pre-launch target.",
+            "A Claude Code plugin marketplace manifest ships at .claude-plugin/marketplace.json, so "
+            "`/plugin marketplace add tautlines/tautline` offers the tautline-core and tautline-ops "
+            "plugins directly from the repository. The README documents the install flow and the "
+            "shell activation/PATH step the quickstart previously omitted.",
+            "Public documentation no longer points at maintainer-only paths a reader of this "
+            "repository cannot open; those references now name the maintainer repository or its "
+            "backlog in prose. The render-adapters deprecation warning for the legacy goalTracker "
+            "adapter key drops its pointer to a maintainer-only design document and keeps the "
+            "actionable instruction (migrate to backlogProvider). The renderer-ci workflow accepts "
+            "workflow_dispatch so its default-branch badge can render a status.",
+            "SECURITY.md states the supply-chain posture that actually ships: the commit-level "
+            "trust gate on every auto-update re-exec is real and fails closed, but the current "
+            "releases carry no checksum manifest and the published release tags are not signed. "
+            "cut-release can compute a SHA-256 manifest and can create a signed tag with the right "
+            "flags; that is now described as a capability rather than as something an adopter can "
+            "verify against today.",
+            "SECURITY.md and TERMS.md note that --update-policy signed applies to an upstream you "
+            "control and sign. The canonical upstream does not sign its commits yet, so a signed "
+            "policy pointed at it refuses every update (fail-closed, with no upstream fix available "
+            "to the adopter); pinned, the install default, remains the working lever against it. "
+            "Signing the canonical upstream is listed as a roadmap item.",
+            "ROADMAP.md speaks of the public repository in the present tense, backlinks its work "
+            "items to their public issues, and carries a Recently shipped section that is current "
+            "through the 0.9.x line.",
+        ]
+        rollback_notes = [
+            "Documentation, workflow-trigger, and plugin-manifest changes only: pinning back to "
+            "0.9.4 restores the previous prose and removes the marketplace manifest; no runtime or "
+            "configuration surface changes either way.",
+            "Stable clients remain on the stable channel unless they explicitly opt into experimental.",
+            "This release is WIP-safe: it carries no executable behavior change.",
+        ]
+    elif parsed_version == version_tuple("0.9.4"):
+        wip_safe = True
+        required_migrations = []
+        optional_migrations = []
+        behavior_changes = [
+            "Public-surface scrub: the changelog and the startup-remediation reference no longer "
+            "carry private-tracker issue numbers, incident dates, or internal backlog/archive paths; "
+            "the affected passages describe the same behavior and follow-up tracking in "
+            "maintainer-neutral terms. A stray internal codename was dropped from a .gitignore "
+            "comment.",
+            "The MakerKit community example is fully de-identified: the internal example codename is "
+            "gone from its filename and headings, and exact kit/dependency version pins are replaced "
+            "with relative phrasing. The Stripe and Better Auth teaching patterns are unchanged.",
+            "The internal release-update delivery ledger is excluded from the public release export. "
+            "The release-update accountability gate now evaluates against the maintainer's source "
+            "repository instead of the exported tree, so public-release-export stays gated on "
+            "release-update delivery rather than tripping on the ledger's absence from the export.",
+        ]
+        rollback_notes = [
+            "Documentation and example-content changes only: pinning back to 0.9.3 restores the "
+            "previous prose; no configuration or runtime surface changes either way.",
+            "Stable clients remain on the stable channel unless they explicitly opt into experimental.",
+            "This release is WIP-safe: the only executable change is a new optional keyword argument "
+            "with a backward-compatible default and an export-exclusion list entry.",
+        ]
+    elif parsed_version == version_tuple("0.9.3"):
+        wip_safe = True
+        required_migrations = []
+        optional_migrations = []
+        behavior_changes = [
+            "Brand copy sweep: live reader-facing surfaces (README, CONTRIBUTING, GOVERNANCE, "
+            "SECURITY, TERMS, PRIVACY, ROADMAP, docs/reference, docs/governance, docs/product, "
+            "examples) teach the tautline CLI name, the tautlines/tautline-dev repository, and the "
+            "~/.config/tautline/tautline.env config surface; a tracked guard test bans the retired "
+            "'minervit methodology' brand on those surfaces. 'Minervit' remains as the maintainer "
+            "name, and real on-disk artifact names keep their current spellings until the fallback "
+            "removal release.",
+            "Commands, adapter schema, hooks, and runtime behavior are unchanged (documentation and "
+            "test-expectation changes only).",
+        ]
+        rollback_notes = [
+            "Documentation-only: pinning back to 0.9.2 restores the previous prose; no configuration "
+            "or runtime surface changes either way.",
+            "Stable clients remain on the stable channel unless they explicitly opt into experimental.",
+            "This release is WIP-safe: no executable surface changes.",
+        ]
+    elif parsed_version == version_tuple("0.9.2"):
+        wip_safe = True
+        required_migrations = []
+        optional_migrations = [
+            {
+                "id": "reinstall-cli-for-tautline-config",
+                "surface": "config",
+                "description": (
+                    "The machine config surface moves to ~/.config/tautline/tautline.env (secrets: "
+                    "~/.config/tautline/secrets.zsh; re-exec tokens: ~/.config/tautline/reexec-tokens). "
+                    "install-cli writes the new file, migrates preserved values from the legacy "
+                    "~/.config/minervit/methodology.env, and keeps that legacy path as a byte-identical "
+                    "compatibility mirror so pre-0.9.2 launchers/hooks keep resolving. update-repin keeps "
+                    "both surfaces' pins in step. Re-running install-cli + install-claude-launcher adopts "
+                    "the new surface; nothing breaks without it (legacy fallbacks remain until "
+                    "METH-FU-TAUTLINE-FALLBACK-REMOVAL)."
+                ),
+                "command": "tautline install-cli && tautline install-claude-launcher --force",
+            },
+        ]
+        behavior_changes = [
+            "Config surface rebrand: the CLI reads ~/.config/tautline/tautline.env first with the legacy "
+            "~/.config/minervit/methodology.env as fallback; install-cli emits TAUTLINE_METHODOLOGY_REPO "
+            "and TAUTLINE_CLAUDE_AUTOCOMPACT_PCT aliases and writes a byte-identical legacy mirror; "
+            "emitted shims, launchers, and git hooks source the tautline path first and honor "
+            "TAUTLINE_METHODOLOGY_REPO. Trust configuration (update policy/pins) keeps its 0.9.1 "
+            "names and semantics; TAUTLINE trust aliases and pin-set preservation ship separately as "
+            "a focused security change.",
+            "Lane and codex child environments dual-write TAUTLINE_* aliases for every MINERVIT_* "
+            "variable so mixed-version process trees agree during the transition.",
+            "The held-update banners defer to the active trust policy's remedy in the hold detail "
+            "(deferred R2 P2 from 0.9.1, now landed).",
+            "Commands, adapter schema, and product-lane gates are otherwise unchanged.",
+        ]
+        rollback_notes = [
+            "Pinning back to 0.9.1 keeps working: the legacy config mirror is byte-identical, so "
+            "pre-0.9.2 code resolves the same values from the legacy path.",
+            "No adapter migration is required for product lanes.",
+            "Stable clients remain on the stable channel unless they explicitly opt into experimental.",
+            "This release is WIP-safe: resolution order adds a preferred path without removing any "
+            "legacy surface.",
+        ]
+    elif parsed_version == version_tuple("0.9.1"):
         wip_safe = True
         required_migrations = []
         optional_migrations = [
@@ -12127,7 +12317,34 @@ def public_release_add_issue(
     )
 
 
-def public_release_issues(repo_root: Path = REPO_ROOT, private_terms_file: Path | None = None) -> list[dict]:
+def public_release_issues(
+    repo_root: Path = REPO_ROOT,
+    private_terms_file: Path | None = None,
+    release_update_root: Path | None = None,
+) -> list[dict]:
+    """Return public-release blockers found under ``repo_root``.
+
+    ``release_update_root`` is used only to evaluate the release-update
+    accountability gate ("has this release's update been delivered?"), a
+    maintainer-side check. The delivery ledger
+    (``docs/releases/release-update-delivery.json``) is export-excluded, so
+    it never exists in an exported tree, and the gate is meaningless there.
+    Resolution order:
+
+    - If ``release_update_root`` is given explicitly, use it (the export
+      path passes the source repo that owns the ledger).
+    - Else, if ``repo_root`` itself is a genuine export candidate — it
+      carries a valid ``PUBLIC_RELEASE_EXPORT_MARKER`` AND the
+      export-excluded ledger is actually absent from that tree — skip the
+      release-update issues entirely — a check run *inside* an export has
+      no ledger to consult and must not raise spurious, unsatisfiable
+      ``release-update-*`` blockers. Both conditions matter: a normal
+      maintainer checkout that happens to contain a stray marker file
+      still has its ledger, so it is not an export candidate and the gate
+      must stay active.
+    - Else, fall back to ``repo_root`` (the normal maintainer-repo
+      ``public-release-check`` path, where the gate must still fire).
+    """
     issues: list[dict] = []
     seen: set[tuple[str, str, int | None, str]] = set()
     private_adapters = public_release_private_adapters(repo_root)
@@ -12167,8 +12384,36 @@ def public_release_issues(repo_root: Path = REPO_ROOT, private_terms_file: Path 
             "private adapter path remains in git history; rewrite history before flipping this repository public or publish from a clean public repo",
             repo_root,
         )
-    for code, path, message in release_update_public_release_issues(repo_root):
-        public_release_add_issue(issues, seen, code, path, message, repo_root)
+    # The delivery ledger is export-excluded, so an export tree never carries it.
+    # Evaluate release-update accountability against the repository that owns the
+    # ledger (the export source), not the scanned tree; otherwise every release
+    # reads as undelivered and every export is blocked. When no explicit source
+    # is given and the scanned tree is a *genuine* export candidate, the ledger-
+    # derived gate is meaningless (it deliberately has no ledger) — skip it rather
+    # than falling back to the ledger-less export tree, which would raise the same
+    # unsatisfiable blockers a second time (e.g. `public-release-check` run from
+    # inside a generated export).
+    #
+    # Marker presence alone is not proof of that: a normal maintainer checkout
+    # can contain a stray, untracked, or leftover marker file without being an
+    # export at all, and its ledger is still right there. So require both: a
+    # marker that actually validates as an export marker (schema-checked, not
+    # just any file with the right name) AND the ledger genuinely absent from
+    # this tree. A real export satisfies both (the export writes the marker and
+    # excludes the ledger); a stray marker in a normal checkout satisfies only
+    # the first, so the gate correctly stays active.
+    delivery_root: Path | None
+    if release_update_root is not None:
+        delivery_root = release_update_root
+    elif public_release_export_destination_is_prior_export(repo_root) and not (
+        repo_root / RELEASE_UPDATE_DELIVERY_EXPORT_RELATIVE_PATH
+    ).exists():
+        delivery_root = None
+    else:
+        delivery_root = repo_root
+    if delivery_root is not None:
+        for code, path, message in release_update_public_release_issues(delivery_root):
+            public_release_add_issue(issues, seen, code, path, message, delivery_root)
 
     private_terms = public_release_private_terms(private_adapters, private_terms_file)
     private_path_pattern = re.compile(PUBLIC_RELEASE_PRIVATE_ADAPTER_PATH_RE)
@@ -12319,12 +12564,37 @@ def public_release_export_files(repo_root: Path = REPO_ROOT, include_untracked: 
     return sorted(files, key=lambda item: item[1].as_posix())
 
 
+def public_release_dirty_state_path_included(rel: Path) -> bool:
+    """Whether ``rel`` should count toward the export's dirty/untracked gates.
+
+    This is deliberately NOT the same predicate as
+    ``public_release_export_path_included()``: "excluded from the exported
+    tree" (don't ship it) and "excluded from the dirty-state gate" (don't
+    refuse the export over its working-tree state) are two different
+    concerns. Almost every export-excluded path is also fine to leave dirty
+    or untracked (see
+    ``test_public_release_export_ignores_dirty_and_untracked_excluded_internal_docs``).
+    The one exception is the release-update delivery ledger: it is
+    export-excluded (the export tree must not carry an internal ops record),
+    but ``public_release_issues()`` re-roots the release-update gate to read
+    that ledger from the SOURCE working tree via ``release_update_root``. If
+    an uncommitted ledger change didn't count as dirty, someone could run
+    `publish-release-update`, leave it uncommitted, and still pass the
+    export's release-update gate on the strength of content that was never
+    committed. Counting the ledger here restores the pre-export-exclusion
+    invariant: a dirty or untracked ledger makes the export refuse.
+    """
+    if public_release_export_path_included(rel):
+        return True
+    return rel.as_posix() == RELEASE_UPDATE_DELIVERY_EXPORT_RELATIVE_PATH
+
+
 def public_release_untracked_export_paths(repo_root: Path = REPO_ROOT) -> list[str]:
     code, out, err = run_command(["git", "-C", str(repo_root), "ls-files", "-z", "--others", "--exclude-standard"])
     if code != 0:
         detail = err or out or "git ls-files failed"
         raise SystemExit(f"public-release-export: cannot inspect untracked files: {detail}")
-    return sorted(raw for raw in out.split("\0") if raw and public_release_export_path_included(Path(raw)))
+    return sorted(raw for raw in out.split("\0") if raw and public_release_dirty_state_path_included(Path(raw)))
 
 
 def public_release_dirty_tracked_paths(repo_root: Path = REPO_ROOT) -> list[str]:
@@ -12340,7 +12610,7 @@ def public_release_dirty_tracked_paths(repo_root: Path = REPO_ROOT) -> list[str]
         paths.update(
             line.strip()
             for line in out.splitlines()
-            if line.strip() and public_release_export_path_included(Path(line.strip()))
+            if line.strip() and public_release_dirty_state_path_included(Path(line.strip()))
         )
     return sorted(paths)
 
@@ -12410,6 +12680,20 @@ def public_release_export_repository(
             "public-release-export: dirty tracked files are not exported by default; "
             "commit them or pass --include-working-tree only for an in-progress validation export"
         )
+    # The release-update gate below is re-rooted to read the delivery ledger from
+    # `source` (release_update_root=source) rather than the export tree, because the
+    # ledger is export-excluded. public_release_dirty_tracked_paths() only inspects
+    # `git diff`, which never reports untracked files, so an untracked ledger sails
+    # past that check even though it is just as uncommitted as a dirty tracked one.
+    # Refuse it here, narrowly -- only the ledger, not arbitrary untracked files; the
+    # CLI wrapper already owns the general untracked-file policy for everything else.
+    if not include_untracked and RELEASE_UPDATE_DELIVERY_EXPORT_RELATIVE_PATH in public_release_untracked_export_paths(
+        source
+    ):
+        raise SystemExit(
+            f"public-release-export: {RELEASE_UPDATE_DELIVERY_EXPORT_RELATIVE_PATH} is untracked in the source "
+            "repository; commit it before export, or pass --include-untracked only for an in-progress validation export"
+        )
     dest_exists = dest.exists()
     dest_has_entries = dest_exists and any(dest.iterdir())
     if dest_has_entries and not force:
@@ -12439,7 +12723,7 @@ def public_release_export_repository(
         encoding="utf-8",
     )
     commit = init_public_release_export_repo(dest)
-    issues = public_release_issues(dest, private_terms_file=private_terms_file)
+    issues = public_release_issues(dest, private_terms_file=private_terms_file, release_update_root=source)
     return {"files": len(files), "commit": commit, "issues": issues}
 
 
@@ -12622,7 +12906,7 @@ def lane_env_values(data: dict, target: Path) -> dict[str, str]:
             env[str(name)] = str(template).format(**env)
         except KeyError as exc:
             raise SystemExit(f"localResourceIsolation.envTemplates.{name} references unknown env var: {exc}") from exc
-    return env
+    return brand_env_pairs(env)
 
 
 def render_lane_env(data: dict, target: Path) -> str:
@@ -13824,10 +14108,10 @@ def codex_fast_mode_env(data: dict, target: Path, base_env: dict[str, str] | Non
     enabled = codex_fast_mode_enabled(data)
     env["MINERVIT_CODEX_FAST_MODE"] = "1" if enabled else "0"
     if not enabled:
-        return env
+        return brand_env_pairs(env)
     real_codex = resolve_real_codex(env)
     if not real_codex:
-        return env
+        return brand_env_pairs(env)
     shim_dir = configured_path(target, data["laneState"]["runsDir"]) / "codex-fast-mode-bin"
     shim_dir.mkdir(parents=True, exist_ok=True)
     shim_path = shim_dir / "codex"
@@ -13840,7 +14124,7 @@ def codex_fast_mode_env(data: dict, target: Path, base_env: dict[str, str] | Non
     existing_path = env.get("PATH", os.defpath)
     path_parts.extend(part for part in existing_path.split(os.pathsep) if part and part != str(shim_dir))
     env["PATH"] = os.pathsep.join(path_parts)
-    return env
+    return brand_env_pairs(env)
 
 
 def codex_fast_mode_status(data: dict) -> str:
@@ -14861,7 +15145,7 @@ def methodology_update_policy() -> str:
     return "warn"  # backward-compatible default; public distribution should set signed|pinned
 
 
-def effective_methodology_update_policy(config_env: Path = USER_CONFIG_ENV) -> str:
+def effective_methodology_update_policy(config_env: Path | None = None) -> str:
     """Effective policy for install-time gating: live env wins, else the installed methodology.env
     value (which the launcher sources at runtime), else the backward-compatible 'warn' default.
 
@@ -14871,6 +15155,8 @@ def effective_methodology_update_policy(config_env: Path = USER_CONFIG_ENV) -> s
     env_policy = os.environ.get(METHODOLOGY_UPDATE_POLICY_ENV, "").strip().lower()
     if env_policy in ("signed", "pinned", "unverified", "warn"):
         return env_policy
+    if config_env is None:
+        config_env = resolve_user_config_env()
     file_policy = util_module().user_config_env_value(METHODOLOGY_UPDATE_POLICY_ENV, config_env).strip().lower()
     if file_policy in ("signed", "pinned", "unverified", "warn"):
         return file_policy
@@ -14973,7 +15259,10 @@ def gate_methodology_upstream_advance(candidate_head: str) -> str | None:
 
 
 def methodology_reexec_token_dir() -> Path:
-    return Path.home() / ".config" / "minervit" / "reexec-tokens"
+    # Cross-version note: the consumer receives the token's ABSOLUTE path via
+    # METHODOLOGY_REEXEC_TOKEN_ENV, so relocating the create dir is handoff-safe in both
+    # directions during the rebrand transition.
+    return Path.home() / ".config" / "tautline" / "reexec-tokens"
 
 
 def create_methodology_reexec_token(expected_head: str) -> str:
@@ -15739,10 +16028,11 @@ def lane_start(args: argparse.Namespace) -> int:
             print("startup: methodology update must be resolved before lane startup can continue")
             return 1
         if status == "held":
+            # The hold detail printed above carries the ACTIVE policy's remedy (pinned -> update-repin,
+            # signed -> signature repair); do not restate a policy-specific command here (Codex R2 P2).
             print(
-                "methodology_update_held: startup continues on the trusted pinned checkout; "
-                f"to advance, review the incoming commits then run `{CLI_NAME} update-repin "
-                "--channel <stable|experimental>`"
+                "methodology_update_held: startup continues on the trusted retained checkout; "
+                "to advance, follow the remedy in the hold message above"
             )
         print(f"methodology_release_guard: {install_methodology_release_guards()}")
     print(f"plugin_version: {plugin_version()}")
@@ -19806,7 +20096,7 @@ _CD_RECOVERY_PREFIX_RE = re.compile(
 # own prescribed CLI-resolution step (lane-lifecycle / context-continuity skills). Only that specific
 # path is accepted, so an arbitrary file can never be sourced through this guard.
 _SOURCE_ENV_RECOVERY_PREFIX_RE = re.compile(
-    r"""^[ \t]*(?:source|\.)[ \t]+["']?(?:\$HOME|\$\{HOME\}|~)/\.config/minervit/methodology\.env["']?[ \t]*(?:&&|;)[ \t]*"""
+    r"""^[ \t]*(?:source|\.)[ \t]+["']?(?:\$HOME|\$\{HOME\}|~)/\.config/(?:tautline/tautline|minervit/methodology)\.env["']?[ \t]*(?:&&|;)[ \t]*"""
 )
 # Collapse ONLY the trusted env-var launcher path -- $MINERVIT_METHODOLOGY_REPO/bin/minervit-methodology,
 # the exact form the skills prescribe when the CLI is not on PATH -- to the bare command so the
@@ -20777,14 +21067,22 @@ set -u
 MINERVIT_WORK_PROFILE_SKIP_DEV_GATES=0
 
 resolve_minervit_cli() {{
-  if [ -f "$HOME/.config/minervit/methodology.env" ]; then
+  if [ -f "$HOME/.config/tautline/tautline.env" ]; then
     # User secrets sourcing must not kill the hook under set -u.
+    set +u
+    . "$HOME/.config/tautline/tautline.env"
+    set -u
+  elif [ -f "$HOME/.config/minervit/methodology.env" ]; then
     set +u
     . "$HOME/.config/minervit/methodology.env"
     set -u
   fi
   if [ -x {script_path} ]; then
     printf '%s\\n' {script_path}
+    return 0
+  fi
+  if [ "${{TAUTLINE_METHODOLOGY_REPO:-}}" != "" ] && [ -x "$TAUTLINE_METHODOLOGY_REPO/bin/tautline" ]; then
+    printf '%s\\n' "$TAUTLINE_METHODOLOGY_REPO/bin/tautline"
     return 0
   fi
   if [ "${{MINERVIT_METHODOLOGY_REPO:-}}" != "" ] && [ -x "$MINERVIT_METHODOLOGY_REPO/bin/tautline" ]; then
@@ -22358,6 +22656,8 @@ def install_cli(args: argparse.Namespace) -> int:
         print(f"  mkdir -p {bin_dir}")
         print(f"  mkdir -p {config_env.parent} (chmod 0700)")
         print(f"  write {config_env} (chmod 0600) setting MINERVIT_METHODOLOGY_REPO={REPO_ROOT}")
+        if config_env == USER_CONFIG_ENV.expanduser().resolve(strict=False):
+            print(f"  write byte-identical legacy compatibility mirror {LEGACY_USER_CONFIG_ENV} (chmod 0600)")
         if update_policy == "pinned":
             print(f"  set {METHODOLOGY_UPDATE_POLICY_ENV}=pinned pinned at HEAD {install_head[:12]} (advance with update-repin)")
         else:
@@ -22388,22 +22688,56 @@ def install_cli(args: argparse.Namespace) -> int:
                 )
         except OSError:
             pass
+    # Rebrand transition: preserve user exports (webhook secrets etc.) from BOTH config surfaces.
+    # Merge by VARIABLE NAME with the preferred file winning (Codex 0.9.2 R1 P2): exact-line dedup
+    # would append a stale legacy assignment after the new one, and shell sourcing would then make
+    # the stale value effective.
+    # Normalized default-path comparison (Codex 0.9.2 R1 P2): config_env is resolved but the
+    # constant is not; a symlinked HOME (macOS /var -> /private/var) must not skip the mirror.
+    default_config_env = USER_CONFIG_ENV.expanduser().resolve(strict=False)
     preserved_exports = preserved_user_config_exports(config_env)
+    if config_env == default_config_env:
+        seen_names = {
+            match.group(1)
+            for entry in preserved_exports
+            if (match := re.match(r"^export\s+([A-Za-z_][A-Za-z0-9_]*)=", entry))
+        }
+        for entry in preserved_user_config_exports(LEGACY_USER_CONFIG_ENV):
+            match = re.match(r"^export\s+([A-Za-z_][A-Za-z0-9_]*)=", entry)
+            if match and match.group(1) in seen_names:
+                continue
+            if match:
+                seen_names.add(match.group(1))
+            if entry not in preserved_exports:
+                preserved_exports.append(entry)
+    preserved_source = config_env if config_env.is_file() else (
+        LEGACY_USER_CONFIG_ENV if LEGACY_USER_CONFIG_ENV.is_file() else config_env
+    )
+
+    # Pin behavior unchanged from 0.9.1: install pins at the installing HEAD; run update-repin
+    # AFTER install-cli to widen trust (the machine-conversion runbook order). Pin-set
+    # preservation ships separately as its own focused security change.
+    pins_value = install_head
 
     env_lines = [
         "# Generated by tautline install-cli.",
+        f"export TAUTLINE_METHODOLOGY_REPO={shlex.quote(str(REPO_ROOT))}",
         f"export MINERVIT_METHODOLOGY_REPO={shlex.quote(str(REPO_ROOT))}",
-        f"MINERVIT_SECRETS_ENV={shlex.quote(str(USER_SECRETS_ENV))}",
-        'if [ -f "$MINERVIT_SECRETS_ENV" ]; then',
+        f"TAUTLINE_SECRETS_ENV={shlex.quote(str(USER_SECRETS_ENV))}",
+        f"MINERVIT_SECRETS_ENV={shlex.quote(str(LEGACY_USER_SECRETS_ENV))}",
+        'if [ -f "$TAUTLINE_SECRETS_ENV" ]; then',
+        '  . "$TAUTLINE_SECRETS_ENV"',
+        'elif [ -f "$MINERVIT_SECRETS_ENV" ]; then',
         '  . "$MINERVIT_SECRETS_ENV"',
         "fi",
-        f"export MINERVIT_CLAUDE_AUTOCOMPACT_PCT=\"${{MINERVIT_CLAUDE_AUTOCOMPACT_PCT:-{DEFAULT_CLAUDE_AUTOCOMPACT_PERCENT}}}\"",
+        f"export MINERVIT_CLAUDE_AUTOCOMPACT_PCT=\"${{TAUTLINE_CLAUDE_AUTOCOMPACT_PCT:-${{MINERVIT_CLAUDE_AUTOCOMPACT_PCT:-{DEFAULT_CLAUDE_AUTOCOMPACT_PERCENT}}}}}\"",
+        'export TAUTLINE_CLAUDE_AUTOCOMPACT_PCT="$MINERVIT_CLAUDE_AUTOCOMPACT_PCT"',
         'export CLAUDE_AUTOCOMPACT_PCT_OVERRIDE="$MINERVIT_CLAUDE_AUTOCOMPACT_PCT"',
         f"export PATH={shlex.quote(str(bin_dir))}:$PATH",
         f"export {METHODOLOGY_UPDATE_POLICY_ENV}={update_policy}",
     ]
     if update_policy == "pinned" and install_head and install_head != "unavailable":
-        env_lines.append(f"export {METHODOLOGY_UPDATE_PINS_ENV}={install_head}")
+        env_lines.append(f"export {METHODOLOGY_UPDATE_PINS_ENV}={shlex.quote(pins_value)}")
     if preserved_exports:
         env_lines.extend(["", "# Preserved local user/project environment. Do not commit these values.", *preserved_exports])
     env_lines.append("")
@@ -22412,13 +22746,26 @@ def install_cli(args: argparse.Namespace) -> int:
         config_env.chmod(0o600)  # sec-secrets-2: never leave webhook secrets world-readable
     except OSError:
         pass
+    # Compatibility mirror: pre-0.9.2 launchers/hooks hardcode the legacy path; keep it identical
+    # until METH-FU-TAUTLINE-FALLBACK-REMOVAL deletes it. Only mirrored for the default location.
+    if config_env == default_config_env:
+        LEGACY_USER_CONFIG_ENV.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            LEGACY_USER_CONFIG_ENV.parent.chmod(0o700)
+        except OSError:
+            pass
+        LEGACY_USER_CONFIG_ENV.write_text("\n".join(env_lines), encoding="utf-8")
+        try:
+            LEGACY_USER_CONFIG_ENV.chmod(0o600)
+        except OSError:
+            pass
 
     shim_content = "\n".join(
         [
             "#!/bin/sh",
             "set -eu",
             f"CONFIG_ENV={shlex.quote(str(config_env))}",
-            'MINERVIT_METHODOLOGY_REPO_PRESET="${MINERVIT_METHODOLOGY_REPO:-}"',
+            'MINERVIT_METHODOLOGY_REPO_PRESET="${TAUTLINE_METHODOLOGY_REPO:-${MINERVIT_METHODOLOGY_REPO:-}}"',
             'MINERVIT_METHODOLOGY_REPO_ENV=""',
             # methodology.env sources the user's private secrets file; an unset-variable
             # reference there must degrade to missing config, not kill every CLI run in
@@ -22427,7 +22774,7 @@ def install_cli(args: argparse.Namespace) -> int:
             "  set +eu",
             '  . "$CONFIG_ENV"',
             "  set -eu",
-            '  MINERVIT_METHODOLOGY_REPO_ENV="${MINERVIT_METHODOLOGY_REPO:-}"',
+            '  MINERVIT_METHODOLOGY_REPO_ENV="${TAUTLINE_METHODOLOGY_REPO:-${MINERVIT_METHODOLOGY_REPO:-}}"',
             'elif [ -f "$HOME/.config/minervit/methodology.env" ]; then',
             "  set +eu",
             '  . "$HOME/.config/minervit/methodology.env"',
@@ -22466,6 +22813,8 @@ def install_cli(args: argparse.Namespace) -> int:
             "}",
             'MINERVIT_METHODOLOGY_REPO="$(resolve_minervit_methodology_repo)"',
             "export MINERVIT_METHODOLOGY_REPO",
+            'TAUTLINE_METHODOLOGY_REPO="$MINERVIT_METHODOLOGY_REPO"',
+            "export TAUTLINE_METHODOLOGY_REPO",
             'if [ -x "$MINERVIT_METHODOLOGY_REPO/bin/tautline" ]; then',
             '  exec "$MINERVIT_METHODOLOGY_REPO/bin/tautline" "$@"',
             "fi",
@@ -22500,12 +22849,18 @@ def uninstall_cli(args: argparse.Namespace) -> int:
     the operator can remove them deliberately.
     """
     bin_dir = args.bin_dir.expanduser().resolve()
-    config_env = args.config_env.expanduser().resolve()
+    config_env = (args.config_env or resolve_user_config_env()).expanduser().resolve()
     shim = bin_dir / CLI_NAME
     legacy_shim = bin_dir / LEGACY_CLI_NAME
     dry_run = getattr(args, "dry_run", False)
     removed: list[str] = []
-    for path, keep in ((shim, False), (legacy_shim, False), (config_env, getattr(args, "keep_env", False))):
+    keep_env = getattr(args, "keep_env", False)
+    removal_targets = [(shim, False), (legacy_shim, False), (config_env, keep_env)]
+    # A default install writes BOTH config surfaces (tautline.env + the legacy mirror, which can
+    # hold preserved secrets); a default uninstall must reverse both (Codex 0.9.2 R1 P2).
+    if config_env == USER_CONFIG_ENV.expanduser().resolve(strict=False) and LEGACY_USER_CONFIG_ENV.expanduser().resolve(strict=False) != config_env:
+        removal_targets.append((LEGACY_USER_CONFIG_ENV, keep_env))
+    for path, keep in removal_targets:
         if keep:
             print(f"uninstall_cli: keeping {path}")
             continue
@@ -22552,6 +22907,18 @@ def repin_methodology_update(repo: Path, config_env: Path, channel: str = "stabl
         )
     previous = util_module().user_config_env_value(METHODOLOGY_UPDATE_PINS_ENV, config_env).strip()
     _rewrite_config_env_export(config_env, METHODOLOGY_UPDATE_PINS_ENV, new_head)
+    # Rebrand transition: keep the other DEFAULT config surface's pin in step so pre-0.9.2
+    # launchers (legacy path) and 0.9.2+ launchers (tautline path) never disagree about what is
+    # trusted. Only when config_env IS one of the default pair (Codex 0.9.2 branch R1 P1): a
+    # custom --config-env must never mutate unrelated installed trust files.
+    config_env_resolved = config_env.expanduser().resolve(strict=False)
+    default_pair = {
+        USER_CONFIG_ENV.expanduser().resolve(strict=False): LEGACY_USER_CONFIG_ENV,
+        LEGACY_USER_CONFIG_ENV.expanduser().resolve(strict=False): USER_CONFIG_ENV,
+    }
+    mirror = default_pair.get(config_env_resolved)
+    if mirror is not None and mirror.is_file():
+        _rewrite_config_env_export(mirror, METHODOLOGY_UPDATE_PINS_ENV, new_head)
     trusted_range = f"{previous[:12]}..{new_head[:12]}" if previous else new_head[:12]
     return previous, new_head, trusted_range
 
@@ -22583,7 +22950,7 @@ def _rewrite_config_env_export(config_env: Path, name: str, value: str) -> None:
 
 
 def update_repin(args: argparse.Namespace) -> int:
-    config_env = args.config_env.expanduser().resolve()
+    config_env = (args.config_env or resolve_user_config_env()).expanduser().resolve()
     channel = getattr(args, "channel", "stable") or "stable"
     previous, new_head, trusted_range = repin_methodology_update(REPO_ROOT, config_env, channel)
     print(f"update_repin_config_env: {config_env}")
@@ -22617,10 +22984,15 @@ def claude_launcher_content(dangerously_skip_permissions: bool) -> str:
             "#!/bin/sh",
             "# Generated by tautline install-claude-launcher.",
             "set -u",
-            'MINERVIT_METHODOLOGY_REPO_PRESET="${MINERVIT_METHODOLOGY_REPO:-}"',
+            'MINERVIT_METHODOLOGY_REPO_PRESET="${TAUTLINE_METHODOLOGY_REPO:-${MINERVIT_METHODOLOGY_REPO:-}}"',
             'MINERVIT_METHODOLOGY_REPO_ENV=""',
             # See the shim: user secrets sourcing must not kill the launcher under set -u.
-            'if [ -f "$HOME/.config/minervit/methodology.env" ]; then',
+            'if [ -f "$HOME/.config/tautline/tautline.env" ]; then',
+            "  set +u",
+            '  . "$HOME/.config/tautline/tautline.env"',
+            "  set -u",
+            '  MINERVIT_METHODOLOGY_REPO_ENV="${TAUTLINE_METHODOLOGY_REPO:-${MINERVIT_METHODOLOGY_REPO:-}}"',
+            'elif [ -f "$HOME/.config/minervit/methodology.env" ]; then',
             "  set +u",
             '  . "$HOME/.config/minervit/methodology.env"',
             "  set -u",
@@ -22657,12 +23029,19 @@ def claude_launcher_content(dangerously_skip_permissions: bool) -> str:
             "}",
             'MINERVIT_METHODOLOGY_REPO="$(launcher_resolve_methodology_repo)"',
             "export MINERVIT_METHODOLOGY_REPO",
+            "# Normalize BOTH families to the gated checkout (Codex 0.9.2 R1 P1): the sourced env file",
+            "# exported its own TAUTLINE_METHODOLOGY_REPO; children prefer TAUTLINE_*, so a stale value",
+            "# here would gate one checkout and execute another.",
+            'TAUTLINE_METHODOLOGY_REPO="$MINERVIT_METHODOLOGY_REPO"',
+            "export TAUTLINE_METHODOLOGY_REPO",
             f'MINERVIT_CLAUDE_AUTOCOMPACT_PCT="${{MINERVIT_CLAUDE_AUTOCOMPACT_PCT:-{DEFAULT_CLAUDE_AUTOCOMPACT_PERCENT}}}"',
             'case "$MINERVIT_CLAUDE_AUTOCOMPACT_PCT" in',
             "  ''|*[!0-9]*)",
             f"    MINERVIT_CLAUDE_AUTOCOMPACT_PCT={DEFAULT_CLAUDE_AUTOCOMPACT_PERCENT}",
             "    ;;",
             "esac",
+            'TAUTLINE_CLAUDE_AUTOCOMPACT_PCT="$MINERVIT_CLAUDE_AUTOCOMPACT_PCT"',
+            "export TAUTLINE_CLAUDE_AUTOCOMPACT_PCT",
             'if [ "$MINERVIT_CLAUDE_AUTOCOMPACT_PCT" -lt 1 ] || [ "$MINERVIT_CLAUDE_AUTOCOMPACT_PCT" -gt 100 ]; then',
             f"  MINERVIT_CLAUDE_AUTOCOMPACT_PCT={DEFAULT_CLAUDE_AUTOCOMPACT_PERCENT}",
             "fi",
@@ -23006,10 +23385,11 @@ def sync_methodology(args: argparse.Namespace) -> int:
     )
     print(f"methodology_update: {status} - {detail}")
     if status == "held":
+        # The hold detail printed above carries the ACTIVE policy's remedy (pinned -> update-repin,
+        # signed -> signature repair); do not restate a policy-specific command here (Codex R2 P2).
         print(
-            "methodology_update_held: launch continues on the trusted pinned checkout; "
-            f"to advance, review the incoming commits then run `{CLI_NAME} update-repin "
-            "--channel <stable|experimental>`"
+            "methodology_update_held: launch continues on the trusted retained checkout; "
+            "to advance, follow the remedy in the hold message above"
         )
     print(f"plugin_version: {plugin_version()}")
     print(f"methodology_commit: {run_git(REPO_ROOT, ['rev-parse', '--short', 'HEAD'])}")
@@ -25531,7 +25911,7 @@ def write_continuity_handoff(data: dict, target: Path, content: str) -> Path:
         f"- Project: {data['project']}\n"
         f"- Repo: {data['repo']}\n"
         f"- Target: {target}\n"
-        f"- Methodology CLI resolver: `minervit-methodology` from `PATH`, or `$MINERVIT_METHODOLOGY_REPO/bin/minervit-methodology` after sourcing `$HOME/.config/minervit/methodology.env`.\n"
+        f"- Methodology CLI resolver: `tautline` from `PATH`, or `${{TAUTLINE_METHODOLOGY_REPO:-$MINERVIT_METHODOLOGY_REPO}}/bin/tautline` after sourcing `$HOME/.config/tautline/tautline.env` (legacy minervit paths still resolve).\n"
         f"- Generated: {now_iso()}\n"
         f"- Branch: {branch}\n"
         f"- HEAD: {head}\n"
@@ -25544,7 +25924,7 @@ def write_continuity_handoff(data: dict, target: Path, content: str) -> Path:
         f"- This handoff is the continuity source, but it does not replace startup gates.\n"
         f"- Read this section, run the gates below in listed order, then return to `## Handoff Content`. Do not execute from Handoff Content before the gates pass.\n"
         f"- Do not ask clarifying questions, report substantive status, or start analysis from Handoff Content before the methodology gates pass. The only exception is naming a true blocker that prevents running the methodology CLI.\n"
-        f"- Resolve the methodology CLI before running gates: use `minervit-methodology` from `PATH`, or if it is missing from `PATH` or exits 127/command-not-found, source `$HOME/.config/minervit/methodology.env` when present or use `$MINERVIT_METHODOLOGY_REPO/bin/minervit-methodology`, then rerun the same gate. A missing `PATH` entry is not a failed methodology gate, not permission to substitute ad hoc checks, and not a reason to ask for a person-specific path.\n"
+        f"- Resolve the methodology CLI before running gates: use `tautline` (legacy `minervit-methodology`) from `PATH`, or if it is missing from `PATH` or exits 127/command-not-found, source `$HOME/.config/tautline/tautline.env` (or the legacy minervit env) when present or use `${{TAUTLINE_METHODOLOGY_REPO:-$MINERVIT_METHODOLOGY_REPO}}/bin/tautline`, then rerun the same gate. A missing `PATH` entry is not a failed methodology gate, not permission to substitute ad hoc checks, and not a reason to ask for a person-specific path.\n"
         f"- If both the `PATH` command and portable checkout fallback are unavailable, name the exact missing CLI/checkout true blocker before using Handoff Content.\n"
         f"- Methodology gate 1: run `tautline lane-start --target .`, or the resolved portable CLI equivalent if the `PATH` command is missing.\n"
         f"- Methodology gate 2: run `tautline methodology-status --target . --fail-on-drift`, or the resolved portable CLI equivalent if the `PATH` command is missing.\n"
@@ -27419,13 +27799,15 @@ def release_update_accounted_versions(repo_root: Path = REPO_ROOT) -> set[str]:
 
 
 def user_config_env_value(name: str, config_env: Path | None = None) -> str:
-    """Read one simple NAME=value entry from the installed methodology.env without sourcing shell."""
-    config_env = config_env or USER_CONFIG_ENV
+    """Read one simple NAME=value entry from the installed config env without sourcing shell."""
+    config_env = config_env or resolve_user_config_env()
     return util_module().user_config_env_value(name, config_env)
 
 
 def env_value_with_user_config_fallback(name: str) -> str:
-    return util_module().env_value_with_user_config_fallback(name, USER_CONFIG_ENV, USER_SECRETS_ENV)
+    config_env = resolve_user_config_env()
+    secrets_env = USER_SECRETS_ENV if USER_SECRETS_ENV.is_file() else LEGACY_USER_SECRETS_ENV
+    return util_module().env_value_with_user_config_fallback(name, config_env, secrets_env)
 
 
 def release_update_record_delivery(version: str, *, via: str = "publish-release-update") -> None:
@@ -37788,7 +38170,7 @@ def main(argv: list[str] | None = None) -> int:
         "update-repin",
         help="Advance the pinned auto-update allowlist in methodology.env to current origin/<branch> HEAD after reviewing upstream.",
     )
-    repin_p.add_argument("--config-env", type=Path, default=USER_CONFIG_ENV)
+    repin_p.add_argument("--config-env", type=Path, default=None, help="Config env file; defaults to the effective one (tautline path, else legacy).")
     # choices mirrors set-framework-channel's positional: an unknown channel must error, not
     # silently map to main and repin trust to the wrong branch (Codex R2 P2).
     repin_p.add_argument(
@@ -37801,7 +38183,7 @@ def main(argv: list[str] | None = None) -> int:
 
     uninstall_p = sub.add_parser("uninstall-cli", help="Remove the installed CLI shim and methodology.env (reverses install-cli).")
     uninstall_p.add_argument("--bin-dir", type=Path, default=USER_BIN_DIR)
-    uninstall_p.add_argument("--config-env", type=Path, default=USER_CONFIG_ENV)
+    uninstall_p.add_argument("--config-env", type=Path, default=None, help="Config env file; defaults to the effective one (tautline path, else legacy).")
     uninstall_p.add_argument("--keep-env", action="store_true", help="Keep methodology.env; remove only the shim.")
     uninstall_p.add_argument("--dry-run", action="store_true", help="Print planned removals without changing anything.")
     uninstall_p.set_defaults(func=uninstall_cli)

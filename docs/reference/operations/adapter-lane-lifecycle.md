@@ -92,7 +92,7 @@ Use the source-of-truth path for T2/T3 plans, adapter-required PR work, or any p
 
 Use adapter `planningArtifacts.reviewExemptions` only for narrow plan-review bypasses that still keep implementation review and gates. A review-exempt source-of-truth plan must include `## Plan Review Exemption` and satisfy `plan-finalization-precheck`; it is not a chat-only exemption.
 
-Any plan/spec path outside the configured source-of-truth path is non-canonical scratch unless the project adapter explicitly says otherwise. At session start and before plan finalization, check whether current context or methodology status points to a relevant plan in a scratch-only path; migrate the relevant plan before continuing. Lane startup automatically moves detected relevant scratch plans into the source-of-truth path. `minervit-methodology methodology-status --target . --fail-on-drift` fails when the source/template paths are missing or relevant scratch plans remain. If a tool writes a plan to a scratch path, immediately move or rewrite it into the project source-of-truth path before treating planning as complete. After moving or rewriting a scratch plan, remove or ignore the scratch copy so there is only one canonical plan artifact. Backlog/source-of-truth paths beat tool defaults, memory defaults, and global agent defaults.
+Any plan/spec path outside the configured source-of-truth path is non-canonical scratch unless the project adapter explicitly says otherwise. At session start and before plan finalization, check whether current context or methodology status points to a relevant plan in a scratch-only path; migrate the relevant plan before continuing. Lane startup automatically moves detected relevant scratch plans into the source-of-truth path. `tautline methodology-status --target . --fail-on-drift` fails when the source/template paths are missing or relevant scratch plans remain. If a tool writes a plan to a scratch path, immediately move or rewrite it into the project source-of-truth path before treating planning as complete. After moving or rewriting a scratch plan, remove or ignore the scratch copy so there is only one canonical plan artifact. Backlog/source-of-truth paths beat tool defaults, memory defaults, and global agent defaults.
 
 ### Bug Backlog Management
 
@@ -132,11 +132,11 @@ Useful official AWS references:
 Adapter-backed lanes should start with the lane lifecycle command from the lane root:
 
 ```bash
-minervit-methodology lane-start --target .
-minervit-methodology methodology-status --target . --fail-on-drift
+tautline lane-start --target .
+tautline methodology-status --target . --fail-on-drift
 ```
 
-Resolve the methodology CLI before running those gates. Use `minervit-methodology` from `PATH` when available. If it is missing from `PATH` or exits 127/command-not-found, source `$HOME/.config/minervit/methodology.env` when present or use `$MINERVIT_METHODOLOGY_REPO/bin/minervit-methodology`, then rerun the same gate with that resolved CLI. A missing `PATH` entry is not a failed methodology gate, not permission to substitute ad hoc checks, not a reason to ask the human operator what to do, and not a reason to ask for a person-specific checkout path. If the methodology checkout path is not already known from `PATH`, `MINERVIT_METHODOLOGY_REPO`, `$HOME/.config/minervit/methodology.env`, machine bootstrap, current continuity handoff, or generated adapter context, inspect only those configured sources to resolve it. If the CLI and checkout still cannot be found, name the exact missing CLI/checkout true blocker.
+Resolve the methodology CLI before running those gates. Use `tautline` from `PATH` when available. If it is missing from `PATH` or exits 127/command-not-found, source `$HOME/.config/tautline/tautline.env` (or the legacy `$HOME/.config/minervit/methodology.env`) when present or use `${TAUTLINE_METHODOLOGY_REPO:-$MINERVIT_METHODOLOGY_REPO}/bin/tautline` (legacy checkouts also provide `bin/minervit-methodology`), then rerun the same gate with that resolved CLI. A missing `PATH` entry is not a failed methodology gate, not permission to substitute ad hoc checks, not a reason to ask the human operator what to do, and not a reason to ask for a person-specific checkout path. If the methodology checkout path is not already known from `PATH`, `TAUTLINE_METHODOLOGY_REPO` (or the legacy `MINERVIT_METHODOLOGY_REPO`), `$HOME/.config/tautline/tautline.env` (or the legacy minervit env), machine bootstrap, current continuity handoff, or generated adapter context, inspect only those configured sources to resolve it. If the CLI and checkout still cannot be found, name the exact missing CLI/checkout true blocker.
 
 These startup gates are mandatory actions, not choices for the human operator. Do not ask whether to run them, whether to "kick those off", or whether to proceed with a named path after they pass. Run the gates and continue with the authorized next action unless a true blocker occurs.
 
@@ -153,13 +153,13 @@ The command:
 - adds lane-local state to `.git/info/exclude`;
 - reports continuity, execution-packet presence, document context budget state, and session journal state.
 
-Unlocked adapter-backed lanes do not raw-pull the latest methodology by default. Existing products and clients default to the stable channel with `updatePolicy=manual`, so `lane-start` reports the effective pin, available update, WIP reasons, and pending migration-report state without surprise minor/major movement. A deliberate update uses `minervit-methodology sync-methodology --target .`, which still applies release-track and WIP checks. Stable updates require signed or pinned update-trust policy before re-exec; experimental updates are opt-in through `_framework.channel=experimental` or `.minervit/pin.json`.
+Unlocked adapter-backed lanes do not raw-pull the latest methodology by default. Existing products and clients default to the stable channel with `updatePolicy=manual`, so `lane-start` reports the effective pin, available update, WIP reasons, and pending migration-report state without surprise minor/major movement. A deliberate update uses `tautline sync-methodology --target .`, which still applies release-track and WIP checks. Stable updates require signed or pinned update-trust policy before re-exec; experimental updates are opt-in through `_framework.channel=experimental` or `.minervit/pin.json`.
 
-When `sync-methodology` or `lane-start` is allowed to update from a project lane, the existing auto-rescue behavior still applies: preserve dirty tracked methodology checkout changes on a local `minervit-local-rescue/<utc>-...` branch, move untracked files under `$HOME/.local/state/minervit/methodology-rescue/.../untracked/`, preserve clean non-`main` branches by switching back to release `main`, preserve accidental local `main` commits on a rescue branch before resetting release `main` to `origin/main`, re-run itself, and continue startup. Managed Claude launchers also run a shell-level preflight rescue before calling the CLI, because an outdated CLI may not yet contain the newest rescue behavior. If the newer remote cannot be confirmed for dirty stale changes, project-lane startup fails closed instead of moving edits based on stale cached state. When invoked from inside the methodology repo, plain `sync-methodology` still fails closed so framework development work is not moved unexpectedly; use `--auto-rescue-local-changes` explicitly to rescue it, or `--no-auto-rescue-local-changes` to force fail-closed behavior from a project lane. `install-cli`, `sync-methodology`, `install-claude-launcher`, and `lane-start` install a repo-local pre-commit hook that blocks local commits directly on methodology `main`; methodology work belongs on feature branches and PRs. `lane-start`, `methodology-status`, and `version` report `plugin_version` and methodology commit so the session can prove which process surface it is using. If uncertain which process surface is active, run `minervit-methodology version` and `minervit-methodology methodology-status --target .`; do not ask the human operator to decide whether to inspect version/status. Cached host plugin metadata is not a lane update failure. If `minervit-methodology version` reports the expected plugin version but Codex/Claude still shows stale plugin skills or metadata, restart that host/session.
+When `sync-methodology` or `lane-start` is allowed to update from a project lane, the existing auto-rescue behavior still applies: preserve dirty tracked methodology checkout changes on a local `minervit-local-rescue/<utc>-...` branch, move untracked files under `$HOME/.local/state/minervit/methodology-rescue/.../untracked/`, preserve clean non-`main` branches by switching back to release `main`, preserve accidental local `main` commits on a rescue branch before resetting release `main` to `origin/main`, re-run itself, and continue startup. Managed Claude launchers also run a shell-level preflight rescue before calling the CLI, because an outdated CLI may not yet contain the newest rescue behavior. If the newer remote cannot be confirmed for dirty stale changes, project-lane startup fails closed instead of moving edits based on stale cached state. When invoked from inside the methodology repo, plain `sync-methodology` still fails closed so framework development work is not moved unexpectedly; use `--auto-rescue-local-changes` explicitly to rescue it, or `--no-auto-rescue-local-changes` to force fail-closed behavior from a project lane. `install-cli`, `sync-methodology`, `install-claude-launcher`, and `lane-start` install a repo-local pre-commit hook that blocks local commits directly on methodology `main`; methodology work belongs on feature branches and PRs. `lane-start`, `methodology-status`, and `version` report `plugin_version` and methodology commit so the session can prove which process surface it is using. If uncertain which process surface is active, run `tautline version` and `tautline methodology-status --target .`; do not ask the human operator to decide whether to inspect version/status. Cached host plugin metadata is not a lane update failure. If `tautline version` reports the expected plugin version but Codex/Claude still shows stale plugin skills or metadata, restart that host/session.
 
-If the methodology repo already shows Git's divergent-branch prompt on `git pull`, run `bin/minervit-methodology repair-methodology-main` from the methodology checkout. The command preserves accidental local `main` commits on a `minervit-local-rescue/...` branch, resets release `main` to `origin/main`, installs the release-main guard, and reports the current version/commit.
+If the methodology repo already shows Git's divergent-branch prompt on `git pull`, run `bin/tautline repair-methodology-main` from the methodology checkout. The command preserves accidental local `main` commits on a `minervit-local-rescue/...` branch, resets release `main` to `origin/main`, installs the release-main guard, and reports the current version/commit.
 
-If startup still shows `methodology_update: failed - methodology checkout has local changes and remote differs ...` or `methodology checkout is on <branch>, not main`, the installed launcher itself predates launcher-level rescue or is not the managed launcher. Do not continue the session on stale framework rules. Run the printed methodology checkout's `bin/minervit-methodology sync-methodology --auto-rescue-local-changes` from the project lane, then reinstall the CLI and managed launcher with `install-cli` and `install-claude-launcher --force`. If auto-rescue is not available because the installed CLI is older, resolve the printed methodology checkout once: commit the local changes on a proposal branch, stash them, or discard them only when they are known generated/scratch edits. Then rerun `minervit-methodology sync-methodology`, `minervit-methodology version`, `minervit-methodology lane-start --target .`, and `minervit-methodology methodology-status --target . --fail-on-drift`.
+If startup still shows `methodology_update: failed - methodology checkout has local changes and remote differs ...` or `methodology checkout is on <branch>, not main`, the installed launcher itself predates launcher-level rescue or is not the managed launcher. Do not continue the session on stale framework rules. Run the printed methodology checkout's `bin/tautline sync-methodology --auto-rescue-local-changes` from the project lane, then reinstall the CLI and managed launcher with `install-cli` and `install-claude-launcher --force`. If auto-rescue is not available because the installed CLI is older, resolve the printed methodology checkout once: commit the local changes on a proposal branch, stash them, or discard them only when they are known generated/scratch edits. Then rerun `tautline sync-methodology`, `tautline version`, `tautline lane-start --target .`, and `tautline methodology-status --target . --fail-on-drift`.
 
 Lane startup never overwrites hand-written `CLAUDE.md` or `AGENTS.md`. If those files do not carry the framework's generated header, startup reports `generated_markdown_protected` and leaves them untouched while still refreshing `.tautline.json`. Methodology status reports the protected Markdown under `adapter_markdown_protected` instead of treating it as generated-adapter drift. Agents must not ask whether to overwrite such files; for a small config enablement, use `render-adapters --write --json-only`, and for full adapter-backed Markdown, run a separate migration that preserves the old rules before rendering.
 
@@ -170,7 +170,7 @@ If `lane-start` reports `No project adapter found`, the lane is unmanaged. Use t
 When checking current project status, whether work is complete, what is next, or work that may have happened in another lane, fetch and inspect the latest-code baseline before answering. Use:
 
 ```bash
-minervit-methodology latest-code-status --target . --write
+tautline latest-code-status --target . --write
 ```
 
 This command fetches the adapter-configured remote base (`origin/main` by default), records `.ai-work/LATEST_CODE_BASELINE.json`, reports local-vs-base divergence, lists remote branches ahead of base, and lists open PRs when GitHub CLI access is available. If the local lane is behind, dirty, detached, on a PR branch, or another remote branch may be deployed or stakeholder-visible, do not answer from local files as if they are current. Use `git show origin/main:<path>`, `git show <remote-branch>:<path>`, GitHub/`gh` evidence, and deploy/build identity for the current answer.
@@ -180,58 +180,58 @@ Latest-code baseline is mandatory before deep codebase analysis, architecture re
 Use `--skip-update` for a one-off startup that should not pull the latest framework:
 
 ```bash
-minervit-methodology lane-start --target . --skip-update
+tautline lane-start --target . --skip-update
 ```
 
 Lock the framework version for a lane when the project owner wants process stability:
 
 ```bash
-minervit-methodology lock-methodology --target . --reason "<reason>"
+tautline lock-methodology --target . --reason "<reason>"
 ```
 
 Unlock it when the lane should resume automatic updates:
 
 ```bash
-minervit-methodology unlock-methodology --target .
+tautline unlock-methodology --target .
 ```
 
 Inspect current state:
 
 ```bash
-minervit-methodology methodology-status --target .
+tautline methodology-status --target .
 ```
 
-Force-refresh a lane manually when another machine may not be updating. This path intentionally unpins a lane if a lock file exists, because the project owner is explicitly requesting the latest framework. If the lane should stay pinned, do not run this block; run `minervit-methodology methodology-status --target .` and report the locked commit and reason instead.
+Force-refresh a lane manually when another machine may not be updating. This path intentionally unpins a lane if a lock file exists, because the project owner is explicitly requesting the latest framework. If the lane should stay pinned, do not run this block; run `tautline methodology-status --target .` and report the locked commit and reason instead.
 
 ```bash
 set -euo pipefail
 cd <lane_path>
-if test -f "$HOME/.config/minervit/methodology.env"; then
-  . "$HOME/.config/minervit/methodology.env"
+if test -f "$HOME/.config/tautline/tautline.env"; then
+  . "$HOME/.config/tautline/tautline.env"
 fi
-if ! command -v minervit-methodology >/dev/null 2>&1; then
-  : "${MINERVIT_METHODOLOGY_REPO:?missing methodology env; run <methodology_repo>/bin/minervit-methodology install-cli}"
-  export PATH="$MINERVIT_METHODOLOGY_REPO/bin:$PATH"
+if ! command -v tautline >/dev/null 2>&1; then
+  : "${TAUTLINE_METHODOLOGY_REPO:?missing methodology env; run <methodology_repo>/bin/tautline install-cli}"
+  export PATH="$TAUTLINE_METHODOLOGY_REPO/bin:$PATH"
 fi
-: "${MINERVIT_METHODOLOGY_REPO:?missing methodology env; run <methodology_repo>/bin/minervit-methodology install-cli}"
-test -d "$MINERVIT_METHODOLOGY_REPO/.git"
-if ! git -C "$MINERVIT_METHODOLOGY_REPO" diff --quiet || ! git -C "$MINERVIT_METHODOLOGY_REPO" diff --cached --quiet; then
+: "${TAUTLINE_METHODOLOGY_REPO:?missing methodology env; run <methodology_repo>/bin/tautline install-cli}"
+test -d "$TAUTLINE_METHODOLOGY_REPO/.git"
+if ! git -C "$TAUTLINE_METHODOLOGY_REPO" diff --quiet || ! git -C "$TAUTLINE_METHODOLOGY_REPO" diff --cached --quiet; then
   echo "Methodology checkout has local changes; resolve them before force-refreshing." >&2
   exit 1
 fi
-minervit-methodology sync-methodology
-minervit-methodology version
-if test -f .minervit-methodology-lock.json; then
-  minervit-methodology unlock-methodology --target .
+tautline sync-methodology
+tautline version
+if test -f .tautline-lock.json; then
+  tautline unlock-methodology --target .
 fi
-minervit-methodology lane-start --target .
-minervit-methodology methodology-status --target . --fail-on-drift
+tautline lane-start --target .
+tautline methodology-status --target . --fail-on-drift
 ```
 
 Lane-local state paths are:
 
 ```text
-.minervit-methodology-lock.json
+.tautline-lock.json
 .ai-runs/
 .ai-runs/session-journals/
 .ai-work/EXECUTION_PACKET.md
@@ -260,8 +260,8 @@ Set a lane's track with the channel command so users do not need to hand-edit JS
 The default writes `.minervit/pin.json` as a lane-local override:
 
 ```bash
-minervit-methodology set-framework-channel --target . stable
-minervit-methodology set-framework-channel --target . experimental
+tautline set-framework-channel --target . stable
+tautline set-framework-channel --target . experimental
 ```
 
 To change the repo-local source adapter's `_framework.channel`, use adapter
@@ -269,25 +269,25 @@ source mode. This validates `.tautline/adapter.json` and re-renders
 `.tautline.json` with `--json-only`:
 
 ```bash
-minervit-methodology set-framework-channel --target . --source adapter stable
-minervit-methodology set-framework-channel --target . --source adapter experimental
+tautline set-framework-channel --target . --source adapter stable
+tautline set-framework-channel --target . --source adapter experimental
 ```
 
 Use the migration tools before moving products across framework boundaries:
 
 ```bash
-minervit-methodology public-contract --check
-minervit-methodology release-migration-report --version 0.6.123 --print
-minervit-methodology migrate-adapter .tautline/adapter.json
-minervit-methodology migrate-adapter .tautline/adapter.json --write
-minervit-methodology public-release-check
+tautline public-contract --check
+tautline release-migration-report --version 0.6.123 --print
+tautline migrate-adapter .tautline/adapter.json
+tautline migrate-adapter .tautline/adapter.json --write
+tautline public-release-check
 ```
 
 To move a legacy framework-owned adapter into an adopter repo:
 
 ```bash
-minervit-methodology migrate-adapter adapters/projects/<project>.json --adopter-target <repo> --write
-minervit-methodology render-adapters --project <repo>/.tautline/adapter.json --target <repo> --write
+tautline migrate-adapter adapters/projects/<project>.json --adopter-target <repo> --write
+tautline render-adapters --project <repo>/.tautline/adapter.json --target <repo> --write
 ```
 
 Do not delete the legacy adapter source until affected lanes are pinned, migrated, re-rendered, and passing startup/status gates.
@@ -307,9 +307,9 @@ Adapter-backed lanes should isolate local test resources before falling back to 
 Run local-service gates through `lane-run`:
 
 ```bash
-minervit-methodology lane-run --target . -- make pf-fast
-minervit-methodology lane-run --target . -- make test-env-up
-minervit-methodology lane-run --target . -- make preflight
+tautline lane-run --target . -- make pf-fast
+tautline lane-run --target . -- make test-env-up
+tautline lane-run --target . -- make preflight
 ```
 
 If a lane fails with a port-in-use error after running a bare project command, rerun the command through `lane-run` before treating it as a blocker. A broad machine lock is the wrong default when the contention is fixed host ports or an inherited `COMPOSE_PROJECT_NAME`. Use a resource lock only for a project-declared machine-global resource that cannot be isolated by lane-specific env, names, ports, paths, or remote API calls.

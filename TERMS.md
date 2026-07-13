@@ -9,7 +9,7 @@ grant.
 These terms are not boilerplate: this tool **executes code on your machine** and **drives AI
 coding agents**. The sections below state what you are responsible for when you adopt it. The
 running example throughout is the fictional `example-saas` adapter. The CLI is invoked as
-`minervit-methodology`.
+`tautline` (a `minervit-methodology` compatibility alias is also installed).
 
 ## 1. Your responsibility for agent actions and spend
 
@@ -34,8 +34,9 @@ is **not** the recommended mode.
 - Enable it only on a machine and against a checkout you fully trust, with deliberate intent
   (`install-claude-launcher --dangerously-skip-permissions`).
 - Combined with auto-update (below), skipping permissions widens the blast radius of any
-  upstream compromise. The intended hardening refuses to skip permissions when the upstream is
-  unverified. See `SECURITY.md` for the full risk model.
+  upstream compromise, so `install-claude-launcher` refuses to bake the flag in while the
+  update policy is unverified — the upstream must be pinned or signed first. See `SECURITY.md`
+  for the full risk model.
 
 ## 3. Auto-update trust model
 
@@ -43,12 +44,20 @@ On lane start the CLI can pull from your configured methodology upstream and **r
 updated code in place**. Adopting auto-update means **granting that upstream the ability to run
 code as your user**.
 
-- Today, consumption is the live git working tree of a checkout you control; verify-before-exec
-  signing/pinning is in progress, so **only enable auto-update against an upstream you fully
-  control**. You can pin or skip the update path operationally.
-- The target trust model — required before any public release — is to run the updated code only
-  when it is a **signed and/or pinned upstream** (a signed commit from an allowlisted key, a
-  signed release tag, or a config-pinned hash), and to **fail closed** otherwise.
+- Consumption is the live git working tree of a checkout you control. `install-cli` pins the
+  update source by default: it records the commit you installed from and refuses to re-execute
+  any other upstream head. Even so, **only enable auto-update against an upstream you fully
+  control**. You can advance the pin (`update-repin`) or skip the update path operationally.
+- The trust model is to run updated code only when it comes from a **verified upstream** — a
+  config-pinned commit or tag (`--update-policy pinned`, the install default) or a valid
+  signature from a trusted key (`--update-policy signed`) — and to **fail closed** otherwise.
+  `install-claude-launcher` refuses `--dangerously-skip-permissions` unless one of those two
+  policies is in effect.
+- `signed` applies to an upstream **you** control and sign. The canonical `tautlines/tautline`
+  upstream does not sign its commits today, so a `signed` policy pointed at it refuses every
+  update — it fails closed, but nothing you can do upstream will unblock it. Signing the
+  canonical upstream is a roadmap item; `pinned`, the install default, is the working lever
+  against it.
 
 See `SECURITY.md` ("Auto-Update Safety") for the authoritative statement.
 
@@ -71,4 +80,4 @@ services' own terms and pricing**, separately from these terms.
 - **`SECURITY.md`** — the trust boundary, hook-execution model, auto-update safety, and
   vulnerability reporting.
 
-Documentation hardening across these files is part of the public-release readiness work.
+These documents are versioned with the product; changes land as reviewed pull requests.

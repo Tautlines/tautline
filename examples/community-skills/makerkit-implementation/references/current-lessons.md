@@ -4,15 +4,15 @@ This is the living evidence-backed reference for MakerKit work. Keep it concise 
 
 ## Evidence Snapshot
 
-- Example SaaS adapter: a MakerKit dev target ran on a managed container service, a container registry, a private managed Postgres database, a VPC connector, a secrets manager, `linux/amd64` images, and build identity through image tags.
-- Example SaaS kit: MakerKit `next-drizzle-saas-kit-turbo` v1.6.0, pnpm 11, Turbo, Next.js standalone app at `kit/apps/web`, Drizzle/Postgres in `packages/database`, Better Auth, next-intl, next-runtime-env, shadcn/MakerKit UI packages.
-- Example SaaS Dockerfile: Node 22 was required for pnpm 11.4.0; the container service needed x86_64; a registry base image avoided public-registry anonymous 429s; migrations were intentionally excluded from the slim runtime image.
+- Example SaaS adapter: the reference deployment is a managed container platform fronting a private database, with secrets injected from the platform's secret manager.
+- Example SaaS kit: MakerKit `next-drizzle-saas-kit-turbo` at the kit's previous minor version, pnpm 11, Turbo, Next.js standalone app at `kit/apps/web`, Drizzle/Postgres in `packages/database`, Better Auth, next-intl, next-runtime-env, shadcn/MakerKit UI packages.
+- Example SaaS Dockerfile: the container's Node version had to satisfy the pinned pnpm release's engine requirement; the container service needed x86_64; a registry base image avoided public-registry anonymous 429s; migrations were intentionally excluded from the slim runtime image.
 - Example SaaS planning/review: broad MakerKit foundation plans repeatedly found new P1s until split by concern: infra/schema, seed/auth, app mount/access-control, scheduler/identity/harness.
-- Example Engine SaaS port: MakerKit `next-drizzle-saas-kit-turbo` v1.7.1, Next.js 16, React 19, TypeScript, Better Auth 1.6.x, Drizzle/Postgres, Tailwind CSS 4, Base UI, Lucide, pnpm 11.5.0, Turborepo, with the MakerKit workspace under `saas/`.
+- Example Engine SaaS port: MakerKit `next-drizzle-saas-kit-turbo` at the kit's current minor version, Next.js, React, TypeScript, Better Auth, Drizzle/Postgres, Tailwind CSS, Base UI, Lucide, pnpm, Turborepo, with the MakerKit workspace under `saas/`.
 - Example Engine SaaS port: repeated plan reviews converted a broad legacy-to-SaaS roadmap into phase plans for foundation, schema, data access, pure logic, routes, readers, workflow UI, billing, conversion/subscription UI, trust hardening, and polish.
-- Example Engine evidence: a Next.js + Prisma/SQLite app taught a transferable workflow rule: the application enforces stages, gates, calculations, and QA; the LLM assists but does not own correctness.
+- Example Engine evidence: porting an existing app to the kit taught a transferable workflow rule: the application enforces stages, gates, calculations, and QA; the LLM assists but does not own correctness.
 
-For deeper Example Engine conventions and phase lessons, read `example-engine-g10-makerkit.md`.
+For deeper Example Engine conventions and phase lessons, read `example-engine-makerkit.md`.
 
 ## Kit Orientation
 

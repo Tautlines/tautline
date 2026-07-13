@@ -5,18 +5,18 @@ troubleshooting, and maintenance procedures out of the main operating manual.
 
 ## Adding A New Project
 
-If `minervit-methodology lane-start --target .` fails with `No project adapter found`, the repo is not adapter-backed yet. Do not keep retrying `lane-start`, do not borrow another project's adapter, and do not ask whether to skip the framework when the human operator asked to use it. Bootstrap the adapter first.
+If `tautline lane-start --target .` fails with `No project adapter found`, the repo is not adapter-backed yet. Do not keep retrying `lane-start`, do not borrow another project's adapter, and do not ask whether to skip the framework when the human operator asked to use it. Bootstrap the adapter first.
 
 For normal unmanaged repos, use the init front door:
 
 ```bash
-minervit-methodology init --target .
+tautline init --target .
 ```
 
 Answer `.ai-work/ADAPTER_BOOTSTRAP_INTERVIEW.md`, then run:
 
 ```bash
-minervit-methodology init --target . --continue
+tautline init --target . --continue
 ```
 
 The lower-level sequence below is for maintainers who need to inspect or repair
@@ -30,7 +30,7 @@ No generic operational adapter exists because planning paths, gates, review work
 2. Generate the adapter bootstrap interview and ask the human operator only the unresolved questions after inspection. This interview is mandatory before first adapter render/write unless every required adapter fact is repo-evident. Do not ask for facts that package scripts, CI files, project docs, remotes, existing plans, or deployment files already answer.
 
 ```bash
-bin/minervit-methodology adapter-bootstrap-questions \
+bin/tautline adapter-bootstrap-questions \
   --target <lane_path> \
   --write
 ```
@@ -40,7 +40,7 @@ The interview covers product/deployment, technical stack policy, delivery workfl
 3. Create a scaffold adapter:
 
 ```bash
-bin/minervit-methodology init-project-adapter \
+bin/tautline init-project-adapter \
   --target <lane_path>
 ```
 
@@ -49,7 +49,7 @@ bin/minervit-methodology init-project-adapter \
 5. Render the adapter into the target project:
 
 ```bash
-bin/minervit-methodology render-adapters \
+bin/tautline render-adapters \
   --project <lane_path>/.tautline/adapter.json \
   --target <lane_path> \
   --write
@@ -58,10 +58,10 @@ bin/minervit-methodology render-adapters \
 6. Run startup gates:
 
 ```bash
-bin/minervit-methodology lane-start \
+bin/tautline lane-start \
   --target <lane_path>
 
-bin/minervit-methodology methodology-status \
+bin/tautline methodology-status \
   --target <lane_path> \
   --fail-on-drift
 ```
@@ -69,7 +69,7 @@ bin/minervit-methodology methodology-status \
 7. Validate drift:
 
 ```bash
-bin/minervit-methodology audit \
+bin/tautline audit \
   --project <lane_path>/.tautline/adapter.json \
   --target <lane_path>
 ```
@@ -129,7 +129,7 @@ scripts/validate.sh
 
 The validation script checks:
 
-- Python syntax for `bin/minervit-methodology`.
+- Python syntax for `bin/tautline`.
 - Policy module assembly (`canonical-policy --check`) so `methodology/canonical-rules.md` stays generated from `methodology/policy/`.
 - JSON validity for adapters and plugin manifests.
 - Adapter render/check round trip against a temporary directory.
@@ -145,12 +145,12 @@ The validation script checks:
 Run project-specific validation:
 
 ```bash
-bin/minervit-methodology render-adapters \
+bin/tautline render-adapters \
   --project <lane_path>/.tautline/adapter.json \
   --target <lane_path> \
   --check
 
-bin/minervit-methodology audit \
+bin/tautline audit \
   --project <lane_path>/.tautline/adapter.json \
   --target <lane_path>
 ```
@@ -158,7 +158,7 @@ bin/minervit-methodology audit \
 Run GitHub-only readiness smoke test:
 
 ```bash
-bin/minervit-methodology readiness-review --project <lane_path>/.tautline/adapter.json
+bin/tautline readiness-review --project <lane_path>/.tautline/adapter.json
 ```
 
 ## Publishing To GitHub
@@ -238,7 +238,7 @@ Restart Claude sessions that need the plugin.
 Regenerate the target project:
 
 ```bash
-bin/minervit-methodology render-adapters \
+bin/tautline render-adapters \
   --project <lane_path>/.tautline/adapter.json \
   --target <lane_path> \
   --write
@@ -262,7 +262,7 @@ Do not silence audit findings by editing the audit pattern unless the pattern it
 
 Use these rules when changing this repo:
 
-1. Reusable process belongs in ordered modules under `methodology/policy/`; regenerate the compatibility artifact with `minervit-methodology canonical-policy --write`.
+1. Reusable process belongs in ordered modules under `methodology/policy/`; regenerate the compatibility artifact with `tautline canonical-policy --write`.
 2. Project-specific commands and gates belong in `adapters/projects/*.json`.
 3. Generated files must be regenerated, not hand-edited.
 4. Skills should stay concise and task-triggered.

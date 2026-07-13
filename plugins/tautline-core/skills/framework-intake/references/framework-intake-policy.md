@@ -63,7 +63,7 @@ Do not write Open Brain, Claude memory, local memory, feedback-memory files, or 
    - Gather methodology runtime facts when they are relevant to the failure: run `minervit-methodology version --no-remote` and `minervit-methodology methodology-status --target . --fail-on-drift` when a project adapter exists. If `methodology-status` cannot run, record the exact true blocker or failure output in `Evidence`.
    - The file must include every section in "Output Artifact" below.
    - Before replying in chat, verify the file exists and contains every required heading by running `minervit-methodology validate-rca-artifact --file <path>`.
-   - For methodology/process regressions, publish the validated RCA into the methodology repository with `minervit-methodology publish-rca-artifact --file <path> --commit --push`. This creates a tracked copy under `docs/backlog/methodology-regressions/` on the dedicated `methodology-rca-archive` branch, updates the archive index, commits the archive files, and pushes the branch so other machines and future agents can inspect it without loading RCA Markdown from `main`.
+   - For methodology/process regressions, publish the validated RCA into the methodology repository with `minervit-methodology publish-rca-artifact --file <path> --commit --push`. This creates a tracked copy on the maintainer repository's dedicated `methodology-rca-archive` branch, updates the archive index, commits the archive files, and pushes the branch so other machines and future agents can inspect it without loading RCA Markdown from `main`.
    - `publish-rca-artifact --commit --push` uses isolated archive-branch publication. Do not write RCA archive copies into the active methodology release checkout; `--allow-release-checkout-write` is validation/preview-only and is not cross-machine durable publication.
    - Do not add new RCA Markdown artifacts to methodology `main`. RCA evidence shapes the product; it is not itself the primary product methodology.
    - If the validator cannot run, the RCA is not complete. Name the exact true blocker and do not present the RCA as complete.
@@ -190,7 +190,7 @@ Do not include person-specific machine paths such as `/Users/<name>/...`; use
 repo-relative paths or canonical branch/path references.
 
 Submission is intake evidence, not automatic backlog promotion. Accepted
-requests can later become entries in `docs/backlog/methodology-backlog.md` or
+requests can later become entries in the maintainer backlog or
 provider-backed backlog items through the existing sanctioned backlog flow. Do
 not mutate GitHub Project board structure or rewrite stakeholder-authored
 backlog content as part of filing the request.

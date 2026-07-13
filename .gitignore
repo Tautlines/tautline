@@ -14,7 +14,7 @@ adapters/projects/.validate-*.json
 adapters/projects/*.json
 !adapters/projects/.bootstrap-legacy-allowlist.json
 !adapters/projects/example-saas.json
-# Scratch audit/analysis artifacts must not leak into a public clone (prod-license-gtm-8).
+# Scratch audit/analysis artifacts must not leak into a public clone.
 /*-AUDIT-*.md
 # Staging inbox for incoming proposals; never track a shadow fork of a shipped skill here.
 /incoming/

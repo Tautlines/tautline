@@ -167,17 +167,17 @@ validation passed
 Install a portable user shim for the current machine:
 
 ```bash
-bin/minervit-methodology install-cli
-source "$HOME/.config/minervit/methodology.env"
-minervit-methodology version
+bin/tautline install-cli
+source "$HOME/.config/tautline/tautline.env"
+tautline version
 ```
 
 The installer writes:
 
 - `~/.local/bin/minervit-methodology` - a stable user-level command shim.
-- `~/.config/minervit/methodology.env` - a machine-local `MINERVIT_METHODOLOGY_REPO` pointer.
+- `~/.config/tautline/tautline.env` - a machine-local `TAUTLINE_METHODOLOGY_REPO` pointer.
 
-Generated adapters and handoffs must not hard-code person-specific checkout paths. They should resolve `minervit-methodology` from `PATH`, then fall back to `MINERVIT_METHODOLOGY_REPO` through the config env file.
+Generated adapters and handoffs must not hard-code person-specific checkout paths. They should resolve `tautline` from `PATH`, then fall back to `TAUTLINE_METHODOLOGY_REPO` through the config env file.
 
 ## Codex Plugin Setup
 
@@ -204,7 +204,7 @@ plugins/tautline-core/.claude-plugin/plugin.json
 Check the installed checkout's plugin version and framework commit:
 
 ```bash
-minervit-methodology version
+tautline version
 ```
 
 `methodology-status` also prints `plugin_version` so lane startup can prove which plugin release generated the current process surface. Bump `VERSION` for every methodology build that changes reusable framework behavior: generated-adapter rendering, skill behavior, startup gates, review policy, autonomy rules, validation behavior, operator-visible workflow, adapter schema, canonical rules, CLI behavior, or product documentation that changes how a release is understood. Project adapter JSON changes under `adapters/projects/*.json` are project configuration changes and do not require a global methodology version bump unless the same PR also changes reusable framework surface. Use semantic versions without leading zeroes. Patch bumps are for narrow fixes and small affordances; minor-line bumps are required for substantial new workflow layers, new public CLI families, generated-adapter behavior changes, autonomy model changes, or changes that alter how a human operator should run a project. After bumping `VERSION`, synchronize the plugin manifests, concise changelog, main-branch release-note stub, and release migration report.
@@ -214,7 +214,7 @@ The main branch keeps only a small release-note stub at `docs/releases/minervit-
 After bumping `VERSION`, publish a concise plain-language framework release update to Google Chat:
 
 ```bash
-minervit-methodology publish-release-update --version "$(cat VERSION)"
+tautline publish-release-update --version "$(cat VERSION)"
 ```
 
 The command reads concise changelog text plus the release migration report, not the archived narrative log. It reads `MINERVIT_METHODOLOGY_RELEASE_GOOGLE_CHAT_WEBHOOK` from the process environment first, then from the installed `$HOME/.config/minervit/methodology.env` fallback. The webhook URL is a secret; keep it in one of those runtime locations or pass it intentionally with `--webhook-url` for a one-off test, never in repo files. `public-release-check` fails when the current version lacks either a delivery marker or a valid documented suspension record in `docs/releases/release-update-delivery.json`; ordinary validation does not require a Google Chat webhook or announcement marker.
@@ -280,7 +280,7 @@ Claude should use this repo as canonical process authority through the machine-l
 That file should point to your local checkout:
 
 ```text
-/path/to/minervit-ai-delivery-methodology/methodology/canonical-rules.md
+/path/to/tautline-dev/methodology/canonical-rules.md
 ```
 
 Minimal machine-level `~/.claude/CLAUDE.md` bootstrap:
@@ -290,7 +290,7 @@ Minimal machine-level `~/.claude/CLAUDE.md` bootstrap:
 
 Canonical reusable process policy lives at:
 
-`/path/to/minervit-ai-delivery-methodology/methodology/canonical-rules.md`
+`/path/to/tautline-dev/methodology/canonical-rules.md`
 
 Project-specific adapters, when present, live in the project root as generated `CLAUDE.md` / `AGENTS.md` files plus `.tautline.json`.
 
@@ -313,17 +313,17 @@ Preferred portable installer:
 ```bash
 cd <methodology_repo>
 git pull --ff-only origin main
-bin/minervit-methodology install-cli
-source "$HOME/.config/minervit/methodology.env"
-minervit-methodology install-claude-launcher --name minervit-claude
+bin/tautline install-cli
+source "$HOME/.config/tautline/tautline.env"
+tautline install-claude-launcher --name minervit-claude
 ```
 
-The installed launcher lives in `~/.local/bin/minervit-claude` by default. It sets `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=85`, writes the same durable env into `~/.claude/settings.json`, marks that setting required for startup health, runs `sync-methodology`, discovers the adapter-backed lane by walking upward from the current directory, runs `lane-start` and `methodology-status --fail-on-drift` for that lane when an adapter exists, prints and pauses on `minervit-methodology goal-kickoff-prompt --target <lane_path>` when the terminal is interactive, then starts Claude. Project-lane startup auto-rescues dirty stale methodology checkouts by preserving local edits on a rescue branch and resetting release `main` to upstream when remote `main` has moved. It also auto-recovers a shared methodology checkout left on a non-`main` branch by preserving that branch and switching the checkout back to release `main`. The launcher performs a small Git rescue before invoking the CLI, so a stale installed CLI cannot block its own update when the machine is starting from a project lane. This avoids hand-editing `.zshrc`; if `~/.local/bin` is not on `PATH`, run the launcher by full path or install into a directory that already is on `PATH` with `--bin-dir`.
+The installed launcher lives in `~/.local/bin/minervit-claude` by default. It sets `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=85`, writes the same durable env into `~/.claude/settings.json`, marks that setting required for startup health, runs `sync-methodology`, discovers the adapter-backed lane by walking upward from the current directory, runs `lane-start` and `methodology-status --fail-on-drift` for that lane when an adapter exists, prints and pauses on `tautline goal-kickoff-prompt --target <lane_path>` when the terminal is interactive, then starts Claude. Project-lane startup auto-rescues dirty stale methodology checkouts by preserving local edits on a rescue branch and resetting release `main` to upstream when remote `main` has moved. It also auto-recovers a shared methodology checkout left on a non-`main` branch by preserving that branch and switching the checkout back to release `main`. The launcher performs a small Git rescue before invoking the CLI, so a stale installed CLI cannot block its own update when the machine is starting from a project lane. This avoids hand-editing `.zshrc`; if `~/.local/bin` is not on `PATH`, run the launcher by full path or install into a directory that already is on `PATH` with `--bin-dir`.
 
 To install the current high-autonomy convenience command:
 
 ```bash
-minervit-methodology install-claude-launcher --name yolo --dangerously-skip-permissions
+tautline install-claude-launcher --name yolo --dangerously-skip-permissions
 ```
 
 If an existing shell alias or function named `yolo` exists, it will shadow the installed executable until that shell definition is removed. Use `type yolo` to check. The installed executable can always be run directly as `~/.local/bin/yolo`.
