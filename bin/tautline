@@ -5986,7 +5986,7 @@ def release_migration_report_data(
             len(deprecated_surfaces),
         )
         deprecated_surfaces.insert(insert_at, historical_rca_surface)
-    if parsed_version > version_tuple("0.9.8"):
+    if parsed_version > version_tuple("0.9.9"):
         raise SystemExit(
             f"release migration report data is not declared for {version}; "
             "add a release-specific branch before cutting the release"
@@ -6011,7 +6011,32 @@ def release_migration_report_data(
             f"release migration report data is not declared for {version}; "
             "add a release-specific branch before cutting the release"
         )
-    if parsed_version == version_tuple("0.9.8"):
+    if parsed_version == version_tuple("0.9.9"):
+        wip_safe = True
+        required_migrations = []
+        optional_migrations = []
+        behavior_changes = [
+            "Publishing to npm failed again right after the 0.9.8 fix landed, this time with "
+            "ENEEDAUTH. npm's OIDC trusted-publishing exchange mints a short-lived credential "
+            "only when the published package's repository.url matches the workflow's identity "
+            "claim, and npm compares that field case-sensitively. The generated package "
+            "manifest's homepage, repository.url and bugs fields all read the lowercase "
+            "tautlines, but GitHub's canonical owner is Tautlines (capital T), so the comparison "
+            "never matched, no token was minted, and npm fell back to demanding an interactive "
+            "login. These fields are now generated from GitHub's exact canonical casing, and a "
+            "guard test pins it going forward. Publishing to PyPI, which does not compare this "
+            "field case-sensitively, was never affected.",
+        ]
+        rollback_notes = [
+            "Fix only: pinning back to 0.9.8 restores the npm publish path that failed with "
+            "ENEEDAUTH because the package manifest's repository URL did not match GitHub's "
+            "canonical casing. No command, adapter key or configuration surface changes.",
+            "Stable clients remain on the stable channel unless they explicitly opt into "
+            "experimental.",
+            "This release is WIP-safe: it repairs maintainer-only release plumbing and does not "
+            "change behavior for lanes in progress.",
+        ]
+    elif parsed_version == version_tuple("0.9.8"):
         wip_safe = True
         required_migrations = []
         optional_migrations = []
@@ -12896,6 +12921,9 @@ def public_release_export(args: argparse.Namespace) -> int:
 # registries for months. Generated copy cannot drift from the truth by neglect.
 # ---------------------------------------------------------------------------
 REGISTRY_PACKAGE_NAME = "tautline"
+# GitHub's canonical owner/repo, in GitHub's own casing. The OIDC claim used by npm's
+# trusted publishing carries this exact string, and npm compares case-sensitively.
+REGISTRY_PACKAGE_REPO_SLUG = "Tautlines/tautline"
 REGISTRY_PACKAGE_REGISTRIES = ("npm", "pypi")
 REGISTRY_PACKAGE_DESCRIPTION = (
     "Tautline - the governor for AI coding agents. Enforced completion gates, "
@@ -12947,13 +12975,19 @@ def registry_package_license() -> str:
 
 
 def registry_package_npm_manifest(version: str) -> str:
+    # npm's trusted publishing compares `repository.url` against the OIDC claim, which
+    # carries GitHub's canonical `owner/repo` — and npm documents the comparison as
+    # case-sensitive. The canonical owner is `Tautlines`, not `tautlines`; publishing
+    # 0.9.8 with the lowercase spelling failed with ENEEDAUTH because the OIDC exchange
+    # returned no token and npm fell back to asking for a login. Use REGISTRY_PACKAGE_REPO_SLUG.
+    repo_url = f"https://github.com/{REGISTRY_PACKAGE_REPO_SLUG}"
     manifest = {
         "name": REGISTRY_PACKAGE_NAME,
         "version": version,
         "description": REGISTRY_PACKAGE_DESCRIPTION,
-        "homepage": "https://github.com/tautlines/tautline",
-        "repository": {"type": "git", "url": "git+https://github.com/tautlines/tautline.git"},
-        "bugs": "https://github.com/tautlines/tautline/issues",
+        "homepage": repo_url,
+        "repository": {"type": "git", "url": f"git+{repo_url}.git"},
+        "bugs": f"{repo_url}/issues",
         "license": "MIT",
         "keywords": ["ai", "agents", "claude", "codex", "governance", "delivery", "framework"],
     }
@@ -12961,6 +12995,10 @@ def registry_package_npm_manifest(version: str) -> str:
 
 
 def registry_package_pyproject(version: str) -> str:
+    # PyPI does not compare these case-sensitively, but they are the same registry
+    # package metadata family as registry_package_npm_manifest()'s repository.url, so
+    # they carry GitHub's canonical casing too rather than drifting from the truth.
+    repo_url = f"https://github.com/{REGISTRY_PACKAGE_REPO_SLUG}"
     return (
         "[build-system]\n"
         'requires = ["setuptools>=68"]\n'
@@ -12975,9 +13013,9 @@ def registry_package_pyproject(version: str) -> str:
         'requires-python = ">=3.10"\n'
         "\n"
         "[project.urls]\n"
-        'Homepage = "https://github.com/tautlines/tautline"\n'
-        'Repository = "https://github.com/tautlines/tautline"\n'
-        'Issues = "https://github.com/tautlines/tautline/issues"\n'
+        f'Homepage = "{repo_url}"\n'
+        f'Repository = "{repo_url}"\n'
+        f'Issues = "{repo_url}/issues"\n'
     )
 
 

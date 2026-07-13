@@ -27,6 +27,21 @@ development repository.
 
 ### Security
 
+## [0.9.9] - 2026-07-13
+
+### Fixed
+
+- Publishing to npm failed again right after the 0.9.8 fix landed, this time with
+  `ENEEDAUTH`. npm's OIDC trusted-publishing exchange mints a short-lived credential
+  only when the published package's `repository.url` matches the workflow's identity
+  claim, and npm compares that field case-sensitively. The generated package manifest's
+  `homepage`, `repository.url` and `bugs` fields all read the lowercase `tautlines`,
+  but GitHub's canonical owner is `Tautlines` (capital T), so the comparison never
+  matched, no token was minted, and npm fell back to demanding an interactive login.
+  These fields are now generated from GitHub's exact canonical casing, and a guard
+  test pins it going forward. Publishing to PyPI, which does not compare this field
+  case-sensitively, was never affected.
+
 ## [0.9.8] - 2026-07-13
 
 ### Fixed

@@ -42,5 +42,5 @@
   "name": "tautline-core",
   "repository": "https://github.com/tautlines/tautline",
   "skills": "./skills/",
-  "version": "0.9.8"
+  "version": "0.9.9"
 }

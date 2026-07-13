@@ -718,7 +718,7 @@ def test_npm_package_manifest_is_valid_and_versioned(cli) -> None:
     manifest = json.loads(files["package.json"])
     assert manifest["name"] == "tautline"
     assert manifest["version"] == "0.9.7"
-    assert manifest["repository"]["url"].endswith("tautlines/tautline.git")
+    assert manifest["repository"]["url"].endswith("Tautlines/tautline.git")
     assert files["LICENSE"].startswith("MIT License")
 
 
@@ -892,3 +892,29 @@ def test_overlay_preserves_the_mirrors_history_and_applies_deletions(cli, tmp_pa
     assert (clone / "docs" / "new.md").is_file()
     assert not (clone / "STALE.md").exists(), "export-excluded paths must become real deletions"
     assert not (clone / "docs" / "old.md").exists()
+
+
+def test_npm_manifest_repository_url_uses_github_canonical_casing(cli):
+    """npm's trusted publishing compares repository.url case-sensitively.
+
+    GitHub's canonical owner is `Tautlines`, not `tautlines`. Publishing 0.9.8 with the
+    lowercase spelling failed with ENEEDAUTH: the OIDC exchange returned no token and npm
+    fell back to asking for a login. The claim carries GitHub's exact casing, so the
+    manifest must too.
+    """
+    manifest = json.loads(cli.registry_package_npm_manifest("1.2.3"))
+
+    assert cli.REGISTRY_PACKAGE_REPO_SLUG == "Tautlines/tautline", (
+        "the repo slug must carry GitHub's canonical casing; npm compares the OIDC "
+        "repository claim case-sensitively"
+    )
+    for field, value in (
+        ("repository.url", manifest["repository"]["url"]),
+        ("homepage", manifest["homepage"]),
+        ("bugs", manifest["bugs"]),
+    ):
+        assert "github.com/Tautlines/tautline" in value, (
+            f"{field} is {value!r}; it must use GitHub's canonical casing "
+            "(Tautlines/tautline) or npm's trusted publishing refuses to mint a token"
+        )
+        assert "github.com/tautlines/" not in value, f"{field} still uses the lowercase owner"

@@ -6,7 +6,7 @@
   },
   "metadata": {
     "description": "Tautline \u2014 the governor for AI coding agents",
-    "version": "0.9.8"
+    "version": "0.9.9"
   },
   "plugins": [
     {

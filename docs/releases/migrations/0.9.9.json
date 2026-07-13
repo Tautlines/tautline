@@ -1,0 +1,75 @@
+{
+  "behaviorChanges": [
+    "Publishing to npm failed again right after the 0.9.8 fix landed, this time with ENEEDAUTH. npm's OIDC trusted-publishing exchange mints a short-lived credential only when the published package's repository.url matches the workflow's identity claim, and npm compares that field case-sensitively. The generated package manifest's homepage, repository.url and bugs fields all read the lowercase tautlines, but GitHub's canonical owner is Tautlines (capital T), so the comparison never matched, no token was minted, and npm fell back to demanding an interactive login. These fields are now generated from GitHub's exact canonical casing, and a guard test pins it going forward. Publishing to PyPI, which does not compare this field case-sensitively, was never affected."
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "publish-pending-session-journals",
+      "removeAfter": "1.0.0",
+      "replacement": "publish-instrumentation-record",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "publish-session-journal",
+      "removeAfter": "1.0.0",
+      "replacement": "publish-instrumentation-record",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    },
+    {
+      "name": "rules-audit",
+      "path": "plugins/tautline-core/skills/rules-audit/SKILL.md",
+      "removeAfter": "1.0.0",
+      "replacement": "framework-intake",
+      "section": "skills",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [],
+  "productsTested": [],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "Fix only: pinning back to 0.9.8 restores the npm publish path that failed with ENEEDAUTH because the package manifest's repository URL did not match GitHub's canonical casing. No command, adapter key or configuration surface changes.",
+    "Stable clients remain on the stable channel unless they explicitly opt into experimental.",
+    "This release is WIP-safe: it repairs maintainer-only release plumbing and does not change behavior for lanes in progress."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.9.9",
+  "wipSafe": true
+}
