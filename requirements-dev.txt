@@ -9,3 +9,7 @@ pytest-cov==7.1.0
 # Dev-only: scripts/generate-social-preview.py renders the launch social-preview PNG.
 # Not a CLI runtime dependency (the CLI stays stdlib-only).
 pillow==12.3.0
+# Dev-only: tests/test_release_tail_workflows.py parses the publish workflows as YAML
+# to assert the no-secrets / OIDC-permissions invariants against the real structure
+# rather than regex over text. Not a CLI runtime dependency (the CLI stays stdlib-only).
+PyYAML==6.0.3

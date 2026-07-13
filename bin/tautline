@@ -132,9 +132,11 @@ PUBLIC_RELEASE_EXPORT_EXCLUDED_PREFIXES = (
     # (.minervit-public-release-export.json) matches neither prefix:
     # ".minervit/" requires the slash, and the marker filename does not start
     # with ".minervit-ai-delivery.json".
-    # The public repository is a force-pushed mirror; Dependabot PRs opened
-    # there can never merge and always fail the release-change contract, so
-    # dependency intake stays in the private repo.
+    # The public repository is a downstream mirror: `release-tail` overlays the
+    # export tree onto the mirror's current HEAD and fast-forwards it (never a
+    # force-push, never a history rewrite). Dependabot PRs opened there can
+    # never merge and always fail the release-change contract, so dependency
+    # intake stays in the private repo.
     ".github/dependabot.yml",
     ".minervit-ai-delivery.json",
     ".minervit/",
@@ -5984,7 +5986,7 @@ def release_migration_report_data(
             len(deprecated_surfaces),
         )
         deprecated_surfaces.insert(insert_at, historical_rca_surface)
-    if parsed_version > version_tuple("0.9.6"):
+    if parsed_version > version_tuple("0.9.7"):
         raise SystemExit(
             f"release migration report data is not declared for {version}; "
             "add a release-specific branch before cutting the release"
@@ -6009,7 +6011,50 @@ def release_migration_report_data(
             f"release migration report data is not declared for {version}; "
             "add a release-specific branch before cutting the release"
         )
-    if parsed_version == version_tuple("0.9.6"):
+    if parsed_version == version_tuple("0.9.7"):
+        wip_safe = True
+        required_migrations = []
+        optional_migrations = []
+        behavior_changes = [
+            "The release tail is now a single command. `release-tail` runs export, public-mirror "
+            "commit, tag, GitHub Release, registry publish and drift verification in one step, "
+            "with per-step evidence. It offers `--dry-run` (prints the whole plan, changes "
+            "nothing, makes no network calls) and `--skip-registry` (stops at a draft Release, so "
+            "no publish fires). Resuming needs no flag: rerunning the command continues a "
+            "partially-completed tail without repeating finished steps or publishing twice. "
+            "The public mirror is only ever "
+            "fast-forwarded: the tail never force-pushes it and never rewrites its history, so "
+            "existing clones stay valid.",
+            "`release-drift-check` compares the version held by the repository, npm and PyPI and "
+            "exits non-zero when they disagree. It runs after a publish and on a daily schedule "
+            "against the public repository, so a stale registry is caught within a day.",
+            "`registry-package` generates the npm and PyPI pointer-package metadata from one "
+            "source, so the text published to the registries can no longer drift away from what "
+            "the project actually ships.",
+            "Registry publishing moves to OIDC Trusted Publishing and stores no credentials. The "
+            "publish workflows hold no secrets: the registry mints a short-lived credential from "
+            "the workflow's identity token, so there is no API token to create, paste, rotate or "
+            "leak. Because a registry publish cannot be undone, each workflow first asks the "
+            "registry whether the version already exists, no-ops when it does, and fails closed "
+            "rather than publishing blind when the registry cannot be read.",
+            "Publishing to npm and PyPI requires the maintainer to configure Trusted Publishing "
+            "on each registry once, binding it to the repository and the publish workflow "
+            "filenames. Until that one-time configuration is done, the publish workflows fail "
+            "closed; they never fall back to a token. The workflow filenames are part of the "
+            "trust relationship, so renaming one breaks it. Both the bootstrap order and the "
+            "registry configuration steps are documented in the release-engineering reference.",
+        ]
+        rollback_notes = [
+            "Additive maintainer tooling: pinning back to 0.9.6 removes the release-tail, "
+            "release-drift-check and registry-package commands and the publish workflows, and "
+            "returns the release tail to its previous manual sequence. No existing command, "
+            "adapter key or configuration surface changes.",
+            "Stable clients remain on the stable channel unless they explicitly opt into "
+            "experimental.",
+            "This release is WIP-safe: it adds maintainer-only release commands and does not "
+            "change behavior for lanes in progress.",
+        ]
+    elif parsed_version == version_tuple("0.9.6"):
         wip_safe = True
         required_migrations = []
         optional_migrations = []
@@ -10531,6 +10576,9 @@ def public_contract_status_for_command(name: str) -> dict:
         "public-contract",
         "public-release-check",
         "public-release-export",
+        "registry-package",
+        "release-drift-check",
+        "release-tail",
         "validate-instrumentation-record",
     }:
         return {"status": "experimental"}
@@ -12806,6 +12854,680 @@ def public_release_export(args: argparse.Namespace) -> int:
     print("public_release_export_check: ok")
     print("public_release_export_next: push this clean repository to the public remote only after release approval")
     return 0
+
+
+# ---------------------------------------------------------------------------
+# Release tail: registry packages, mirror publish, drift detection.
+#
+# The npm and PyPI packages are NAMESPACE POINTERS: they reserve the name and
+# point at the repository. They do not install the CLI. Their copy is generated
+# from here -- one source of truth for both registries -- because the last
+# hand-written copy promised "a native package install lands with the 0.9.0
+# package split", which was untrue when it was published and stayed on both
+# registries for months. Generated copy cannot drift from the truth by neglect.
+# ---------------------------------------------------------------------------
+REGISTRY_PACKAGE_NAME = "tautline"
+REGISTRY_PACKAGE_REGISTRIES = ("npm", "pypi")
+REGISTRY_PACKAGE_DESCRIPTION = (
+    "Tautline - the governor for AI coding agents. Enforced completion gates, "
+    "per-project adapters, and lifecycle guards for AI-driven delivery. This "
+    "package is a namespace pointer; install from github.com/tautlines/tautline."
+)
+
+
+def registry_package_readme() -> str:
+    """The one README both registries ship.
+
+    Every claim here must be true today. No roadmap promise, no future-tense
+    install instruction -- only the sequence that actually works right now.
+    """
+    return (
+        "# Tautline\n"
+        "\n"
+        "The governor for AI coding agents.\n"
+        "\n"
+        "## Install\n"
+        "\n"
+        "```\n"
+        f"git clone https://github.com/tautlines/{REGISTRY_PACKAGE_NAME}\n"
+        f"cd {REGISTRY_PACKAGE_NAME}\n"
+        "bin/tautline install-cli\n"
+        "```\n"
+        "\n"
+        "## What this package is\n"
+        "\n"
+        "This package is a **namespace pointer**. It reserves the name and points at\n"
+        "the repository; it does not install the CLI. Use the sequence above.\n"
+        "\n"
+        "Planned work, including a packaged install, is tracked on the public roadmap:\n"
+        "https://github.com/tautlines/tautline/blob/main/ROADMAP.md\n"
+        "\n"
+        "## Links\n"
+        "\n"
+        "- Source: https://github.com/tautlines/tautline\n"
+        "- Issues: https://github.com/tautlines/tautline/issues\n"
+        "- License: MIT\n"
+    )
+
+
+def registry_package_license() -> str:
+    return (
+        "MIT License\n\nCopyright (c) 2026 Minervit\n\n"
+        "See https://github.com/tautlines/tautline/blob/main/LICENSE\n"
+    )
+
+
+def registry_package_npm_manifest(version: str) -> str:
+    manifest = {
+        "name": REGISTRY_PACKAGE_NAME,
+        "version": version,
+        "description": REGISTRY_PACKAGE_DESCRIPTION,
+        "homepage": "https://github.com/tautlines/tautline",
+        "repository": {"type": "git", "url": "git+https://github.com/tautlines/tautline.git"},
+        "bugs": "https://github.com/tautlines/tautline/issues",
+        "license": "MIT",
+        "keywords": ["ai", "agents", "claude", "codex", "governance", "delivery", "framework"],
+    }
+    return json.dumps(manifest, indent=2, sort_keys=True) + "\n"
+
+
+def registry_package_pyproject(version: str) -> str:
+    return (
+        "[build-system]\n"
+        'requires = ["setuptools>=68"]\n'
+        'build-backend = "setuptools.build_meta"\n'
+        "\n"
+        "[project]\n"
+        f'name = "{REGISTRY_PACKAGE_NAME}"\n'
+        f'version = "{version}"\n'
+        f'description = "{REGISTRY_PACKAGE_DESCRIPTION}"\n'
+        'readme = "README.md"\n'
+        'license = {text = "MIT"}\n'
+        'requires-python = ">=3.10"\n'
+        "\n"
+        "[project.urls]\n"
+        'Homepage = "https://github.com/tautlines/tautline"\n'
+        'Repository = "https://github.com/tautlines/tautline"\n'
+        'Issues = "https://github.com/tautlines/tautline/issues"\n'
+    )
+
+
+def registry_package_files(registry: str, version: str) -> dict[str, str]:
+    """Every file of the publishable namespace-pointer package, by relative path."""
+    if registry not in REGISTRY_PACKAGE_REGISTRIES:
+        raise SystemExit(
+            f"registry-package: unknown registry {registry!r}; "
+            f"expected one of {', '.join(REGISTRY_PACKAGE_REGISTRIES)}"
+        )
+    if not re.fullmatch(r"\d+\.\d+\.\d+", version or ""):
+        raise SystemExit(f"registry-package: version must be X.Y.Z, got {version!r}")
+    readme = registry_package_readme()
+    if registry == "npm":
+        return {
+            "package.json": registry_package_npm_manifest(version),
+            "README.md": readme,
+            "LICENSE": registry_package_license(),
+        }
+    return {
+        "pyproject.toml": registry_package_pyproject(version),
+        "README.md": readme,
+        "LICENSE": registry_package_license(),
+        "src/tautline/__init__.py": f'__version__ = "{version}"\n',
+    }
+
+
+def registry_package(args: argparse.Namespace) -> int:
+    files = registry_package_files(args.registry, args.version)
+    destination = args.destination.resolve()
+    print(f"registry_package_registry: {args.registry}")
+    print(f"registry_package_name: {REGISTRY_PACKAGE_NAME}")
+    print(f"registry_package_version: {args.version}")
+    print(f"registry_package_destination: {destination}")
+    print(f"registry_package_files: {len(files)}")
+    if not args.write:
+        print("registry_package_written: no")
+        print("registry_package_next: rerun with --write to materialize the package tree")
+        return 0
+    for rel, content in files.items():
+        path = destination / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content, encoding="utf-8")
+    print(f"registry_package_written: {destination}")
+    return 0
+
+
+# ---------------------------------------------------------------------------
+# The release tail: export -> mirror commit -> tag -> Release -> registries.
+#
+# Two facts shape every line below.
+#
+# 1. The export is a FRESH repository with a root commit
+#    (public_release_export_repository), so it shares no ancestor with the public
+#    mirror and CANNOT be fast-forwarded onto it. Pushing it would demand a
+#    force-push and would orphan every existing clone. The mirror commit is
+#    therefore built by cloning the mirror, overlaying the export tree while
+#    preserving `.git/`, and committing on top of the mirror's current HEAD.
+#    The mirror's history is never rewritten and is never force-pushed.
+#
+# 2. Run from this checkout, bare `gh` resolves to the DEV repository. A `gh`
+#    call without `--repo` would create the Release in the wrong repo, where no
+#    publish workflow exists -- a silent no-op. Every `gh` call in the tail goes
+#    through release_tail_gh(), which pins --repo and refuses a caller-supplied
+#    one, so the pinning cannot be forgotten at a new call site.
+# ---------------------------------------------------------------------------
+PUBLIC_MIRROR_REPO = "tautlines/tautline"
+PUBLIC_MIRROR_REMOTE = "https://github.com/tautlines/tautline.git"
+PUBLIC_MIRROR_BRANCH = "main"
+RELEASE_TAIL_PUBLISH_WORKFLOWS = {"npm": "publish-npm.yml", "pypi": "publish-pypi.yml"}
+RELEASE_TAIL_RUN_FIELDS = "conclusion,databaseId,event,headBranch,headSha,status,url"
+# Release notes are a permanent public surface: once published they are indexed,
+# mirrored, and quoted. A leak cannot be taken back, so refuse to publish notes
+# carrying an internal tracker id, an internal doc path, or a local absolute path.
+RELEASE_TAIL_LEAK_TERMS = ("METH-FU", "docs/backlog/", "docs/productization/", "/Users/")
+RELEASE_REGISTRY_URLS = {
+    "npm": f"https://registry.npmjs.org/{REGISTRY_PACKAGE_NAME}",
+    "pypi": f"https://pypi.org/pypi/{REGISTRY_PACKAGE_NAME}/json",
+}
+
+
+class ReleaseTailError(Exception):
+    """A fail-closed refusal. release_tail() turns it into a message + non-zero exit."""
+
+
+def release_http_json(url: str, timeout: int = 20) -> dict | None:
+    """GET a registry JSON document. None means 'absent' (404).
+
+    Any other failure propagates: an unreadable registry is NOT evidence that a
+    version is absent, and the caller must fail closed rather than guess.
+    """
+    request = Request(url, headers={"User-Agent": "tautline-release-tail"})
+    try:
+        # Fixed https registry URLs only; never user-supplied.
+        with urlopen(request, timeout=timeout) as response:
+            return json.loads(response.read().decode("utf-8"))
+    except HTTPError as exc:
+        if exc.code == 404:
+            return None
+        raise
+
+
+def registry_latest_version(registry: str) -> str:
+    payload = release_http_json(RELEASE_REGISTRY_URLS[registry])
+    if payload is None:
+        return "absent"
+    if registry == "npm":
+        return str((payload.get("dist-tags") or {}).get("latest") or "absent")
+    return str((payload.get("info") or {}).get("version") or "absent")
+
+
+def registry_has_version(registry: str, version: str) -> bool:
+    payload = release_http_json(RELEASE_REGISTRY_URLS[registry])
+    if payload is None:
+        return False
+    key = "versions" if registry == "npm" else "releases"
+    return version in (payload.get(key) or {})
+
+
+def release_drift_surfaces() -> tuple[dict[str, str], list[str]]:
+    surfaces = {"repo": plugin_version()}
+    unreadable: list[str] = []
+    for registry in ("npm", "pypi"):
+        try:
+            surfaces[registry] = registry_latest_version(registry)
+        except (HTTPError, URLError, OSError, ValueError) as exc:
+            # Fail closed: report it as a surface that does not agree, never as agreement.
+            surfaces[registry] = "unreadable"
+            unreadable.append(f"{registry}: {exc}")
+    return surfaces, unreadable
+
+
+def release_drift_check(args: argparse.Namespace) -> int:
+    """Report every release surface and its version, then the verdict.
+
+    The failure this exists to catch: for months the repo said 0.9.1 while npm and
+    PyPI both sat at 0.8.2, and nothing looked.
+    """
+    surfaces, unreadable = release_drift_surfaces()
+    repo = surfaces["repo"]
+    drifted = sorted(name for name in ("npm", "pypi") if surfaces[name] != repo)
+    ok = not drifted
+    if getattr(args, "as_json", False):
+        print(
+            json.dumps(
+                {
+                    "ok": ok,
+                    "surfaces": surfaces,
+                    "drifted": drifted,
+                    "unreadable": unreadable,
+                },
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        return 0 if ok else 1
+    for name in ("repo", "npm", "pypi"):
+        print(f"release_drift_{name}: {surfaces[name]}")
+    for detail in unreadable:
+        print(f"release_drift_unreadable: {detail}")
+    if ok:
+        print("release_drift_verdict: aligned")
+        return 0
+    disagreement = ", ".join(f"{name}={surfaces[name]}" for name in drifted)
+    print(f"release_drift_verdict: drift (repo={repo}; {disagreement})")
+    print(
+        "release_drift_next: run `tautline release-tail` to publish the current "
+        "version to every stale surface"
+    )
+    return 1
+
+
+def release_tail_leaks(text: str) -> list[str]:
+    return sorted({term for term in RELEASE_TAIL_LEAK_TERMS if term in text})
+
+
+def release_tail_notes(version: str) -> str:
+    block = changelog_release_block(version)
+    if block is None:
+        return ""
+    body = str(block.get("body", "")).strip()
+    changelog = f"https://github.com/{PUBLIC_MIRROR_REPO}/blob/main/CHANGELOG.md"
+    return f"{body}\n\nFull changelog: {changelog}\n"
+
+
+def release_tail_preflight(version: str) -> list[str]:
+    errors: list[str] = []
+    blocks = changelog_release_blocks()
+    newest = str(blocks[0].get("version", "")) if blocks else ""
+    if newest != version:
+        errors.append(
+            f"VERSION is {version} but the newest CHANGELOG section is "
+            f"{newest or 'missing'}; the release notes would describe the wrong release"
+        )
+    if changelog_release_block(version) is None:
+        errors.append(f"CHANGELOG has no section for {version}")
+    else:
+        leaks = release_tail_leaks(release_tail_notes(version))
+        if leaks:
+            errors.append(
+                "release notes contain terms that must never be published: "
+                + ", ".join(leaks)
+            )
+    return errors
+
+
+def release_tail_gh(args: list[str], timeout: int = 120) -> tuple[int, str, str]:
+    """The ONLY way the tail talks to gh. --repo is pinned here, not at call sites."""
+    if "--repo" in args:
+        raise ReleaseTailError("release_tail_gh() pins --repo; call sites must not pass it")
+    return run_command(["gh", *args, "--repo", PUBLIC_MIRROR_REPO], timeout=timeout)
+
+
+def release_tail_git(clone: Path, args: list[str], timeout: int = 600) -> tuple[int, str, str]:
+    return run_command(["git", "-C", str(clone), *args], timeout=timeout)
+
+
+def release_tail_overlay(export_dir: Path, clone: Path) -> None:
+    """Overlay the export tree onto the mirror clone, preserving the mirror's `.git/`.
+
+    Clearing the clone first is what makes export-EXCLUDED paths become real
+    deletions on the mirror instead of lingering forever. Skipping the export's own
+    `.git/` is what keeps the mirror's history intact: the export carries a fresh
+    root commit that shares no ancestor with the mirror, and letting it overwrite
+    the mirror's history is precisely the force-push this design refuses to do.
+    """
+    for entry in clone.iterdir():
+        if entry.name == ".git":
+            continue
+        if entry.is_dir() and not entry.is_symlink():
+            shutil.rmtree(entry)
+        else:
+            entry.unlink()
+    for entry in sorted(export_dir.iterdir()):
+        if entry.name == ".git":
+            continue
+        target = clone / entry.name
+        if entry.is_dir() and not entry.is_symlink():
+            shutil.copytree(entry, target, symlinks=True)
+        else:
+            shutil.copy2(entry, target, follow_symlinks=False)
+
+
+def release_tail_mirror_push(version: str, export_dir: Path, clone: Path) -> tuple[str, bool]:
+    """Commit the export tree onto the mirror's current HEAD and fast-forward push.
+
+    Returns (sha, changed). `changed` is False when the mirror already carries this
+    exact tree -- a resumed run must not add an empty duplicate commit.
+    """
+    code, out, err = run_command(
+        ["git", "clone", "--quiet", PUBLIC_MIRROR_REMOTE, str(clone)], timeout=900
+    )
+    if code != 0:
+        raise ReleaseTailError(f"cannot clone the public mirror: {err or out}")
+    code, previous_head, err = release_tail_git(clone, ["rev-parse", "HEAD"])
+    if code != 0:
+        raise ReleaseTailError(f"cannot read the mirror's HEAD: {err}")
+    print(f"release_tail_mirror_previous_head: {previous_head}")
+
+    release_tail_overlay(export_dir, clone)
+    release_tail_git(clone, ["config", "user.email", "release-tail@tautline.invalid"])
+    release_tail_git(clone, ["config", "user.name", "Tautline Release Tail"])
+    code, out, err = release_tail_git(clone, ["add", "-A"])
+    if code != 0:
+        raise ReleaseTailError(f"cannot stage the export tree: {err or out}")
+    code, status, err = release_tail_git(clone, ["status", "--porcelain"])
+    if code != 0:
+        raise ReleaseTailError(f"cannot inspect the mirror clone: {err}")
+    if not status.strip():
+        print("release_tail_mirror: current")
+        return previous_head, False
+
+    code, out, err = release_tail_git(
+        clone,
+        [
+            "-c",
+            "commit.gpgsign=false",
+            "-c",
+            "core.hooksPath=/dev/null",
+            "commit",
+            "--no-verify",
+            "-q",
+            "-m",
+            f"Tautline {version}",
+        ],
+    )
+    if code != 0:
+        raise ReleaseTailError(f"cannot commit onto the mirror: {err or out}")
+    code, sha, err = release_tail_git(clone, ["rev-parse", "HEAD"])
+    if code != 0:
+        raise ReleaseTailError(f"cannot read the new mirror commit: {err}")
+    # Fast-forward only. No --force, no --force-with-lease, no `+` refspec: the
+    # mirror's history and everyone's clones survive a release.
+    code, out, err = release_tail_git(
+        clone, ["push", "origin", f"HEAD:refs/heads/{PUBLIC_MIRROR_BRANCH}"]
+    )
+    if code != 0:
+        raise ReleaseTailError(f"cannot fast-forward the mirror: {err or out}")
+    print("release_tail_mirror: pushed")
+    return sha, True
+
+
+def release_tail_ensure_tag(version: str, sha: str, clone: Path) -> str:
+    tag = f"v{version}"
+    code, out, err = release_tail_git(clone, ["ls-remote", "--tags", "origin", f"refs/tags/{tag}"])
+    if code != 0:
+        raise ReleaseTailError(f"cannot list the mirror's tags: {err or out}")
+    existing = out.split("\t")[0].strip() if out.strip() else ""
+    if existing:
+        if existing != sha:
+            raise ReleaseTailError(
+                f"tag {tag} already exists on the mirror at {existing}, not {sha}; "
+                "refusing to move a published tag"
+            )
+        print(f"release_tail_tag: current {tag}")
+        return "current"
+    code, out, err = release_tail_git(clone, ["tag", "-a", tag, "-m", f"Tautline {version}", sha])
+    if code != 0:
+        raise ReleaseTailError(f"cannot create tag {tag}: {err or out}")
+    code, out, err = release_tail_git(clone, ["push", "origin", f"refs/tags/{tag}"])
+    if code != 0:
+        raise ReleaseTailError(f"cannot push tag {tag}: {err or out}")
+    print(f"release_tail_tag: created {tag}")
+    return "created"
+
+
+def release_tail_release_state(tag: str) -> dict | None:
+    code, out, _err = release_tail_gh(
+        ["release", "view", tag, "--json", "isDraft,tagName,targetCommitish,url"]
+    )
+    if code != 0:
+        return None
+    try:
+        state = json.loads(out or "null")
+    except json.JSONDecodeError:
+        return None
+    return state if isinstance(state, dict) else None
+
+
+def release_tail_ensure_release(
+    version: str, tag: str, sha: str, notes_path: Path, skip_registry: bool
+) -> str:
+    """Create/publish the Release. Returns 'drafted' | 'published' | 'existing'.
+
+    A DRAFT emits no `published` event, so no publish workflow fires. That is what
+    makes the one-time bootstrap safe: --skip-registry leaves a real Release for the
+    version, the operator configures Trusted Publishing against the workflows that
+    now exist on the mirror, and a later run PUBLISHES THAT SAME DRAFT -- firing the
+    event exactly once. Creating a second Release instead would double-publish.
+    """
+    state = release_tail_release_state(tag)
+    if state is None:
+        command = [
+            "release",
+            "create",
+            tag,
+            "--target",
+            sha,
+            "--title",
+            f"Tautline {version}",
+            "--notes-file",
+            str(notes_path),
+        ]
+        if skip_registry:
+            command.append("--draft")
+        code, out, err = release_tail_gh(command)
+        if code != 0:
+            raise ReleaseTailError(f"cannot create the Release: {err or out}")
+        if skip_registry:
+            print("release_tail_release: drafted")
+            return "drafted"
+        print("release_tail_release: published")
+        return "published"
+    if state.get("isDraft"):
+        if skip_registry:
+            print("release_tail_release: drafted")
+            return "drafted"
+        code, out, err = release_tail_gh(["release", "edit", tag, "--draft=false"])
+        if code != 0:
+            raise ReleaseTailError(f"cannot publish the draft Release: {err or out}")
+        print("release_tail_release: published")
+        return "published"
+    print("release_tail_release: existing")
+    return "existing"
+
+
+def release_tail_matching_run(workflow: str, sha: str) -> dict | None:
+    """The run of `workflow` for THIS release, matched on the exact head SHA.
+
+    A stale successful run of the same workflow (a previous release) must never be
+    read as this release's success, so the match is on the SHA being released and
+    nothing weaker. No matching run yet means STILL WAITING -- never success.
+    """
+    code, out, err = release_tail_gh(
+        ["run", "list", "--workflow", workflow, "--json", RELEASE_TAIL_RUN_FIELDS, "--limit", "30"]
+    )
+    if code != 0:
+        raise ReleaseTailError(f"cannot list runs for {workflow}: {err or out}")
+    try:
+        runs = json.loads(out or "[]")
+    except json.JSONDecodeError as exc:
+        raise ReleaseTailError(f"invalid run JSON for {workflow}: {exc}") from exc
+    for run in runs if isinstance(runs, list) else []:
+        if run.get("headSha") == sha:
+            return run
+    return None
+
+
+def release_tail_wait_for_runs(
+    workflows: list[str], sha: str, timeout: int, poll_interval: int
+) -> None:
+    deadline = time.monotonic() + timeout
+    pending = set(workflows)
+    failed: list[str] = []
+    while pending:
+        for workflow in sorted(pending):
+            run = release_tail_matching_run(workflow, sha)
+            if run is None or run.get("status") != "completed":
+                continue  # no run at this SHA yet, or still running: not success
+            pending.discard(workflow)
+            conclusion = str(run.get("conclusion") or "unknown")
+            print(f"release_tail_run: {workflow} conclusion={conclusion} url={run.get('url')}")
+            if conclusion != "success":
+                failed.append(workflow)
+        if not pending:
+            break
+        if time.monotonic() >= deadline:
+            raise ReleaseTailError(
+                f"timed out after {timeout}s waiting for publish runs at {sha}: "
+                + ", ".join(sorted(pending))
+            )
+        time.sleep(poll_interval)
+    if failed:
+        raise ReleaseTailError("publish workflow failed: " + ", ".join(sorted(failed)))
+
+
+def release_tail_publish_registries(
+    version: str, tag: str, sha: str, fired: bool, timeout: int, poll_interval: int
+) -> None:
+    """Ensure both registries hold `version`, then wait for the runs that do it.
+
+    When the Release was just published the event already fired both workflows. On a
+    resumed run the Release is already published, so no event fires -- the missing
+    registry's workflow is dispatched explicitly, pinned to the version and the tag.
+    Either way the wait matches runs by the exact SHA.
+    """
+    awaited: list[str] = []
+    for registry, workflow in sorted(RELEASE_TAIL_PUBLISH_WORKFLOWS.items()):
+        try:
+            published = registry_has_version(registry, version)
+        except (HTTPError, URLError, OSError, ValueError) as exc:
+            raise ReleaseTailError(f"cannot read {registry} before publishing: {exc}") from exc
+        if published:
+            print(f"release_tail_{registry}: {version} (already published)")
+            continue
+        if not fired:
+            code, out, err = release_tail_gh(
+                ["workflow", "run", workflow, "--ref", tag, "-f", f"version={version}"]
+            )
+            if code != 0:
+                raise ReleaseTailError(f"cannot dispatch {workflow}: {err or out}")
+            print(f"release_tail_{registry}_dispatch: {workflow} version={version} ref={tag}")
+        awaited.append(workflow)
+    if awaited:
+        print(f"release_tail_waiting: {', '.join(awaited)} at {sha}")
+        release_tail_wait_for_runs(awaited, sha, timeout, poll_interval)
+
+
+def release_tail_print_plan(version: str, tag: str) -> None:
+    print(f"release_tail_plan_export: public-release-export of {REPO_ROOT} (gate must be ok)")
+    print(
+        f"release_tail_plan_mirror: clone {PUBLIC_MIRROR_REPO}, overlay the export onto its "
+        f"current HEAD, commit, fast-forward push to {PUBLIC_MIRROR_BRANCH} (never --force)"
+    )
+    print(f"release_tail_plan_tag: create and push {tag} at the pushed commit")
+    print(
+        f"release_tail_plan_release: gh release create {tag} --repo {PUBLIC_MIRROR_REPO} "
+        "--target <pushed sha> (--draft with --skip-registry)"
+    )
+    print(
+        "release_tail_plan_publish: the published Release fires "
+        f"{', '.join(sorted(RELEASE_TAIL_PUBLISH_WORKFLOWS.values()))} on {PUBLIC_MIRROR_REPO}; "
+        "wait for the runs at that exact SHA"
+    )
+    print("release_tail_plan_drift: release-drift-check must report repo == npm == pypi")
+
+
+def release_tail_run(args: argparse.Namespace) -> int:
+    version = plugin_version()
+    tag = f"v{version}"
+    print(f"release_tail_mode: {'dry-run' if args.dry_run else 'write'}")
+    print(f"release_tail_version: {version}")
+    print(f"release_tail_repo: {PUBLIC_MIRROR_REPO}")
+
+    errors = release_tail_preflight(version)
+    if errors:
+        raise ReleaseTailError("; ".join(errors))
+    print("release_tail_preflight: ok")
+
+    if args.dry_run:
+        release_tail_print_plan(version, tag)
+        print("release_tail_written: no")
+        print("release_tail_next: rerun without --dry-run to execute the tail")
+        return 0
+
+    private_terms = public_release_private_terms(
+        public_release_private_adapters(REPO_ROOT), args.private_terms_file
+    )
+    if not private_terms and not args.allow_empty_private_terms:
+        raise ReleaseTailError(
+            "no private product/client terms configured; set "
+            f"{PUBLIC_RELEASE_PRIVATE_TERMS_ENV}, pass --private-terms-file, or pass "
+            "--allow-empty-private-terms only for repos with no private terms"
+        )
+
+    with tempfile.TemporaryDirectory(prefix="tautline-release-tail-") as scratch:
+        root = Path(scratch)
+        export_dir = root / "export"
+        clone_dir = root / "mirror"
+
+        result = public_release_export_repository(
+            REPO_ROOT,
+            export_dir,
+            force=True,
+            private_terms_file=args.private_terms_file,
+        )
+        issues = result.get("issues") or []
+        if issues:
+            details = "; ".join(f"{i.get('code')} {i.get('path')}" for i in issues[:5])
+            raise ReleaseTailError(
+                f"the public-release export gate is not ok ({len(issues)} issue(s)): {details}"
+            )
+        print(f"release_tail_export_files: {result.get('files')}")
+        print("release_tail_export_check: ok")
+
+        sha, _changed = release_tail_mirror_push(version, export_dir, clone_dir)
+        print(f"release_tail_mirror_sha: {sha}")
+        release_tail_ensure_tag(version, sha, clone_dir)
+
+        notes_path = root / "release-notes.md"
+        notes_path.write_text(release_tail_notes(version), encoding="utf-8")
+        state = release_tail_ensure_release(version, tag, sha, notes_path, args.skip_registry)
+
+        if args.skip_registry:
+            print("release_tail_registries: skipped")
+            print(
+                "release_tail_next: configure Trusted Publishing on npm and PyPI against "
+                f"{PUBLIC_MIRROR_REPO} + "
+                f"{', '.join(sorted(RELEASE_TAIL_PUBLISH_WORKFLOWS.values()))}, then rerun "
+                "`tautline release-tail` to publish the draft Release"
+            )
+            return 0
+
+        # 'published' means the event just fired both workflows. 'existing' means the
+        # Release was already published, so nothing fired and the missing registry's
+        # workflow must be dispatched explicitly.
+        release_tail_publish_registries(
+            version, tag, sha, state == "published", args.timeout, args.poll_interval
+        )
+
+    drift = release_drift_check(argparse.Namespace(as_json=False))
+    if drift != 0:
+        raise ReleaseTailError(
+            f"the publish workflows finished but the registries do not hold {version}; "
+            "see release_drift_verdict above"
+        )
+    print("release_tail_written: yes")
+    return 0
+
+
+def release_tail(args: argparse.Namespace) -> int:
+    try:
+        return release_tail_run(args)
+    except ReleaseTailError as exc:
+        print(f"release_tail_error: {exc}", file=sys.stderr)
+        return 2
+    except SystemExit as exc:  # deeper CLI helpers fail closed with SystemExit
+        print(f"release_tail_error: {exc}", file=sys.stderr)
+        return 2
 
 
 def ensure_git_excludes(target: Path, patterns: list[str], label: str = "Minervit lane-local state") -> None:
@@ -21956,6 +22678,9 @@ STARTUP_REMEDIATION_ALLOWED_COMMANDS: tuple[str, ...] = (
     "telemetry",
     "pilot-report",
     "check-name-availability",
+    # read-only: reports the repo/npm/PyPI versions and the drift verdict, mutating
+    # nothing. Its mutating counterpart, release-tail, is BLOCKED.
+    "release-drift-check",
     "event-log-path",
     "event-tail",
     "event-audit",
@@ -22039,6 +22764,12 @@ STARTUP_REMEDIATION_BLOCKED_COMMANDS: tuple[str, ...] = (
     "public-contract",
     "public-release-check",
     "public-release-export",
+    # -- the release tail: publishes the mirror and two registries. A registry publish
+    # is irreversible, so shipping a release is the last thing a repo in startup
+    # remediation should be able to do. release-drift-check is the read-only half and
+    # stays ALLOWED, like release-update-status --
+    "registry-package",
+    "release-tail",
 )
 # CANONICAL gate display name (the same identifiers METHODOLOGY_STATUS_GATE_DISPLAY_NAMES emits,
 # and the marker's own `gates` array records -- a cross-surface test asserts byte-equality) ->
@@ -38342,6 +39073,89 @@ def main(argv: list[str] | None = None) -> int:
         help=f"Read private product/client scan terms from an untracked local file in addition to {PUBLIC_RELEASE_PRIVATE_TERMS_ENV}.",
     )
     public_release_export_p.set_defaults(func=public_release_export)
+
+    registry_package_p = sub.add_parser(
+        "registry-package",
+        help=(
+            "Generate the npm/PyPI namespace-pointer package tree "
+            "(one source of truth for the registry copy)."
+        ),
+    )
+    registry_package_p.add_argument(
+        "--registry",
+        required=True,
+        choices=list(REGISTRY_PACKAGE_REGISTRIES),
+        help="Which registry's package tree to generate.",
+    )
+    registry_package_p.add_argument("--version", required=True, help="Package version (X.Y.Z).")
+    registry_package_p.add_argument(
+        "--destination",
+        type=Path,
+        required=True,
+        help="Directory to materialize the package tree into.",
+    )
+    registry_package_p.add_argument(
+        "--write",
+        action="store_true",
+        help="Write the package tree. Without --write, print the plan only.",
+    )
+    registry_package_p.set_defaults(func=registry_package)
+
+    release_tail_p = sub.add_parser(
+        "release-tail",
+        help=(
+            "Run the whole release tail: public export, fast-forward mirror commit, "
+            "tag, GitHub Release, registry publish, drift check."
+        ),
+    )
+    release_tail_p.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Print the full plan and mutate nothing. The default posture for an agent.",
+    )
+    release_tail_p.add_argument(
+        "--skip-registry",
+        action="store_true",
+        help=(
+            "One-time bootstrap: push the mirror, tag, and create the Release as a DRAFT "
+            "(a draft fires no publish workflow). Rerun without this flag to publish it."
+        ),
+    )
+    release_tail_p.add_argument(
+        "--timeout",
+        type=int,
+        default=1800,
+        help="Seconds to wait for the publish workflow runs to reach a terminal state.",
+    )
+    release_tail_p.add_argument(
+        "--poll-interval",
+        type=int,
+        default=15,
+        help="Seconds between publish-run polls.",
+    )
+    release_tail_p.add_argument(
+        "--allow-empty-private-terms",
+        action="store_true",
+        help="Allow the export gate to run with no private terms configured.",
+    )
+    release_tail_p.add_argument(
+        "--private-terms-file",
+        type=Path,
+        help="Read private product/client scan terms from an untracked local file.",
+    )
+    release_tail_p.set_defaults(func=release_tail)
+
+    release_drift_p = sub.add_parser(
+        "release-drift-check",
+        help="Report the repo, npm, and PyPI versions and fail when any surface has drifted.",
+    )
+    release_drift_p.add_argument(
+        "--json",
+        action="store_true",
+        dest="as_json",
+        help="Emit machine-readable drift JSON.",
+    )
+    release_drift_p.set_defaults(func=release_drift_check)
 
     canonical_policy_p = sub.add_parser(
         "canonical-policy",

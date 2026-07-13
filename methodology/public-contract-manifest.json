@@ -717,7 +717,19 @@
       "status": "stable"
     },
     {
+      "name": "registry-package",
+      "status": "experimental"
+    },
+    {
+      "name": "release-drift-check",
+      "status": "experimental"
+    },
+    {
       "name": "release-migration-report",
+      "status": "experimental"
+    },
+    {
+      "name": "release-tail",
       "status": "experimental"
     },
     {
@@ -1244,5 +1256,5 @@
       "status": "stable"
     }
   ],
-  "version": "0.9.6"
+  "version": "0.9.7"
 }

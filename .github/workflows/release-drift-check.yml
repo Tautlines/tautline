@@ -1,0 +1,40 @@
+name: release-drift-check
+
+# Makes stale registries impossible to miss.
+#
+# For months the repository said 0.9.1 while npm and PyPI both sat at 0.8.2, and
+# nothing ever looked. This runs daily: if any release surface disagrees, the
+# check goes red within a day instead of being discovered six months later.
+#
+# Read-only. No secrets, no write scope: it only asks three surfaces what version
+# they are on.
+
+on:
+  schedule:
+    - cron: '17 6 * * *'   # daily, early UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  drift:
+    # Scoped to the public mirror deliberately. In the dev repo VERSION legitimately
+    # runs ahead of the registries between a merge and its release, so a drift check
+    # there would cry wolf every day and be tuned out. On the mirror, VERSION only
+    # moves when `release-tail` publishes -- so a disagreement there is always real.
+    if: github.repository == 'tautlines/tautline'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Compare the repo, npm, and PyPI versions
+        run: python3 bin/tautline release-drift-check

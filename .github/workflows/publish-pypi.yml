@@ -1,0 +1,130 @@
+name: publish-pypi
+
+# Publishes the `tautline` PyPI namespace-pointer package using OIDC Trusted
+# Publishing. There are NO SECRETS here by design: the PyPA publish action
+# exchanges the Actions OIDC token for a short-lived PyPI credential, so no
+# API token is stored, pasted, or rotated.
+#
+# Trusted Publishing binds to owner + repo + THIS FILENAME. Renaming this file
+# breaks the trust link, and every publish then fails closed. Do not rename it.
+#
+# A publish is IRREVERSIBLE -- a version can never be re-published. Release
+# events replay and dispatches get re-run, so the preflight below asks PyPI
+# whether the version already exists and no-ops when it does.
+
+on:
+  release:
+    types: [published]   # a draft Release emits no event; that is what makes the bootstrap safe
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to publish (X.Y.Z). Must match VERSION at the tag."
+        required: true
+        type: string
+
+# An explicit permissions block is an ALLOWLIST: everything unlisted is removed.
+# `id-token: write` on its own would leave actions/checkout unable to read the
+# repository, so `contents: read` has to be listed too.
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    # Defense in depth: Trusted Publishing is configured for the public repo only,
+    # so a run elsewhere would fail the OIDC exchange anyway -- but skip cleanly
+    # rather than fail noisily if a Release is ever cut in a fork or the dev repo.
+    if: github.repository == 'tautlines/tautline'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolve target version
+        id: target
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          # A dispatch carries no release payload. Deriving the version from the
+          # default branch would publish whatever that branch has drifted to, so
+          # the input is required and wins when present.
+          if [ -n "${INPUT_VERSION}" ]; then
+            version="${INPUT_VERSION}"
+          else
+            version="${RELEASE_TAG#v}"
+          fi
+          if ! printf '%s' "${version}" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "publish-pypi: unresolvable target version: '${version}'" >&2
+            exit 1
+          fi
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "tag=v${version}" >> "$GITHUB_OUTPUT"
+
+      - name: Check out the tag being released
+        uses: actions/checkout@v4
+        with:
+          ref: refs/tags/${{ steps.target.outputs.tag }}
+          persist-credentials: false
+
+      - name: Verify VERSION at the tag matches the target
+        env:
+          TARGET_VERSION: ${{ steps.target.outputs.version }}
+        run: |
+          set -euo pipefail
+          tagged="$(tr -d '[:space:]' < VERSION)"
+          if [ "${tagged}" != "${TARGET_VERSION}" ]; then
+            echo "publish-pypi: VERSION at the tag is '${tagged}', target is '${TARGET_VERSION}'" >&2
+            exit 1
+          fi
+          echo "publish_pypi_target_version: ${TARGET_VERSION}"
+
+      - name: Preflight PyPI for the target version
+        id: preflight
+        env:
+          TARGET_VERSION: ${{ steps.target.outputs.version }}
+        run: |
+          set -euo pipefail
+          url="https://pypi.org/pypi/tautline/${TARGET_VERSION}/json"
+          code="$(curl -sS -o /dev/null -w '%{http_code}' "${url}")"
+          case "${code}" in
+            200)
+              echo "already_published=true" >> "$GITHUB_OUTPUT"
+              echo "publish_pypi_preflight: tautline ${TARGET_VERSION} already on PyPI; nothing to do"
+              ;;
+            404)
+              echo "already_published=false" >> "$GITHUB_OUTPUT"
+              echo "publish_pypi_preflight: tautline ${TARGET_VERSION} not on PyPI; publishing"
+              ;;
+            *)
+              # Fail closed. An unreadable registry is not evidence that the
+              # version is absent, and a publish cannot be taken back.
+              echo "publish-pypi: PyPI preflight returned HTTP ${code}; refusing to publish blind" >&2
+              exit 1
+              ;;
+          esac
+
+      - name: Set up Python
+        if: steps.preflight.outputs.already_published == 'false'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Build the namespace-pointer distribution
+        if: steps.preflight.outputs.already_published == 'false'
+        env:
+          TARGET_VERSION: ${{ steps.target.outputs.version }}
+        run: |
+          set -euo pipefail
+          python3 bin/tautline registry-package \
+            --registry pypi \
+            --version "${TARGET_VERSION}" \
+            --destination "${RUNNER_TEMP}/pypi-package" \
+            --write
+          python3 -m pip install --upgrade build
+          python3 -m build --outdir "${RUNNER_TEMP}/pypi-package/dist" "${RUNNER_TEMP}/pypi-package"
+
+      - name: Publish to PyPI via OIDC trusted publishing
+        if: steps.preflight.outputs.already_published == 'false'
+        # No `password:` input: the action performs the OIDC exchange itself.
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: ${{ runner.temp }}/pypi-package/dist

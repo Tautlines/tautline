@@ -1,0 +1,134 @@
+name: publish-npm
+
+# Publishes the `tautline` npm namespace-pointer package using OIDC Trusted
+# Publishing. There are NO SECRETS here by design: npm mints a short-lived
+# credential from the Actions OIDC token. npm revoked classic tokens and is
+# dismantling 2FA-bypass granular tokens, so a token-based pipeline has a
+# published expiry date; OIDC is the only mechanism that survives.
+#
+# Trusted Publishing binds to owner + repo + THIS FILENAME. Renaming this file
+# breaks the trust link, and every publish then fails closed. Do not rename it.
+#
+# A publish is IRREVERSIBLE -- a version can never be re-published. Release
+# events replay and dispatches get re-run, so the preflight below asks npm
+# whether the version already exists and no-ops when it does.
+
+on:
+  release:
+    types: [published]   # a draft Release emits no event; that is what makes the bootstrap safe
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to publish (X.Y.Z). Must match VERSION at the tag."
+        required: true
+        type: string
+
+# An explicit permissions block is an ALLOWLIST: everything unlisted is removed.
+# `id-token: write` on its own would leave actions/checkout unable to read the
+# repository, so `contents: read` has to be listed too.
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    # Defense in depth: Trusted Publishing is configured for the public repo only,
+    # so a run elsewhere would fail the OIDC exchange anyway -- but skip cleanly
+    # rather than fail noisily if a Release is ever cut in a fork or the dev repo.
+    if: github.repository == 'tautlines/tautline'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolve target version
+        id: target
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          # A dispatch carries no release payload. Deriving the version from the
+          # default branch would publish whatever that branch has drifted to, so
+          # the input is required and wins when present.
+          if [ -n "${INPUT_VERSION}" ]; then
+            version="${INPUT_VERSION}"
+          else
+            version="${RELEASE_TAG#v}"
+          fi
+          if ! printf '%s' "${version}" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "publish-npm: unresolvable target version: '${version}'" >&2
+            exit 1
+          fi
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "tag=v${version}" >> "$GITHUB_OUTPUT"
+
+      - name: Check out the tag being released
+        uses: actions/checkout@v4
+        with:
+          ref: refs/tags/${{ steps.target.outputs.tag }}
+          persist-credentials: false
+
+      - name: Verify VERSION at the tag matches the target
+        env:
+          TARGET_VERSION: ${{ steps.target.outputs.version }}
+        run: |
+          set -euo pipefail
+          tagged="$(tr -d '[:space:]' < VERSION)"
+          if [ "${tagged}" != "${TARGET_VERSION}" ]; then
+            echo "publish-npm: VERSION at the tag is '${tagged}', target is '${TARGET_VERSION}'" >&2
+            exit 1
+          fi
+          echo "publish_npm_target_version: ${TARGET_VERSION}"
+
+      - name: Preflight npm for the target version
+        id: preflight
+        env:
+          TARGET_VERSION: ${{ steps.target.outputs.version }}
+        run: |
+          set -euo pipefail
+          url="https://registry.npmjs.org/tautline/${TARGET_VERSION}"
+          code="$(curl -sS -o /dev/null -w '%{http_code}' "${url}")"
+          case "${code}" in
+            200)
+              echo "already_published=true" >> "$GITHUB_OUTPUT"
+              echo "publish_npm_preflight: tautline@${TARGET_VERSION} already on npm; nothing to do"
+              ;;
+            404)
+              echo "already_published=false" >> "$GITHUB_OUTPUT"
+              echo "publish_npm_preflight: tautline@${TARGET_VERSION} not on npm; publishing"
+              ;;
+            *)
+              # Fail closed. An unreadable registry is not evidence that the
+              # version is absent, and a publish cannot be taken back.
+              echo "publish-npm: npm preflight returned HTTP ${code}; refusing to publish blind" >&2
+              exit 1
+              ;;
+          esac
+
+      - name: Set up Node
+        if: steps.preflight.outputs.already_published == 'false'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Pin an npm CLI that supports OIDC trusted publishing
+        if: steps.preflight.outputs.already_published == 'false'
+        # OIDC trusted publishing landed in npm 11.5.1. The npm bundled with the
+        # runner's Node is older, and would silently fall back to wanting a token.
+        run: npm install -g npm@11.5.1
+
+      - name: Build the namespace-pointer package
+        if: steps.preflight.outputs.already_published == 'false'
+        env:
+          TARGET_VERSION: ${{ steps.target.outputs.version }}
+        run: |
+          set -euo pipefail
+          python3 bin/tautline registry-package \
+            --registry npm \
+            --version "${TARGET_VERSION}" \
+            --destination "${RUNNER_TEMP}/npm-package" \
+            --write
+
+      - name: Publish to npm via OIDC trusted publishing
+        if: steps.preflight.outputs.already_published == 'false'
+        working-directory: ${{ runner.temp }}/npm-package
+        run: npm publish --access public

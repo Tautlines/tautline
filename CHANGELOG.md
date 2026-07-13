@@ -27,6 +27,47 @@ development repository.
 
 ### Security
 
+## [0.9.7] - 2026-07-13
+
+### Added
+
+- `release-tail` runs the whole release tail as one command: export, public-mirror
+  commit, tag, GitHub Release, registry publish, and drift verification, printing
+  evidence for each step. `--dry-run` prints the complete plan and changes nothing,
+  and `--skip-registry` stops at a draft Release so no publish fires. Resuming needs
+  no flag: rerunning the command continues a partially-completed tail without
+  repeating finished steps or publishing twice.
+- `release-drift-check` compares the version held by the repository, npm, and PyPI
+  and exits non-zero when they disagree. It runs after a publish and on a daily
+  schedule, so a stale registry is caught within a day rather than months later.
+- `registry-package` generates the npm and PyPI pointer-package metadata from a
+  single source, so what the registries say can no longer drift from what the
+  project ships.
+- Publish workflows for npm and PyPI that authenticate with OIDC Trusted
+  Publishing and contain **no secrets**: the registry mints a short-lived
+  credential from the workflow's identity token, so there is no API token to
+  create, paste, rotate, or leak.
+
+### Changed
+
+- The public mirror is only ever fast-forwarded. The release tail never
+  force-pushes it and never rewrites its history, so existing clones stay valid.
+- Because a registry publish cannot be undone, each publish workflow first asks
+  the registry whether the target version already exists, does nothing when it
+  does, and fails closed rather than publishing blind if the registry cannot be
+  read.
+
+### Security
+
+- Registry publishing no longer involves a stored credential of any kind. Note
+  that this requires the maintainer to configure Trusted Publishing once on npm
+  and on PyPI, binding each to this repository and to the publish workflow
+  filenames. Until that one-time configuration is done, the publish workflows
+  fail closed; they never fall back to a token. The workflow filenames are part
+  of the trust relationship, so renaming one breaks it. The bootstrap order and
+  the registry configuration steps are documented in the release-engineering
+  reference.
+
 ## [0.9.6] - 2026-07-13
 
 ### Added

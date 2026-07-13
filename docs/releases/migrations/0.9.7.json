@@ -1,0 +1,79 @@
+{
+  "behaviorChanges": [
+    "The release tail is now a single command. `release-tail` runs export, public-mirror commit, tag, GitHub Release, registry publish and drift verification in one step, with per-step evidence. It offers `--dry-run` (prints the whole plan, changes nothing, makes no network calls) and `--skip-registry` (stops at a draft Release, so no publish fires). Resuming needs no flag: rerunning the command continues a partially-completed tail without repeating finished steps or publishing twice. The public mirror is only ever fast-forwarded: the tail never force-pushes it and never rewrites its history, so existing clones stay valid.",
+    "`release-drift-check` compares the version held by the repository, npm and PyPI and exits non-zero when they disagree. It runs after a publish and on a daily schedule against the public repository, so a stale registry is caught within a day.",
+    "`registry-package` generates the npm and PyPI pointer-package metadata from one source, so the text published to the registries can no longer drift away from what the project actually ships.",
+    "Registry publishing moves to OIDC Trusted Publishing and stores no credentials. The publish workflows hold no secrets: the registry mints a short-lived credential from the workflow's identity token, so there is no API token to create, paste, rotate or leak. Because a registry publish cannot be undone, each workflow first asks the registry whether the version already exists, no-ops when it does, and fails closed rather than publishing blind when the registry cannot be read.",
+    "Publishing to npm and PyPI requires the maintainer to configure Trusted Publishing on each registry once, binding it to the repository and the publish workflow filenames. Until that one-time configuration is done, the publish workflows fail closed; they never fall back to a token. The workflow filenames are part of the trust relationship, so renaming one breaks it. Both the bootstrap order and the registry configuration steps are documented in the release-engineering reference."
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "publish-pending-session-journals",
+      "removeAfter": "1.0.0",
+      "replacement": "publish-instrumentation-record",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "publish-session-journal",
+      "removeAfter": "1.0.0",
+      "replacement": "publish-instrumentation-record",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    },
+    {
+      "name": "rules-audit",
+      "path": "plugins/tautline-core/skills/rules-audit/SKILL.md",
+      "removeAfter": "1.0.0",
+      "replacement": "framework-intake",
+      "section": "skills",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [],
+  "productsTested": [],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "Additive maintainer tooling: pinning back to 0.9.6 removes the release-tail, release-drift-check and registry-package commands and the publish workflows, and returns the release tail to its previous manual sequence. No existing command, adapter key or configuration surface changes.",
+    "Stable clients remain on the stable channel unless they explicitly opt into experimental.",
+    "This release is WIP-safe: it adds maintainer-only release commands and does not change behavior for lanes in progress."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.9.7",
+  "wipSafe": true
+}
