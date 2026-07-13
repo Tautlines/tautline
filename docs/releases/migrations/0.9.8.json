@@ -1,0 +1,76 @@
+{
+  "behaviorChanges": [
+    "Publishing to npm never authenticated, so no release could reach npm. The publish workflow held no secrets by design, yet still told npm to read an authentication token from the environment. No such token existed, so npm sent an empty credential rather than exchanging its OIDC identity, and the registry rejected every attempt with a 404. The workflow no longer configures a registry token in any form, and npm authenticates over OIDC Trusted Publishing as it was always meant to. Publishing to PyPI was never affected.",
+    "`release-tail` could not resume once it had tagged a release. It compared the tag's object identifier against the commit it had just pushed, but an annotated tag's reference names a tag object rather than a commit, so the two never matched and the command refused to continue, reporting a correctly placed tag as pointing somewhere else. Tags are now resolved to their commit before the comparison. A tag that genuinely points at a different commit is still refused: a published tag is never moved."
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "publish-pending-session-journals",
+      "removeAfter": "1.0.0",
+      "replacement": "publish-instrumentation-record",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "publish-session-journal",
+      "removeAfter": "1.0.0",
+      "replacement": "publish-instrumentation-record",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    },
+    {
+      "name": "rules-audit",
+      "path": "plugins/tautline-core/skills/rules-audit/SKILL.md",
+      "removeAfter": "1.0.0",
+      "replacement": "framework-intake",
+      "section": "skills",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [],
+  "productsTested": [],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "Fixes only: pinning back to 0.9.7 restores the broken npm publish path (which never authenticated) and the tag comparison that prevented `release-tail` from resuming. No command, adapter key or configuration surface changes.",
+    "Stable clients remain on the stable channel unless they explicitly opt into experimental.",
+    "This release is WIP-safe: it repairs maintainer-only release plumbing and does not change behavior for lanes in progress."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.9.8",
+  "wipSafe": true
+}

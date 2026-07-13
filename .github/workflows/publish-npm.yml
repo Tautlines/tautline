@@ -107,8 +107,23 @@ jobs:
         if: steps.preflight.outputs.already_published == 'false'
         uses: actions/setup-node@v4
         with:
+          # DELIBERATELY NO `registry-url`. Passing it makes setup-node write an
+          # .npmrc that reads an auth token out of the environment, and point npm
+          # at that file. This workflow has NO SECRETS by design, so no such token
+          # is ever exported and the credential resolves to nothing: npm then
+          # presents an empty credential instead of exchanging its OIDC identity,
+          # and the registry answers `E404 ... PUT registry.npmjs.org/tautline`.
+          # That is exactly how 0.9.7 failed here while PyPI, which does none of
+          # this, published the same commit over OIDC.
+          #
+          # npm's own documented example pairs `registry-url` with a READ-ONLY
+          # token used only to install dependencies (`npm ci`); it marks the
+          # publish step itself "no token needed". This package has no
+          # dependencies and runs no install, so there is nothing to authenticate
+          # for and no reason to name a registry here: `npm publish` already
+          # defaults to registry.npmjs.org and mints its own short-lived OIDC
+          # credential. Node 22.x satisfies npm's documented >= 22.14.0 floor.
           node-version: '22'
-          registry-url: 'https://registry.npmjs.org'
 
       - name: Pin an npm CLI that supports OIDC trusted publishing
         if: steps.preflight.outputs.already_published == 'false'

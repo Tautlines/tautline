@@ -5986,7 +5986,7 @@ def release_migration_report_data(
             len(deprecated_surfaces),
         )
         deprecated_surfaces.insert(insert_at, historical_rca_surface)
-    if parsed_version > version_tuple("0.9.7"):
+    if parsed_version > version_tuple("0.9.8"):
         raise SystemExit(
             f"release migration report data is not declared for {version}; "
             "add a release-specific branch before cutting the release"
@@ -6011,7 +6011,36 @@ def release_migration_report_data(
             f"release migration report data is not declared for {version}; "
             "add a release-specific branch before cutting the release"
         )
-    if parsed_version == version_tuple("0.9.7"):
+    if parsed_version == version_tuple("0.9.8"):
+        wip_safe = True
+        required_migrations = []
+        optional_migrations = []
+        behavior_changes = [
+            "Publishing to npm never authenticated, so no release could reach npm. The publish "
+            "workflow held no secrets by design, yet still told npm to read an authentication "
+            "token from the environment. No such token existed, so npm sent an empty credential "
+            "rather than exchanging its OIDC identity, and the registry rejected every attempt "
+            "with a 404. The workflow no longer configures a registry token in any form, and npm "
+            "authenticates over OIDC Trusted Publishing as it was always meant to. Publishing to "
+            "PyPI was never affected.",
+            "`release-tail` could not resume once it had tagged a release. It compared the tag's "
+            "object identifier against the commit it had just pushed, but an annotated tag's "
+            "reference names a tag object rather than a commit, so the two never matched and the "
+            "command refused to continue, reporting a correctly placed tag as pointing somewhere "
+            "else. Tags are now resolved to their commit before the comparison. A tag that "
+            "genuinely points at a different commit is still refused: a published tag is never "
+            "moved.",
+        ]
+        rollback_notes = [
+            "Fixes only: pinning back to 0.9.7 restores the broken npm publish path (which never "
+            "authenticated) and the tag comparison that prevented `release-tail` from resuming. "
+            "No command, adapter key or configuration surface changes.",
+            "Stable clients remain on the stable channel unless they explicitly opt into "
+            "experimental.",
+            "This release is WIP-safe: it repairs maintainer-only release plumbing and does not "
+            "change behavior for lanes in progress.",
+        ]
+    elif parsed_version == version_tuple("0.9.7"):
         wip_safe = True
         required_migrations = []
         optional_migrations = []
@@ -13251,12 +13280,36 @@ def release_tail_mirror_push(version: str, export_dir: Path, clone: Path) -> tup
     return sha, True
 
 
+def release_tail_tag_commit(out: str, tag: str) -> str:
+    """The COMMIT a tag ref resolves to, peeling an annotated tag if it is one.
+
+    `git tag -a` (what this command creates below) makes an ANNOTATED tag, whose
+    ref points at a tag OBJECT, not at a commit. Comparing that object's sha to a
+    commit sha never matches, so the "is this tag already where we want it?" check
+    would refuse every tag the tail itself pushed -- breaking the documented resume
+    path. Asking for the peeled ref (`refs/tags/<tag>^{}`) yields the commit; a
+    lightweight tag has no peeled entry and already points at the commit.
+    """
+    refs = {}
+    for line in out.splitlines():
+        parts = line.split("\t")
+        if len(parts) == 2 and parts[0].strip() and parts[1].strip():
+            refs[parts[1].strip()] = parts[0].strip()
+    peeled = refs.get(f"refs/tags/{tag}^{{}}", "")
+    return peeled or refs.get(f"refs/tags/{tag}", "")
+
+
 def release_tail_ensure_tag(version: str, sha: str, clone: Path) -> str:
     tag = f"v{version}"
-    code, out, err = release_tail_git(clone, ["ls-remote", "--tags", "origin", f"refs/tags/{tag}"])
+    code, out, err = release_tail_git(
+        clone,
+        ["ls-remote", "--tags", "origin", f"refs/tags/{tag}", f"refs/tags/{tag}^{{}}"],
+    )
     if code != 0:
         raise ReleaseTailError(f"cannot list the mirror's tags: {err or out}")
-    existing = out.split("\t")[0].strip() if out.strip() else ""
+    # Compare COMMIT to COMMIT. The guard itself is untouched: a tag that genuinely
+    # points at a different commit still refuses.
+    existing = release_tail_tag_commit(out, tag)
     if existing:
         if existing != sha:
             raise ReleaseTailError(

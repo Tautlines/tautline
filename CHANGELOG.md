@@ -27,6 +27,25 @@ development repository.
 
 ### Security
 
+## [0.9.8] - 2026-07-13
+
+### Fixed
+
+- Publishing to npm never authenticated, so no release could reach npm. The
+  publish workflow held no secrets by design, yet still told npm to read an
+  authentication token from the environment. No such token existed, so npm sent
+  an empty credential rather than exchanging its OIDC identity, and the registry
+  rejected every attempt with a 404. The workflow no longer configures a registry
+  token in any form, and npm authenticates over OIDC Trusted Publishing as it was
+  always meant to. Publishing to PyPI was never affected.
+- `release-tail` could not resume once it had tagged a release. It compared the
+  tag's object identifier against the commit it had just pushed, but an annotated
+  tag's reference names a tag object rather than a commit, so the two never
+  matched and the command refused to continue, reporting a correctly placed tag
+  as pointing somewhere else. Tags are now resolved to their commit before the
+  comparison. A tag that genuinely points at a different commit is still refused:
+  a published tag is never moved.
+
 ## [0.9.7] - 2026-07-13
 
 ### Added

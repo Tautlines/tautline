@@ -2,7 +2,7 @@
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "tautline-core",
   "displayName": "Minervit AI Delivery",
-  "version": "0.9.7",
+  "version": "0.9.8",
   "description": "Claude Code package for Minervit AI delivery skills and blocking in-session hooks.",
   "author": {
     "name": "Minervit",

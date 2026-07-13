@@ -227,6 +227,43 @@ def test_npm_workflow_pins_an_npm_cli_new_enough_for_trusted_publishing() -> Non
         )
 
 
+def test_npm_workflow_configures_no_registry_auth_token() -> None:
+    """setup-node's `registry-url` writes a TOKEN EXPECTATION npm can never satisfy.
+
+    Given `registry-url`, actions/setup-node writes an .npmrc holding
+    `//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}` and points npm at it via
+    NPM_CONFIG_USERCONFIG -- but it only exports NODE_AUTH_TOKEN when the caller
+    supplies one. This workflow has NO SECRETS by design, so that credential
+    resolves to nothing: npm presents an empty token instead of exchanging its OIDC
+    identity, and the registry answers `E404 ... PUT /tautline`. That is precisely
+    how tautline@0.9.7 failed to publish while PyPI (which does none of this)
+    succeeded over OIDC from the same commit.
+
+    This is the same class as the no-secrets invariant above: a token expectation
+    with no token behind it is worse than either having a token or having none.
+    """
+    workflow = load_workflow(NPM_WORKFLOW)
+    for step in workflow_steps(workflow):
+        if str(step.get("uses", "")).startswith("actions/setup-node"):
+            assert "registry-url" not in (step.get("with") or {}), (
+                "setup-node's registry-url makes it write an auth-token line into "
+                ".npmrc; with no secret behind it npm sends an empty credential and "
+                "never authenticates over OIDC"
+            )
+    # Belt and braces: the token expectation must not return by any other route -- a
+    # hand-written .npmrc, an `npm config set`, an env var on the publish step. Scanned
+    # with comments stripped, so the prose explaining WHY these are absent (which must
+    # name them to be useful) cannot itself trip the guard.
+    config_text = "\n".join(
+        line.split("#", 1)[0] for line in NPM_WORKFLOW.read_text(encoding="utf-8").splitlines()
+    )
+    for forbidden in ("registry-url", "_authToken", "NODE_AUTH_TOKEN", "npm config set", ".npmrc"):
+        assert forbidden not in config_text, (
+            f"publish-npm.yml must not configure a registry auth token ({forbidden!r}); "
+            "OIDC trusted publishing mints its own short-lived credential"
+        )
+
+
 def test_pypi_workflow_uses_the_official_action_without_a_password() -> None:
     steps = workflow_steps(load_workflow(PYPI_WORKFLOW))
     publish = [s for s in steps if str(s.get("uses", "")).startswith("pypa/gh-action-pypi-publish")]

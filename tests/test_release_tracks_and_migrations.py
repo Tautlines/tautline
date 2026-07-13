@@ -1796,8 +1796,8 @@ def test_release_migration_report_0_9_0_sanitized_instrumentation(cli):
     assert any("Pinning back to 0.8.9 restores narrative session-journal publication" in note for note in current["rollbackNotes"])
 
     # Upper boundary: the next patch is not declared until it ships its own report.
-    with pytest.raises(SystemExit, match="not declared for 0.9.8"):
-        cli.release_migration_report_data(version="0.9.8")
+    with pytest.raises(SystemExit, match="not declared for 0.9.9"):
+        cli.release_migration_report_data(version="0.9.9")
 
 
 def test_release_migration_report_0_9_1_no_dead_ends_and_repo_slug(cli):

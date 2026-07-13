@@ -34,6 +34,7 @@ class World:
         new_sha="newc0mmitsha",
         mirror_changed=True,
         tag_sha=None,
+        tag_peeled=None,
         release=None,
         npm_versions=(),
         pypi_versions=(),
@@ -44,6 +45,10 @@ class World:
         self.new_sha = new_sha
         self.mirror_changed = mirror_changed
         self.tag_sha = tag_sha                 # None => tag absent on the mirror
+        # The sha the tag ref PEELS to. An annotated tag's ref points at a tag
+        # OBJECT (tag_sha) that dereferences to a commit (tag_peeled); a
+        # lightweight tag has no peeled entry and tag_sha is already the commit.
+        self.tag_peeled = tag_peeled
         self.release = release                 # None => no Release; else dict(isDraft=...)
         self.npm_versions = list(npm_versions)
         self.pypi_versions = list(pypi_versions)
@@ -109,10 +114,17 @@ class World:
             return 0, "", ""
         if "ls-remote" in command:
             if self.tag_sha:
-                return 0, f"{self.tag_sha}\trefs/tags/v0.9.7", ""
+                lines = [f"{self.tag_sha}\trefs/tags/v0.9.7"]
+                # Real git reports a peeled entry for an ANNOTATED tag only.
+                if self.tag_peeled:
+                    lines.append(f"{self.tag_peeled}\trefs/tags/v0.9.7^{{}}")
+                return 0, "\n".join(lines), ""
             return 0, "", ""
         if command[:1] == ["git"] and "tag" in command:
-            self.tag_sha = self.head
+            # `bin/tautline` creates the tag with `git tag -a`: ANNOTATED. The ref
+            # therefore points at a tag object, which peels to the commit.
+            self.tag_sha = f"tagobject0f{self.head}"
+            self.tag_peeled = self.head
             return 0, "", ""
         if "push" in command:
             return 0, "", ""
@@ -148,7 +160,8 @@ class World:
             self.runs.setdefault(workflow, []).append(
                 {
                     "databaseId": 999,
-                    "headSha": self.tag_sha or self.head,
+                    # A workflow run reports the COMMIT it ran at, never a tag object.
+                    "headSha": self.tag_peeled or self.tag_sha or self.head,
                     "headBranch": "v0.9.7",
                     "event": "workflow_dispatch",
                     "status": "completed",
@@ -441,6 +454,61 @@ def test_refuses_when_the_tag_exists_but_points_somewhere_else(cli, monkeypatch,
     err = capsys.readouterr().err
     assert "release_tail_error" in err
     assert "someothersha" in err
+    assert [c for c in world.commands if c[:3] == ["gh", "release", "create"]] == []
+
+
+def test_resumes_when_the_existing_tag_is_annotated_and_points_at_our_commit(cli, monkeypatch):
+    """An annotated tag's ref points at a TAG OBJECT, not at a commit.
+
+    The tail creates its tag with `git tag -a`, so on any resume the sha it reads
+    back for that ref is a tag object's -- which can never equal the commit sha it
+    pushed. Comparing the two unpeeled made `release-tail` refuse its OWN, correctly
+    placed tag, breaking the documented resume path. Peel first, then compare.
+    """
+    world = install(
+        cli,
+        monkeypatch,
+        World(
+            mirror_head="ourhead",
+            mirror_changed=False,
+            tag_sha="7baf5ea2tag0bject",     # what the ref points at: the tag object
+            tag_peeled="ourhead",            # ...which dereferences to exactly our commit
+        ),
+    )
+    world.runs = successful_runs("ourhead")
+    world.npm_versions = ["0.9.7"]
+    world.pypi_versions = ["0.9.7"]
+
+    assert cli.release_tail(tail_args(cli)) == 0
+
+    created = [c for c in world.commands if c[:2] == ["git", "tag"]]
+    assert created == [], "a tag already on the right commit must not be recreated"
+    assert [c for c in world.commands if c[:3] == ["gh", "release", "create"]], (
+        "the tail must proceed to the Release step instead of refusing its own tag"
+    )
+
+
+def test_refuses_when_an_annotated_tag_peels_to_a_different_commit(cli, monkeypatch, capsys):
+    """Peeling must not weaken the guard.
+
+    A tag that genuinely resolves to another commit means someone else shipped this
+    version; moving it would rewrite a published release. Fail closed, as before.
+    """
+    world = install(
+        cli,
+        monkeypatch,
+        World(
+            mirror_head="ourhead",
+            mirror_changed=False,
+            tag_sha="s0metag0bject",
+            tag_peeled="someothercommit",    # a DIFFERENT commit: genuinely published elsewhere
+        ),
+    )
+    assert cli.release_tail(tail_args(cli)) != 0
+    err = capsys.readouterr().err
+    assert "release_tail_error" in err
+    assert "refusing to move a published tag" in err
+    assert "someothercommit" in err, "the refusal must name the COMMIT, not the tag object"
     assert [c for c in world.commands if c[:3] == ["gh", "release", "create"]] == []
 
 
