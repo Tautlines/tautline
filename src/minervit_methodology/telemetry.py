@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import json
-import os
 import time
 from datetime import datetime, timezone
 from pathlib import Path
+
+from .util import resolve_env
 
 
 TELEMETRY_ENABLED_ENV = "MINERVIT_METHODOLOGY_TELEMETRY"
@@ -17,11 +18,11 @@ GUARD_EVENTS_FILE = ".ai-runs/guard-events.jsonl"
 
 
 def telemetry_enabled() -> bool:
-    return os.environ.get(TELEMETRY_ENABLED_ENV, "").strip().lower() in {"1", "on", "true", "yes"}
+    return resolve_env(TELEMETRY_ENABLED_ENV).strip().lower() in {"1", "on", "true", "yes"}
 
 
 def telemetry_path() -> Path:
-    override = os.environ.get(TELEMETRY_PATH_ENV, "").strip()
+    override = resolve_env(TELEMETRY_PATH_ENV).strip()
     if override:
         return Path(override).expanduser()
     return Path.home() / ".local" / "state" / "minervit" / "telemetry.jsonl"

@@ -169,6 +169,7 @@ Install a portable user shim for the current machine:
 ```bash
 bin/tautline install-cli
 source "$HOME/.config/tautline/tautline.env"
+tautline install-claude-launcher --force
 tautline version
 ```
 
@@ -176,8 +177,34 @@ The installer writes:
 
 - `~/.local/bin/minervit-methodology` - a stable user-level command shim.
 - `~/.config/tautline/tautline.env` - a machine-local `TAUTLINE_METHODOLOGY_REPO` pointer.
+- `~/.local/share/minervit/tautline-releases/` - the immutable snapshot store, with `current` pointing at the tree the shim executes from then on.
+
+`install-claude-launcher --force` is a **required** part of the install, not a convenience step: `install-cli` makes shims execute the snapshot store, and only a regenerated launcher pins a session to one snapshot for its whole life. See [Snapshot Store](release-engineering.md#snapshot-store) for the store layout, the rollback switch (`MINERVIT_METHODOLOGY_DISABLE_SNAPSHOT_EXEC=1`), and how to debug version skew between lanes.
 
 Generated adapters and handoffs must not hard-code person-specific checkout paths. They should resolve `tautline` from `PATH`, then fall back to `TAUTLINE_METHODOLOGY_REPO` through the config env file.
+
+## Installed Package Mode (PyPI)
+
+The third install mode, beside the checkout and the snapshot store: a real PyPI package.
+
+```bash
+pipx install tautline
+```
+
+What it is: a thin wrapper plus the full released tree embedded inside the wheel, with both console scripts (`tautline` and the legacy `minervit-methodology`). The full adopter surface works from it — init, render-adapters, methodology-status, lane hooks, plugins.
+
+Identity semantics: the wheel carries a build-time `.snapshot-meta.json` manifest stamped with the public-mirror commit sha it was built from, the release version and channel, and `installKind: "package"`. That manifest key is what package-mode behavior is keyed on; `tautline version` reports the stamped identity.
+
+Update channel: the installed package is a stamped snapshot of one release. It does not auto-update — the launcher-driven auto-update path belongs to the checkout and snapshot-store modes, and an installed wheel has no launcher to regenerate. Update it through the package channel only:
+
+```bash
+pipx upgrade tautline        # pipx installs (the documented default)
+pip install -U tautline      # plain-virtualenv installs
+```
+
+Mixed fleets (maintainer + package co-maintenance): a dev checkout stamps its git sha into rendered adapters while a wheel stamps the mirror sha, and those differ even for identical content. The drift gate and the generated-file writers therefore compare rendered CONTENT and treat provenance-stamp-only differences (`_generated.methodologyCommit`, `_generated.pluginVersion`) as equivalent — two runtimes at identical content never re-stamp each other's adapters. When drift fires across builds with a version-alignment hint, the fix is aligning versions (`pip install -U tautline` / repin), not re-rendering harder.
+
+Windows remains a documented known limit in every mode: the console script works, but launchers, generated git hooks, and Claude hooks are POSIX-first — use WSL2.
 
 ## Codex Plugin Setup
 
@@ -346,3 +373,56 @@ superpowers@claude-plugins-official
 ```
 
 Restart existing Claude sessions that need to load newly installed plugins or updated machine-level instructions.
+
+## Maintainer Mode
+
+Maintainer mode is a machine-scoped standdown of the launcher-gate update machinery, for people who develop the framework itself. On a normal machine the launcher-gate sync tracks the release branch, fail-closes on a diverged checkout, and escalates into a repair session — exactly right for consumers, and exactly wrong for the maintainer whose clean dev branch *is* the work in progress. When maintainer mode is armed, every launch prints a loud banner and the update gates stand down.
+
+### Turning it on and off
+
+```bash
+tautline maintainer-mode on      # arm (requires a git checkout to manage)
+tautline maintainer-mode status  # report the current state
+tautline maintainer-mode off     # disarm (authoritative)
+```
+
+`on` appends both spellings of the mode key (`TAUTLINE_METHODOLOGY_MAINTAINER_MODE=1` and `MINERVIT_METHODOLOGY_MAINTAINER_MODE=1`) to the effective config env file — normally `~/.config/tautline/tautline.env`, but the legacy `~/.config/minervit/methodology.env` when that is the only file installed (the same `resolve_user_config_env` preference order every managed key follows). `off` strips both spellings from BOTH config files when both exist, so no latent copy in the non-resolved file can re-arm the machine later. `status` prints the same three-state `maintainer_mode:` line that `tautline methodology-status` reports: `off`, `on - update gates off; running <checkout> @ <commit>`, or `configured but not armed - no git checkout to manage`.
+
+### The key-residency rule
+
+The installed config env file is the ONLY arming state. A maintainer-mode value in the live environment does nothing — it can neither arm nor disarm the mode. The CLI reads the key exclusively from direct `export` lines in the installed config env file, and the generated launcher derives its shell-side guard the same way: it parses those direct exports out of the file it is about to source, never the ambient environment, so inherited shell values, values exported by sourced secrets files, and nested `source` lines are invisible to both halves. This is exactly why `maintainer-mode off` always tells the truth: the config files are the only bits that can arm the machine, and `off` removes them all — there is no state in which `off` reports disarmed while something else keeps the machine armed.
+
+Hand-editing the config env file instead of running the verb is the unsupported path. It is the same exposure class as hand-editing any managed config, and it skips the launcher-capability advisory described below — run the verb.
+
+### The arming predicate
+
+The key alone does not arm the mode. It arms only when there is also a real git checkout for the sync to manage (the canonical methodology repo). Snapshot- and package-installed machines with no configured canonical checkout refuse to arm — there is nothing to stand down — and `maintainer-mode on` points at `MINERVIT_METHODOLOGY_CANONICAL_REPO` as the pointer to fix. A machine with the key set but no checkout reports `maintainer_mode: configured but not armed - no git checkout to manage` and runs every gate stock.
+
+### What stands down, and what stays on
+
+Standing down when armed:
+
+- the update machinery in full — fetch, fast-forward merge, dirty-checkout and non-release-branch rescue, and the repair-session escalation; the sync reports `methodology_update: skipped - maintainer mode - update gates stand down; checkout left untouched` and never mutates the checkout, and
+- the per-launch remote probe — the launch reports `remote_status: skipped - maintainer mode` and works offline.
+
+Staying ON — no carve-outs:
+
+- snapshot exec, and the republication of the canonical checkout's committed HEAD into the snapshot store's `current` slot via heal,
+- release guards and lane-start gates,
+- `methodology-status` drift/debt remediation and WIP holds,
+- all Claude guard hooks, and
+- the `--dangerously-skip-permissions` interlock, which keeps requiring `pinned` or `signed` update policy.
+
+Because heal keeps republishing, committed dev-branch work becomes the machine-wide runtime at the very next launch, freshness window or not. That is the point of the mode — and the reason every armed launch prints an unmissable `!!` banner naming exactly which checkout and commit the machine is running (`maintainer_mode: update gates off - running <checkout> @ <commit>`). If the banner surprises you, the machine is armed and should not be: run `tautline maintainer-mode off`.
+
+### Launcher-capability advisory and the 0.9.18 boundary
+
+Installed generated launchers that predate the shell-side standdown are detected by content when you run `maintainer-mode on`, and reported with the fix: `tautline install-claude-launcher --force`. Under `pinned` or `signed` update policy (the default) the CLI-side standdown is complete with any launcher, so the advisory is informational. Under `warn` or `unverified` policy the advisory names the still-open hazard in so many words: until regenerated, a pre-change launcher's shell auto-rescue is still live and can fetch origin and hard-reset the canonical checkout at session start. In this release (0.9.17) the advisory arms anyway; the 0.9.18 release makes regeneration MANDATORY under those policies before the mode will arm.
+
+### Retired interim workaround
+
+Before maintainer mode existed, the documented maintainer workaround was pre-arming the freshness stamp with `tautline sync-methodology --launcher-gate --skip-update` so subsequent launches took the stamp's skip path. That workaround is retired: it was fragile — the first launch after the stamp lapsed fetched and failed again — and it bypassed heal, so committed work could miss the next launch. Use `tautline maintainer-mode on` instead.
+
+### Known issue: sync asymmetry on non-maintainer machines
+
+On machines without maintainer mode, a clean diverged checkout still fails the launcher gate while a dirty diverged checkout can pass (the dirty path goes through rescue). This asymmetry predates maintainer mode, is out of scope for it, and is tracked as a sync-asymmetry follow-up.

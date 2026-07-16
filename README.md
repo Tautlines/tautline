@@ -33,7 +33,7 @@ pre-push hook, your CI.
 
 ## Quickstart
 
-Clone the repository, then install the CLI from the checkout:
+You need Python 3.10+ and git. Clone the repository, then install the CLI from the checkout:
 
 ```bash
 git clone https://github.com/tautlines/tautline
@@ -56,6 +56,12 @@ Then activate the environment (or restart your shell) and make sure `~/.local/bi
 source ~/.config/tautline/tautline.env
 ```
 
+Then run the mandatory launcher cutover (the tool banners `next_step_required` until you do):
+
+```bash
+tautline install-claude-launcher --force
+```
+
 Then initialize a project you want the agent to work in:
 
 ```bash
@@ -73,6 +79,18 @@ tautline lane-start --target .
 
 The legacy `minervit-methodology` command name keeps working as a compatibility shim for
 existing installs and generated adapters.
+
+### Install from PyPI
+
+```bash
+pipx install tautline
+```
+
+The package installs the full CLI — adopter flow, adapters, and plugin hooks included. It is
+a stamped snapshot of one release: it does not auto-update via the launcher; update it with
+`pipx upgrade tautline` (or `pip install -U tautline` in a plain virtualenv). The checkout
+install above remains the auto-updating runtime. Everything here is POSIX-first; on Windows,
+use WSL2.
 
 ## Install the Claude Code plugin
 
@@ -169,10 +187,10 @@ rationale and the layout that makes it navigable.
 
 This is a community-supported open-source project; it ships with no support SLA. Commercial
 support tiers are described in the [support model](docs/product/support-sla-model.md), and
-general questions can go to `hello@minervit.com`.
+general questions can go to `hello@minervit.ai`.
 
 ## License
 
 Released under the [MIT License](LICENSE).
 
-Maintained by [Minervit](https://minervit.com).
+Maintained by [Minervit](https://minervit.ai).

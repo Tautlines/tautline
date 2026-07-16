@@ -1,0 +1,86 @@
+{
+  "behaviorChanges": [
+    "New `tautline maintainer-mode` verb (contract status: experimental) with `on`, `off`, and `status` actions. `on` refuses unless the canonical methodology repo is a git checkout to manage, then writes both key spellings (`TAUTLINE_METHODOLOGY_MAINTAINER_MODE` and `MINERVIT_METHODOLOGY_MAINTAINER_MODE`) into the user config env file; `off` strips both spellings from both the current and the legacy config surface and reports the re-read state, so it is authoritative rather than assertive. The key is file-only by design: a live environment variable of either spelling is inert, in Python and in the regenerated launcher's shell guard alike.",
+    "With maintainer mode armed, the launcher-gate methodology update stands down at its single choke point: the launch reports `methodology_update: skipped - maintainer mode - update gates stand down; checkout left untouched (disable with `tautline maintainer-mode off`)` and the checkout is never fetched, ff-merged, rescued, or repair-escalated. Heal and the freshness stamp still flow, so committed maintainer work republishes the snapshot store's `current` at the very next launch. Snapshot execution, release guards, lane-start gates, methodology-status drift and debt remediation, WIP holds, every Claude guard hook, and the skip-permissions interlock all stay on -- there is no carve-out.",
+    "Every armed launch prints a loud stderr banner whose load-bearing line is `maintainer_mode: update gates off - running <checkout> @ <commit>`, so a session running with gates down is unmistakable and names exactly which tree and commit it is executing.",
+    "New status surfaces: an armed launch reports `remote_status: skipped - maintainer mode` instead of probing the remote (no ls-remote at launch), and `methodology-status` gains a three-state `maintainer_mode:` line (off / on with checkout and commit / configured but not armed). Regenerated Claude launchers carry a shell guard that parses the config file directly and stands the launcher's own auto-rescue down while the key is set; launchers generated before this release keep their old behavior until regenerated, and the verb says so."
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "publish-pending-session-journals",
+      "removeAfter": "1.0.0",
+      "replacement": "publish-instrumentation-record",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "publish-session-journal",
+      "removeAfter": "1.0.0",
+      "replacement": "publish-instrumentation-record",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    },
+    {
+      "name": "rules-audit",
+      "path": "plugins/tautline-core/skills/rules-audit/SKILL.md",
+      "removeAfter": "1.0.0",
+      "replacement": "framework-intake",
+      "section": "skills",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [
+    {
+      "command": "tautline maintainer-mode on",
+      "description": "For framework-maintainer machines only -- machines whose canonical methodology repo is a git checkout the operator develops in. Enabling maintainer mode stands the launcher-gate methodology update and the per-launch remote probe down machine-wide so the checkout is never fetched, ff-merged, rescued, or repair-escalated underneath maintainer work; snapshot execution, heal, and every other guard stay on. The verb prints a content-keyed advisory naming any generated launcher that still lacks the shell standdown guard; regenerate those with `tautline install-claude-launcher --force` so the launcher's own auto-rescue stands down too. Machines that are not framework maintainers should not run this.",
+      "id": "enable-maintainer-mode",
+      "surface": "methodology-update-gates"
+    }
+  ],
+  "productsTested": [],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "Pinning back to 0.9.16 restores stock Python gate behavior outright: no 0.9.16 code reads the maintainer-mode key, so an armed machine simply loses the standdown, the banner, and the status lines, and the launcher-gate update runs stock again.",
+    "BUT the rollback has a second half: a launcher regenerated at 0.9.17 keeps its shell standdown guard, which parses the config file directly and independently of the pinned CLI, so it keeps standing the launcher auto-rescue down for as long as the key remains in the config file -- repinning alone does not undo it.",
+    "Full rollback is `tautline maintainer-mode off` BEFORE repinning (0.9.16 has no such verb; alternatively remove both export lines from both config surfaces after), plus, on `warn`/`unverified` update-policy machines that want the pre-0.9.17 launcher auto-rescue back, `tautline install-claude-launcher --force` from the pinned checkout.",
+    "This release is WIP-safe. Every behavior change is gated on a config key that no stock machine carries and only the new verb writes, so no lane in progress changes behavior when it adopts 0.9.17 -- the standdown reaches a machine only when its operator explicitly arms it."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.9.17",
+  "wipSafe": true
+}

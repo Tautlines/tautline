@@ -1,0 +1,79 @@
+{
+  "behaviorChanges": [
+    "The canonical public domain is `minervit.ai` on every live shippable surface: the contact addresses in `README.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`, and the support SLA model, the owner email in `.claude-plugin/marketplace.json`, the demo tape, and the `$id` of both JSON Schemas (`methodology/adapter-schema.json`, `methodology/bootstrap-legacy-allowlist-schema.json`).",
+    "No adapter migration is required and no adapter has to change. The schema `$id` is an identifier, not a resolution target: the CLI loads the schema by filesystem path and validates with a stdlib-only subset validator that implements no `$ref`/`$id` resolution and makes no network call. Adapter documents point at the schema through `$schema` -- a raw.githubusercontent.com URL for generated scaffolds, a repo-relative path in-tree -- never through the `$id`, and the schema accepts any string there. An adapter still pinning the retired `$id` validates unchanged. The one case worth checking is your own: if you copied the `$id` literal into an allowlist, cache key, or test fixture of your own making, update that literal -- nothing in Tautline will fail for you, so no tool will tell you.",
+    "`tests/test_public_boundary_scan.py` now enforces the flip rather than fighting it. It bans the two retired domains on shippable surfaces (it previously banned `minervit.ai`, so every hand-fix of the README silently reverted at the next test run) and adds a positive assertion that each swept surface actually carries its canonical-domain string, so a deletion or typo cannot pass merely because the retired domain is absent.",
+    "The domain sweep now also covers `.claude-plugin/marketplace.json` and `docs/assets/demo.tape`. Both ship to users; neither was scanned before.",
+    "Historical records keep the retired domain verbatim by design: release migration JSONs, archived changelogs, and the frozen 0.6.254 release-note literals in `bin/tautline` whose exact wording `tests/test_release_tracks_and_migrations.py` asserts. Any other retired-domain line in `bin/tautline` still fails the scan."
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "publish-pending-session-journals",
+      "removeAfter": "1.0.0",
+      "replacement": "publish-instrumentation-record",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "publish-session-journal",
+      "removeAfter": "1.0.0",
+      "replacement": "publish-instrumentation-record",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    },
+    {
+      "name": "rules-audit",
+      "path": "plugins/tautline-core/skills/rules-audit/SKILL.md",
+      "removeAfter": "1.0.0",
+      "replacement": "framework-intake",
+      "section": "skills",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [],
+  "productsTested": [],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "Rolling back to 0.9.13 restores the retired domain as the enforced canonical one, so the public boundary scan will once again fail any surface carrying `minervit.ai`. The content and the enforcement move together in both directions; do not roll back one without the other.",
+    "The schema `$id` reverts to the retired identifier on rollback. Because no consumer resolves or pins the `$id`, this breaks nothing: adapters validate by path, not by identifier, and the schema accepts any `$schema` string. An adapter authored against 0.9.14 keeps validating on 0.9.13.",
+    "This release is WIP-safe. It changes documentation contact addresses, two schema `$id` identifiers, and test enforcement -- no command, adapter key, configuration surface, or runtime code path changes, so no lane in progress alters behavior."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.9.14",
+  "wipSafe": true
+}

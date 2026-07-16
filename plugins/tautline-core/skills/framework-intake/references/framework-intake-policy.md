@@ -243,7 +243,7 @@ Use this skill when asked to inspect or reconcile AI development process rules.
 - Rules or examples that allow a one-line plan stub to satisfy a planning gate before asking for approval.
 - Rules or examples that let an agent claim source-of-truth context cannot resolve next work without naming the exact artifacts inspected and what each said.
 - Review caps that allow shipping known Critical/P1 defects.
-- Plan-review loops that allow more than two review rounds against one source-of-truth plan without the narrow R3 structural-Critical exception.
+- Plan-review loops that continue past the hard cap of four rounds against one source-of-truth plan instead of splitting it (or finalizing bound evidence that is clean and current), or that stop to ask the operator to authorize a round 3-4 instead of self-authorizing it with a recorded `--exception-note`.
 - Plan-review blocker responses that ask the human operator whether to work through findings, accept unverified state, switch tasks, scope the plan down, park the task, choose a path, or answer `Which?` when the convergence rule or reviewer findings already identify focus-transfer as the safe next action.
 - New-project or default-stack rules that allow Vercel, GCP, Azure, Netlify, Fly.io, Render, Supabase, Firebase, or another cloud/hosting platform when the adapter is AWS-only or lacks explicit `technologyStack` approval.
 - AWS-approved deployment rules or examples that ask for SSH keys, stop on missing SSH credentials, or invent alternate deploy credentials before checking `aws --version` and `aws sts get-caller-identity` or the adapter-declared AWS identity command/profile.

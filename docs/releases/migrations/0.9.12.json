@@ -1,0 +1,79 @@
+{
+  "behaviorChanges": [
+    "The ExitPlanMode plan guard no longer hijacks a plan that sits under the adapter's `planningArtifacts.scratchPaths` to an unrelated source-of-truth plan. Transcript reference matching used to run before the configured-scratch check, so whenever the recent transcript happened to name exactly one plan path, a configured scratch plan bound to that plan instead of reaching the plan-mode escape. Configured scratch is now classified first. Content-hash matching still runs ahead of it, so a scratch copy of a real repo plan continues to bind to its source.",
+    "Same-filename adoption is dropped for configured scratch plans. The configured-scratch check also precedes filename matching, so a plan under `planningArtifacts.scratchPaths` whose filename happens to equal a source-of-truth plan's no longer adopts that plan. Previously it did and then ran the finalization precheck against it, which could BLOCK ExitPlanMode; it now reaches the non-blocking plan-mode escape instead. This is deliberate: a filename collision is weak evidence of identity, while the content-hash match that still runs first is strong evidence. Plans that actually live under the source-of-truth root are unaffected and keep their full precheck gate.",
+    "Every `--target` the plan guards print in their command examples is now the resolved absolute path of the target, shell-quoted, instead of a literal `--target .`. On a multi-agent machine `.` names whatever checkout the agent is sitting in, which may be a worktree owned by another lane, so a copy-pasted remedy could act on the wrong repository. This covers the run-plan-review, finalize-plan-review, plan-finalization-precheck, and goal-start remedies."
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "publish-pending-session-journals",
+      "removeAfter": "1.0.0",
+      "replacement": "publish-instrumentation-record",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "publish-session-journal",
+      "removeAfter": "1.0.0",
+      "replacement": "publish-instrumentation-record",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    },
+    {
+      "name": "rules-audit",
+      "path": "plugins/tautline-core/skills/rules-audit/SKILL.md",
+      "removeAfter": "1.0.0",
+      "replacement": "framework-intake",
+      "section": "skills",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [],
+  "productsTested": [],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "Rolling back to 0.9.11 restores the reference-matching precedence, so a configured scratch plan can again be hijacked to an unrelated repo plan and be denied the plan-mode escape.",
+    "Rolling back also restores same-filename adoption, so a configured scratch plan whose filename matches a source-of-truth plan again binds to it and is again gated by that plan's finalization precheck (which can block ExitPlanMode). Roll back if you were relying on filename collision to gate scratch drafts.",
+    "It also restores the literal `--target .` in every guard remedy, which can direct a copy-pasted command at another lane's checkout.",
+    "No command, adapter key, or configuration surface changes in either direction; `planningArtifacts.scratchPaths` is read, not redefined.",
+    "This release is WIP-safe: it does not change behavior for lanes in progress."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.9.12",
+  "wipSafe": true
+}

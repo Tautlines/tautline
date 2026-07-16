@@ -8,6 +8,51 @@ from datetime import datetime
 from pathlib import Path
 
 
+# Shortest digest length in common use: md5 is 32 hex characters, sha1 40, sha256 64.
+# A hex run this long is a content digest or a git object id, never an account
+# identifier: a genuine 12-digit account id would have to be glued to 20+ further hex
+# characters with no separator to reach it.
+DIGEST_MIN_HEX_LENGTH = 32
+
+_HEX_RUN_RE = re.compile(r"[0-9a-fA-F]+")
+
+
+def hex_digest_spans(line: str) -> list[tuple[int, int]]:
+    """Spans of the maximal hex-character runs on ``line`` that are digest-length."""
+    return [
+        match.span()
+        for match in _HEX_RUN_RE.finditer(line)
+        if len(match.group(0)) >= DIGEST_MIN_HEX_LENGTH
+    ]
+
+
+def token_is_hex_digest_fragment(token: str, line: str) -> bool:
+    """True when every occurrence of ``token`` on ``line`` lies inside a hex digest.
+
+    A sha-256 digest contains a run of exactly twelve digits whenever the hex characters
+    flanking that run happen to be letters, so digest fragments are indistinguishable
+    from account identifiers to a bare ``\\d{12}`` scan. Review ledgers, plan evidence
+    headers, changelogs and checksum manifests are full of such digests.
+
+    Requiring *every* occurrence to be digest-internal is what keeps this precise. Merely
+    sharing a line with a digest does not launder a bare 12-digit identifier -- not even
+    when the very same digits also happen to occur inside that digest.
+    """
+    spans = hex_digest_spans(line)
+    if not spans:
+        return False
+    starts = [match.start() for match in re.finditer(re.escape(token), line)]
+    if not starts:
+        return False
+    return all(
+        any(
+            span_start <= start and start + len(token) <= span_end
+            for span_start, span_end in spans
+        )
+        for start in starts
+    )
+
+
 def allowed_account_like_token(
     token: str,
     line: str,
@@ -15,6 +60,8 @@ def allowed_account_like_token(
     placeholder_account_ids: set[str],
 ) -> bool:
     if token in placeholder_account_ids or len(set(token)) == 1:
+        return True
+    if token_is_hex_digest_fragment(token, line):
         return True
     if re.search(r"\btouch\s+-t\s+" + re.escape(token) + r"\b", line):
         try:

@@ -67,7 +67,8 @@ INTERNAL_FINDING_REFERENCE_RE = re.compile(
     r"|\bLANE-R\d+\b"
 )
 INTERNAL_AUDIT_REFERENCE_RE = re.compile(r"PRODUCTIZATION-AUDIT")
-DOMAIN_REFERENCE_RE = re.compile(r"minervit\.(ai|dev)", re.I)
+CANONICAL_DOMAIN = "minervit.ai"
+RETIRED_DOMAIN_RE = re.compile(r"minervit\.(com|dev)", re.I)
 
 
 def _plugin_skill_files() -> list[Path]:
@@ -313,20 +314,304 @@ def test_repository_text_excludes_retired_adapter_drift_catch_all_refusal():
     assert errors == []
 
 
-def test_shippable_surfaces_unify_contact_domain_to_minervit_com():
-    """Verify that shippable surfaces use minervit.com (not minervit.ai or minervit.dev)."""
-    assert DOMAIN_REFERENCE_RE.search("contact@minervit.ai")
-    errors = []
-    for path in {*_generic_surface_paths(), *_shippable_public_text_paths()}:
-        try:
-            text = path.read_text(encoding="utf-8")
-        except UnicodeDecodeError:
-            continue
+# Historical records keep the retired domain verbatim -- they document what past
+# releases did, and rewriting them would falsify the record:
+#   - migration JSONs and archived changelogs (directory level),
+#   - the frozen release-note string literals in bin/tautline for the 0.6.254
+#     domain unification (line level; their exact wording is asserted by
+#     tests/test_release_tracks_and_migrations.py). Any OTHER retired-domain line
+#     in bin/tautline is a live surface and still fails.
+RETIRED_DOMAIN_RECORD_DIRS = {
+    ROOT / "docs" / "releases" / "migrations",
+    ROOT / "docs" / "productization" / "archive",
+}
+RETIRED_DOMAIN_RELEASE_NOTE_RE = re.compile(
+    r"now use minervit\.com as the single canonical contact domain", re.I
+)
+# The enforcement surface itself. tests/ ships, but it is machinery, not a contact
+# surface: this file has to WRITE the banned strings in order to ban them, and the
+# migration tests assert the historical 0.6.254 release-note wording verbatim.
+# Banning the retired domain here would ban the ban.
+DOMAIN_ENFORCEMENT_DIRS = {ROOT / "tests"}
+# Shipped assets the domain scan cannot read as text.
+DOMAIN_SCAN_BINARY_SUFFIXES = {
+    ".gif", ".ico", ".jpeg", ".jpg", ".pdf", ".png", ".woff", ".woff2", ".zip",
+}
+# What a directory exemption is allowed to actually contain -- see
+# test_retired_domain_exemptions_are_justified_by_what_they_ship. A record directory may ship only
+# versioned release records (docs/releases/migrations/0.6.254.json and friends); an enforcement
+# directory may ship only test machinery (modules and their fixtures).
+VERSIONED_RECORD_FILENAME_RE = re.compile(r"^\d+\.\d+\.\d+\.json$")
+
+# Shipped, reader-facing surfaces that carry contact information (or would, if someone added a
+# contact line). Every one of them is tracked, exported, and covered by no exemption, so a retired
+# domain planted in any of them MUST be reported. They are the canaries for an over-broad
+# exemption: the plant is injected at the file's REAL repo path, so _is_historical_domain_record()
+# is evaluated against the true in-ROOT path it would see in production. Planting into a tmp_path
+# copy instead evaluates the exemption predicate against a path outside ROOT, where no exemption
+# directory can ever match -- which makes the check inert and lets the exemption list be widened
+# until the scan covers nothing.
+DOMAIN_SCAN_CANARY_RELATIVE_PATHS = (
+    "CODE_OF_CONDUCT.md",
+    "CONTRIBUTING.md",
+    "GOVERNANCE.md",
+    "PRIVACY.md",
+    "README.md",
+    "ROADMAP.md",
+    "SECURITY.md",
+    "TERMS.md",
+    # The CLI is the one canary with a line-level exemption (the frozen 0.6.254 release note), so it
+    # also pins that exemption: a planted contact line is not the release note and must still fail.
+    "bin/tautline",
+    "docs/README.md",
+    "docs/product/positioning.md",
+    "docs/product/support-sla-model.md",
+    "docs/reference/operating-manual.md",
+    "methodology/canonical-rules.md",
+    "plugins/tautline-core/CHANGELOG.md",
+)
+PLANTED_RETIRED_DOMAIN_LINE = "- Support: support@" + "minervit.com"
+
+# Swept surface -> strings that must be PRESENT. The ban alone is satisfied by a
+# deleted or mistyped contact line, so every file swept in the domain flip also
+# has to positively carry its canonical-domain reference.
+CANONICAL_DOMAIN_REQUIRED_STRINGS: dict[Path, tuple[str, ...]] = {
+    README_PUBLIC: ("hello@minervit.ai", "https://minervit.ai"),
+    ROOT / "CODE_OF_CONDUCT.md": ("conduct@minervit.ai",),
+    ROOT / "SECURITY.md": ("security@minervit.ai",),
+    ROOT / "docs" / "product" / "support-sla-model.md": ("security@minervit.ai",),
+    ROOT / ".claude-plugin" / "marketplace.json": ("hello@minervit.ai",),
+    ROOT / "methodology" / "adapter-schema.json": (
+        "https://minervit.ai/schemas/adapter/v1.json",
+    ),
+    ROOT / "methodology" / "bootstrap-legacy-allowlist-schema.json": (
+        "https://minervit.ai/schemas/bootstrap-legacy-allowlist/v1.json",
+    ),
+    ROOT / "docs" / "assets" / "demo.tape": ("demo@minervit.ai",),
+}
+
+
+def _shipped_paths(cli) -> list[Path]:
+    """Every file the public release actually SHIPS, derived from the CLI's own export rules."""
+    return sorted(path for path, _rel in cli.public_release_export_files(ROOT) if path.is_file())
+
+
+def _domain_scan_paths(cli) -> list[Path]:
+    """Every text file the public release actually SHIPS.
+
+    Derived from the CLI's own export rules (public_release_export_files, which applies
+    PUBLIC_RELEASE_EXPORT_EXCLUDED_PREFIXES) rather than from a hand-maintained allowlist. A hand
+    list only ever covers a SUBSET of the shipped surface: GOVERNANCE.md, ROADMAP.md and
+    docs/README.md are all tracked, all exported, and none of them was on it -- so
+    `support@minervit.com` in any of them would have published the retired domain to the public
+    repo with scripts/test.sh fully green. That is precisely the class of regression this ban
+    exists to prevent, so the scan set has to be the ship set.
+    """
+    return [
+        path
+        for path in _shipped_paths(cli)
+        if path.suffix.lower() not in DOMAIN_SCAN_BINARY_SUFFIXES
+    ]
+
+
+def _is_historical_domain_record(path: Path, line: str) -> bool:
+    if any(record_dir in path.parents for record_dir in RETIRED_DOMAIN_RECORD_DIRS):
+        return True
+    if any(enforcement_dir in path.parents for enforcement_dir in DOMAIN_ENFORCEMENT_DIRS):
+        return True
+    if path == ROOT / "bin" / "tautline":
+        return bool(RETIRED_DOMAIN_RELEASE_NOTE_RE.search(line))
+    return False
+
+
+def _domain_scan_label(path: Path) -> str:
+    try:
+        return path.relative_to(ROOT).as_posix()
+    except ValueError:
+        return path.name
+
+
+def _retired_domain_offenders(paths, *, overrides: dict[Path, str] | None = None) -> list[str]:
+    """Run the real scan over `paths`, reading `overrides[path]` instead of the file's own bytes.
+
+    `overrides` is how a plant is tested without writing to the repo: the scanned CONTENT is
+    substituted, but the PATH stays the real in-ROOT path, so _is_historical_domain_record() sees
+    exactly the path it sees in production and an over-broad exemption cannot hide behind a
+    tmp_path copy that no exemption directory could ever match.
+    """
+    overrides = overrides or {}
+    offenders = []
+    for path in paths:
+        if path in overrides:
+            text = overrides[path]
+        else:
+            try:
+                text = path.read_text(encoding="utf-8")
+            except UnicodeDecodeError:
+                continue
         for lineno, line in enumerate(text.splitlines(), 1):
-            if DOMAIN_REFERENCE_RE.search(line):
+            if not RETIRED_DOMAIN_RE.search(line):
+                continue
+            if _is_historical_domain_record(path, line):
+                continue
+            offenders.append(
+                f"{_domain_scan_label(path)}:{lineno}: "
+                f"shippable surfaces must use {CANONICAL_DOMAIN} "
+                "(found a retired minervit.com or minervit.dev reference)"
+            )
+    return offenders
+
+
+def test_shippable_surfaces_unify_contact_domain_to_minervit_ai(cli):
+    """Verify that shippable surfaces use minervit.ai (not minervit.com or minervit.dev)."""
+    assert RETIRED_DOMAIN_RE.search("contact@minervit.com")
+    assert RETIRED_DOMAIN_RE.search("contact@minervit.dev")
+
+    assert _retired_domain_offenders(_domain_scan_paths(cli)) == []
+
+
+def _plant_retired_domain(text: str) -> tuple[str, int]:
+    """Append the banned contact line to `text`.
+
+    Returns the new text and the planted line's number.
+    """
+    body = text.rstrip("\n")
+    return f"{body}\n{PLANTED_RETIRED_DOMAIN_LINE}\n", len(body.splitlines()) + 1
+
+
+def test_domain_scan_reports_a_retired_domain_planted_in_any_shipped_file(cli):
+    """The ban must cover the whole shipped surface, not a hand-maintained subset of it.
+
+    GOVERNANCE.md, ROADMAP.md and docs/README.md are tracked and exported (none matches
+    PUBLIC_RELEASE_EXPORT_EXCLUDED_PREFIXES), and the old hand list scanned none of them.
+
+    The plant is injected at each canary's REAL repo path (content substituted in memory, nothing
+    written to disk), so the scan resolves exemptions against the true in-ROOT path. That is what
+    makes this test bite: widen an exemption -- say add `ROOT / "docs"` to
+    RETIRED_DOMAIN_RECORD_DIRS -- and docs/README.md stops being scanned, the plant in it goes
+    unreported, and this fails. Planting into a tmp_path copy instead would put the file outside
+    ROOT, where no exemption directory can ever match, and the check would pass no matter how
+    broad the exemptions grew.
+    """
+    scanned = _domain_scan_paths(cli)
+    overrides: dict[Path, str] = {}
+    expected_offenders = []
+    for rel in DOMAIN_SCAN_CANARY_RELATIVE_PATHS:
+        path = ROOT / rel
+        assert cli.public_release_export_path_included(Path(rel)), f"{rel} no longer ships"
+        assert path in scanned, f"{rel} ships but the domain scan does not cover it"
+        overrides[path], lineno = _plant_retired_domain(path.read_text(encoding="utf-8"))
+        expected_offenders.append(f"{rel}:{lineno}:")
+
+    offenders = _retired_domain_offenders(scanned, overrides=overrides)
+
+    unreported = [
+        prefix
+        for prefix in expected_offenders
+        if not any(offender.startswith(prefix) for offender in offenders)
+    ]
+    assert unreported == [], (
+        "the domain scan did not report a retired domain planted in these shipped contact "
+        f"surfaces: {unreported}. They ship to the public repo, so an exemption "
+        "(RETIRED_DOMAIN_RECORD_DIRS, DOMAIN_ENFORCEMENT_DIRS, or the bin/tautline release-note "
+        "line exemption) is too broad and is hiding a live surface from the ban."
+    )
+
+
+def _is_test_machinery(path: Path) -> bool:
+    return path.suffix == ".py" or "fixtures" in path.relative_to(ROOT).parts
+
+
+def test_retired_domain_exemptions_are_justified_by_what_they_ship(cli):
+    """Pin the exemptions themselves: an exemption may only cover records and enforcement machinery.
+
+    _is_historical_domain_record() skips whole directories, so the exemption list is the scan's
+    blind spot. Nothing else in this file constrains how big that blind spot may grow -- and an
+    exemption wide enough to swallow a live contact surface defeats the ban entirely while leaving
+    the suite green. So justify every exemption directory against the REAL ship set:
+
+      * a record directory must either ship nothing at all (export-excluded, like
+        docs/productization/archive/) or ship only versioned release records
+        (docs/releases/migrations/0.6.254.json and friends) -- never prose a reader is pointed at;
+      * an enforcement directory must ship only test machinery -- the modules and fixtures that
+        have to WRITE the banned string in order to ban it.
+
+    Adding `ROOT / "docs"` to RETIRED_DOMAIN_RECORD_DIRS fails here: docs/ ships hundreds of
+    Markdown files, and none of them is a versioned release record.
+    """
+    shipped = _shipped_paths(cli)
+    errors = []
+
+    for record_dir in sorted(RETIRED_DOMAIN_RECORD_DIRS):
+        rel_dir = record_dir.relative_to(ROOT).as_posix()
+        shipped_here = [path for path in shipped if record_dir in path.parents]
+        if not shipped_here:
+            # Nothing under it reaches the public repo, so exempting it costs the ban nothing --
+            # provided that is because the export excludes it, not because the entry is dead.
+            if cli.public_release_export_path_included(Path(rel_dir) / "any-file.md"):
                 errors.append(
-                    f"{path.relative_to(ROOT)}:{lineno}: "
-                    "shippable surfaces must use minervit.com (found minervit.ai or minervit.dev)"
+                    f"{rel_dir}/: exempted by RETIRED_DOMAIN_RECORD_DIRS but it ships no record; "
+                    "an exemption that guards nothing is either dead or a placeholder for future "
+                    "unscanned files -- drop it"
                 )
+            continue
+        errors.extend(
+            f"{path.relative_to(ROOT).as_posix()}: exempted by RETIRED_DOMAIN_RECORD_DIRS "
+            f"({rel_dir}/) but it is not a versioned release record -- an exempted directory that "
+            "ships anything else is an unscanned public contact surface"
+            for path in shipped_here
+            if not VERSIONED_RECORD_FILENAME_RE.match(path.name)
+        )
+
+    for enforcement_dir in sorted(DOMAIN_ENFORCEMENT_DIRS):
+        rel_dir = enforcement_dir.relative_to(ROOT).as_posix()
+        errors.extend(
+            f"{path.relative_to(ROOT).as_posix()}: exempted by DOMAIN_ENFORCEMENT_DIRS "
+            f"({rel_dir}/) but it is not test machinery -- the enforcement exemption exists so the "
+            "ban can quote the string it bans, not to hide shipped prose from the scan"
+            for path in shipped
+            if enforcement_dir in path.parents and not _is_test_machinery(path)
+        )
+
+    assert errors == []
+
+
+def test_domain_scan_exempts_only_records_and_the_enforcement_surface(cli):
+    """The widened scan must not swallow the surfaces that legitimately carry the retired domain.
+
+    Historical records (migration JSONs, archived changelogs), the frozen 0.6.254 release-note
+    literal in bin/tautline, and the tests that BAN the string all keep it verbatim. They are
+    exemptions, not reasons to narrow the scan back to a hand list.
+    """
+    migration = ROOT / "docs" / "releases" / "migrations" / "0.6.254.json"
+    assert migration in _domain_scan_paths(cli), "the migration record must be scanned-and-exempted"
+    assert RETIRED_DOMAIN_RE.search(migration.read_text(encoding="utf-8"))
+    assert _retired_domain_offenders([migration]) == []
+
+    cli_source = ROOT / "bin" / "tautline"
+    frozen = [
+        line
+        for line in cli_source.read_text(encoding="utf-8").splitlines()
+        if RETIRED_DOMAIN_RE.search(line)
+    ]
+    assert frozen, "the frozen 0.6.254 release-note literal is gone; drop its exemption"
+    assert all(_is_historical_domain_record(cli_source, line) for line in frozen)
+    # A retired-domain line in bin/tautline that is NOT the frozen release note is still a live
+    # surface and still fails.
+    assert not _is_historical_domain_record(cli_source, "hello@minervit.com")
+
+
+def test_swept_surfaces_positively_carry_the_canonical_domain():
+    errors = []
+    for path, required in CANONICAL_DOMAIN_REQUIRED_STRINGS.items():
+        if not path.exists():
+            errors.append(
+                f"{path.relative_to(ROOT)}: swept canonical-domain surface is missing"
+            )
+            continue
+        text = path.read_text(encoding="utf-8")
+        for phrase in required:
+            if phrase not in text:
+                errors.append(f"{path.relative_to(ROOT)}: must contain {phrase!r}")
 
     assert errors == []

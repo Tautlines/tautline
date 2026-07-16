@@ -65,7 +65,7 @@ milestone-start --target . --plan <source-of-truth-plan>
 milestone-advance --target . --event <event>
 ^## Autonomy And Planning
 plan-finalization-precheck --target . --plan <source-of-truth-plan>
-Review cap is 2 rounds
+Review target is 2 rounds; rounds 3-4 self-authorize with `--exception-note`
 Evidence is tracked `.plan-reviews/`
 ^## Planning Artifacts And Backlog Source Of Truth
 Source/template:

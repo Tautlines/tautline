@@ -25,7 +25,7 @@ Type "mkdir -p $DEMO_DIR/project/tests && cd $DEMO_DIR/project"
 Enter
 Type "git init -q -b main"
 Enter
-Type "git config user.email demo@minervit.com && git config user.name Demo"
+Type "git config user.email demo@minervit.ai && git config user.name Demo"
 Enter
 Type "git remote add origin $DEMO_DIR/origin.git"
 Enter

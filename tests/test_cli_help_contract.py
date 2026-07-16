@@ -21,6 +21,7 @@ SUBCOMMAND_HELP_TOKENS = {
     ("claude-review", "--help"): ("--packet", "--timeout-seconds", "--fail-on-blockers", "--no-fail-on-blockers"),
     ("claude-review-status", "--help"): ("--review-dir", "--limit"),
     ("iteration-review-renderer-setup", "--help"): ("--no-install", "--timeout-seconds"),
+    ("maintainer-mode", "--help"): ("on", "off", "status", "update gates"),
     ("methodology-status", "--help"): (
         "--strict",
         "Exit 0 clean, 1 integrity",

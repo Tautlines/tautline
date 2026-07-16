@@ -1,6 +1,7 @@
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -13,6 +14,29 @@ from minervit_methodology import public_release
 
 CLI_PATH = Path(__file__).resolve().parents[1] / "bin" / "tautline"
 SRC_ROOT = CLI_PATH.parents[1] / "src"
+
+ACCOUNT_ID_PATTERN = re.compile(r"(?<!\d)\d{12}(?!\d)")
+# Real digests lifted from this repository's own review evidence. Each embeds a run of
+# exactly twelve digits purely by chance, because its neighbouring hex characters happen
+# to be letters -- which is precisely what a bare \d{12} account-id scan misreads.
+_SHA256_EMBEDDING_A_TWELVE_DIGIT_RUN = (
+    "a551b354d8e440f2d4cdc4b2ef7b7eb9213845d010451675063ffb7e0642a898"
+)
+_GIT_SHA1_EMBEDDING_A_TWELVE_DIGIT_RUN = "ad712393414906d85d47245e45020ede5183a4f6"
+
+
+def _embedded_twelve_digit_run(digest: str) -> str:
+    """The account-like 12-digit run a bare account-id scan finds inside ``digest``."""
+    match = ACCOUNT_ID_PATTERN.search(digest)
+    assert match, f"fixture digest must embed a 12-digit run: {digest}"
+    return match.group(0)
+
+
+def _digest_embedding_a_twelve_digit_run() -> str:
+    digest = _SHA256_EMBEDDING_A_TWELVE_DIGIT_RUN
+    assert len(digest) == 64
+    _embedded_twelve_digit_run(digest)
+    return digest
 
 
 def _copy_cli_with_package(source: Path) -> Path:
@@ -1796,8 +1820,8 @@ def test_release_migration_report_0_9_0_sanitized_instrumentation(cli):
     assert any("Pinning back to 0.8.9 restores narrative session-journal publication" in note for note in current["rollbackNotes"])
 
     # Upper boundary: the next patch is not declared until it ships its own report.
-    with pytest.raises(SystemExit, match="not declared for 0.9.10"):
-        cli.release_migration_report_data(version="0.9.10")
+    with pytest.raises(SystemExit, match="not declared for 0.9.18"):
+        cli.release_migration_report_data(version="0.9.18")
 
 
 def test_release_migration_report_0_9_1_no_dead_ends_and_repo_slug(cli):
@@ -2119,10 +2143,11 @@ def test_public_release_check_scans_impl_review_ledgers_without_hash_noise(cli, 
     ledger.parent.mkdir(parents=True)
     private_term = "Private Customer Alpha"
     leaked_account = "234567" + "890123"
-    ledger.write_text(
+    digest = _digest_embedding_a_twelve_digit_run()
+    payload = (
         json.dumps(
             {
-                "diff_sha256": "abc123456789012def",
+                "diff_sha256": digest,
                 "branch": "feature/docs",
                 "classified_findings": [
                     {
@@ -2134,21 +2159,138 @@ def test_public_release_check_scans_impl_review_ledgers_without_hash_noise(cli, 
             indent=2,
             sort_keys=True,
         )
-        + "\n",
-        encoding="utf-8",
+        + "\n"
     )
+    ledger.write_text(payload, encoding="utf-8")
+    lines = payload.splitlines()
+    digest_line = next(lineno for lineno, line in enumerate(lines, 1) if digest in line)
+    leak_line = next(lineno for lineno, line in enumerate(lines, 1) if leaked_account in line)
     monkeypatch.setenv(cli.PUBLIC_RELEASE_PRIVATE_TERMS_ENV, private_term)
 
     issues = cli.public_release_issues(tmp_path)
     issue_codes = {issue["code"] for issue in issues}
+    account_id_lines = {issue["line"] for issue in issues if issue["code"] == "account-id"}
 
     assert "private-product-reference" in issue_codes
-    assert "account-id" in issue_codes
-    assert not [
-        issue
-        for issue in issues
-        if issue["code"] == "account-id" and issue["line"] == 2
-    ]
+    # The digest line is hash noise; the free-form evidence line is a genuine leak.
+    assert account_id_lines == {leak_line}
+    assert digest_line not in account_id_lines
+
+
+def test_public_release_check_allows_twelve_digit_runs_inside_hex_digests(cli, tmp_path):
+    digest = _digest_embedding_a_twelve_digit_run()
+    git_sha = _GIT_SHA1_EMBEDDING_A_TWELVE_DIGIT_RUN
+    plans = tmp_path / "docs" / "superpowers" / "plans"
+    (plans / ".plan-reviews").mkdir(parents=True)
+    (plans / ".plan-reviews" / "plan-v2.json").write_text(
+        json.dumps(
+            {"log_sha256": digest, "plan_content_sha256": digest},
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (plans / "plan-v2.md").write_text(f"- Log SHA256: `{digest}`\n", encoding="utf-8")
+    (tmp_path / "CHANGELOG.md").write_text(f"Verified against digest {digest}.\n", encoding="utf-8")
+    (tmp_path / "commits.txt").write_text(f"{git_sha} initial commit\n", encoding="utf-8")
+
+    issues = cli.public_release_issues(tmp_path)
+
+    assert not [issue for issue in issues if issue["code"] == "account-id"]
+
+
+def test_public_release_check_still_flags_a_standalone_account_id_beside_a_digest(cli, tmp_path):
+    digest = _digest_embedding_a_twelve_digit_run()
+    leaked_account = "234567" + "890123"
+    notes = tmp_path / "notes.md"
+    notes.write_text(
+        f"- Log SHA256: `{digest}`\n"
+        f"- Log SHA256: `{digest}` for account {leaked_account}\n",
+        encoding="utf-8",
+    )
+
+    issues = cli.public_release_issues(tmp_path)
+
+    assert [issue["line"] for issue in issues if issue["code"] == "account-id"] == [2]
+
+
+def test_public_release_check_flags_a_bare_account_id_also_inside_a_digest(cli, tmp_path):
+    digest = _digest_embedding_a_twelve_digit_run()
+    embedded = _embedded_twelve_digit_run(digest)
+    notes = tmp_path / "notes.md"
+    notes.write_text(f"digest {digest} and bare id {embedded} on one line\n", encoding="utf-8")
+
+    issues = cli.public_release_issues(tmp_path)
+
+    assert [issue["line"] for issue in issues if issue["code"] == "account-id"] == [1]
+
+
+def test_public_release_check_flags_a_leaked_account_id_on_an_impl_review_sha_line(cli, tmp_path):
+    digest = _digest_embedding_a_twelve_digit_run()
+    leaked_account = "234567" + "890123"
+    ledger = tmp_path / "docs" / "superpowers" / "plans" / ".impl-reviews" / "review.json"
+    ledger.parent.mkdir(parents=True)
+    ledger.write_text(
+        '{"diff_sha256": "%s", "evidence": "leaked account %s"}\n' % (digest, leaked_account),
+        encoding="utf-8",
+    )
+
+    issues = cli.public_release_issues(tmp_path)
+
+    assert [issue["line"] for issue in issues if issue["code"] == "account-id"] == [1]
+
+
+def test_allowed_account_like_token_distinguishes_digest_fragments_from_account_ids(cli):
+    placeholder_account_ids = cli.PUBLIC_RELEASE_PLACEHOLDER_ACCOUNT_IDS
+
+    def allowed(token: str, line: str) -> bool:
+        return public_release.allowed_account_like_token(
+            token,
+            line,
+            placeholder_account_ids=placeholder_account_ids,
+        )
+
+    digest = _digest_embedding_a_twelve_digit_run()
+    embedded = _embedded_twelve_digit_run(digest)
+    leaked_account = "234567" + "890123"
+    placeholder_account = "123456" + "789012"
+    same_digit_account = "9" * 12
+    touch_timestamp = "202607" + "061230"
+    invalid_touch_timestamp = "202613" + "061230"
+
+    # Preserved: placeholders, all-same-digit runs, and `touch -t` timestamps.
+    assert allowed(placeholder_account, f"account {placeholder_account}") is True
+    assert allowed(same_digit_account, f"account {same_digit_account}") is True
+    assert allowed(touch_timestamp, f"touch -t {touch_timestamp} file") is True
+    assert allowed(invalid_touch_timestamp, f"touch -t {invalid_touch_timestamp} file") is False
+    assert allowed(touch_timestamp, f"account {touch_timestamp}") is False
+    assert allowed(leaked_account, f"account {leaked_account}") is False
+
+    # New: a 12-digit run that is interior to a digest-length hex token is a digest fragment.
+    assert allowed(embedded, f'  "log_sha256": "{digest}",') is True
+    assert allowed(embedded, f"- Log SHA256: `{digest}`") is True
+    assert (
+        allowed(
+            _embedded_twelve_digit_run(_GIT_SHA1_EMBEDDING_A_TWELVE_DIGIT_RUN),
+            f"commit {_GIT_SHA1_EMBEDDING_A_TWELVE_DIGIT_RUN}",
+        )
+        is True
+    )
+
+    # Precise: sharing a line with a digest does not launder a real account id...
+    assert allowed(leaked_account, f"digest {digest} account {leaked_account}") is False
+    # ...not even when the same digits also occur inside that digest.
+    assert allowed(embedded, f"digest {digest} bare {embedded}") is False
+
+    # Boundary: digest-length hex runs shield, shorter hex-ish runs do not.
+    min_length = public_release.DIGEST_MIN_HEX_LENGTH
+    filler = "abcdefabcdefabcdefabcdefabcdefabcdef"
+    long_enough = filler[: min_length - len(embedded)] + embedded
+    too_short = filler[: min_length - len(embedded) - 1] + embedded
+    assert len(long_enough) == min_length
+    assert allowed(embedded, f"token {long_enough}") is True
+    assert allowed(embedded, f"token {too_short}") is False
 
 
 def test_public_release_check_supports_private_term_denylist_after_adapter_removal(cli, tmp_path, monkeypatch):
@@ -2908,6 +3050,12 @@ def test_public_release_export_copied_cli_refuses_private_terms_file_inside_dest
 def test_public_release_export_refuses_private_terms_file_inside_source(cli, tmp_path, monkeypatch, capsys):
     source = tmp_path / "source"
     source.mkdir()
+    # A real checkout, like every other export fixture here: public-release-export is a maintainer
+    # verb and now refuses an exec root with no `.git` (a snapshot / copied-out CLI cannot answer
+    # the tag, dirty and history-trust reads the export depends on). The containment assertion
+    # below is unchanged -- this only stops the fixture from standing in a state production never
+    # produces.
+    _init_git_repo(source)
     terms_file = source / "private-terms.txt"
     terms_file.write_text("Private Customer Alpha\n", encoding="utf-8")
     monkeypatch.setattr(cli, "REPO_ROOT", source)
@@ -2933,6 +3081,7 @@ def test_public_release_export_refuses_private_terms_file_inside_source(cli, tmp
 def test_public_release_export_refuses_private_terms_file_inside_destination(cli, tmp_path, monkeypatch, capsys):
     source = tmp_path / "source"
     source.mkdir()
+    _init_git_repo(source)  # see the sibling test: the maintainer verb requires a dev checkout
     destination = tmp_path / "public"
     terms_file = destination / "private-terms.txt"
     monkeypatch.setattr(cli, "REPO_ROOT", source)

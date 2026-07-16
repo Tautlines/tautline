@@ -7,6 +7,7 @@ import os
 import re
 import shlex
 import tempfile
+from collections.abc import Mapping
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -220,19 +221,28 @@ def user_config_env_value(name: str, config_env: Path) -> str:
     return ""
 
 
-def resolve_env(name: str, default: str = "") -> str:
+def resolve_env(name: str, default: str = "", environ: Mapping[str, str] | None = None) -> str:
     """Read env var `name`, preferring its TAUTLINE_ alias over the MINERVIT_ name.
 
     Given a full MINERVIT_-prefixed name, the TAUTLINE_-prefixed variant wins when
     set; otherwise the given name is used. Non-MINERVIT_ names are read directly.
+
+    `environ` reads a caller-supplied mapping instead of the process environment: a child env being
+    assembled for exec, or a base_env injected by a test. A copy of os.environ is still the
+    operator's environment, so it gets the same alias preference -- otherwise every setting read out
+    of a child env dict is a place the rebrand silently did not reach.
+
+    A value that is blank once stripped counts as unset, for the alias as much as for the name. A
+    stale `TAUTLINE_X=` left in a shell must not blank out a working MINERVIT_X.
     """
+    source = os.environ if environ is None else environ
     if name.startswith("MINERVIT_"):
         alias = "TAUTLINE_" + name[len("MINERVIT_"):]
-        value = os.environ.get(alias)
-        if value is not None and value != "":
+        value = source.get(alias)
+        if value is not None and value.strip() != "":
             return value
-    value = os.environ.get(name)
-    if value is not None and value != "":
+    value = source.get(name)
+    if value is not None and value.strip() != "":
         return value
     return default
 

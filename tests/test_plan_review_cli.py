@@ -1,5 +1,6 @@
 import json
 import os
+import shlex
 import shutil
 import subprocess
 import sys
@@ -554,7 +555,7 @@ def test_run_plan_review_enforces_counts_round_caps_and_log_classification(tmp_p
             adapter_root=adapter_root,
         )
         assert bad_round.returncode == 1
-        assert "--round must include a numeric review round 1-2" in bad_round.stderr
+        assert "--round must include a numeric review round 1-4" in bad_round.stderr
 
     for path in [target / ".ai-runs" / "plan-review", target / SOURCE_ROOT / ".plan-reviews"]:
         if path.exists():
@@ -654,7 +655,7 @@ def test_run_plan_review_enforces_counts_round_caps_and_log_classification(tmp_p
         home=home,
         adapter_root=adapter_root,
     )
-    r4 = _run_cli(
+    r4_no_note = _run_cli(
         "run-plan-review",
         "--project",
         str(adapter),
@@ -675,17 +676,41 @@ def test_run_plan_review_enforces_counts_round_caps_and_log_classification(tmp_p
         home=home,
         adapter_root=adapter_root,
     )
+    r5 = _run_cli(
+        "run-plan-review",
+        "--project",
+        str(adapter),
+        "--target",
+        str(target),
+        "--plan",
+        PLAN_REL.as_posix(),
+        "--round",
+        "R5",
+        "--exception-note",
+        "A fifth round cannot be bought with any note; the cap is absolute",
+        "--model",
+        "codex-test",
+        home=home,
+        adapter_root=adapter_root,
+    )
 
     assert blocked_r1.returncode == 0, blocked_r1.stdout + blocked_r1.stderr
-    assert blocked_r2.returncode == 2
-    assert "two-round cap with unresolved Critical/P1 blockers" in blocked_r2.stderr
-    assert "implementation review focus list" in blocked_r2.stderr
+    # R2 blocked is no longer terminal: the ladder self-authorizes round 3 once the fixes land.
+    assert blocked_r2.returncode == 0, blocked_r2.stdout + blocked_r2.stderr
+    assert "self-authorize round 3 of 4 with --exception-note" in blocked_r2.stdout
+    assert "no operator authorization needed" in blocked_r2.stdout
+    # Past the target, a round without a recorded exception is refused...
     assert r3_no_evidence.returncode == 1
-    assert "R3 is allowed only when R2 produced a confirmed structural Critical" in r3_no_evidence.stderr
+    assert "is past the 2-round convergence target" in r3_no_evidence.stderr
+    assert "--exception-note" in r3_no_evidence.stderr
+    # ...and with one it proceeds, no operator escalation involved.
     assert r3_allowed.returncode == 0, r3_allowed.stdout + r3_allowed.stderr
-    assert "round 3 of 2 (+R3 structural-Critical exception); verdict=clean" in r3_allowed.stdout
-    assert r4.returncode == 1
-    assert "plan review round exceeds the R3 structural-Critical exception" in r4.stderr
+    assert "round 3 of 4 (recorded convergence exception); verdict=clean" in r3_allowed.stdout
+    assert r4_no_note.returncode == 1
+    assert "is past the 2-round convergence target" in r4_no_note.stderr
+    # Past the hard cap refusal is unconditional -- a note cannot buy round 5.
+    assert r5.returncode == 1
+    assert "exceeds the hard cap of 4 rounds" in r5.stderr
 
     _write_review_script(
         target,
@@ -991,3 +1016,41 @@ def test_builtin_codex_plan_review_uses_non_conflicting_plan_fence(tmp_path):
     assert "Plan content:\n````markdown\n" in args_text
     assert "```bash\necho do-not-close-the-plan-wrapper\n```" in args_text
     assert "\n````\n" in args_text
+
+
+def test_run_plan_review_next_action_names_the_resolved_target(tmp_path):
+    """The printed finalize remedy must bind to THIS lane, not to whatever `.` happens to be.
+
+    Track C made every guard remedy render the resolved absolute target via
+    guard_target_argument(): on a multi-agent machine `--target .` names whichever checkout the
+    shell is sitting in, which may be a worktree owned by another lane. run-plan-review's
+    plan_review_next_action is the same class of copy-pasted remedy and was missed.
+
+    The `--target .` inside the plan's committed Cross-Model Review Evidence block is a DIFFERENT
+    site and is correct as `.`: it is written into a tracked plan file, where an absolute
+    /Users/... path would be a machine token. That one stays.
+    """
+    home, adapter_root, target, adapter = _prepare_target(tmp_path)
+
+    run = _run_cli(
+        "run-plan-review",
+        "--project",
+        str(adapter),
+        "--target",
+        str(target),
+        "--plan",
+        PLAN_REL.as_posix(),
+        "--round",
+        "R1",
+        "--model",
+        "codex-test",
+        home=home,
+        adapter_root=adapter_root,
+    )
+
+    assert run.returncode == 0, run.stdout + run.stderr
+    next_action = next(
+        line for line in run.stdout.splitlines() if line.startswith("plan_review_next_action: ")
+    )
+    assert f"finalize-plan-review --target {shlex.quote(str(target.resolve()))}" in next_action
+    assert "--target ." not in next_action

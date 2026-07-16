@@ -1,0 +1,97 @@
+{
+  "behaviorChanges": [
+    "Lanes execute Tautline from an immutable snapshot store rather than from the methodology checkout. On a trusted update the new commit is copied into a read-only tree under the user data directory, the store's `current` target is swapped atomically, and the CLI re-execs the new tree. A `git pull` in the checkout can no longer rewrite the code a running session is executing, which is what made concurrent lanes on one machine unsafe.",
+    "A session is pinned to the snapshot it started on: every hook it spawns loads the same Tautline for the life of the conversation, even while other lanes advance the store. Sessions adopt the new snapshot at their next launch. A lane still running an older snapshot after a release is the isolation working, not a fault.",
+    "New store operations: `snapshot-status` reports the store, the current target, every published snapshot and every live lane pin; `snapshot-prune --keep` removes superseded snapshots while refusing to delete the current target, a pinned snapshot, or a recently-current one; `snapshot-pin --target` protects the snapshot a lane is executing from retention.",
+    "Simultaneous launches no longer stampede the network. The first lane through the startup gate fetches and the others reuse its result for a freshness window (`MINERVIT_METHODOLOGY_SYNC_FRESHNESS_MINUTES`, default 10) instead of each running its own fetch and merge against the same checkout. The gate is serialized with a lock that survives the re-exec.",
+    "Every mutation of the checkout or the store is appended to a write journal under the user state directory with the command, old and new head, outcome and the responsible lane, so an unexpected advance, a held update or a rescue can be attributed rather than guessed at.",
+    "`version` and `methodology-status` now distinguish the checkout that updates are fetched into (`methodology_canonical_commit`) from the tree the running process was loaded from (`methodology_exec_root`). These are no longer the same thing, and any tooling that parsed one value as both must pick the one it meant.",
+    "Release and public-export commands refuse to run from a snapshot and name the checkout to run them from. Executed from an immutable tree they had no git history to read, so they would previously report a tag as new without ever having looked one up, and skip the dirty-tree check entirely. Maintainer lanes must run these verbs from the checkout.",
+    "A methodology commit now reports one short form regardless of the tree the CLI is executing from. Generated adapters embed that value, so two lanes at the same commit previously rendered different adapter bytes and each re-render put the other back into drift -- a permanent drift ping-pong through `methodology-status --fail-on-drift` with no methodology change behind it.",
+    "Escape hatch: set `MINERVIT_METHODOLOGY_DISABLE_SNAPSHOT_EXEC=1` to hold a machine on checkout execution. Deleting the store is also safe -- the CLI warns once and falls back to the checkout rather than failing."
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "publish-pending-session-journals",
+      "removeAfter": "1.0.0",
+      "replacement": "publish-instrumentation-record",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "publish-session-journal",
+      "removeAfter": "1.0.0",
+      "replacement": "publish-instrumentation-record",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    },
+    {
+      "name": "rules-audit",
+      "path": "plugins/tautline-core/skills/rules-audit/SKILL.md",
+      "removeAfter": "1.0.0",
+      "replacement": "framework-intake",
+      "section": "skills",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [],
+  "productsTested": [],
+  "requiredMigrations": [
+    {
+      "command": "tautline install-cli",
+      "description": "0.9.15 executes the CLI from an immutable snapshot store instead of from the methodology checkout. Re-run the installer to convert the machine: it materializes the current commit as a read-only snapshot and points the store's `current` target at it. Until this runs, the machine keeps executing the checkout directly, which is the behavior a concurrent lane can corrupt.",
+      "id": "convert-to-snapshot-execution",
+      "surface": "cli-install"
+    },
+    {
+      "command": "tautline install-claude-launcher --force",
+      "description": "Session pinning is delivered by the launcher, so regenerating it is a required step of this upgrade rather than a convenience. Until the launcher is regenerated, a session is not pinned to a snapshot and can still change Tautline versions mid-conversation -- the exact failure this release exists to remove. `install-cli` and `sync-methodology` both name any launcher that still needs regenerating.",
+      "id": "regenerate-claude-launcher",
+      "surface": "claude-launcher"
+    }
+  ],
+  "rollbackNotes": [
+    "Rolling back to 0.9.14 restores checkout execution: lanes once again run the methodology checkout directly, and with it the concurrency hazard this release removes. Two lanes on one machine are unsafe again, so roll back the machine, not one lane of several.",
+    "Regenerate the launcher after rolling back (`tautline install-claude-launcher --force`). A launcher written by 0.9.15 pins a session to a snapshot path; the older CLI does not manage snapshots, so a stale pinned launcher would keep aiming sessions at a tree the rolled-back version no longer advances.",
+    "The snapshot store and the write journal are additive on-disk state. An older version neither reads nor prunes them, so they are inert after a rollback and cost only disk until a re-upgrade adopts them again; remove the store directory by hand if that disk matters.",
+    "This release is NOT WIP-safe and will not be auto-adopted by a lane with active work. It changes the tree the CLI executes from and requires the two migration commands above, so adopt it between lanes rather than mid-conversation."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.9.15",
+  "wipSafe": false
+}

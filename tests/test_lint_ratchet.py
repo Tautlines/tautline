@@ -11,7 +11,7 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-E501_BASELINE = 6446
+E501_BASELINE = 6442
 LINT_PATHS = ("bin/tautline", "src", "tests")
 
 # A measured count of 0 across the whole repo would mean ruff silently linted

@@ -1,0 +1,81 @@
+{
+  "behaviorChanges": [
+    "Plan review converges on a two-round target with a hard cap of four rounds, replacing the single fixed cap of two. Rounds 3 and 4 are self-authorizing: a run proceeds on a recorded `--exception-note` or on a detected convergence state (blockers fixed after the bound round, or a successful run voided by a plan edit before it could be finalized). A round that was finalized and later superseded by another round is NOT a voided run and never self-authorizes: the manifest binds one round at a time, so every earlier round is orphaned by design. The tool never stops to ask an operator to authorize a round, so a plan that needs a third pass is no longer dead-ended at the cap.",
+    "Past the hard cap of four rounds, refusal is unconditional -- clean, blocked, ambiguous, and stale states are all refused, and no exception note overrides it. Only the remedy message varies, and it is chosen by whether the bound evidence can actually be finalized: finalize-the-existing-evidence only when that evidence is clean AND still bound to the current plan, and a mandatory split otherwise. Evidence that is clean but STALE takes the split, because plan-finalization-precheck rejects a stale manifest -- naming finalization there would be a dead end.",
+    "`--exception-note` is required to WRITE a plan-review manifest past the two-round target, on every writer: `finalize-plan-review`, `run-plan-review`'s inline finalization, and `record-plan-review`. The secondary/diagnostic writer is covered so it cannot be used as a bypass. `run-plan-review`'s printed next-action carries the flag, so an agent that follows the tool's own instructions never hits the validation error.",
+    "A run voided by a plan edit no longer triggers the \"finalize that run instead\" refusal. Such a run can never be finalized, so refusing there was a dead end.",
+    "A recorded exception is rendered into the plan's committed `## Cross-Model Review Evidence` block as an `- Exception:` line, so the reason a past-target round was taken is visible where reviewers read rather than only inside the JSON manifest.",
+    "Plans that converge within two rounds are unaffected: no exception line, no `exception_note` field, no `- Exception:` evidence line, and round status still renders against the target (\"round 1 of 2\"). The hard cap governs refusal, not display."
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "publish-pending-session-journals",
+      "removeAfter": "1.0.0",
+      "replacement": "publish-instrumentation-record",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "publish-session-journal",
+      "removeAfter": "1.0.0",
+      "replacement": "publish-instrumentation-record",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    },
+    {
+      "name": "rules-audit",
+      "path": "plugins/tautline-core/skills/rules-audit/SKILL.md",
+      "removeAfter": "1.0.0",
+      "replacement": "framework-intake",
+      "section": "skills",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [],
+  "productsTested": [],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "Rolling back to 0.9.12 restores the single fixed cap of two rounds, so a plan that has not converged by round 2 is dead-ended again: rounds 3 and 4 are refused outright rather than self-authorizing on an exception note or a detected convergence state.",
+    "Plan-review manifests written by 0.9.13 past the two-round target carry an `exception_note` field that 0.9.12 never wrote. Re-check any such plan on the older build before relying on its round accounting.",
+    "The `--exception-note` flag disappears from `finalize-plan-review`, `run-plan-review`, and `record-plan-review` on rollback, so scripts or agent instructions that pass it will fail argument parsing. This is additive-only in the forward direction: no existing command, adapter key, or configuration surface changes.",
+    "This release is WIP-safe: it only loosens a refusal that previously had no override, so no lane in progress changes behavior at rounds 1-2."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.9.13",
+  "wipSafe": true
+}

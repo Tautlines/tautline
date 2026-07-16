@@ -7,7 +7,11 @@
 # lint/type/test configuration.
 
 [tool.ruff]
-target-version = "py310"   # `match` statements (15x) set the 3.10 floor
+# The floor rationale below is verified and shared verbatim with CONTRIBUTING.md
+# (tests/test_front_door_docs.py pins both): no syntax forces 3.10 anymore — the
+# tree parses clean under the 3.9 grammar — but zip(strict=) (PEP 618) is a
+# 3.10-only runtime API, and 3.10 is the floor every CI gate actually verifies.
+target-version = "py310"   # zip(strict=) is 3.10-only, and CI proves the floor on 3.10 every PR
 line-length = 100
 
 [tool.ruff.lint]

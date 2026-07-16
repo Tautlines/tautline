@@ -1,0 +1,86 @@
+{
+  "behaviorChanges": [
+    "The PyPI package is real: `pipx install tautline` (or `pip install tautline` in a virtualenv) installs the full CLI as a thin wrapper embedding the committed release tree under `tautline/_dist/`, stamped with a build-time `.snapshot-meta.json` carrying `installKind: \"package\"`, and shipping BOTH console scripts (`tautline` and the legacy `minervit-methodology`). `registry-package --registry pypi` builds that payload from the committed tree (fail-closed on version/tree disagreement and on non-git exec roots); the npm package remains a namespace pointer whose copy now points at pipx. `publish-pypi.yml` ships the real wheel with an explicit `--channel stable` stamp, and a PR-blocking `fresh-install-smoke` CI job installs the wheel into a clean Python 3.10 venv and drives the full front door on every pull request.",
+    "The adapter drift gate (`adapter_drift`, `render-adapters --check`) and every generated-file writer treat provenance-stamp-only differences (`_generated.methodologyCommit`, `_generated.pluginVersion`) as equivalent content: a stamp-only skew is not drift and never triggers a rewrite, so two runtimes at identical rendered content (a pip wheel and a canonical checkout co-maintaining one project) stop re-stamping each other's adapters. Every content difference still gates -- unparseable or `_generated`-less on-disk adapters stay drifted, hand reformatting still trips -- and true cross-build drift now carries a version-alignment hint (align runtimes, do not re-render harder).",
+    "Rendered adapters carry the mode-independent regenerate line (`tautline render-adapters ...` instead of `bin/tautline ...`), because `bin/tautline` does not exist in a pipx user's project. Existing adapters re-render once on their next render; with stamp equivalence that is the only rewrite mixed fleets see.",
+    "Package-mode UX and isolation, keyed on the manifest's `installKind: \"package\"` and never on generic snapshot detection: `version` reports `install_kind: package` plus an `update_hint` naming both package channels (`pipx upgrade tautline` / `pip install -U tautline`); `sync-methodology` stands down with the same hint BEFORE canonical-repo resolution and never fetches, ff-merges, or installs guards into a leftover configured checkout; `update-repin` refuses BEFORE the fetch with a truthful remedy (the connectivity diagnosis stays for real fetch failures on real checkouts); and adapter data resolution (`methodology_data_roots`, `source_adapter_path`) pins to the wheel's embedded tree. Snapshot-store and checkout machines keep canonical-first behavior byte-identically.",
+    "Registry copy is per-registry (PyPI documents the real install with the Python 3.10+ floor; npm points at pipx), the README Quickstart states the 3.10+ prerequisite and the mandatory `tautline install-claude-launcher --force` cutover step, and the 3.10 floor rationale in pyproject.toml/CONTRIBUTING.md is corrected to the verified reason (zip(strict=) is 3.10-only, and CI proves the floor on 3.10 every PR)."
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "publish-pending-session-journals",
+      "removeAfter": "1.0.0",
+      "replacement": "publish-instrumentation-record",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "publish-session-journal",
+      "removeAfter": "1.0.0",
+      "replacement": "publish-instrumentation-record",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    },
+    {
+      "name": "rules-audit",
+      "path": "plugins/tautline-core/skills/rules-audit/SKILL.md",
+      "removeAfter": "1.0.0",
+      "replacement": "framework-intake",
+      "section": "skills",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [],
+  "productsTested": [],
+  "requiredMigrations": [
+    {
+      "command": "bin/tautline install-cli",
+      "description": "Plugin hooks now invoke `tautline`, the command name every supported install resolves: the PyPI wheel ships it as a console script and install-cli writes both shims. Only a machine that installed before the `tautline` shim existed and never re-ran install-cli lacks it -- on such machines every Claude guard hook would fail open. Required exactly where `command -v tautline` prints nothing; a machine that resolves `tautline` needs no action.",
+      "id": "reinstall-cli-for-tautline-shim",
+      "surface": "cli-install"
+    }
+  ],
+  "rollbackNotes": [
+    "Pinning back to 0.9.x restores the pointer-building `registry-package` (the real PyPI payload path disappears; already-published wheels stay on PyPI untouched) and stamp-strict drift comparison.",
+    "A project whose adapter was rendered under 0.10.0 will re-drift ONCE under a 0.9.x runtime: the 0.9.x gate byte-compares the provenance stamps again, and the mode-independent `tautline` regenerate line differs from the 0.9.x render. Re-rendering under the pinned runtime restores the 0.9.x bytes.",
+    "Plugin hooks invoke `tautline` regardless of the pinned CLI version (hooks.json ships with the plugin): after rollback the hooks keep working wherever the `tautline` shim exists, which is every machine that ran install-cli since the shim was introduced."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.10.0",
+  "wipSafe": false
+}

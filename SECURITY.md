@@ -21,7 +21,7 @@ fix exists.
 
 - Preferred: use **GitHub Private Vulnerability Reporting** on this repository
   (`Security` tab → `Report a vulnerability`).
-- Alternative: email the maintainers at **security@minervit.com** with a clear subject line
+- Alternative: email the maintainers at **security@minervit.ai** with a clear subject line
   and, if possible, a minimal reproduction.
 
 **What to include**

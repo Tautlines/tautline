@@ -1,0 +1,79 @@
+{
+  "behaviorChanges": [
+    "Past the plan-review hard cap, the printed remedy is now chosen by asking whether the bound manifest's evidence can actually be finalized, in every manifest writer. `finalize-plan-review` and `record-plan-review` previously chose it from the SUBMITTED round's blocker counts, but the refused round is never written, so its counts say nothing about what the operator can finalize: submitting clean counts past the cap printed \"finalize the existing review evidence\" even when the bound evidence was clean-but-STALE, which `plan-finalization-precheck` then rejects -- a dead end. The refusal stays unconditional at every door; only the wording changes.",
+    "`run-plan-review`'s printed next-action remedy now renders the resolved absolute `--target` path instead of a literal `--target .`. On a multi-agent machine a copy-pasted `--target .` binds to whichever checkout the shell happens to be sitting in -- possibly a worktree owned by another lane. The `--target .` written into a plan's committed Cross-Model Review Evidence block is deliberately unchanged: an absolute path there would be a machine token committed to a tracked file.",
+    "`methodology/canonical-rules.md` and every policy mirror now state the shipped past-cap rule -- the refusal is unconditional, the remedy is chosen from bound evidence -- rather than an unconditional split. Nothing reads these documents at runtime, which is exactly why the drift mattered: no gate caught it, and agents follow the text.",
+    "The retired-domain ban in `tests/test_public_boundary_scan.py` is now derived from the CLI's own public-export rules rather than a hand-maintained file allowlist, widening the swept set from 104 files to 563. `GOVERNANCE.md`, `ROADMAP.md`, `LICENSE`, `docs/README.md` and the rest of the exported tree all ship and none was scanned before. This is test-only: no shipped surface changed, because none was carrying the retired domain."
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "publish-pending-session-journals",
+      "removeAfter": "1.0.0",
+      "replacement": "publish-instrumentation-record",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "publish-session-journal",
+      "removeAfter": "1.0.0",
+      "replacement": "publish-instrumentation-record",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    },
+    {
+      "name": "rules-audit",
+      "path": "plugins/tautline-core/skills/rules-audit/SKILL.md",
+      "removeAfter": "1.0.0",
+      "replacement": "framework-intake",
+      "section": "skills",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [],
+  "productsTested": [],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "Rolling back to 0.9.15 restores the misleading past-cap remedy wording: `finalize-plan-review` and `record-plan-review` will again tell an operator to finalize bound evidence that `plan-finalization-precheck` will refuse as stale. The refusal itself is unconditional in both directions, so no plan is admitted past the cap either way -- the operator is only sent down a dead end rather than to the split.",
+    "Plan-review manifests are unchanged in schema and content by this release; a manifest written by 0.9.16 is read by 0.9.15 and vice versa. Only printed remedy text and policy prose differ, so nothing on disk needs converting in either direction.",
+    "Rolling back narrows the public-boundary domain scan back to its hand-maintained allowlist, so a retired-domain string added to a shipped-but-unlisted surface such as `GOVERNANCE.md` would once again pass a fully green test run. Nothing breaks on the way back; the enforcement simply stops covering most of what it ships.",
+    "This release is WIP-safe. It changes printed remedy wording, policy prose, and test enforcement -- no command, adapter key, configuration surface, on-disk format, or execution substrate changes, so no lane in progress alters behavior."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.9.16",
+  "wipSafe": true
+}

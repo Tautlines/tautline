@@ -27,6 +27,309 @@ development repository.
 
 ### Security
 
+## [0.10.0] - 2026-07-15
+
+### Added
+
+- The PyPI package is real: `pipx install tautline` (or `pip install tautline`
+  into a virtualenv) installs the full CLI — a thin wrapper package embedding
+  the committed release tree under `tautline/_dist/`, stamped with a build-time
+  `.snapshot-meta.json` (`installKind: "package"`), shipping both console
+  scripts (`tautline` and the legacy `minervit-methodology`). The npm package
+  remains a namespace pointer whose copy now points at pipx.
+- A PR-blocking `fresh-install-smoke` CI job is the standing acceptance test:
+  every pull request builds the wheel from its own tree, installs it into a
+  clean Python 3.10 venv, and drives the full front door — both console
+  scripts, the adopter flow to `adapter_drift: clean`, the lane-hook surface,
+  and embedded-file canaries in site-packages.
+- Package-mode UX and isolation: `version` reports `install_kind: package` with
+  an `update_hint` naming both package channels (`pipx upgrade tautline` /
+  `pip install -U tautline`); `sync-methodology` stands down with the same hint
+  and never touches a leftover configured checkout; `update-repin` refuses
+  before any fetch with a truthful remedy; package installs read adapter data
+  from their own embedded tree. Snapshot-store and checkout machines keep their
+  behavior byte-identically.
+
+### Changed
+
+- The adapter drift gate and every generated-file writer now treat
+  provenance-stamp-only differences (`_generated.methodologyCommit`,
+  `_generated.pluginVersion`) as equivalent content: two runtimes at identical
+  rendered content never re-stamp each other's adapters, killing the
+  mixed-mode ping-pong. Every content difference still gates, and true
+  cross-build drift carries a version-alignment hint.
+- Registry copy is per-registry: the PyPI README documents the real install
+  (pipx/pip, the Python 3.10+ floor, the update channel) while npm keeps the
+  truthful pointer copy; `publish-pypi.yml` ships the real wheel with an
+  explicit `--channel stable` stamp.
+- Plugin hooks invoke `tautline` (the name every supported install resolves)
+  instead of the legacy `minervit-methodology`; rendered adapters carry the
+  mode-independent `tautline render-adapters ...` regenerate line, so existing
+  adapters re-render once on their next render.
+- The README Quickstart states the Python 3.10+ prerequisite and the mandatory
+  `tautline install-claude-launcher --force` cutover step, and gains an
+  Install-from-PyPI subsection; the 3.10 floor rationale in `pyproject.toml`
+  and CONTRIBUTING.md is corrected to the verified reason (`zip(strict=)` is
+  3.10-only, and CI proves the floor on 3.10 every PR) — the retired
+  `match`-statement claim was stale.
+
+## [0.9.17] - 2026-07-15
+
+### Added
+
+- New `tautline maintainer-mode` verb (contract status: experimental) with
+  `on`, `off`, and `status` actions, for framework-maintainer machines whose
+  canonical methodology repo is a git checkout they develop in. `on` refuses
+  unless there is a checkout to manage, then writes both key spellings
+  (`TAUTLINE_METHODOLOGY_MAINTAINER_MODE` / `MINERVIT_METHODOLOGY_MAINTAINER_MODE`)
+  into the user config env file; `off` strips both spellings from both the
+  current and the legacy config surface and reports the re-read state, so it is
+  authoritative rather than assertive. The key is file-only by design: a live
+  environment variable of either spelling is inert, in Python and in the
+  regenerated launcher's shell guard alike.
+- With maintainer mode armed, the launcher-gate methodology update stands down
+  at its single choke point — the checkout is never fetched, ff-merged,
+  rescued, or repair-escalated underneath maintainer work, and the launch says
+  so: `methodology_update: skipped - maintainer mode - update gates stand
+  down; checkout left untouched`. Heal and the freshness stamp still flow, so
+  committed maintainer work republishes the snapshot store's `current` at the
+  very next launch. Snapshot execution, release guards, lane-start gates,
+  drift and debt remediation, WIP holds, every Claude guard hook, and the
+  skip-permissions interlock all stay on — there is no carve-out.
+- Every armed launch prints a loud stderr banner whose load-bearing line is
+  `maintainer_mode: update gates off - running <checkout> @ <commit>`, an
+  armed launch reports `remote_status: skipped - maintainer mode` instead of
+  probing the remote, and `methodology-status` gains a three-state
+  `maintainer_mode:` line (off / on / configured but not armed).
+- Regenerated Claude launchers carry a shell guard that parses the config file
+  directly and stands the launcher's own auto-rescue down while the key is
+  set. Launchers generated before this release keep their old behavior until
+  regenerated with `tautline install-claude-launcher --force`; the verb prints
+  a content-keyed advisory naming each one. Stock machines see zero behavior
+  change: nothing ships, generates, or installs the key — the standdown is
+  opt-in via the verb, and disarming it restores stock gate semantics.
+
+## [0.9.16] - 2026-07-14
+
+### Fixed
+
+- Past the plan-review hard cap, the remedy Tautline prints is now chosen by
+  asking whether the bound review evidence can actually be finalized — in every
+  manifest writer, not just one. `finalize-plan-review` and
+  `record-plan-review` previously chose the remedy from the blocker counts of
+  the round being submitted, but a refused round is never written, so those
+  counts say nothing about what the operator can finalize: submitting clean
+  counts past the cap printed "finalize the existing review evidence" even when
+  the bound evidence was clean but *stale*, which `plan-finalization-precheck`
+  then rejects. The operator was sent to a dead end. The refusal past the cap
+  stays unconditional at every door; only the wording changes.
+- `run-plan-review`'s printed next-action remedy now renders the resolved
+  absolute `--target` path instead of a literal `--target .`. On a machine
+  running several lanes, a copy-pasted `--target .` binds to whichever checkout
+  the shell is sitting in — possibly a worktree owned by another lane. The
+  `--target .` written into a plan's committed Cross-Model Review Evidence block
+  is deliberately left alone: an absolute path there would commit a machine
+  token to a tracked file.
+
+### Changed
+
+- `methodology/canonical-rules.md` and every policy mirror now state the rule
+  the CLI actually ships: past the plan-review cap the refusal is
+  unconditional, and the remedy is chosen from the bound evidence. They
+  previously said the split is unconditionally mandatory. Nothing reads these
+  documents at runtime, which is precisely why the drift mattered — no gate
+  caught it, and agents follow the text.
+- The retired-domain ban in the public boundary scan is now derived from the
+  CLI's own public-export rules rather than a hand-maintained file allowlist,
+  widening the swept set from 104 files to 563. `GOVERNANCE.md`, `ROADMAP.md`,
+  `LICENSE`, `docs/README.md` and the rest of the exported tree all ship to the
+  public repo and none of them was being scanned. No shipped surface changed —
+  none was carrying the retired domain — but the enforcement now covers what it
+  ships instead of a subset of it.
+
+## [0.9.15] - 2026-07-14
+
+### Added
+
+- Lanes now execute Tautline from an immutable snapshot store instead of from
+  the methodology checkout itself. When an update is trusted, the new commit is
+  copied into a read-only tree under
+  `~/.local/share/minervit/tautline-releases/`, the store's `current` link is
+  swapped atomically, and the CLI re-execs the new tree. A `git pull` in the
+  checkout can no longer change the code that a running session is executing,
+  which is what made concurrent lanes on one machine unsafe: one lane's update
+  used to rewrite the files another lane was halfway through running.
+- A session is pinned to the snapshot it started on, so every hook it spawns
+  loads the same version of Tautline for the life of the conversation, even
+  while other lanes advance the store. Sessions pick up the new snapshot on
+  their next launch; a lane running an older snapshot after a release is the
+  isolation working, not a fault.
+- `tautline snapshot-status` reports the store, the current target, every
+  published snapshot and every live lane pin. `tautline snapshot-prune --keep`
+  removes superseded snapshots while refusing to delete the current target, a
+  pinned snapshot, or a recently-current one. `tautline snapshot-pin --target`
+  protects the snapshot a lane is executing from retention.
+- Simultaneous launches no longer stampede the network: the first lane through
+  the startup gate fetches, and the others reuse its result for a freshness
+  window (`MINERVIT_METHODOLOGY_SYNC_FRESHNESS_MINUTES`, default 10) instead of
+  each running their own fetch and merge against the same checkout.
+- Every mutation of the methodology checkout or the store is appended to a write
+  journal at `~/.local/state/minervit/methodology-writes.jsonl` with the
+  command, old and new head, outcome and the lane responsible — so an
+  unexpected advance, a held update or a rescue can be attributed rather than
+  guessed at.
+
+### Changed
+
+- `tautline install-cli` converts a machine to snapshot execution, and
+  `tautline install-claude-launcher --force` is now a required step of the
+  install rather than a convenience: until the launcher is regenerated, a
+  session is not pinned to a snapshot and can change versions mid-conversation.
+  The installer says so on every run, and `sync-methodology` keeps naming any
+  launcher that still needs regenerating. Set
+  `MINERVIT_METHODOLOGY_DISABLE_SNAPSHOT_EXEC=1` to hold a machine on the old
+  behavior; deleting the store is also safe, as the CLI warns once and falls
+  back to the checkout. See the Snapshot Store section of the release
+  engineering reference.
+- `tautline version` and `tautline methodology-status` now distinguish the
+  checkout that updates are fetched into (`methodology_canonical_commit`) from
+  the tree the running process was loaded from (`methodology_exec_root`), which
+  are no longer the same thing.
+- Release and public-export commands refuse to run from a snapshot and name the
+  checkout to run them from. Executed from an immutable tree they had no git
+  history to read, so they would previously report a tag as new without ever
+  having looked one up, and skip the dirty-tree check entirely.
+
+### Fixed
+
+- One methodology commit reported two different short forms depending on where
+  the CLI was executing, and generated adapters embed that value. Two lanes at
+  the same commit therefore rendered different adapter bytes, each re-render
+  putting the other back into drift — a permanent drift ping-pong through
+  `methodology-status --fail-on-drift` with no methodology change behind it.
+
+## [0.9.14] - 2026-07-14
+
+### Changed
+
+- The canonical public domain is now `minervit.ai` on every live shippable surface: contact
+  addresses (README, `CODE_OF_CONDUCT.md`, `SECURITY.md`, the support SLA model, the plugin
+  marketplace owner email, the demo tape) and the `$id` of both JSON Schemas
+  (`methodology/adapter-schema.json`, `methodology/bootstrap-legacy-allowlist-schema.json`).
+  `tests/test_public_boundary_scan.py` now enforces `minervit.ai` and bans the retired domains
+  (it previously enforced the opposite, which silently reverted hand-fixes), and additionally
+  asserts each swept surface positively carries its canonical-domain reference. The sweep now
+  also covers `.claude-plugin/marketplace.json` and `docs/assets/demo.tape`, both of which ship
+  and neither of which was scanned before. Historical records — release migration JSONs,
+  archived changelogs, and the frozen 0.6.254 release-note strings in `bin/tautline` — keep the
+  retired domain verbatim by design.
+- **Schema `$id` compatibility: no adapter migration is required, and no adapter needs to
+  change.** The schema `$id` is an identifier, not a resolution target: the CLI loads
+  `methodology/adapter-schema.json` by filesystem path and validates with its stdlib-only
+  subset validator, which implements no `$ref`/`$id` resolution and makes no network call.
+  Adapter documents reference the schema through `$schema` — the raw.githubusercontent.com URL
+  for generated scaffolds, or a repo-relative path in-tree — never through the `$id`, and the
+  schema accepts any string there. Adapters that still pin the retired identifier therefore
+  keep validating unchanged; `tests/test_adapter_schema_id_migration.py` pins that property so
+  a future `$ref`-resolving validator cannot break them silently.
+
+## [0.9.13] - 2026-07-14
+
+### Changed
+
+- Plan review now converges on a two-round target with a hard cap of four rounds, replacing
+  the single fixed cap of two. Rounds 3 and 4 are self-authorizing: a run proceeds on a
+  recorded `--exception-note` or on a detected convergence state -- blockers fixed after the
+  bound round, or a successful run voided by a plan edit before it could be finalized. A round
+  that was finalized and later superseded is *not* a voided run and never self-authorizes: the
+  manifest binds one round at a time, so every earlier round is orphaned by design. The tool
+  never stops to ask an operator to authorize a round, so a plan that genuinely needs a third
+  pass is no longer dead-ended at the cap.
+- Past the hard cap, refusal is unconditional. Clean, blocked, ambiguous, and stale states are
+  all refused and no exception note overrides it; only the remedy varies, and it is chosen by
+  whether the bound evidence can actually be finalized. Finalization of the existing evidence is
+  named only when that evidence is clean AND still bound to the current plan; every other state,
+  including clean-but-STALE evidence, takes the mandatory split. Naming finalization for stale
+  evidence would be a dead end, since `plan-finalization-precheck` rejects a stale manifest.
+- A run voided by a plan edit no longer triggers the "finalize that run instead" refusal. Such
+  a run can never be finalized, so refusing there was a dead end.
+- Plans that converge within two rounds are unchanged: no exception line, no `exception_note`
+  field, no `- Exception:` evidence line, and round status still renders against the target
+  (`round 1 of 2`). The hard cap governs refusal, not display.
+
+### Added
+
+- A recorded exception is now rendered into the plan's committed `## Cross-Model Review Evidence`
+  block as an `- Exception:` line, so the reason a past-target round was taken is visible where
+  reviewers actually read it instead of only inside the JSON manifest.
+- `--exception-note` on `finalize-plan-review`, `run-plan-review`, and `record-plan-review`. It
+  is required to write a plan-review manifest past the two-round target, on every writer -- the
+  secondary/diagnostic writer included, so it cannot be used as a bypass. `run-plan-review`'s
+  printed next-action carries the flag, so an agent that follows the tool's own instructions
+  never hits the validation error.
+
+## [0.9.12] - 2026-07-14
+
+### Fixed
+
+- The ExitPlanMode plan guard hijacked a plan stored under the adapter's
+  `planningArtifacts.scratchPaths` to an unrelated source-of-truth plan. Transcript
+  reference matching ran before the configured-scratch check, so whenever the recent
+  transcript happened to name exactly one plan path, a configured scratch plan bound to
+  that plan instead of reaching the plan-mode escape it was entitled to. Configured
+  scratch is now classified first. Content-hash matching still runs ahead of it, so a
+  scratch copy of a real repo plan continues to bind to its source.
+
+### Changed
+
+- Configured scratch plans no longer adopt a source-of-truth plan that merely shares
+  their filename. The configured-scratch check also precedes filename matching, so such a
+  plan now reaches the non-blocking plan-mode escape rather than being gated by the
+  same-named plan's finalization precheck (which could block `ExitPlanMode`). This is
+  deliberate -- a filename collision is weak evidence of identity, while the content-hash
+  match that still runs first is strong evidence. Plans that actually live under the
+  source-of-truth root are unaffected and keep their full precheck gate.
+
+### Fixed
+
+- The plan guards printed literal `--target .` in their command examples. On a
+  multi-agent machine `.` names whatever checkout the agent happens to be sitting in --
+  possibly a worktree owned by another lane -- so a copy-pasted remedy could act on the
+  wrong repository. The `run-plan-review`, `finalize-plan-review`,
+  `plan-finalization-precheck`, and `goal-start` remedies now render the resolved
+  absolute target, shell-quoted so paths containing spaces stay copy-paste safe.
+
+## [0.9.11] - 2026-07-14
+
+### Fixed
+
+- `public-release-check` reported a false `account-id` blocker for any 12-digit run
+  that happened to sit inside a hex digest. A sha-256 digest contains a run of
+  exactly twelve digits whenever the hex characters flanking that run are letters,
+  so review ledgers, plan evidence headers, changelogs and checksum manifests all
+  tripped the scan. Because the scan is tree-wide, one such digest anywhere in the
+  tree could block a release export. A 12-digit run is now treated as a digest
+  fragment when every occurrence of it on the line is interior to a digest-length
+  hex run, which covers all of those surfaces at once.
+- The narrow exemption that skipped every 12-digit token on an `.impl-reviews/`
+  `"...sha...":` line is removed: the digest rule subsumes it, and the exemption
+  also suppressed genuinely leaked account identifiers on those lines. Such an
+  identifier is now correctly reported.
+
+### Added
+
+- The four implementation plans for the multi-lane runtime isolation, runtime
+  snapshot store, plan-guard scratch escape, and plan-review convergence tracks
+  land as planning documents. They add no runtime behavior.
+
+## [0.9.10] - 2026-07-14
+
+### Changed
+
+- No user-visible change. This release adds internal backlog notes only; those
+  notes live in a file that is excluded from every public export and never
+  ships to users.
+
 ## [0.9.9] - 2026-07-13
 
 ### Fixed

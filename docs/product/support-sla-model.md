@@ -113,7 +113,7 @@ duplicated here to avoid drift.
 
 **Report a vulnerability — never via public Issues/Discussions.** Use GitHub **Private
 Vulnerability Reporting** on the repository (`Security` tab → `Report a vulnerability`), or
-email **security@minervit.com**. Public disclosure before a fix exposes every adopter,
+email **security@minervit.ai**. Public disclosure before a fix exposes every adopter,
 because installs run a live release artifact.
 
 **Why this tool warrants a real process.** The highest-severity classes are in the trust

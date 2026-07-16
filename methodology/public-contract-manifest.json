@@ -581,6 +581,10 @@
       "status": "stable"
     },
     {
+      "name": "maintainer-mode",
+      "status": "experimental"
+    },
+    {
       "name": "methodology-status",
       "status": "stable"
     },
@@ -771,6 +775,18 @@
     {
       "name": "set-framework-channel",
       "status": "stable"
+    },
+    {
+      "name": "snapshot-pin",
+      "status": "experimental"
+    },
+    {
+      "name": "snapshot-prune",
+      "status": "experimental"
+    },
+    {
+      "name": "snapshot-status",
+      "status": "experimental"
     },
     {
       "name": "stakeholder-question-ask",
@@ -1256,5 +1272,5 @@
       "status": "stable"
     }
   ],
-  "version": "0.9.9"
+  "version": "0.10.0"
 }

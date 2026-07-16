@@ -8,7 +8,7 @@ concise `backlog-epic-grooming` skill entrypoint.
 
 An epic is a container, not directly executable work. It is consumable only once
 it has been **groomed** into feature items that each satisfy the Definition of
-Ready. Grooming-decompose (shaping one epic into feature items) is distinct from plan-review cap/focus-transfer handling (carrying unresolved plan findings into implementation review focus when the two-round cap is reached); never conflate them. Memory and Open Brain may inform DoR content but never define it; the DoR is owned by canonical methodology, the generated adapter, and this skill.
+Ready. Grooming-decompose (shaping one epic into feature items) is distinct from plan-review cap/focus-transfer handling (carrying unresolved plan findings into implementation review focus when a round does not justify itself, and splitting the plan past the hard cap of four rounds when the bound review evidence cannot be finalized); never conflate them. Memory and Open Brain may inform DoR content but never define it; the DoR is owned by canonical methodology, the generated adapter, and this skill.
 
 ## Epic Body Shape
 

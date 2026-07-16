@@ -958,7 +958,7 @@ def test_review_before_push_reference_retains_detailed_policy():
     assert "generated/derived artifact freshness" in text
     assert "Codex CLI Finding Retrieval" in text
     assert "Do not infer \"no findings\" from a failed grep" in text
-    assert "Plan-review convergence has a hard budget: one source-of-truth plan gets at most two review rounds" in text
+    assert "Plan-review convergence is a ladder" in text
     assert "Adapter-declared review exemptions can skip plan review only through a valid `## Plan Review Exemption` section" in text
     assert "Starting a final, R3, `cap`, rerun, or any other named terminal/retry review round does not complete the review gate" in text
     assert "A live but idle review process with no log/check progress past the stale threshold is wedged" in text
@@ -991,7 +991,7 @@ def test_framework_intake_reference_retains_detailed_policy():
     assert "publish-rca-artifact --commit --push` uses isolated archive-branch publication" in text
     assert "lane-local `.ai-runs/` file alone is incomplete for methodology work" in text
     assert "Routine `--admin` merge" in text
-    assert "Plan-review loops that allow more than two review rounds" in text
+    assert "Plan-review loops that continue past the hard cap of four rounds" in text
     assert "Claude/Codex rule files that duplicate large policy blocks and drift" in normalized
     assert "Forbidden phrasing includes" not in text
     assert "must start with exactly one of the outcomes below on its first non-empty line" not in normalized
@@ -1947,7 +1947,8 @@ def test_migrated_prose_policy_validate_pins_are_preserved():
                 "Run one authoring-model native/self-check before R1",
                 "For T2/T3 only, run the model-native review on the exact current assembled diff",
                 "Do not hand a changed T2/T3 diff to Codex/Stage 2 after fixing review findings",
-                "Plan review is capped at two rounds",
+                "Plan-review convergence is a ladder",
+                "Rounds 3-4 are self-authorized",
                 "confirmed structural Critical",
                 "Plan-review P1 must name the concrete user-visible failure or expensive rework",
                 "codex-run --target . --risk-tier T1 --review-round R1",

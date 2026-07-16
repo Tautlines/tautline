@@ -32,17 +32,22 @@ def _commands_for_event(settings, event, matcher=None):
 def test_plugin_hooks_json_registers_required_claude_guards():
     settings = json.loads(HOOKS_JSON.read_text())
 
+    # Plan Task 7 (real-pypi-package): the hooks invoke `tautline`, the name that
+    # resolves on EVERY supported install — the wheel ships it as a console script
+    # and install_cli writes both shims. Only a machine that installed before the
+    # `tautline` shim existed and never re-ran install-cli lacks it (recorded as a
+    # requiredMigration in the 0.10.0 migration report).
     assert _commands_for_event(settings, "PostToolUseFailure", matcher="*") == [
-        "minervit-methodology tool-rejection-hook"
+        "tautline tool-rejection-hook"
     ]
     assert _commands_for_event(settings, "PreToolUse", matcher="Bash") == [
-        "minervit-methodology background-command-hook"
+        "tautline background-command-hook"
     ]
     assert _commands_for_event(settings, "PreToolUse", matcher="ExitPlanMode") == [
-        "minervit-methodology plan-finalization-hook"
+        "tautline plan-finalization-hook"
     ]
     assert _commands_for_event(settings, "Stop") == [
-        "minervit-methodology response-guard-hook"
+        "tautline response-guard-hook"
     ]
 
 

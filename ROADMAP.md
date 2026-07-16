@@ -13,11 +13,12 @@ this file is the map, not the tracker.
 
 - [ ] **Package split** — break the single-file CLI (`bin/tautline`) into an
   importable package. The design exists and the refactor is behavior-neutral;
-  it is the prerequisite for a standard `pip`/`pipx` install story and for
-  contributors to navigate the codebase. Target: a 0.9.x release.
+  it is a maintainability item so contributors can navigate the codebase.
+  (0.10.0 proved it is not a prerequisite for the packaged install story.)
   ([#11](https://github.com/Tautlines/tautline/issues/11))
-- [ ] **Installable package** — `pipx install tautline` via a real
-  `[project.scripts]` entry point. Follows the package split.
+- [x] **Installable package** — `pipx install tautline` via a real
+  `[project.scripts]` entry point. Shipped in 0.10.0: a thin wrapper package
+  embeds the released tree, so it did not need the package split after all.
   ([#13](https://github.com/Tautlines/tautline/issues/13))
 - [ ] **Guided onboarding** — when a session starts in a repository with no
   adapter, offer to run the onboarding interview instead of requiring the

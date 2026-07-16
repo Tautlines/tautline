@@ -42,7 +42,7 @@ at the discretion of the maintainers acting as stewards on behalf of Minervit.
 
 ## Reporting
 
-If you experience or witness unacceptable behavior, please report it to **conduct@minervit.com**.
+If you experience or witness unacceptable behavior, please report it to **conduct@minervit.ai**.
 All reports will be reviewed and investigated promptly and confidentially. You will not be
 penalized in good faith for raising a concern.
 

@@ -1,0 +1,76 @@
+{
+  "behaviorChanges": [
+    "public-release-check no longer reports an `account-id` blocker for a 12-digit run that sits inside a hex digest. A sha-256 digest contains a run of exactly twelve digits whenever the hex characters flanking it happen to be letters, so review ledgers, plan evidence headers, changelogs and checksum manifests produced false blockers. The scan is tree-wide, so a single digest anywhere could block a release export.",
+    "The narrow exemption that skipped every 12-digit token on an `.impl-reviews/` `\"...sha...\":` line is removed, because the digest rule subsumes it. That exemption also hid genuine account identifiers on those lines; such an identifier is now correctly reported. If a scan newly fails on an `.impl-reviews/` sha line, it is reporting a real leaked identifier, not a regression."
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "publish-pending-session-journals",
+      "removeAfter": "1.0.0",
+      "replacement": "publish-instrumentation-record",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "publish-session-journal",
+      "removeAfter": "1.0.0",
+      "replacement": "publish-instrumentation-record",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    },
+    {
+      "name": "rules-audit",
+      "path": "plugins/tautline-core/skills/rules-audit/SKILL.md",
+      "removeAfter": "1.0.0",
+      "replacement": "framework-intake",
+      "section": "skills",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [],
+  "productsTested": [],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "Rolling back to 0.9.10 restores the false `account-id` blockers on digest fragments, and restores the blanket `.impl-reviews/` sha-line exemption that can hide a genuinely leaked account identifier.",
+    "No command, adapter key, or configuration surface changes in either direction.",
+    "This release is WIP-safe: it does not change behavior for lanes in progress."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.9.11",
+  "wipSafe": true
+}

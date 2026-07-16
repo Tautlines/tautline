@@ -52,8 +52,8 @@ wrong layer.
 
 ## Development setup
 
-You need Python 3.10+ (the CLI uses `match` statements, which set the 3.10 floor) and the
-pinned dev toolchain:
+You need Python 3.10+ (zip(strict=) is 3.10-only, and CI proves the floor on 3.10 every PR)
+and the pinned dev toolchain:
 
 ```bash
 pip install -r requirements-dev.txt

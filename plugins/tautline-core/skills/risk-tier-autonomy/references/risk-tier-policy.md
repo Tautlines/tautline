@@ -82,8 +82,12 @@ Use this sequence:
 
 4. Inspect and classify the printed log. Bind the existing trusted log with `minervit-methodology finalize-plan-review --target . --plan <source-of-truth-plan> --log <printed-log> --round Rn --verdict <clean|clean-with-deferrals|blocked> --unresolved-critical-count <n> --unresolved-p1-count <n>`.
 
-5. If Codex reports Critical/P1, fix the plan and rerun the next review round
-   within the two-round budget.
+5. If Codex reports Critical/P1, fix the plan and rerun the next review round.
+   Rounds 1-2 are the convergence target; rounds 3-4 are self-authorized with a
+   recorded `--exception-note "<reason>"` and never need operator authorization;
+   past round 4 refusal is unconditional and the remedy follows the bound
+   evidence: finalize it only when it is clean AND still bound to the current
+   plan, otherwise the split into smaller source-of-truth plans is mandatory.
 
 6. Then run `minervit-methodology plan-finalization-precheck --target . --plan <source-of-truth-plan>`, apply or block on findings, and continue.
 
@@ -94,7 +98,7 @@ Use this sequence:
 
 ## Plan Review Convergence
 
-Plan-review convergence has a hard budget. A single source-of-truth plan gets at most two review rounds. R3 is allowed only when R2 produced a confirmed structural Critical that would otherwise cause a user-visible failure or expensive rework. Otherwise unresolved findings transfer into the implementation review focus list. Do not spawn split-plan review loops solely because the cap fired, and do not ask the human operator whether to work through findings, accept unverified state, switch tasks, scope down, park the task, or choose a path when the convergence rule identifies the next action.
+Plan-review convergence is a ladder with a hard cap. A single source-of-truth plan targets two review rounds and gets at most four. Rounds 3-4 are self-authorized when the plan legitimately needs another round: record the reason with `--exception-note "<reason>"` and take the round. A confirmed structural Critical from R2 that would otherwise cause a user-visible failure or expensive rework is one valid reason among others. Findings that do not justify another round transfer into the implementation review focus list. Past round 4 refusal is unconditional, and the remedy is chosen by whether the bound evidence can actually be finalized: finalize the existing evidence only when it is clean AND still bound to the current plan; in every other state — including evidence that is clean but STALE, which `plan-finalization-precheck` rejects as a stale manifest — the split into smaller source-of-truth plans is mandatory. Never ask the human operator to authorize a review round, and do not ask whether to work through findings, accept unverified state, switch tasks, scope down, park the task, or choose a path when the convergence rule identifies the next action.
 
 Adapter `technologyStack` settings define approved platform defaults. New projects default to AWS for cloud services unless the adapter explicitly overrides that. Do not add Vercel, GCP, Azure, Netlify, Fly.io, Render, Supabase, Firebase, or another cloud/hosting platform from template habit or tool defaults when the adapter is AWS-only; adding a new platform is at least Tier 2 unless already approved by the adapter.
 

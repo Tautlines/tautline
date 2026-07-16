@@ -363,3 +363,48 @@ def test_drift_only_blocks_under_fail_on_drift_not_strict(tmp_path, run_cli):
     assert strict_only.returncode == 0, strict_only.stdout + strict_only.stderr
     # Exact == 1 is baseline-true AND post-change-true: drift is INTEGRITY, so its exit stays 1.
     assert fail_on_drift_only.returncode == 1, fail_on_drift_only.stdout + fail_on_drift_only.stderr
+
+
+# --- report block: the maintainer_mode line (0.9.17 maintainer standdown, T3) -----------------
+
+
+def test_report_block_carries_the_maintainer_mode_line(tmp_path, run_cli):
+    """The ONE deliberate off-mode surface change of the maintainer-standdown release: every
+    methodology-status report carries the three-state maintainer_mode line, sitting directly
+    under methodology_exec_root so diagnosis (status is startup-remediation-ALLOWED) always
+    shows whether this machine's update gates are standing down. Off by default; `on` names
+    the managed checkout @ commit -- the same contract as the per-launch sync banner."""
+    target = _lane(tmp_path, run_cli)
+
+    off = _status(run_cli, target)
+    assert off.returncode == 0, off.stdout + off.stderr
+    off_lines = off.stdout.splitlines()
+    assert "maintainer_mode: off" in off_lines, off.stdout
+    exec_root_index = next(
+        index for index, line in enumerate(off_lines) if line.startswith("methodology_exec_root: ")
+    )
+    assert off_lines[exec_root_index + 1] == "maintainer_mode: off", (
+        "the maintainer_mode line must sit in the report block next to methodology_exec_root"
+    )
+
+    # Armed (key in the hermetic HOME's installed config env file; the repo checkout the tests
+    # run from is the manageable canonical checkout): the line flips to `on` and names it.
+    config_env = tmp_path / "home" / ".config" / "tautline" / "tautline.env"
+    config_env.parent.mkdir(parents=True, exist_ok=True)
+    config_env.write_text(
+        "export TAUTLINE_METHODOLOGY_MAINTAINER_MODE=1\n"
+        "export MINERVIT_METHODOLOGY_MAINTAINER_MODE=1\n",
+        encoding="utf-8",
+    )
+    on = _status(run_cli, target)
+    assert on.returncode == 0, on.stdout + on.stderr
+    head = subprocess.run(
+        ["git", "-C", str(REPO_ROOT), "rev-parse", "HEAD"],
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout.strip()[:12]
+    assert (
+        f"maintainer_mode: on - update gates off; running {REPO_ROOT} @ {head}"
+        in on.stdout.splitlines()
+    ), on.stdout

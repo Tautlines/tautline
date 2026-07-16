@@ -327,3 +327,83 @@ def test_drift_workflow_needs_no_secret_and_no_write_access() -> None:
 
 def test_drift_workflow_is_exported_to_the_public_mirror(cli) -> None:
     assert cli.public_release_export_path_included(DRIFT_WORKFLOW.relative_to(REPO_ROOT))
+
+
+# --------------------------------------------------------------------------
+# Real-PyPI-package plan, Task 4: publish-pypi.yml ships the real wheel
+# --------------------------------------------------------------------------
+
+
+def registry_package_build_steps(path: Path) -> list[dict]:
+    """The steps that materialize a registry payload via `registry-package`."""
+    return [
+        step
+        for step in workflow_steps(load_workflow(path))
+        if "registry-package" in str(step.get("run", ""))
+    ]
+
+
+def test_pypi_workflow_builds_the_real_package_payload() -> None:
+    """The published wheel is the real package tree, stamped with an EXPLICIT channel.
+
+    The channel rides into the wheel's `.snapshot-meta.json` forever (a publish is
+    irreversible), so the workflow must pass `--channel stable` explicitly: relying
+    on the CLI default would let a future default change silently restamp what
+    publish-pypi.yml ships.
+    """
+    steps = registry_package_build_steps(PYPI_WORKFLOW)
+    assert len(steps) == 1, (
+        "publish-pypi.yml must build the payload in exactly one registry-package step"
+    )
+    run = str(steps[0]["run"])
+    assert "--registry pypi" in run
+    assert "--channel stable" in run, (
+        "the build step must pin the channel explicitly; a CLI default change must "
+        "never silently restamp published wheels"
+    )
+    assert "--write" in run, "a dry-run plan exports nothing; the build must --write"
+    build_invocation = run.find("-m build")
+    assert build_invocation != -1, (
+        "the build step must produce the distributions via python -m build"
+    )
+    assert run.find("registry-package") < build_invocation, (
+        "the package tree must be materialized before python -m build consumes it"
+    )
+    assert "--sdist" not in run and "--wheel" not in run, (
+        "python -m build must keep its default sdist+wheel output: the wheel is "
+        "built FROM the sdist, so the sdist->wheel data-fidelity path stays on the "
+        "published artifact"
+    )
+
+
+def test_npm_workflow_is_untouched_by_the_real_package() -> None:
+    """npm stays a namespace pointer -- guarded at the workflow layer.
+
+    The payload fork lives in `registry-package` (the registry determines the
+    payload), but the workflow must not drift either: no channel stamp (the pointer
+    carries no snapshot manifest) and no python -m build step (npm publish ships
+    the built source directory as-is).
+    """
+    steps = registry_package_build_steps(NPM_WORKFLOW)
+    assert len(steps) == 1, (
+        "publish-npm.yml must build the pointer in exactly one registry-package step"
+    )
+    run = str(steps[0]["run"])
+    assert "--registry npm" in run
+    assert "--write" in run
+    assert "--channel" not in run, (
+        "the npm pointer carries no snapshot manifest; stamping a channel here would "
+        "mean the pointer decision has silently eroded"
+    )
+    text = NPM_WORKFLOW.read_text(encoding="utf-8")
+    assert "-m build" not in text, (
+        "publish-npm.yml must not grow a python -m build step; the pointer publishes "
+        "its source directory directly via npm publish"
+    )
+    publish_runs = [
+        str(step.get("run", ""))
+        for step in workflow_steps(load_workflow(NPM_WORKFLOW))
+        if is_publishing_step(step)
+    ]
+    assert publish_runs, "publish-npm.yml must still publish via npm publish"
+    assert all("npm publish" in run for run in publish_runs)

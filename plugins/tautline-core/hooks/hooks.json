@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "minervit-methodology tool-rejection-hook"
+            "command": "tautline tool-rejection-hook"
           }
         ]
       }
@@ -17,7 +17,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "minervit-methodology background-command-hook"
+            "command": "tautline background-command-hook"
           }
         ]
       },
@@ -26,7 +26,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "minervit-methodology plan-finalization-hook"
+            "command": "tautline plan-finalization-hook"
           }
         ]
       }
@@ -36,7 +36,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "minervit-methodology response-guard-hook"
+            "command": "tautline response-guard-hook"
           }
         ]
       }

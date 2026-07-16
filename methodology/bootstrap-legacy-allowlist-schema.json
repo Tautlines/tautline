@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://minervit.com/schemas/bootstrap-legacy-allowlist/v1.json",
+  "$id": "https://minervit.ai/schemas/bootstrap-legacy-allowlist/v1.json",
   "title": "Minervit AI Delivery Bootstrap Legacy Allowlist",
   "description": "Schema for adapters/projects/.bootstrap-legacy-allowlist.json. This is a privilege-granting file: every listed adapter is grandfathered past the bootstrap-evidence requirement, so each entry must justify itself with a non-empty path, project, and reason. additionalProperties:false on the root and on each entry blocks silent typos and undocumented grants.",
   "type": "object",

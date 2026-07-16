@@ -272,7 +272,7 @@ Use these rules when changing this repo:
 8. Do not use active development lanes as automation scratch space.
 9. Do not restore routine admin merge.
 10. Do not restore a review cap that allows known Critical/P1 findings to ship.
-11. Do not restore plan-review loops that continue past two rounds without the narrow R3 structural-Critical exception.
+11. Do not restore plan-review loops that continue past the hard cap of four rounds, and do not restore operator-authorization prompts for rounds 3-4 (those are self-authorized with a recorded `--exception-note`).
 12. Do not restore cross-model plan-review loops that rerun native/Superpowers review before every round instead of one self-check before R1.
 13. Do not restore T2/T3 code-review loops that hand a changed assembled diff back to Codex/Stage 2 before native/Superpowers review has inspected that changed diff.
 14. Do not restore review-blocker option menus that ask the human operator to pick a numbered path when a safe recommended repair sequence exists.

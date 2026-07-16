@@ -40,3 +40,181 @@ jobs:
       # regression. Guard against re-defanging: tests/test_coverage_gate_enforced.py.
       - name: Coverage (ratchet floor, blocking)
         run: pytest --cov=minervit_methodology --cov-config=.coveragerc --cov-report=term-missing
+
+  # Fresh-install smoke (real-PyPI-package plan, Task 5): the standing acceptance test
+  # for `pipx install tautline`. Every PR builds the real wheel FROM the tree under
+  # review (registry-package -> python -m build, so the sdist->wheel data-fidelity
+  # path stays on the tested artifact), installs it into a clean venv on Python 3.10
+  # (the declared floor, PROVEN here on every PR), and runs the front door an adopter
+  # runs: both console-script names, the adopter flow, and the lane-hook surface, in
+  # a scratch project under a scratch HOME. Shape pinned by
+  # tests/test_ci_fresh_install_workflow.py; no continue-on-error and no `if:`
+  # anywhere in this job -- a green-but-skippable job is not a gate (PP-R1-P1-2).
+  # The job id is the required-status-check name the base branch binds; renaming it
+  # silently unbinds the gate.
+  fresh-install-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          # Quoted: unquoted YAML 3.10 parses as the float 3.1.
+          python-version: "3.10"
+
+      # --channel experimental: dev-tree smoke wheels are never claimed stable; the
+      # channel rides into the wheel's .snapshot-meta.json. The publish rail
+      # (publish-pypi.yml) is the only place --channel stable is stamped.
+      - name: Build the real PyPI package tree from this PR's HEAD
+        run: |
+          python3 bin/tautline registry-package --registry pypi \
+            --version "$(tr -d '[:space:]' < VERSION)" --channel experimental \
+            --destination "$RUNNER_TEMP/pkg" --write
+
+      # Default sdist+wheel output on purpose: python -m build builds the wheel FROM
+      # the sdist, so a file dropped from the sdist config vanishes from the wheel --
+      # exactly the trap this job exists to catch.
+      - name: Build the sdist and wheel with python -m build
+        run: |
+          python3 -m pip install build
+          python3 -m build --outdir "$RUNNER_TEMP/dist" "$RUNNER_TEMP/pkg"
+
+      - name: Install the built wheel into a clean venv
+        run: |
+          python3 -m venv "$RUNNER_TEMP/venv"
+          "$RUNNER_TEMP/venv/bin/pip" install "$RUNNER_TEMP"/dist/*.whl
+
+      # HOME is a scratch dir from here on: the front door must work on a machine
+      # that has never seen a Tautline checkout or config.
+      - name: Smoke both console scripts from the installed wheel
+        run: |
+          set -euo pipefail
+          export HOME="$RUNNER_TEMP/home"
+          mkdir -p "$HOME"
+          export PATH="$RUNNER_TEMP/venv/bin:$PATH"
+          tautline version
+          minervit-methodology version
+
+      - name: Run the adopter flow and the lane-hook surface in a scratch project
+        run: |
+          set -euo pipefail
+          export HOME="$RUNNER_TEMP/home"
+          mkdir -p "$HOME"
+          export PATH="$RUNNER_TEMP/venv/bin:$PATH"
+
+          # A local bare origin whose path parses as an owner/repo slug keeps the
+          # flow offline-deterministic: fetch works, and the adapter repo check
+          # sees smoke-org/fresh-install-smoke.
+          remote="$RUNNER_TEMP/remotes/smoke-org/fresh-install-smoke.git"
+          mkdir -p "$(dirname "$remote")"
+          git init -q --bare -b main "$remote"
+
+          scratch="$RUNNER_TEMP/scratch/fresh-install-smoke"
+          mkdir -p "$scratch"
+          cd "$scratch"
+          git init -q -b main
+          git config user.email "smoke@example.invalid"
+          git config user.name "Fresh Install Smoke"
+          git remote add origin "$remote"
+          echo "# fresh-install-smoke" > README.md
+          git add README.md
+          git commit -qm "scratch: seed the smoke project"
+          git push -q origin main
+
+          tautline init-project-adapter --target . \
+            --project-name "Fresh Install Smoke" --repo smoke-org/fresh-install-smoke
+
+          # The adopter answers the bootstrap before rendering (render-adapters
+          # fail-closes on any remaining BOOTSTRAP REQUIRED placeholder); the smoke
+          # answers every placeholder with scripted, truthful smoke-lane values and
+          # records the repo-evident facts it just created.
+          mkdir -p .ai-work
+          printf 'CI fresh-install smoke scratch project.\n' > .ai-work/bootstrap-evidence.txt
+          printf 'Seeded README committed to the local bare origin.\n' \
+            > .ai-work/bootstrap-evidence-2.txt
+          python3 - <<'PATCH'
+          import json
+          from pathlib import Path
+
+          ANSWER = "Smoke lane: scripted CI fresh-install scratch project."
+
+          def answer_placeholders(value):
+              if isinstance(value, str) and "BOOTSTRAP REQUIRED" in value:
+                  return ANSWER
+              if isinstance(value, dict):
+                  return {key: answer_placeholders(inner) for key, inner in value.items()}
+              if isinstance(value, list):
+                  return [answer_placeholders(inner) for inner in value]
+              return value
+
+          adapter = Path(".tautline/adapter.json")
+          data = json.loads(adapter.read_text(encoding="utf-8"))
+          data = answer_placeholders(data)
+          data["commands"] = {
+              key: ("echo smoke-ok" if isinstance(value, str) and value == ANSWER else value)
+              for key, value in data["commands"].items()
+          }
+          data["bootstrapEvidence"] = {
+              "project": "Fresh Install Smoke",
+              "status": "repo-evident",
+              "summary": (
+                  "CI fresh-install smoke: scripted scratch project; the evidence "
+                  "file is written by the smoke job itself."
+              ),
+              "repoEvidence": [
+                  {
+                      "path": ".ai-work/bootstrap-evidence.txt",
+                      "fact": "Scratch project seeded by the fresh-install smoke job.",
+                  },
+                  {
+                      "path": ".ai-work/bootstrap-evidence-2.txt",
+                      "fact": "README committed and pushed to the local bare origin.",
+                  },
+              ],
+          }
+          adapter.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+          PATCH
+
+          tautline render-adapters --project .tautline/adapter.json --target . --write
+
+          tautline methodology-status --target . --no-remote | tee "$RUNNER_TEMP/status.log"
+          grep -Fx "adapter_drift: clean" "$RUNNER_TEMP/status.log"
+
+          # The lane-hook surface: the README quickstart's own lane verb.
+          tautline lane-start --target .
+
+          # Hooks LAND: all seven Claude hooks reference the wheel's console script...
+          settings="$HOME/.claude/settings.json"
+          for hook in plan-finalization-hook branch-liveness-hook response-guard-hook \
+              tool-rejection-hook background-command-hook latest-code-hook \
+              context-rotation-heartbeat-hook; do
+            grep -F "tautline $hook" "$settings" > /dev/null \
+              || { echo "missing Claude hook: $hook in $settings" >&2; exit 1; }
+          done
+          # ...and the git branch-liveness hooks landed in the scratch repo.
+          for git_hook in pre-commit pre-push; do
+            test -x ".git/hooks/$git_hook"
+            grep -q "MINERVIT-BRANCH-LIVENESS-HOOK" ".git/hooks/$git_hook"
+          done
+
+          # Hooks EXECUTE from the installed wheel: run one exactly as installed.
+          echo '{}' | tautline tool-rejection-hook
+
+      # File canaries inside the INSTALLED tree, not the build directory: hatchling
+      # only ships what its config includes, pip only installs what the wheel
+      # carries. Each canary is a distinct historical way the payload vanished
+      # (dotfile, data dir, plugin hook payload -- PP-R1-P2-1).
+      - name: Verify the embedded runtime files in site-packages
+        run: |
+          set -euo pipefail
+          pkg_root="$("$RUNNER_TEMP/venv/bin/python" -c \
+            'import os, tautline; print(os.path.dirname(os.path.abspath(tautline.__file__)))')"
+          for canary in .snapshot-meta.json VERSION methodology/canonical-rules.md \
+              plugins/tautline-core/hooks/hooks.json; do
+            test -f "$pkg_root/_dist/$canary" \
+              || { echo "missing embedded canary: $canary" >&2; exit 1; }
+          done
+          test -d "$pkg_root/_dist/docs/releases/migrations"
+          ls "$pkg_root/_dist/docs/releases/migrations"/*.json > /dev/null
+          grep -q '"installKind": "package"' "$pkg_root/_dist/.snapshot-meta.json"

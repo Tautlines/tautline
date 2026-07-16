@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://minervit.com/schemas/adapter/v1.json",
+  "$id": "https://minervit.ai/schemas/adapter/v1.json",
   "title": "Minervit AI Delivery Project Adapter",
   "description": "Versioned adapter contract. The adapter's optional top-level schemaVersion field declares the contract version it targets (current: 1.x). The CLI validates adapters against this schema at load time (stdlib-only validator; no third-party runtime dependency).",
   "type": "object",

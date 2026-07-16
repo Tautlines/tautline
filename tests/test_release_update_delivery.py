@@ -575,6 +575,74 @@ def test_failed_post_does_not_record(cli, tmp_path, monkeypatch):
     assert cli.release_update_delivered_versions() == set()
 
 
+def _snapshot_exec_root(root: Path, *, commit: str = "b" * 40) -> Path:
+    """An exec root with a snapshot manifest and no `.git` -- what a lane runs post-cutover."""
+    (root / "bin").mkdir(parents=True)
+    (root / "bin" / "tautline").write_text("#!/bin/sh\n", encoding="utf-8")
+    (root / ".snapshot-meta.json").write_text(
+        json.dumps({"schema": "tautline-snapshot/v1", "commit": commit}), encoding="utf-8"
+    )
+    return root
+
+
+def _canonical_checkout(root: Path) -> Path:
+    (root / "bin").mkdir(parents=True)
+    (root / "bin" / "tautline").write_text("#!/bin/sh\n", encoding="utf-8")
+    subprocess.run(["git", "-C", str(root), "init", "-q"], check=True)
+    return root
+
+
+def test_publish_release_update_refuses_to_run_from_a_snapshot(cli, tmp_path, monkeypatch):
+    """The delivery ledger is a COMMITTED maintainer record: `docs/releases/release-update-delivery.json`
+    is written into the exec root and then committed by the release flow. A snapshot exec root is an
+    immutable export with no `.git`, so the write either dies on EACCES or -- if the store were ever
+    writable -- lands an accountability record in a tree nobody can commit, and the gate that reads
+    the ledger from the canonical checkout would keep reporting the release as never delivered.
+    """
+    canonical = _canonical_checkout(tmp_path / "canonical")
+    exec_root = _snapshot_exec_root(tmp_path / "snapshot")
+    ledger = exec_root / "docs" / "releases" / "release-update-delivery.json"
+    monkeypatch.setattr(cli, "REPO_ROOT", exec_root)
+    monkeypatch.setattr(cli, "RELEASE_UPDATE_DELIVERY_FILE", ledger)
+    monkeypatch.setattr(cli, "_CANONICAL_METHODOLOGY_REPO", None)
+    monkeypatch.delenv("TAUTLINE_METHODOLOGY_CANONICAL_REPO", raising=False)
+    monkeypatch.setenv("MINERVIT_METHODOLOGY_CANONICAL_REPO", str(canonical))
+    monkeypatch.setattr(cli, "post_google_chat_webhook", lambda *a, **k: None)  # no network
+    monkeypatch.setenv("X_TEST_WEBHOOK", "https://example.invalid/configured")
+
+    with pytest.raises(SystemExit) as excinfo:
+        cli.publish_release_update(_publish_args(cli, cli.plugin_version()))
+
+    message = str(excinfo.value)
+    assert "publish-release-update must run from a methodology dev checkout" in message
+    assert str(canonical) in message
+    assert not ledger.exists()  # refused BEFORE any delivery record was written
+
+
+def test_publish_release_update_refuses_a_git_less_exec_root(cli, tmp_path, monkeypatch):
+    """No manifest either: a copied-out CLI. `git add`/`git commit` of the ledger have no repo."""
+    canonical = _canonical_checkout(tmp_path / "canonical")
+    exec_root = _snapshot_exec_root(tmp_path / "copied")
+    (exec_root / ".snapshot-meta.json").unlink()
+    monkeypatch.setattr(cli, "REPO_ROOT", exec_root)
+    monkeypatch.setattr(cli, "_CANONICAL_METHODOLOGY_REPO", None)
+    monkeypatch.delenv("TAUTLINE_METHODOLOGY_CANONICAL_REPO", raising=False)
+    monkeypatch.setenv("MINERVIT_METHODOLOGY_CANONICAL_REPO", str(canonical))
+
+    with pytest.raises(SystemExit) as excinfo:
+        cli.publish_release_update(_publish_args(cli, cli.plugin_version(), dry_run=True))
+
+    assert "publish-release-update must run from a methodology dev checkout" in str(excinfo.value)
+
+
+def test_publish_release_update_runs_from_a_dev_checkout(cli, tmp_path, monkeypatch):
+    """The guard must not fire on the maintainer's own checkout: REPO_ROOT here has a `.git`."""
+    monkeypatch.setattr(cli, "RELEASE_UPDATE_DELIVERY_FILE", tmp_path / "led.json")
+    monkeypatch.setattr(cli, "post_google_chat_webhook", lambda *a, **k: None)  # no network
+
+    assert cli.publish_release_update(_publish_args(cli, cli.plugin_version(), dry_run=True)) == 0
+
+
 def test_status_command_exit_code(cli, tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(cli, "RELEASE_UPDATE_DELIVERY_FILE", tmp_path / "led.json")
     # Fixture: a synthetic prior release, independent of how many entries the real (post-launch

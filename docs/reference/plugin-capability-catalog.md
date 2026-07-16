@@ -66,7 +66,8 @@ This reference preserves the detailed capability catalog for maintainers and val
 - Run plan review, record evidence, and run the plan-finalization precheck.
 - Recover from Claude plan-mode scratch-path deadlocks by exiting only to complete source-of-truth plan finalization.
 - Frame multi-round plan-review loops with round budget, wall-clock estimate, and plain-language round checkpoints.
-- Transfer unresolved non-structural plan-review findings into implementation review focus when the two-round cap is reached, without option menus or split-plan loops.
+- Self-authorize plan-review rounds 3-4 with a recorded `--exception-note` instead of asking the operator, and transfer findings that do not justify another round into implementation review focus.
+- Treat refusal past round 4 as unconditional: split into smaller plans unless the bound evidence is clean and current, without option menus.
 - Run early-warning smoke only when adapter policy, issue scope, human instruction, or a concrete risk signal asks for it.
 - Prepare a lane continuity handoff.
 - Refresh the final workflow continuity handoff.
@@ -131,9 +132,12 @@ procedural source for exact command order and failure handling.
   tracked implementation review ledgers, and pre-push review-evidence checks.
 - Plan-finalization precheck, adapter-declared review exemptions, plan-only
   Codex review wrappers, finalize-plan-review evidence binding without duplicate
-  Codex runs, monitored plan-review convergence loops, and plan-review
-  convergence caps with focus transfer at cap, and R3 only for confirmed
-  structural Critical findings.
+  Codex runs, monitored plan-review convergence loops, and the plan-review
+  convergence ladder: a two-round target, self-authorized rounds 3-4 with a
+  recorded exception note, focus transfer for findings that do not justify
+  another round, and an unconditional refusal past the hard cap of four rounds
+  whose remedy follows the bound evidence (finalize it only when it is clean and
+  current; otherwise the split into smaller plans is mandatory).
 - Risk-triggered early-warning smoke, preflight latency planning, merge queue handling with
   PR-state terminal checks, and explicit protection against
   `mergeQueueEntry.estimatedTimeToMerge` as a progress signal.

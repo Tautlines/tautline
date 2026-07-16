@@ -1,4 +1,5 @@
 import json
+import shlex
 import subprocess
 from pathlib import Path
 
@@ -8,8 +9,8 @@ EXAMPLE = ROOT / "adapters" / "projects" / "example-saas.json"
 SOURCE_ROOT = Path("docs/product/backlog/example-saas-v1/specs")
 
 
-def _prepare_target(run_cli, tmp_path: Path) -> Path:
-    target = tmp_path / "target"
+def _prepare_target(run_cli, tmp_path: Path, name: str = "target") -> Path:
+    target = tmp_path / name
     target.mkdir()
     subprocess.run(["git", "-C", str(target), "init", "-q"], check=True)
     subprocess.run(
@@ -138,6 +139,17 @@ def _scratch_path(tmp_path: Path, name: str) -> Path:
     return path
 
 
+def _unconfigured_scratch_path(tmp_path: Path, name: str) -> Path:
+    """A scratch plan path that is NOT under the adapter's planningArtifacts.scratchPaths."""
+    path = tmp_path / "drafts" / name
+    path.parent.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def _quoted_target(target: Path) -> str:
+    return shlex.quote(str(target.resolve()))
+
+
 def _stdout_json(stdout: str) -> dict:
     return json.loads(stdout)
 
@@ -164,13 +176,21 @@ def test_hook_resolves_configured_scratch_path_by_content_hash(run_cli, tmp_path
     assert result.returncode == 0
     assert "ExitPlanMode blocked" not in result.stdout
     assert "scratch path" not in result.stderr
+    # Load-bearing ordering invariant: content-hash matching MUST stay ahead of the
+    # configured-scratch escape, so a scratch COPY of a real repo plan still binds to its source
+    # and keeps its precheck gate. Without this assertion the test also passes when the escape is
+    # hoisted above the content-hash attempts -- the escape satisfies "not blocked" too.
+    assert "Minervit plan-mode scratch escape" not in result.stdout
 
 
 def test_hook_resolves_random_scratch_path_from_transcript_reference(run_cli, tmp_path):
     target = _prepare_target(run_cli, tmp_path)
     source_rel = SOURCE_ROOT / "doc-only-exempt-plan.md"
     _write_exempt_plan(target, source_rel)
-    scratch = _scratch_path(tmp_path, "lexical-toasting-pond.md")
+    # Unconfigured scratch path: a CONFIGURED scratch path is classified as scratch before
+    # reference matching and takes the plan-mode escape, which would leave this test asserting
+    # nothing about find_source_plan_by_reference.
+    scratch = _unconfigured_scratch_path(tmp_path, "lexical-toasting-pond.md")
     scratch.write_text("# Scratch Plan\n\nClaude chose this generated path.\n", encoding="utf-8")
     transcript = _transcript(
         tmp_path / "reference.jsonl",
@@ -181,13 +201,19 @@ def test_hook_resolves_random_scratch_path_from_transcript_reference(run_cli, tm
 
     assert result.returncode == 0
     assert "ExitPlanMode blocked" not in result.stdout
+    # The referenced source plan was adopted -- not waved through by the scratch escape.
+    assert "Minervit plan-mode scratch escape" not in result.stdout
 
 
 def test_hook_blocks_random_scratch_reference_to_invalid_source_plan(run_cli, tmp_path):
     target = _prepare_target(run_cli, tmp_path)
     source_rel = SOURCE_ROOT / "bad-exempt-plan.md"
     _write_exempt_plan(target, source_rel, valid=False)
-    scratch = _scratch_path(tmp_path, "lexical-toasting-pond.md")
+    # Unconfigured scratch path: reference matching is still the live resolution path here, so an
+    # invalid referenced source plan must still block. (A CONFIGURED scratch path is classified as
+    # scratch before reference matching and reaches the plan-mode escape instead - see
+    # test_configured_scratch_plan_wins_over_transcript_reference.)
+    scratch = _unconfigured_scratch_path(tmp_path, "lexical-toasting-pond.md")
     scratch.write_text("# Scratch Plan\n", encoding="utf-8")
     transcript = _transcript(tmp_path / "bad-reference.jsonl", f"Trying to exit plan mode for {source_rel.as_posix()}.")
 
@@ -226,6 +252,135 @@ def test_hook_blocks_non_configured_scratch_path(run_cli, tmp_path):
     reason = _hook_reason(result.stdout)
     assert "ExitPlanMode blocked" in reason
     assert "plan outside source-of-truth path" in reason
+
+
+def test_configured_scratch_plan_wins_over_transcript_reference(run_cli, tmp_path):
+    # Defect: a plan under the adapter's configured scratchPaths was hijacked to an unrelated repo
+    # plan whenever the recent transcript happened to name exactly one source-of-truth plan.
+    target = _prepare_target(run_cli, tmp_path)
+    source_rel = SOURCE_ROOT / "doc-only-exempt-plan.md"
+    _write_exempt_plan(target, source_rel)
+    scratch = _scratch_path(tmp_path, "lexical-toasting-pond.md")
+    scratch.write_text("# Scratch Plan\n\nUnrelated scratch draft.\n", encoding="utf-8")
+    transcript = _transcript(
+        tmp_path / "reference.jsonl",
+        f"Earlier we discussed {source_rel.as_posix()} in passing.",
+    )
+
+    result = run_cli(
+        "plan-finalization-hook",
+        stdin=_event(target, plan_file=scratch, transcript_path=transcript),
+    )
+
+    assert result.returncode == 0
+    assert "ExitPlanMode blocked" not in result.stdout
+    context = _hook_context(result.stdout)
+    assert "Minervit plan-mode scratch escape" in context
+    assert str(scratch.resolve()) in context
+    assert str(source_rel.as_posix()) not in context
+
+
+def test_configured_scratch_plan_wins_over_same_filename_source_plan(run_cli, tmp_path):
+    # The configured-scratch check also precedes find_source_plan_by_name, so a scratch plan that
+    # merely SHARES A FILENAME with a repo plan no longer adopts it. A filename collision is weak
+    # evidence; only a content-hash match (checked earlier) is strong enough to bind. Pre-fix the
+    # invalid repo plan below was adopted by name and BLOCKED ExitPlanMode; now the scratch plan
+    # reaches the escape instead.
+    target = _prepare_target(run_cli, tmp_path)
+    source_rel = SOURCE_ROOT / "bad-exempt-plan.md"
+    _write_exempt_plan(target, source_rel, valid=False)
+    scratch = _scratch_path(tmp_path, "bad-exempt-plan.md")
+    scratch.write_text("# Scratch Plan\n\nSame filename, unrelated content.\n", encoding="utf-8")
+
+    result = run_cli("plan-finalization-hook", stdin=_event(target, plan_file=scratch))
+
+    assert result.returncode == 0
+    assert "ExitPlanMode blocked" not in result.stdout
+    context = _hook_context(result.stdout)
+    assert "Minervit plan-mode scratch escape" in context
+    assert str(scratch.resolve()) in context
+    # the same-named repo plan was not adopted
+    assert source_rel.as_posix() not in context
+
+
+def test_unconfigured_scratch_still_resolves_by_reference(run_cli, tmp_path):
+    target = _prepare_target(run_cli, tmp_path)
+    source_rel = SOURCE_ROOT / "doc-only-exempt-plan.md"
+    _write_exempt_plan(target, source_rel)
+    scratch = _unconfigured_scratch_path(tmp_path, "lexical-toasting-pond.md")
+    scratch.write_text("# Scratch Plan\n\nUnrelated scratch draft.\n", encoding="utf-8")
+    transcript = _transcript(
+        tmp_path / "reference.jsonl",
+        f"Earlier we discussed {source_rel.as_posix()} in passing.",
+    )
+
+    result = run_cli(
+        "plan-finalization-hook",
+        stdin=_event(target, plan_file=scratch, transcript_path=transcript),
+    )
+
+    assert result.returncode == 0
+    assert "ExitPlanMode blocked" not in result.stdout
+    assert "Minervit plan-mode scratch escape" not in result.stdout
+
+
+def test_recovery_instruction_names_resolved_target(run_cli, tmp_path):
+    target = _prepare_target(run_cli, tmp_path, name="lane with space")
+    plan_rel = SOURCE_ROOT / "unreviewed-plan.md"
+    plan_path = target / plan_rel
+    plan_path.parent.mkdir(parents=True, exist_ok=True)
+    plan_path.write_text(
+        "# Unreviewed Plan\n\nNo review evidence recorded yet.\n", encoding="utf-8"
+    )
+
+    result = run_cli("plan-finalization-hook", stdin=_event(target, plan_file=plan_path))
+
+    assert result.returncode == 0
+    reason = _hook_reason(result.stdout)
+    assert "ExitPlanMode blocked" in reason
+    assert f"--target {_quoted_target(target)}" in reason
+    assert "--target ." not in reason
+
+
+def test_scratch_escape_context_names_resolved_target(run_cli, tmp_path):
+    target = _prepare_target(run_cli, tmp_path, name="lane with space")
+    _write_exempt_plan(target, SOURCE_ROOT / "plan.md")
+    scratch = _scratch_path(tmp_path, "lexical-toasting-pond.md")
+    scratch.write_text("# Scratch Plan\n\nNo source-of-truth reference.\n", encoding="utf-8")
+
+    result = run_cli("plan-finalization-hook", stdin=_event(target, plan_file=scratch))
+
+    assert result.returncode == 0
+    context = _hook_context(result.stdout)
+    assert "Minervit plan-mode scratch escape" in context
+    quoted = _quoted_target(target)
+    for command in ("run-plan-review", "finalize-plan-review", "plan-finalization-precheck"):
+        assert f"{command} --target {quoted}" in context
+    # every --target rendering in the escape message resolves; none fall back to the ambiguous "."
+    assert "--target ." not in context
+
+
+def test_goal_ledger_nudge_names_resolved_target(run_cli, tmp_path):
+    # The goal-ledger nudge is the guard's other command example, and it carried the same
+    # ambiguous `--target .` as the plan-review remedies.
+    target = _prepare_target(run_cli, tmp_path, name="lane with space")
+    plan_rel = SOURCE_ROOT / "plan.md"
+    _write_exempt_plan(target, plan_rel)
+
+    result = run_cli(
+        "plan-finalization-hook",
+        stdin=_event(
+            target,
+            plan_file=target / plan_rel,
+            plan="This is a multi-milestone effort spanning multiple PRs.",
+        ),
+    )
+
+    assert result.returncode == 0
+    context = _hook_context(result.stdout)
+    assert "Minervit goal-ledger check" in context
+    assert f"goal-start --target {_quoted_target(target)}" in context
+    assert "--target ." not in context
 
 
 def test_hook_ignores_archive_reference_when_resolving_random_scratch_path(run_cli, tmp_path):

@@ -114,9 +114,13 @@ jobs:
           TARGET_VERSION: ${{ steps.target.outputs.version }}
         run: |
           set -euo pipefail
+          # --channel is EXPLICIT: it is stamped into the wheel's .snapshot-meta.json
+          # forever (a publish is irreversible), so a future change to the CLI's
+          # default channel must never silently restamp published wheels.
           python3 bin/tautline registry-package \
             --registry pypi \
             --version "${TARGET_VERSION}" \
+            --channel stable \
             --destination "${RUNNER_TEMP}/pypi-package" \
             --write
           python3 -m pip install --upgrade build

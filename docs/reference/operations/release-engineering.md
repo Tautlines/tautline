@@ -313,6 +313,157 @@ reserves nothing, and converts into a normal publisher the first time it is
 used to publish. **`tautline` already exists on PyPI, so the pending-publisher
 flow does not apply** — use the project's own Publishing page as above.
 
+## Snapshot Store
+
+A release is published by the tail; it reaches a machine through the **snapshot
+store**. Lanes no longer execute the methodology checkout directly. Instead,
+`sync-methodology` copies the advanced commit into an immutable tree and points
+the store's `current` link at it, so a `git pull` in the checkout can never swap
+the code out from under a session that is mid-run. The checkout stays exactly
+what it always was — the thing sync fetches into — and the store becomes the
+thing every shim, launcher and hook executes.
+
+Two names, deliberately distinct, that appear throughout the CLI's own output:
+
+- **canonical repo** — the mutable git checkout sync manages. Reported by
+  `tautline version` as `methodology_canonical_commit`, and by the
+  `MINERVIT_METHODOLOGY_CANONICAL_REPO` managed key.
+- **exec root** — the tree the running process was loaded from. Reported as
+  `methodology_exec_root`, and either `(snapshot <sha12>)` or
+  `(canonical checkout)`.
+
+### Store layout
+
+The store defaults to `~/.local/share/minervit/tautline-releases` and is
+relocatable with `MINERVIT_METHODOLOGY_SNAPSHOT_STORE`:
+
+```text
+~/.local/share/minervit/tautline-releases/
+├── <sha12>/                 immutable snapshot: dirs 0555, files 0444
+│   └── .snapshot-meta.json  {schema, commit, version, channel, materializedAt}
+├── <sha12>/                 the previous release, retained for running sessions
+├── current -> <sha12>       swapped atomically; never edited in place
+├── pins/<lane>.pin          a lane's live session, protected from retention
+└── .tmp/                    staging; a materialize that fails leaves nothing here
+```
+
+Snapshot mode is only active when the managed key is explicitly set (by
+`install-cli`, in the config env or the live environment). A store directory
+left behind by a rehearsal does **not** activate it, so a machine cannot drift
+into snapshot execution without being converted.
+
+### Cutover
+
+Snapshot execution is not opt-in per lane: a machine is either converted or it
+is not. Converting one is four commands, **in this order**:
+
+```bash
+# 1. Cut and publish the release, from the methodology dev checkout.
+tautline release-tail
+
+# 2. Advance the machine's trust pin to the commit it is allowed to run.
+tautline update-repin
+
+# 3. Convert the machine: managed keys, shims, and the first snapshot.
+tautline install-cli
+
+# 4. MANDATORY. Not optional, not "when convenient".
+tautline install-claude-launcher --force
+```
+
+Step 4 is mandatory because step 3 opens a window and only step 4 closes it.
+From the moment `install-cli` runs, shims execute `<store>/current` — but a
+launcher generated before the cutover does not pin the session to the snapshot
+it started on, so another lane's sync can swap `current` underneath a running
+conversation and its next hook loads a different version of Tautline. A
+regenerated launcher resolves the snapshot once and exports
+`MINERVIT_METHODOLOGY_EXEC_ROOT`, which makes every hook in that session sticky
+to one tree for its whole life.
+
+The CLI will not let this be forgotten: `install-cli` ends with
+`next_step_required: tautline install-claude-launcher --force`, and every
+`sync-methodology` keeps naming the stale launchers until they are regenerated.
+
+### Rollback
+
+To take a machine back to executing the canonical checkout, without uninstalling
+anything and without touching the store:
+
+```bash
+export MINERVIT_METHODOLOGY_DISABLE_SNAPSHOT_EXEC=1
+```
+
+Both the shim and the launcher read it from the live environment only — a value
+in the config env file cannot redirect execution — so it can be set for one
+command, one shell, or exported from the shell profile to hold a machine on the
+old behavior. The store is left intact and reactivating is a matter of unsetting
+the variable.
+
+The lever outranks **every** path that would execute a snapshot, which is what
+makes it safe to reach for when the store has published a bad one:
+
+- The shim checks it **above** `MINERVIT_METHODOLOGY_EXEC_ROOT`, and strips that
+  variable, so a session (or any hook subprocess of one) already pinned to a
+  snapshot does not exec back into it — and does not pass the pin to its own
+  children.
+- A trust-gated upstream advance still fast-forwards the canonical checkout and
+  still re-execs the new code, but it publishes nothing: no snapshot is
+  materialized, `current` is not swapped, and no exec root is exported. The new
+  code runs **from the checkout**.
+- `snapshot-status` reports `snapshot_exec_disabled: true` so an operator can see
+  that the lever — not a broken store — is why `snapshot_store_enabled` is false.
+
+Deleting the store is also safe, if cruder: the shim warns once
+(`snapshot store current link missing or broken`) and executes the canonical
+checkout, and the next `sync-methodology` rebuilds `current`. A missing or
+broken store degrades a launch; it never blocks one.
+
+### Retention
+
+`current`, live pins, and recently-current snapshots are never deleted; beyond
+those, the newest `--keep` (default 3) survive:
+
+```bash
+tautline snapshot-prune --keep 3
+```
+
+A lane's pin is written at session start and refreshed on every gated sync, and
+ages out after 72 hours (`MINERVIT_METHODOLOGY_SNAPSHOT_PIN_TTL_HOURS`), so an
+abandoned lane cannot pin a snapshot forever. Pin a lane by hand with:
+
+```bash
+tautline snapshot-pin --target <lane_path>
+```
+
+### Debugging version skew
+
+When two lanes disagree about what Tautline is doing, the question is almost
+always *which tree is each one executing*. Ask directly:
+
+```bash
+tautline snapshot-status   # store root, current target, snapshots, live pins
+tautline version           # methodology_canonical_commit + methodology_exec_root
+```
+
+A lane still on an older `<sha12>` after a release is normal and expected while
+its session lives — that is the isolation working, not a fault. It picks up the
+new snapshot on its next launch.
+
+Every mutation of the canonical checkout or the store is appended to a write
+journal, which is the record to read when a checkout is not where it should be:
+
+```bash
+tail -5 ~/.local/state/minervit/methodology-writes.jsonl
+```
+
+Each line carries the command, the old and new head, the outcome, the lane that
+caused it, and a detail string — so an unexpected advance, a held update, a
+failed materialize, or a rescue can be attributed to a specific lane and time
+rather than guessed at. Launch storms are also expected to be quiet: only the
+first lane through the gate fetches, and the others report
+`methodology_update: skipped - synced Ns ago by another lane` against the
+freshness window (`MINERVIT_METHODOLOGY_SYNC_FRESHNESS_MINUTES`, default 10).
+
 ## Release Tracks And Client Safety
 
 Existing products and clients stay on `stable` unless they explicitly opt in to

@@ -53,6 +53,37 @@ def test_install_cli_installs_both_launchers(tmp_path):
     assert tautline.read_text() == legacy.read_text()
 
 
+def _installed_shim(tmp_path) -> Path:
+    import os
+    home = tmp_path / "home"
+    home.mkdir(exist_ok=True)
+    out = subprocess.run(
+        [str(ROOT / "bin/tautline"), "install-cli"],
+        env={"HOME": str(home), "PATH": os.environ["PATH"]},
+        capture_output=True, text=True, timeout=120,
+    )
+    assert out.returncode == 0, out.stderr
+    return home / ".local" / "bin" / "tautline"
+
+
+def test_installed_shim_is_valid_posix_sh(tmp_path):
+    """The shim runs under /bin/sh on every user machine: a template typo is a fleet outage."""
+    shim = _installed_shim(tmp_path)
+    check = subprocess.run(["sh", "-n", str(shim)], capture_output=True, text=True)
+    assert check.returncode == 0, check.stderr
+
+
+def test_installed_shim_has_no_repo_preset_exec_bypass(tmp_path):
+    """Task B8, structural pin. MINERVIT_METHODOLOGY_REPO (which every v1 launcher exports) must
+    not be an exec target the store can be skipped through: the store block has to be reached
+    BEFORE the canonical exec, and the preset must never be exec'd directly."""
+    text = _installed_shim(tmp_path).read_text(encoding="utf-8")
+    assert 'exec "$MINERVIT_METHODOLOGY_REPO_PRESET' not in text, text
+    store_exec = text.index('"$SNAPSHOT_CURRENT/bin/tautline"')
+    canonical_exec = text.index('exec "$MINERVIT_METHODOLOGY_REPO/bin/tautline"')
+    assert store_exec < canonical_exec, "the store must be tried before the canonical checkout"
+
+
 def test_install_claude_launcher_reserves_tautline_name(tmp_path):
     import os
     out = subprocess.run(

@@ -654,16 +654,22 @@ def test_a_still_running_publish_is_not_success(cli, monkeypatch, capsys):
 
 
 # --------------------------------------------------------------------------
-# Task 3: registry copy is generated, not hand-written
+# Task 3: registry copy is generated, not hand-written -- and tells the truth
+# PER REGISTRY: since the real PyPI payload, one shared README would lie on
+# one side or the other.
 # --------------------------------------------------------------------------
 
 # The exact untruth that shipped to both registries for months: the 0.8.2 packages
 # promised "a native package install lands with the 0.9.0 package split". It was
 # false when published and stayed false. Copy is generated now so it cannot drift.
+# The real PyPI package made `pipx install tautline` TRUE, so that instruction left
+# the banned list; future-tense install promises stay banned on both registries,
+# and `npm install -g tautline` stays banned because the npm package remains a
+# binary-less pointer.
 UNTRUTH_PATTERNS = (
     r"lands with the \d+\.\d+",
     r"package split",
-    r"pipx install tautline",
+    r"planned[^.\n]*install",
     r"npm install -g tautline",
 )
 
@@ -673,31 +679,63 @@ def registry_copy(cli, registry: str, version: str = "0.9.7") -> str:
     return "\n".join(cli.registry_package_files(registry, version).values())
 
 
-@pytest.mark.parametrize("registry", ["npm", "pypi"])
-def test_registry_copy_contains_the_working_install_sequence(cli, registry: str) -> None:
-    readme = cli.registry_package_files(registry, "0.9.7")["README.md"]
+def test_pypi_copy_documents_the_real_install(cli) -> None:
+    """The PyPI README documents the install that is now real: pipx first, plain pip
+    into a venv as the alternative, the Python floor, and the update channel."""
+    readme = cli.registry_package_files("pypi", "0.9.7")["README.md"]
+    assert "pipx install tautline" in readme
+    assert "pip install tautline" in readme, "the venv alternative must be documented"
+    assert "Python 3.10" in readme, "the README must state the Python floor"
+    assert "pipx upgrade tautline" in readme
+    assert "pip install -U tautline" in readme
+
+
+def test_pypi_copy_never_says_namespace_pointer(cli) -> None:
+    """The pointer language dies where it became false: the PyPI package now
+    installs the real CLI."""
+    text = registry_copy(cli, "pypi")
+    assert "namespace pointer" not in text.lower()
+    assert "does not install" not in text.lower()
+
+
+def test_pypi_copy_names_the_checkout_mode_for_full_runtime(cli) -> None:
+    """The clone + install-cli path stays documented as the AUTO-UPDATING runtime
+    mode -- the installed package is a stamped snapshot that updates only via pip."""
+    readme = cli.registry_package_files("pypi", "0.9.7")["README.md"]
     assert "git clone https://github.com/tautlines/tautline" in readme
-    assert "cd tautline" in readme, "the install sequence is broken without `cd tautline`"
+    assert "cd tautline" in readme, "the checkout sequence is broken without `cd tautline`"
     assert "bin/tautline install-cli" in readme
+    assert "auto-updat" in readme.lower(), (
+        "the checkout mode must be named as the auto-updating runtime"
+    )
+
+
+def test_npm_copy_is_a_pointer_that_points_at_pipx(cli) -> None:
+    """npm stays a namespace pointer -- but a pointer must point at the install
+    that works, which is pipx plus the repo link, not a clone-first sequence."""
+    readme = cli.registry_package_files("npm", "0.9.7")["README.md"]
+    assert "namespace pointer" in readme.lower(), (
+        "the npm package must state what it is: a name reservation that does not install the CLI"
+    )
+    assert "does not install" in readme.lower()
+    assert "pipx install tautline" in readme
+    assert "https://github.com/tautlines/tautline" in readme
+    assert "git clone" not in readme, (
+        "the clone-first sequence is no longer the npm pointer's install instruction"
+    )
 
 
 @pytest.mark.parametrize("registry", ["npm", "pypi"])
-def test_registry_copy_makes_no_packaged_install_promise(cli, registry: str) -> None:
-    """The generated copy must not claim a packaged install has landed or will land."""
+def test_registry_copy_makes_no_roadmap_promise_about_installs(cli, registry: str) -> None:
+    """Successor to test_registry_copy_makes_no_packaged_install_promise: the
+    packaged install is now reality, so `pipx install tautline` is truthful copy --
+    but the no-future-tense discipline stays. No copy may promise an install path
+    that does not work on the day it publishes."""
     text = registry_copy(cli, registry)
     for pattern in UNTRUTH_PATTERNS:
         assert not re.search(pattern, text, re.IGNORECASE), (
-            f"{registry} copy contains the historical untruth /{pattern}/: {text!r}"
+            f"{registry} copy contains roadmap-promise language /{pattern}/: {text!r}"
         )
-
-
-@pytest.mark.parametrize("registry", ["npm", "pypi"])
-def test_registry_copy_says_plainly_that_it_is_a_namespace_pointer(cli, registry: str) -> None:
-    readme = cli.registry_package_files(registry, "0.9.7")["README.md"]
-    assert "namespace pointer" in readme.lower(), (
-        "the package must state what it is: a name reservation that does not install the CLI"
-    )
-    assert "does not install" in readme.lower()
 
 
 @pytest.mark.parametrize("registry", ["npm", "pypi"])
@@ -706,11 +744,31 @@ def test_registry_copy_points_at_the_public_roadmap(cli, registry: str) -> None:
     assert "ROADMAP.md" in readme
 
 
-def test_registry_copy_is_one_source_of_truth(cli) -> None:
-    """npm and PyPI must ship the same README -- two hand-written copies is how they drifted."""
+def test_registry_descriptions_match_their_payloads(cli) -> None:
+    """The one-line registry description must describe the ACTUAL payload: npm keeps
+    the pointer language, pypi (now a real install) drops it."""
+    npm_manifest = json.loads(cli.registry_package_files("npm", "0.9.7")["package.json"])
+    assert "namespace pointer" in npm_manifest["description"]
+    pyproject = cli.registry_package_files("pypi", "0.9.7")["pyproject.toml"]
+    description_lines = [
+        line for line in pyproject.splitlines() if line.startswith("description = ")
+    ]
+    assert len(description_lines) == 1, "pyproject must carry exactly one project description"
+    assert "pointer" not in description_lines[0].lower()
+
+
+def test_registry_copy_is_generated_per_registry_from_one_module(cli) -> None:
+    """Successor to test_registry_copy_is_one_source_of_truth: both READMEs still
+    come from bin/tautline (no hand-written registry copy anywhere), but they are
+    now genuinely per-registry -- the payloads differ, so identical copy would lie
+    on one side."""
     npm = cli.registry_package_files("npm", "0.9.7")["README.md"]
     pypi = cli.registry_package_files("pypi", "0.9.7")["README.md"]
-    assert npm == pypi
+    assert npm == cli.registry_package_readme("npm")
+    assert pypi == cli.registry_package_readme("pypi")
+    assert npm != pypi, (
+        "per-registry copy: the pointer and the real install cannot share one README"
+    )
 
 
 def test_npm_package_manifest_is_valid_and_versioned(cli) -> None:
@@ -747,11 +805,29 @@ def test_registry_package_command_writes_the_tree(cli, tmp_path, capsys) -> None
 
 
 def test_registry_package_command_dry_run_writes_nothing(cli, tmp_path, capsys) -> None:
+    """Intent preserved from the pointer era: without --write the command exports NOTHING.
+
+    The pypi payload now embeds the committed tree, so the dry run must plan (count) the
+    real payload without touching the destination. The version comes from HEAD's VERSION
+    because the command fail-closes on a --version that disagrees with the archived tree.
+    """
     dest = tmp_path / "pkg"
-    args = cli.argparse.Namespace(registry="pypi", version="0.9.7", destination=dest, write=False)
+    code, head_version, err = cli.run_command(
+        ["git", "-C", str(cli.REPO_ROOT), "show", "HEAD:VERSION"]
+    )
+    assert code == 0, err
+    args = cli.argparse.Namespace(
+        registry="pypi",
+        version=head_version.strip(),
+        channel="stable",
+        destination=dest,
+        write=False,
+    )
     assert cli.registry_package(args) == 0
     assert not dest.exists()
-    assert "registry_package_written: no" in capsys.readouterr().out
+    out = capsys.readouterr().out
+    assert "registry_package_written: no" in out
+    assert "registry_package_channel: stable" in out
 
 
 # --------------------------------------------------------------------------
