@@ -51,7 +51,7 @@ def test_iteration_review_renderer_state_dir_defaults_outside_repo(cli, monkeypa
 
     state_dir = cli.iteration_review_renderer_state_dir()
 
-    assert state_dir == tmp_path / ".local/state/minervit/renderer-kit"
+    assert state_dir == tmp_path / ".local/state/tautline/renderer-kit"
     assert not cli.path_is_under(state_dir, cli.REPO_ROOT)
 
 

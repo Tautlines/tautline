@@ -1,0 +1,85 @@
+{
+  "behaviorChanges": [
+    "ci-python and renderer-ci publish a run artifact named `evidence` containing JUnit XML (pytest + vitest); ci-python's aggregation job composes the run's single `evidence` artifact from every ci-python job (both matrix legs plus the fresh-install-smoke gate) so a matrix-leg or fresh-install failure renders as a `fail` result rather than green"
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "publish-pending-session-journals",
+      "removeAfter": "1.0.0",
+      "replacement": "publish-instrumentation-record",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "publish-session-journal",
+      "removeAfter": "1.0.0",
+      "replacement": "publish-instrumentation-record",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    },
+    {
+      "name": "rules-audit",
+      "path": "plugins/tautline-core/skills/rules-audit/SKILL.md",
+      "removeAfter": "1.0.0",
+      "replacement": "framework-intake",
+      "section": "skills",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [
+    {
+      "description": "Adopters can publish the same `evidence` run artifact from their own test jobs so their pipeline stages render real pass/fail counts on the CommandCenter dashboard instead of amber; the composer is .github/scripts/emit_evidence.py.",
+      "id": "publish-evidence-artifact-from-adopter-ci"
+    }
+  ],
+  "productsTested": [],
+  "requiredMigrations": [
+    {
+      "command": "gh auth refresh --hostname github.com -s read:project -s project",
+      "description": "Carried forward from 0.10.3 for lanes updating across it: grant the gh token the GitHub Projects scopes the fail-closed board gates need. Machines already on 0.10.3+ or whose token carries read:project and project need no action.",
+      "id": "grant-gh-project-scopes",
+      "surface": "board-provider-auth"
+    }
+  ],
+  "rollbackNotes": [
+    "Pinning back to 0.10.11 stops the `evidence` artifact from being published; the CI gates and their pass/fail behavior are unchanged in either direction (the evidence surface is purely additive reporting). No on-disk state moves."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.10.12",
+  "wipSafe": false
+}

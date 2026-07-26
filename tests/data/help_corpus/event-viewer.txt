@@ -1,0 +1,15 @@
+usage: tautline event-viewer [-h] [--project PROJECT] [--target TARGET]
+                             [--host HOST] [--port PORT]
+                             [--port-search-limit PORT_SEARCH_LIMIT]
+                             [--lines LINES] [--since SINCE] [--open]
+
+options:
+  -h, --help            show this help message and exit
+  --project PROJECT
+  --target TARGET
+  --host HOST
+  --port PORT
+  --port-search-limit PORT_SEARCH_LIMIT
+  --lines LINES
+  --since SINCE
+  --open

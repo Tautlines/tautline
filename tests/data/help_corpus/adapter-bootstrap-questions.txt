@@ -1,0 +1,10 @@
+usage: tautline adapter-bootstrap-questions [-h] [--target TARGET]
+                                            [--project-name PROJECT_NAME]
+                                            [--repo REPO] [--write]
+
+options:
+  -h, --help            show this help message and exit
+  --target TARGET
+  --project-name PROJECT_NAME
+  --repo REPO
+  --write

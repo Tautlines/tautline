@@ -19,7 +19,7 @@ status movement must be durable for the lane, other agents, and stakeholders.
 Use:
 
 ```bash
-minervit-methodology stakeholder-question-ask --target . \
+tautline stakeholder-question-ask --target . \
   --issue <issue-number-or-url> \
   --question "<one clear question>" \
   --why "<why the answer changes the build>" \
@@ -44,7 +44,7 @@ provider, moves the Project item to the adapter-approved blocked status.
 At startup, PR boundaries, milestone boundaries, and blocked-work checks, run:
 
 ```bash
-minervit-methodology stakeholder-question-status --target . --sync
+tautline stakeholder-question-status --target . --sync
 ```
 
 The sync command scans open stakeholder-question issues, detects a later comment

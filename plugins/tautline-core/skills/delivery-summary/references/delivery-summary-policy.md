@@ -33,7 +33,7 @@ push, deploy, or iteration-review delivery of reviewed work into a permission
 question.
 
 For a provider-backed lane, the board must be reconciled at every delivery / queued-delivery boundary, not only at `git push`. Run
-`minervit-methodology backlog-provider-board-check --target .` at the boundary
+`tautline backlog-provider-board-check --target .` at the boundary
 and act on its findings: every customer-facing issue created this session must
 be a board item with an Item Type and a current `Status` before the summary is
 complete - `gh issue create` alone does not place it on the board. A
@@ -49,7 +49,7 @@ manual post as equivalent to pipeline-owned evidence. Do not imply a stakeholder
 announcement means the deploy has finished rolling forward.
 
 When a goal is complete or no active goal exists, include the next goal
-candidate from `minervit-methodology goal-kickoff-prompt --target .` or the
+candidate from `tautline goal-kickoff-prompt --target .` or the
 `next_goal_*` lines from `lane-start`/`methodology-status`: `next_goal_name`,
 `next_goal_short_description`, and the copy/pasteable `next_goal_claude_prompt`.
 Do not make the human operator ask for the next `/goal` wording.
@@ -143,9 +143,9 @@ active attention; startup gates in the next session catch main-health issues,
 failed/blocked open PRs, and merge conflicts.
 
 Execution-packet work, source-of-truth-plan-backed work, and any PR implementing approved planned work are milestone work. If `.ai-work/GOAL_RUN.json`
-exists, run `minervit-methodology goal-next --target .` before `milestone-next`
+exists, run `tautline goal-next --target .` before `milestone-next`
 and include goal progress in the summary. A queued-delivery or PR-completion summary is incomplete until the milestone ledger is advanced. Run
-`minervit-methodology milestone-advance --target . --event pr-queued --pr <PR>`
+`tautline milestone-advance --target . --event pr-queued --pr <PR>`
 after queueing, or the matching event for merge, abandonment, completion, or
 blocking, then start the printed `next_action` in the same turn. If no
 milestone ledger exists for approved milestone work, create it with
@@ -224,7 +224,7 @@ also handle adapter-required local evidence through the owning ops skill when
 that capability is enabled.
 
 Every human-facing boundary summary must also log a compact event through
-`minervit-methodology log-event --target .` unless the CLI command that caused
+`tautline log-event --target .` unless the CLI command that caused
 the boundary already logged it. Use adapter-approved event logging when enabled;
 do not write generated event files directly.
 
@@ -304,11 +304,11 @@ that must be proven against the execution packet and source-of-truth backlog
 before ending the turn.
 
 When `.ai-work/MILESTONE_RUN.json` exists, the proof must also include
-`minervit-methodology milestone-next --target .` showing milestone completion.
+`tautline milestone-next --target .` showing milestone completion.
 If it returns any executable `next_action`, start that action instead of ending
 the workflow.
 
 When `.ai-work/GOAL_RUN.json` exists, the proof must include
-`minervit-methodology goal-next --target .` before milestone proof. If it
+`tautline goal-next --target .` before milestone proof. If it
 returns any executable `next_action`, start that action instead of ending the
 workflow.

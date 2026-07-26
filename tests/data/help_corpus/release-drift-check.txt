@@ -1,0 +1,5 @@
+usage: tautline release-drift-check [-h] [--json]
+
+options:
+  -h, --help  show this help message and exit
+  --json      Emit machine-readable drift JSON.

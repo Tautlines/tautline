@@ -9,7 +9,7 @@ import argparse
 import io
 import json
 
-from minervit_methodology import chat
+from tautline_methodology import chat
 
 
 def test_chat_helpers_are_served_from_package_through_cli_wrapper(cli):

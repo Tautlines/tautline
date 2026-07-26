@@ -1,0 +1,83 @@
+{
+  "behaviorChanges": [
+    "un-adapted session starts (goal-kickoff-prompt, the generated launcher, and the no-adapter recovery text) now offer STATE-AWARE guided onboarding with root-resolved commands (fresh repo -> `tautline init --target <root>`; interview in progress -> `init --target <root> --continue`; source adapter present but unrendered -> render-adapters then lane-start), mediated through AskUserQuestion. Nothing auto-runs; gate verbs still fail closed with improved recovery text.",
+    "the no-adapter message is split into a stable `NO_ADAPTER_SENTINEL` prefix + a swappable recovery block + a preserved footer; unmanaged-at-target output is byte-identical to before, and every consumer now matches on the sentinel prefix. No exit-code changes."
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "publish-pending-session-journals",
+      "removeAfter": "1.0.0",
+      "replacement": "publish-instrumentation-record",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "publish-session-journal",
+      "removeAfter": "1.0.0",
+      "replacement": "publish-instrumentation-record",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    },
+    {
+      "name": "rules-audit",
+      "path": "plugins/tautline-core/skills/rules-audit/SKILL.md",
+      "removeAfter": "1.0.0",
+      "replacement": "framework-intake",
+      "section": "skills",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [],
+  "productsTested": [],
+  "requiredMigrations": [
+    {
+      "command": "gh auth refresh --hostname github.com -s read:project -s project",
+      "description": "Carried forward from 0.10.3 for lanes updating across it: grant the gh token the GitHub Projects scopes the fail-closed board gates need. Machines already on 0.10.3+ or whose token carries read:project and project need no action.",
+      "id": "grant-gh-project-scopes",
+      "surface": "board-provider-auth"
+    }
+  ],
+  "rollbackNotes": [
+    "Repinning below 0.14.6 restores the single stale `init` recovery line for every un-adapted state and removes the onboarding offers; no state migration (nothing was written).",
+    "grant-gh-project-scopes is carried forward from 0.10.3 (see requiredMigrations); a lane already on 0.10.3+ needs no action.",
+    "NOT WIP-safe only for the engine-gap carry-forward; the release's own change is a display/recovery-text improvement safe for lanes in progress."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.14.6",
+  "wipSafe": false
+}

@@ -144,7 +144,8 @@ def test_after_merge_workflow_yaml_uses_webhook_and_record_dir(cli):
 
 
 def test_iteration_review_delivery_cli_and_policy_contracts_remain_pinned():
-    cli_source = (ROOT / "bin" / "tautline").read_text(encoding="utf-8")
+    # Post the package-split flip (roadmap #11): the engine lives in cli.py; bin/tautline is a shim.
+    cli_source = (ROOT / "src" / "tautline_methodology" / "cli.py").read_text(encoding="utf-8")
     canonical = (ROOT / "methodology" / "canonical-rules.md").read_text(encoding="utf-8")
 
     assert "--skip-chat-reason" in cli_source

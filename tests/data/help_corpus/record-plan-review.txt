@@ -1,0 +1,33 @@
+usage: tautline record-plan-review [-h] [--project PROJECT] [--target TARGET]
+                                   --plan PLAN --log LOG
+                                   [--review-command REVIEW_COMMAND]
+                                   --reviewer REVIEWER [--model MODEL]
+                                   [--round REVIEW_ROUND] --wrapper-exit-code
+                                   WRAPPER_EXIT_CODE --verdict
+                                   {blocked,clean,clean-with-deferrals}
+                                   --unresolved-critical-count
+                                   UNRESOLVED_CRITICAL_COUNT
+                                   --unresolved-p1-count UNRESOLVED_P1_COUNT
+                                   [--classified-findings-json CLASSIFIED_FINDINGS_JSON]
+                                   [--exception-note EXCEPTION_NOTE]
+
+options:
+  -h, --help            show this help message and exit
+  --project PROJECT
+  --target TARGET
+  --plan PLAN
+  --log LOG
+  --review-command REVIEW_COMMAND
+  --reviewer REVIEWER
+  --model MODEL
+  --round REVIEW_ROUND
+  --wrapper-exit-code WRAPPER_EXIT_CODE
+  --verdict {blocked,clean,clean-with-deferrals}
+  --unresolved-critical-count UNRESOLVED_CRITICAL_COUNT
+  --unresolved-p1-count UNRESOLVED_P1_COUNT
+  --classified-findings-json CLASSIFIED_FINDINGS_JSON
+  --exception-note EXCEPTION_NOTE
+                        Recorded reason this round is needed. Required to
+                        record any round past the convergence target; rounds
+                        3-4 are self-authorized and never need operator
+                        approval.

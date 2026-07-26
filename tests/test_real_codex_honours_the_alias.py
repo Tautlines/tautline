@@ -12,7 +12,7 @@ binary.
 """
 import importlib
 
-util = importlib.import_module("minervit_methodology.util")
+util = importlib.import_module("tautline_methodology.util")
 
 
 def test_the_tautline_alias_points_the_shim(cli):

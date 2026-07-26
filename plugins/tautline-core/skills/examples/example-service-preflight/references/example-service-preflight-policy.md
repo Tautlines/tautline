@@ -11,7 +11,7 @@ equivalents your project actually defines.
 2. Check open PRs authored by the active agent:
    `gh pr list --author '@me' --state open --limit 50 --json number,title,url,createdAt,headRefName,baseRefName,isDraft,mergeStateStatus,statusCheckRollup`
 3. If on a non-base PR branch, run
-   `minervit-methodology branch-liveness-check --target . --strict`.
+   `tautline branch-liveness-check --target . --strict`.
    Lane-local Git hooks installed by `lane-start` also block commit/push if the
    branch is inactive. A queued, auto-merge-enabled, merged, or closed
    current-branch PR is inactive; sync main and continue from the
@@ -37,12 +37,12 @@ equivalents your project actually defines.
 
 ## Before Commit And Push
 
-- Run `minervit-methodology lane-run --target . -- make pf-fast` before every
+- Run `tautline lane-run --target . -- make pf-fast` before every
   commit.
-- Run `minervit-methodology branch-liveness-check --target . --strict` before
+- Run `tautline branch-liveness-check --target . --strict` before
   commit, review, push, or tactical subagent dispatch on an existing PR branch.
-- Run `minervit-methodology lane-run --target . -- make test-env-up` then
-  `minervit-methodology lane-run --target . -- make preflight` before push.
+- Run `tautline lane-run --target . -- make test-env-up` then
+  `tautline lane-run --target . -- make preflight` before push.
 - Early-warning `make ci-status-main` does not replace before-commit
   `make pf-fast` or before-push `make preflight`.
 - Use the project's wrapped Codex review script, for example

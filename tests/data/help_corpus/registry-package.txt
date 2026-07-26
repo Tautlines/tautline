@@ -1,0 +1,17 @@
+usage: tautline registry-package [-h] --registry {npm,pypi} --version VERSION
+                                 [--channel {experimental,methodology-dev,stable}]
+                                 --destination DESTINATION [--write]
+
+options:
+  -h, --help            show this help message and exit
+  --registry {npm,pypi}
+                        Which registry's package tree to generate; the
+                        registry determines the payload.
+  --version VERSION     Package version (X.Y.Z).
+  --channel {experimental,methodology-dev,stable}
+                        Release channel stamped into the pypi payload's
+                        snapshot manifest (ignored for npm).
+  --destination DESTINATION
+                        Directory to materialize the package tree into.
+  --write               Write the package tree. Without --write, print the
+                        plan only.

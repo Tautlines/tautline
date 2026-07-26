@@ -29,7 +29,7 @@ Every long/background command needs:
 
 - A background command without a monitor is incomplete.
 - A monitor without forward motion is also incomplete.
-- Tool-level timeouts on a detached/background shell call are not enough because the tool may only time out launch. Use `minervit-methodology background-run --timeout-seconds <seconds>` or a project-equivalent watchdog for bounded background work.
+- Tool-level timeouts on a detached/background shell call are not enough because the tool may only time out launch. Use `tautline background-run --timeout-seconds <seconds>` or a project-equivalent watchdog for bounded background work.
 - Triggered early-warning smoke/main-health checks run as monitored background work so planning and implementation can continue while known-risk failures interrupt quickly.
 - Early-warning smoke monitors still require active polling at a concrete cadence no longer than 10 minutes; starting the monitor and assuming notifications will arrive is not enough.
 - Final preflight may also run with monitor evidence once the current PR tip is frozen and review is clean. Use that wait for branch-isolated next-iteration planning or active polling instead of idle status, but do not edit the current PR diff while preflight is proving it.
@@ -52,7 +52,8 @@ Every long/background command needs:
 - After enabling auto-merge or confirming queue placement, do not schedule a future wakeup, reminder, or monitor prompt that restates completed push, PR creation, labeling, auto-merge, queue, or requeue steps. Schedule no wakeup for routine clean queued PRs. Exceptional checks are allowed only when a specific failure/degraded signal is already known, the human operator explicitly asks for the check, or the next action truly depends on the merged main commit; the prompt must name that signal/dependency and the next authorized non-queue work item.
 - Do not end a turn with only `monitor is running`, `monitor watches`, `waiting on merge`, `waiting on checks`, `R2 running`, or equivalent passive-monitor language.
 - Do not end a turn with only `R3 running`, `review running`, `wakeup in 10 min`, or equivalent passive-monitor language.
-- Claude Stop response guards should run `minervit-methodology response-guard-hook` so passive-monitor-stop messages are blocked before the turn is yielded during live active goal work. `lane-start` installs the guard automatically, and `methodology-status --fail-on-drift` fails if the required hook is missing. The hook no-ops when no live goal is active in the current chat window, even if stale goal ledger state exists, so ordinary conversation is not treated as a monitor boundary. If the guard blocks, start parallel-safe work or actively poll; do not resend the same status.
+- Claude Stop response guards should run `tautline response-guard-hook` so passive-monitor-stop messages are blocked before the turn is yielded during live active goal work. `lane-start` installs the guard automatically, and `methodology-status --fail-on-drift` fails if the required hook is missing. The hook no-ops when no live goal is active in the current chat window, even if stale goal ledger state exists, so ordinary conversation is not treated as a monitor boundary. If the guard blocks, start parallel-safe work or actively poll; do not resend the same status.
+- When per-checkout product-dev mode is active (`tautline product-dev-mode on`), the active-goal Stop-guard stands down for that TTL-bounded, advisory-announced session, so a stop needs no blocker while the mode holds; code-safety merge gates and plan-review gates are unaffected.
 - During live active goal work, the same Stop response guard blocks forbidden opt-in/standby language, chat-only RCA-shaped responses, status-report-as-stop on derivable-next-action prompts, terminal continuity omission, and false-active status after rejected tools. If a process the agent launched is live but stale or wedged, kill/retry it and report what happened; do not ask whether to kill or retry it.
 - A passive monitor stop is any response or turn whose only forward motion is reporting monitor/background/queue/check state while the monitored work has not reached a terminal state. It is forbidden even if it avoids the listed phrases.
 - Passive monitor stop examples include `CI is processing`, `the deploy is underway`, `the review is running`, `checks are in progress`, `I'll check back when it completes`, `Wakeup in 10 min`, or any equivalent status-only statement without a same-turn next action or valid active poll.
@@ -67,12 +68,13 @@ Every long/background command needs:
 - Immediately means in the same turn before yielding, stopping, or sending a final status to the human operator.
 - If no parallel-safe task exists while a monitor is running, stay in active supervision mode and poll at the documented cadence until the monitor reaches a terminal state or a true blocker occurs. Do not end the turn with an active monitor as the only remaining activity.
 - A valid active poll means running or reading a concrete monitor artifact: process status, log tail, PR/check/deploy status, queue state, or the monitor task itself. Record the poll as `timestamp | command/artifact | observed state | next poll due`. Merely restating that work is in progress is not a poll.
-- Before saying a command or review is still active, verify process liveness and log freshness with `minervit-methodology monitor-status --target . --log <log> --pid <pid-if-known> --strict` or equivalent evidence. Strict monitor checks require verified PID/process identity, not only a fresh log.
+- Before saying a command or review is still active, verify process liveness and log freshness with `tautline monitor-status --target . --log <log> --pid <pid-if-known> --strict` or equivalent evidence. Strict monitor checks require verified PID/process identity, not only a fresh log.
 - If no live process is verified and the log has not changed within the stale threshold, the command is stale/hung, not running. Inspect the log tail, recover or rerun the command, and do not ask whether to keep waiting.
 - Terminal monitor states are success, failure, cancelled, timed out, queue rejection, deploy failure, main red, or another project-defined terminal condition. Nonterminal states require continued work or another poll.
 - Platform or CI notifications do not replace active supervision. Treat them only as additional signals.
 - Shell/background command completion notifications do not replace active supervision. They are additional signals only.
 - A delayed wakeup, reminder, monitor event, or shell completion notification is not active supervision. It may exist as a backup signal, but the agent still must keep working or poll concrete artifacts in the same turn.
+- When per-checkout product-dev mode is active (`tautline product-dev-mode on`), the fake-monitor background-command guard (the shell `until`/`while`/`sleep`/`tail -F | grep` polling-loop block) stands down for that TTL-bounded, advisory-announced session; the board-structure and item-content safety blocks and every code-safety and plan-review gate are unaffected.
 - Do not write `waiting for notification`, `waiting for harness notification`, `will wait for completion`, `I'll resume when`, `I'll continue when`, `will be notified`, `completion notification`, `I'll wait for it to finish`, `waiting for the background command`, `waiting for shell`, `wakeup in 10 min`, or equivalent standby language while a command is still running.
 - If a shell/background command is still running and no parallel-safe work is already underway, actively poll the process/log/check artifact instead of yielding a recap or standby message.
 - If a shell/background command is still running and appears healthy, do not ask whether to wait, kill, or retry it. Keep supervising at the documented cadence or continue parallel-safe work. Kill, retry, or interrupt only when the command has failed, timed out, gone stale past the documented threshold, is consuming the wrong resource, or the human operator explicitly requested interruption.
@@ -97,7 +99,7 @@ adapter lists the command under `localResourceIsolation.isolatedCommands`.
 Remote/main-health commands can run directly.
 
 ```bash
-minervit-methodology background-run \
+tautline background-run \
   --log ".ai-runs/early-warning-smoke-$(date -u +%Y%m%dT%H%M%SZ).log" \
   -- bash -lc '<early-warning-smoke-command>'
 ```
@@ -105,9 +107,9 @@ minervit-methodology background-run \
 For a local-service smoke command listed in `isolatedCommands`, use:
 
 ```bash
-minervit-methodology background-run \
+tautline background-run \
   --log ".ai-runs/early-warning-smoke-$(date -u +%Y%m%dT%H%M%SZ).log" \
-  -- minervit-methodology lane-run --target . -- bash -lc '<early-warning-smoke-command>'
+  -- tautline lane-run --target . -- bash -lc '<early-warning-smoke-command>'
 ```
 
 ### Smoke Work Policy

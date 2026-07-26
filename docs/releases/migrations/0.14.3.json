@@ -1,0 +1,85 @@
+{
+  "behaviorChanges": [
+    "GitHub-comment markers (milestone-progress, stakeholder-question) emit the tautline prefix and parse BOTH the tautline and legacy minervit forms, so an already-posted block is found and replaced in place, never duplicated.",
+    "git rescue refs are created under tautline-local-rescue/, and the rescue-ref adapter-drift detector enumerates both tautline-local-rescue/ and legacy minervit-local-rescue/.",
+    "non-schema on-disk state paths (renderer-kit, methodology-rescue) default to ~/.local/state/tautline/ and read a pre-existing ~/.local/state/minervit/ location as a fallback. State-dir env-var override names are unchanged.",
+    "composeProjectPrefix default is now `tautline` (was `minervit`). BREAKING for adopters that rely on the default COMPOSE_PROJECT_NAME: docker containers/volumes created under the old prefix are orphaned. Set composeProjectPrefix explicitly to the previous value to retain them. Company/domain/copyright stay Minervit."
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "publish-pending-session-journals",
+      "removeAfter": "1.0.0",
+      "replacement": "publish-instrumentation-record",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "publish-session-journal",
+      "removeAfter": "1.0.0",
+      "replacement": "publish-instrumentation-record",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    },
+    {
+      "name": "rules-audit",
+      "path": "plugins/tautline-core/skills/rules-audit/SKILL.md",
+      "removeAfter": "1.0.0",
+      "replacement": "framework-intake",
+      "section": "skills",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [],
+  "productsTested": [],
+  "requiredMigrations": [
+    {
+      "command": "gh auth refresh --hostname github.com -s read:project -s project",
+      "description": "Carried forward from 0.10.3 for lanes updating across it: grant the gh token the GitHub Projects scopes the fail-closed board gates need. Machines already on 0.10.3+ or whose token carries read:project and project need no action.",
+      "id": "grant-gh-project-scopes",
+      "surface": "board-provider-auth"
+    }
+  ],
+  "rollbackNotes": [
+    "Markers, rescue refs, and state paths are read-both, so a rollback keeps resolving the legacy forms. The compose prefix reverts to `minervit`, orphaning any container created under `tautline` on 0.14.3 (the mirror of the forward orphaning).",
+    "grant-gh-project-scopes is carried forward from 0.10.3 (see requiredMigrations); a lane already on 0.10.3+ needs no action.",
+    "NOT WIP-safe: a lane relying on the default composeProjectPrefix while running docker compose would see its COMPOSE_PROJECT_NAME change mid-work."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.14.3",
+  "wipSafe": false
+}

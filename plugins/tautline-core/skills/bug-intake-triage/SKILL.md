@@ -7,7 +7,7 @@ description: Use when a lane finds, files, classifies, or plans a product bug an
 
 Use this skill when a lane discovers, investigates, files, plans, defers, or closes a product bug. The active project adapter is the authority: read `bugBacklog`, `backlogAdapter`, and `backlogProvider` before creating a source-of-truth artifact, GitHub issue, board item, Jira/Linear item, or backlog note.
 
-Methodology skills are file-backed policy. If host skill tooling returns `Unknown skill`, resolve the methodology checkout via `$MINERVIT_METHODOLOGY_REPO`, `$HOME/.config/minervit/methodology.env`, or `minervit-methodology version --no-remote` (`methodology_repo`), then read this skill and continue.
+Methodology skills are file-backed policy. If host skill tooling returns `Unknown skill`, resolve the methodology checkout via `$MINERVIT_METHODOLOGY_REPO`, `$HOME/.config/minervit/methodology.env`, or `tautline version --no-remote` (`methodology_repo`), then read this skill and continue.
 
 ## Triage Order
 
@@ -31,10 +31,10 @@ Every bug artifact or tracker entry must include the adapter `requiredFields`. W
 ## Commands
 
 ```bash
-minervit-methodology methodology-status --target .
-minervit-methodology backlog-provider-export --target . --item-path <bug-artifact.md> --type bug [--customer-facing] --write
-minervit-methodology backlog-provider-update --target . --item <item-or-url> --status "<status>" --verification-evidence "<proof>"
-minervit-methodology backlog-provider-board-check --target .
+tautline methodology-status --target .
+tautline backlog-provider-export --target . --item-path <bug-artifact.md> --type bug [--customer-facing] --write
+tautline backlog-provider-update --target . --item <item-or-url> --status "<status>" --verification-evidence "<proof>"
+tautline backlog-provider-board-check --target .
 ```
 
 Use the sanctioned board/status commands. Do not mutate board structure, rewrite stakeholder-authored fields, or use raw GraphQL to route a bug.

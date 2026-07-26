@@ -1,0 +1,22 @@
+usage: tautline goal-tracker-update [-h] [--project PROJECT] [--target TARGET]
+                                    --item ITEM --status STATUS
+                                    [--verification-evidence VERIFICATION_EVIDENCE]
+                                    [--verification-evidence-file VERIFICATION_EVIDENCE_FILE]
+                                    [--verification-evidence-url VERIFICATION_EVIDENCE_URL]
+
+options:
+  -h, --help            show this help message and exit
+  --project PROJECT
+  --target TARGET
+  --item ITEM           GitHub Project item id, URL, or exact title from the
+                        configured project item list.
+  --status STATUS
+  --verification-evidence VERIFICATION_EVIDENCE
+                        Required when moving to a done status: actual
+                        verification output to post to the linked issue/PR.
+  --verification-evidence-file VERIFICATION_EVIDENCE_FILE
+                        Required when moving to a done status unless
+                        inline/URL evidence is supplied.
+  --verification-evidence-url VERIFICATION_EVIDENCE_URL
+                        Required when moving to a done status unless
+                        inline/file evidence is supplied.

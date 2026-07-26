@@ -35,13 +35,13 @@ status files are informational only and never block startup.
 Run:
 
 ```bash
-minervit-methodology lane-coordination-status --target .
+tautline lane-coordination-status --target .
 ```
 
 If coordination artifacts are missing outside startup, initialize them with:
 
 ```bash
-minervit-methodology lane-coordination-bootstrap --target . --write
+tautline lane-coordination-bootstrap --target . --write
 ```
 
 ## Lane Status Files
@@ -53,7 +53,7 @@ status document for routine progress.
 Use:
 
 ```bash
-minervit-methodology lane-coordination-note --target . --lane <lane> --goal "<goal>" --current "<current work>" --depends-on "<dependencies>" --provides "<provided interfaces>" --blockers "<blockers>" --pr "<PR or commit>" --write
+tautline lane-coordination-note --target . --lane <lane> --goal "<goal>" --current "<current work>" --depends-on "<dependencies>" --provides "<provided interfaces>" --blockers "<blockers>" --pr "<PR or commit>" --write
 ```
 
 The lane status must make these plain:

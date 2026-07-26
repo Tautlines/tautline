@@ -20,7 +20,7 @@ iteration reviews, generated pages, recap videos, or release-marketing assets.
 1. Check the active configuration:
 
    ```bash
-   minervit-methodology milestone-update-status --target . --strict
+   tautline milestone-update-status --target . --strict
    ```
 
 2. If disabled, continue normal authorized work and do not ask whether to enable
@@ -48,7 +48,7 @@ iteration reviews, generated pages, recap videos, or release-marketing assets.
    webhook URLs in repo files:
 
    ```bash
-   minervit-methodology publish-milestone-update --target . --milestone <milestone-id-or-title> --stdin
+   tautline publish-milestone-update --target . --milestone <milestone-id-or-title> --stdin
    ```
 
 7. When an active goal ledger exists, short milestone keys such as `M3` are

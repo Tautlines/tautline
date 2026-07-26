@@ -1,0 +1,9 @@
+usage: tautline iteration-review-delivery-check [-h] [--project PROJECT]
+                                                [--target TARGET] --record
+                                                RECORD
+
+options:
+  -h, --help         show this help message and exit
+  --project PROJECT
+  --target TARGET
+  --record RECORD

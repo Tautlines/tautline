@@ -23,13 +23,13 @@ methodology, adapter, and delivery artifacts that are meant to be committed.
 Discover the log paths when useful:
 
 ```bash
-minervit-methodology event-log-path --target .
+tautline event-log-path --target .
 ```
 
 Log one compact event through the CLI:
 
 ```bash
-minervit-methodology log-event --target . \
+tautline log-event --target . \
   --event <event_name> \
   --severity <info|ok|warn|block|fail> \
   --plain "<plain-language event summary>" \
@@ -74,8 +74,8 @@ terminal events.
 The human-readable file is intended for Baretail or any tailing viewer:
 
 ```bash
-minervit-methodology event-tail --target . --lines 80
-minervit-methodology event-viewer --target .
+tautline event-tail --target . --lines 80
+tautline event-viewer --target .
 ```
 
 `event-viewer` starts a local HTTP viewer that auto-refreshes and lets the
@@ -100,7 +100,7 @@ Two-round cap clean-with-deferrals on tip SHA; awaiting harness
 Use JSONL audit for process-improvement work:
 
 ```bash
-minervit-methodology event-audit --target . --since 24h --strict
+tautline event-audit --target . --since 24h --strict
 ```
 
 Treat audit findings as evidence to inspect, not as process authority. If the

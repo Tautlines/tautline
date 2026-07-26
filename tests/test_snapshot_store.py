@@ -19,6 +19,7 @@ child needs write permission on its 0555 parent), and with `ignore_errors=True` 
 *silently*. Every cleanup path that can run after that point must therefore use `_rmtree_force`.
 """
 import argparse
+import errno
 import importlib.machinery
 import importlib.util
 import json
@@ -35,6 +36,10 @@ from pathlib import Path
 import pytest
 
 CLI_PATH = Path(__file__).resolve().parents[1] / "bin" / "tautline"
+# Post the package-split flip (roadmap #11): the engine lives in the package; bin/tautline is a
+# thin shim. Load the engine module (cli.py) for the fresh-per-test in-process fixture; the shim
+# path (CLI_PATH) is still used for subprocess launches and filesystem-structure fixtures.
+CLI_ENGINE_PATH = CLI_PATH.parents[1] / "src" / "tautline_methodology" / "cli.py"
 
 # Both alias spellings of every managed key the store resolves. The operator's live shell exports
 # some of these (the launcher sources the installed config env), and resolve_env PREFERS the
@@ -71,14 +76,14 @@ def cli(monkeypatch, tmp_path):
 
     Function-scoped ON PURPOSE (conftest's session-scoped `cli` cannot be used here): the module
     bakes HOME-derived constants at import time and caches the resolved canonical repo in a module
-    global. SourceFileLoader is REQUIRED because bin/tautline has no .py extension.
+    global. SourceFileLoader gives a fresh engine module (cli.py) per test.
     """
     for name in MANAGED_ENV_NAMES:
         monkeypatch.delenv(name, raising=False)
     home = tmp_path / "home"
     home.mkdir()
     monkeypatch.setenv("HOME", str(home))
-    loader = importlib.machinery.SourceFileLoader("tautline_cli", str(CLI_PATH))
+    loader = importlib.machinery.SourceFileLoader("tautline_cli", str(CLI_ENGINE_PATH))
     spec = importlib.util.spec_from_loader("tautline_cli", loader)
     module = importlib.util.module_from_spec(spec)
     loader.exec_module(module)
@@ -399,6 +404,99 @@ def test_prune_leaves_store_metadata_alone(cli, five_snapshots, tmp_path):
 
 def test_prune_on_missing_store_is_a_noop(cli, store):
     assert cli.prune_methodology_snapshots(keep=1) == []
+
+
+def test_listing_skips_a_snapshot_pruned_mid_listing(cli, five_snapshots, monkeypatch, capsys):
+    """A concurrent prune retiring ONE entry mid-listing must not empty a healthy listing.
+
+    snapshot-status lists the store without taking .store-lock, so a prune in another process
+    can retire an entry between _store_snapshot_dirs' manifest read and its sort-key stat. That
+    entry would be absent from any correct listing -- skipping it is right; reporting the whole
+    store unreadable (four healthy snapshots listed as zero, plus a false warning) is the defect.
+    """
+    store, snaps = five_snapshots
+    victim = snaps[2]
+    real_manifest = cli._snapshot_dir_manifest
+
+    def vanishing_manifest(dest):
+        manifest = real_manifest(dest)
+        if dest == victim and manifest is not None:
+            # Mimic _retire_store_snapshot_dir landing now: unseal, rename out of the store.
+            (store / ".tmp").mkdir(exist_ok=True)
+            victim.chmod(0o755)
+            os.rename(victim, store / ".tmp" / f"deleting-{victim.name}-999")
+        return manifest
+
+    monkeypatch.setattr(cli, "_snapshot_dir_manifest", vanishing_manifest)
+
+    result = cli._store_snapshot_dirs(store)
+
+    assert [p.name for p in result] == [s.name for s in snaps if s is not victim]
+    captured = capsys.readouterr()
+    assert "store unreadable" not in captured.out + captured.err
+
+
+def test_listing_skips_an_entry_that_stops_being_a_directory_mid_listing(
+    cli, five_snapshots, monkeypatch, capsys
+):
+    """ENOTDIR from the sort-key stat is the same vanished-entry race, not store unreadability."""
+    store, snaps = five_snapshots
+    victim = snaps[2]
+    real_stat = Path.stat
+
+    def stat_or_enotdir(self, *args, **kwargs):
+        if self == victim:
+            raise NotADirectoryError("injected mid-listing replacement")
+        return real_stat(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "stat", stat_or_enotdir)
+
+    result = cli._store_snapshot_dirs(store)
+
+    assert [p.name for p in result] == [s.name for s in snaps if s is not victim]
+    captured = capsys.readouterr()
+    assert "store unreadable" not in captured.out + captured.err
+
+
+def test_store_warning_names_disk_full_and_read_only_mount(cli, capsys):
+    """ENOSPC and EROFS are not unreadability: calling a full disk "unreadable" sends the operator
+    chasing permissions instead of freeing space or remounting. The warning must name the fault.
+
+    Streams are read combined (out + err) so this pins the WORDING only, not the routing.
+    """
+    disk_full = OSError(errno.ENOSPC, "No space left on device")
+    read_only = OSError(errno.EROFS, "Read-only file system")
+    cli.warn_snapshot_store_unreadable("prune incomplete", disk_full)
+    cli.warn_snapshot_store_unreadable("prune incomplete", read_only)
+    captured = capsys.readouterr()
+    combined = captured.out + captured.err
+    assert "methodology_snapshot: store out of space - prune incomplete" in combined
+    assert "methodology_snapshot: store on a read-only filesystem - prune incomplete" in combined
+    assert "store unreadable" not in combined
+
+
+def test_store_warning_defaults_to_unreadable_for_permissions_and_unknown_errno(cli, capsys):
+    """EACCES and errno-less OSErrors keep the default phrase.
+
+    The exec integration tests inject EACCES and pin the literal "store unreadable" substring;
+    this test keeps that default honest from the unit side.
+    """
+    denied = PermissionError(errno.EACCES, "Permission denied")
+    cli.warn_snapshot_store_unreadable("cannot list pins", denied)
+    cli.warn_snapshot_store_unreadable("cannot list snapshots", OSError("injected failure"))
+    captured = capsys.readouterr()
+    combined = captured.out + captured.err
+    assert combined.count("methodology_snapshot: store unreadable - ") == 2
+
+
+def test_store_unreadable_warning_prints_to_stderr(cli, capsys):
+    """The routing pin the wording tests above deliberately leave open: degrade warnings are
+    operator diagnostics, and snapshot-status's stdout is its machine-readable key:value report,
+    so the warning must ride stderr or a script parsing the report chokes on it."""
+    cli.warn_snapshot_store_unreadable("stream-routing-test", PermissionError(13, "denied"))
+    captured = capsys.readouterr()
+    assert "methodology_snapshot: store unreadable - stream-routing-test" in captured.err
+    assert captured.out == ""
 
 
 # --- verbs -------------------------------------------------------------------------------------
@@ -829,6 +927,33 @@ def test_refresh_re_stamps_the_session_snapshot_not_current(
     _age_history(store, 80 * 3600)
     cli.prune_methodology_snapshots(keep=1)
     assert session_snapshot.exists()
+
+
+def test_refresh_pin_write_failure_degrades_loudly(
+    cli, five_snapshots, tmp_path, monkeypatch, capsys
+):
+    """The pin heartbeat runs on EVERY gated sync; a sealed pins/ dir must degrade LOUDLY.
+
+    Asserts the operation substring in out+err combined on purpose: the warning's prefix wording
+    and stream are the shared helper's contract, not this call site's, and must stay free to move.
+    """
+    store, snaps = five_snapshots
+    cli.swap_methodology_snapshot_current(snaps[4])
+    lane = tmp_path / "lane-sealed"
+    lane.mkdir()
+    assert cli.snapshot_pin(argparse.Namespace(target=lane)) == 0
+    capsys.readouterr()  # drop the pin verb's own report
+
+    monkeypatch.setattr(cli, "write_methodology_snapshot_pin", _raise_oserror)
+    cli.refresh_methodology_snapshot_pin(lane)  # the degrade contract: never raise
+
+    captured = capsys.readouterr()
+    combined = captured.out + captured.err
+    assert "cannot refresh pin" in combined
+    assert "injected failure" in combined
+    # Degrade leaves prior state intact: the pin still guards what it guarded before.
+    pin = store / "pins" / f"{cli.instrumentation_lane_id(lane)}.pin"
+    assert json.loads(pin.read_text(encoding="utf-8"))["snapshot"] == snaps[4].name
 
 
 def test_snapshot_status_runs_end_to_end(cli, five_snapshots, tmp_path):

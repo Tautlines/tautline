@@ -20,8 +20,12 @@
     "generatedFiles"
   ],
   "properties": {
-    "$schema": { "type": "string" },
-    "$id": { "type": "string" },
+    "$schema": {
+      "type": "string"
+    },
+    "$id": {
+      "type": "string"
+    },
     "schemaVersion": {
       "type": "string",
       "description": "Adapter contract version this adapter targets (semver). Optional; current contract is 1.x.",
@@ -35,14 +39,34 @@
       "type": "object",
       "description": "Client-facing framework release-track pin. Existing products default to stable/manual/dry-run when omitted.",
       "properties": {
-        "channel": { "type": "string", "enum": ["stable", "experimental"] },
+        "channel": {
+          "type": "string",
+          "enum": [
+            "stable",
+            "experimental"
+          ]
+        },
         "version": {
           "type": "string",
           "description": "Exact framework version or simple semver range. Empty means current local version until explicitly pinned.",
           "pattern": "^(|(?:[~^<>]=?)?[0-9]+(?:\\.[0-9]+){1,2}(?:[-+][0-9A-Za-z.-]+)?)$"
         },
-        "updatePolicy": { "type": "string", "enum": ["manual", "patch-auto", "minor-at-boundary"] },
-        "migrationPolicy": { "type": "string", "enum": ["dry-run", "auto-apply-safe", "manual-only"] }
+        "updatePolicy": {
+          "type": "string",
+          "enum": [
+            "manual",
+            "patch-auto",
+            "minor-at-boundary"
+          ]
+        },
+        "migrationPolicy": {
+          "type": "string",
+          "enum": [
+            "dry-run",
+            "auto-apply-safe",
+            "manual-only"
+          ]
+        }
       },
       "additionalProperties": false
     },
@@ -52,7 +76,11 @@
       "properties": {
         "phraseChecks": {
           "type": "string",
-          "enum": ["advisory", "blocking", "off"],
+          "enum": [
+            "advisory",
+            "blocking",
+            "off"
+          ],
           "default": "advisory"
         }
       },
@@ -60,7 +88,10 @@
     },
     "knownProjectRules": {
       "type": "array",
-      "items": { "type": "string", "minLength": 1 }
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
     },
     "developmentEnvironment": {
       "type": "object",
@@ -68,56 +99,129 @@
       "properties": {
         "supportedRuntimes": {
           "type": "array",
-          "items": { "type": "string", "enum": ["linux", "darwin", "wsl1", "wsl2", "win32"] }
+          "items": {
+            "type": "string",
+            "enum": [
+              "linux",
+              "darwin",
+              "wsl1",
+              "wsl2",
+              "win32"
+            ]
+          }
         },
         "windows": {
           "type": "object",
           "properties": {
-            "native": { "type": "string", "enum": ["unspecified", "unsupported", "supported", "diagnostic-only"] },
-            "supportedRuntime": { "type": "string", "enum": ["wsl2", "win32"] },
-            "setup": { "type": "string" },
-            "reason": { "type": "string" }
+            "native": {
+              "type": "string",
+              "enum": [
+                "unspecified",
+                "unsupported",
+                "supported",
+                "diagnostic-only"
+              ]
+            },
+            "supportedRuntime": {
+              "type": "string",
+              "enum": [
+                "wsl2",
+                "win32"
+              ]
+            },
+            "setup": {
+              "type": "string"
+            },
+            "reason": {
+              "type": "string"
+            }
           },
           "additionalProperties": false
         },
         "lineEndings": {
           "type": "object",
           "properties": {
-            "policy": { "type": "string", "enum": ["", "lf", "crlf", "mixed"] },
-            "windowsGuidance": { "type": "string" }
+            "policy": {
+              "type": "string",
+              "enum": [
+                "",
+                "lf",
+                "crlf",
+                "mixed"
+              ]
+            },
+            "windowsGuidance": {
+              "type": "string"
+            }
           },
           "additionalProperties": false
         }
       },
       "additionalProperties": false
     },
-    "project": { "type": "string" },
-    "repo": { "type": "string" },
-    "productionDeployExists": { "type": "boolean" },
+    "project": {
+      "type": "string"
+    },
+    "repo": {
+      "type": "string"
+    },
+    "productionDeployExists": {
+      "type": "boolean"
+    },
     "bootstrapEvidence": {
       "type": "object",
-      "required": ["project", "status", "summary"],
+      "required": [
+        "project",
+        "status",
+        "summary"
+      ],
       "properties": {
-        "project": { "type": "string", "minLength": 1 },
+        "project": {
+          "type": "string",
+          "minLength": 1
+        },
         "status": {
           "type": "string",
           "oneOf": [
-            { "enum": ["interviewed", "repo-evident", "legacy-reviewed"] },
-            { "pattern": "^BOOTSTRAP REQUIRED" }
+            {
+              "enum": [
+                "interviewed",
+                "repo-evident",
+                "legacy-reviewed"
+              ]
+            },
+            {
+              "pattern": "^BOOTSTRAP REQUIRED"
+            }
           ]
         },
-        "summary": { "type": "string", "minLength": 1 },
+        "summary": {
+          "type": "string",
+          "minLength": 1
+        },
         "interviewArtifact": {
           "type": "object",
-          "required": ["path", "sha256"],
+          "required": [
+            "path",
+            "sha256"
+          ],
           "properties": {
-            "path": { "type": "string", "minLength": 1 },
+            "path": {
+              "type": "string",
+              "minLength": 1
+            },
             "sha256": {
               "type": "string",
               "oneOf": [
-                { "pattern": "^[0-9a-f]{64}$" },
-                { "pattern": "^BOOTSTRAP REQUIRED" },
-                { "const": "n/a" }
+                {
+                  "pattern": "^[0-9a-f]{64}$"
+                },
+                {
+                  "pattern": "^BOOTSTRAP REQUIRED"
+                },
+                {
+                  "const": "n/a"
+                }
               ]
             }
           }
@@ -127,68 +231,255 @@
           "minItems": 2,
           "items": {
             "type": "object",
-            "required": ["path", "fact"],
+            "required": [
+              "path",
+              "fact"
+            ],
             "properties": {
-              "path": { "type": "string", "minLength": 1 },
-              "fact": { "type": "string", "minLength": 1 }
+              "path": {
+                "type": "string",
+                "minLength": 1
+              },
+              "fact": {
+                "type": "string",
+                "minLength": 1
+              }
             }
           }
         }
       },
       "allOf": [
         {
-          "if": { "properties": { "status": { "const": "interviewed" } } },
-          "then": { "required": ["interviewArtifact"] }
+          "if": {
+            "properties": {
+              "status": {
+                "const": "interviewed"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "interviewArtifact"
+            ]
+          }
         },
         {
-          "if": { "properties": { "status": { "const": "repo-evident" } } },
-          "then": { "required": ["repoEvidence"] }
+          "if": {
+            "properties": {
+              "status": {
+                "const": "repo-evident"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "repoEvidence"
+            ]
+          }
         }
       ]
     },
-    "backlogAdapter": { "type": "string" },
+    "backlogAdapter": {
+      "type": "string"
+    },
     "planningArtifacts": {
       "type": "object",
       "description": "Planning artifact paths. Path-typed fields must be relative and stay under the project root (no leading / or ~, no .. segments); the CLI also enforces this containment at runtime. scratchPaths is exempt because the framework default (~/.claude/plans/) is an intentionally external, home-directory scratch location.",
-      "required": ["sourceOfTruth", "template", "templateTrigger", "scratchPaths", "rule"],
+      "required": [
+        "sourceOfTruth",
+        "template",
+        "templateTrigger",
+        "scratchPaths",
+        "rule"
+      ],
       "properties": {
-        "sourceOfTruth": { "type": "string", "minLength": 1, "pattern": "^(?![~/])(?!.*(?:^|/)\\.\\.(?:/|$)).+$" },
-        "template": { "type": "string", "minLength": 1, "pattern": "^(?![~/])(?!.*(?:^|/)\\.\\.(?:/|$)).+$" },
-        "templateTrigger": { "type": "string", "minLength": 1 },
-        "reviewExemptions": { "type": "array", "items": { "type": "string", "minLength": 1 } },
-        "scratchPaths": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
-        "rule": { "type": "string", "minLength": 1 }
+        "sourceOfTruth": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^(?![~/])(?!.*(?:^|/)\\.\\.(?:/|$)).+$"
+        },
+        "template": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^(?![~/])(?!.*(?:^|/)\\.\\.(?:/|$)).+$"
+        },
+        "templateTrigger": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reviewExemptions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "scratchPaths": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "rule": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "planning": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "authoringStandard": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enforcement": {
+              "type": "string",
+              "description": "off = vanilla superpowers; observe = log-only; advise = warn at finalize; block = reject a plan that is not parallel/tiered/autonomous.",
+              "enum": [
+                "off",
+                "observe",
+                "advise",
+                "block"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "autonomy": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Standing autonomy directive controls. Absent (the default) is treated as ON: session-start surfaces (goal-kickoff-prompt, lane-start, context-bootstrap, autonomy-directive) emit the directive. Read-side only: never materialized into a rendered lane adapter, so upgrades drift nothing.",
+      "properties": {
+        "standingDirective": {
+          "type": "boolean",
+          "description": "Set false to fully opt out of the standing autonomy directive for this lane."
+        }
+      }
+    },
+    "fleet": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Fleet Governor: cross-worktree lease coordination. Absent (the default) means enabled with block enforcement. Repos with no leases see no friction (the guard short-circuits on an empty lease store); once any lane holds a live lease, edits to its paths from any other lane are enforced. The guard covers the structured file-edit tools (Edit, Write, MultiEdit, NotebookEdit); writes issued through Bash are not guarded in v1.",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Set false to disable fleet lease claims and the fleet guard hook for this project."
+        },
+        "enforcement": {
+          "type": "string",
+          "enum": [
+            "block",
+            "advise",
+            "observe"
+          ],
+          "description": "block: deny edits to foreign-leased paths (with runnable escapes). advise: allow and inject the conflict as hook context. observe: allow and log edit_would_block to fleet.log."
+        },
+        "defaultTtlMinutes": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Lease time-to-live when a claim does not pass --ttl-minutes. Default 240. Capped at 525600 (one year): larger values overflow datetime arithmetic in the liveness check, which would abort the whole conflict scan and stop enforcing every other live lease.",
+          "maximum": 525600
+        }
+      }
+    },
+    "productDevelopment": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Opt-in PM (product-management) surfaces: precise product-doc path globs a human doing product/backlog work may change without fighting the VERSION-bump contract. Fail-closed allowlist: the CLI loader rejects broad globs and accepts a surface ONLY when its fixed root sits under the docs/product/ product root, segment-bounded, and overlaps no framework/code/config/release root. Each surface is a relative path glob (no leading / or ~, no .. segments).",
+      "properties": {
+        "surfaces": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^(?![~/])(?!.*(?:^|/)\\.\\.(?:/|$)).+$"
+          }
+        }
       }
     },
     "goalArtifacts": {
       "type": "object",
       "properties": {
-        "sourceOfTruth": { "type": "string", "minLength": 1, "pattern": "^(?![~/])(?!.*(?:^|/)\\.\\.(?:/|$)).+$" },
-        "template": { "type": "string", "minLength": 1, "pattern": "^(?![~/])(?!.*(?:^|/)\\.\\.(?:/|$)).+$" },
-        "templateTrigger": { "type": "string", "minLength": 1 },
-        "reviewRequired": { "type": "boolean" }
+        "sourceOfTruth": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^(?![~/])(?!.*(?:^|/)\\.\\.(?:/|$)).+$"
+        },
+        "template": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^(?![~/])(?!.*(?:^|/)\\.\\.(?:/|$)).+$"
+        },
+        "templateTrigger": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reviewRequired": {
+          "type": "boolean"
+        }
       }
     },
     "goalExecution": {
       "type": "object",
       "properties": {
-        "preferredClaudeCommand": { "type": "string", "minLength": 1 },
-        "claudeGoalGuidance": { "type": "boolean" },
-        "fallback": { "type": "string", "enum": ["goal-ledger"] }
+        "preferredClaudeCommand": {
+          "type": "string",
+          "minLength": 1
+        },
+        "claudeGoalGuidance": {
+          "type": "boolean"
+        },
+        "fallback": {
+          "type": "string",
+          "enum": [
+            "goal-ledger"
+          ]
+        }
       }
     },
     "laneCoordination": {
       "type": "object",
       "description": "Cross-lane coordination area. root/contractPath/boardPath/laneStatusDir are an allowlisted external path group (the coordination root can live outside a single project, e.g. ~/Projects/<org>), so they are exempt from the project-root containment applied to other path fields.",
       "properties": {
-        "enabled": { "type": "boolean" },
-        "enforcement": { "type": "string", "enum": ["warn", "strict"] },
-        "root": { "type": "string", "minLength": 1 },
-        "contractPath": { "type": "string", "minLength": 1 },
-        "boardPath": { "type": "string", "minLength": 1 },
-        "laneStatusDir": { "type": "string", "minLength": 1 },
-        "maxStatusAgeHours": { "type": "integer", "minimum": 1 },
-        "rule": { "type": "string", "minLength": 1 }
+        "enabled": {
+          "type": "boolean"
+        },
+        "enforcement": {
+          "type": "string",
+          "enum": [
+            "warn",
+            "strict"
+          ]
+        },
+        "root": {
+          "type": "string",
+          "minLength": 1
+        },
+        "contractPath": {
+          "type": "string",
+          "minLength": 1
+        },
+        "boardPath": {
+          "type": "string",
+          "minLength": 1
+        },
+        "laneStatusDir": {
+          "type": "string",
+          "minLength": 1
+        },
+        "maxStatusAgeHours": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "rule": {
+          "type": "string",
+          "minLength": 1
+        }
       }
     },
     "goalTracker": {
@@ -196,70 +487,251 @@
       "deprecated": true,
       "description": "DEPRECATED: superseded by `backlogProvider`. Retained for backward compatibility; the CLI warns at render time when an adapter still declares it. Migrate to `backlogProvider`.",
       "properties": {
-        "enabled": { "type": "boolean" },
-        "provider": { "type": "string", "enum": ["github-projects"] },
-        "owner": { "type": "string" },
-        "projectNumber": { "type": "integer", "minimum": 0 },
-        "scopeQuery": { "type": "string" },
-        "statusField": { "type": "string" },
-        "priorityField": { "type": "string" },
-        "milestoneField": { "type": "string" },
-        "readyStatuses": { "type": "array", "items": { "type": "string", "minLength": 1 } },
-        "activeStatuses": { "type": "array", "items": { "type": "string", "minLength": 1 } },
-        "doneStatuses": { "type": "array", "items": { "type": "string", "minLength": 1 } },
-        "blockedStatuses": { "type": "array", "items": { "type": "string", "minLength": 1 } },
-        "authoritativeFor": { "type": "array", "items": { "type": "string", "minLength": 1 } },
-        "repoPlanRequired": { "type": "boolean" },
-        "linkPolicy": { "type": "string" },
-        "workOrder": { "type": "string", "enum": ["board", "priority"] },
-        "completionUnit": { "type": "string", "enum": ["goal", "provider-item"] },
-        "epicField": { "type": "string" },
-        "orderField": { "type": "string" }
+        "enabled": {
+          "type": "boolean"
+        },
+        "provider": {
+          "type": "string",
+          "enum": [
+            "github-projects"
+          ]
+        },
+        "owner": {
+          "type": "string"
+        },
+        "projectNumber": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "scopeQuery": {
+          "type": "string"
+        },
+        "statusField": {
+          "type": "string"
+        },
+        "priorityField": {
+          "type": "string"
+        },
+        "milestoneField": {
+          "type": "string"
+        },
+        "readyStatuses": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "activeStatuses": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "doneStatuses": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "blockedStatuses": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "authoritativeFor": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "repoPlanRequired": {
+          "type": "boolean"
+        },
+        "linkPolicy": {
+          "type": "string"
+        },
+        "workOrder": {
+          "type": "string",
+          "enum": [
+            "board",
+            "priority"
+          ]
+        },
+        "completionUnit": {
+          "type": "string",
+          "enum": [
+            "goal",
+            "provider-item"
+          ]
+        },
+        "epicField": {
+          "type": "string"
+        },
+        "orderField": {
+          "type": "string"
+        },
+        "unavailablePolicy": {
+          "type": "string",
+          "enum": [
+            "block",
+            "warn"
+          ],
+          "description": "How board gates treat provider-unavailable (gh missing/unauthed/offline). block (default): an unreadable authoritative board fails the gate. warn: explicit opt-down for deliberate offline work."
+        }
       }
     },
     "backlogProvider": {
       "type": "object",
       "properties": {
-        "enabled": { "type": "boolean" },
-        "provider": { "type": "string", "enum": ["github-projects"] },
-        "owner": { "type": "string" },
-        "projectNumber": { "type": "integer", "minimum": 0 },
-        "scopeQuery": { "type": "string" },
+        "enabled": {
+          "type": "boolean"
+        },
+        "provider": {
+          "type": "string",
+          "enum": [
+            "github-projects"
+          ]
+        },
+        "owner": {
+          "type": "string"
+        },
+        "projectNumber": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "scopeQuery": {
+          "type": "string"
+        },
         "itemTypes": {
           "type": "array",
-          "items": { "type": "string", "enum": ["goal", "milestone", "bug", "task"] }
+          "items": {
+            "type": "string",
+            "enum": [
+              "goal",
+              "milestone",
+              "bug",
+              "task"
+            ]
+          }
         },
-        "typeField": { "type": "string" },
-        "statusField": { "type": "string" },
-        "priorityField": { "type": "string" },
-        "milestoneField": { "type": "string" },
-        "readyStatuses": { "type": "array", "items": { "type": "string", "minLength": 1 } },
-        "activeStatuses": { "type": "array", "items": { "type": "string", "minLength": 1 } },
-        "doneStatuses": { "type": "array", "items": { "type": "string", "minLength": 1 } },
-        "blockedStatuses": { "type": "array", "items": { "type": "string", "minLength": 1 } },
-        "authoritativeFor": { "type": "array", "items": { "type": "string", "minLength": 1 } },
-        "repoPlanRequired": { "type": "boolean" },
-        "tacticalPlanningAuthority": { "type": "string", "enum": ["repo"] },
-        "syncMode": { "type": "string", "enum": ["read-select-write-status-links-notes"] },
-        "linkPolicy": { "type": "string" },
-        "migrationInterviewPath": { "type": "string", "minLength": 1 },
-        "exportMode": { "type": "string", "enum": ["interview-approved"] },
-        "workOrder": { "type": "string", "enum": ["board", "priority"] },
+        "typeField": {
+          "type": "string"
+        },
+        "statusField": {
+          "type": "string"
+        },
+        "priorityField": {
+          "type": "string"
+        },
+        "milestoneField": {
+          "type": "string"
+        },
+        "readyStatuses": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "activeStatuses": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "doneStatuses": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "blockedStatuses": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "authoritativeFor": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "repoPlanRequired": {
+          "type": "boolean"
+        },
+        "tacticalPlanningAuthority": {
+          "type": "string",
+          "enum": [
+            "repo"
+          ]
+        },
+        "syncMode": {
+          "type": "string",
+          "enum": [
+            "read-select-write-status-links-notes"
+          ]
+        },
+        "linkPolicy": {
+          "type": "string"
+        },
+        "migrationInterviewPath": {
+          "type": "string",
+          "minLength": 1
+        },
+        "exportMode": {
+          "type": "string",
+          "enum": [
+            "interview-approved"
+          ]
+        },
+        "workOrder": {
+          "type": "string",
+          "enum": [
+            "board",
+            "priority"
+          ]
+        },
         "completionUnit": {
           "type": "string",
-          "enum": ["goal", "provider-item"],
+          "enum": [
+            "goal",
+            "provider-item"
+          ],
           "description": "The unit of completion for provider-backed work. `goal` preserves the legacy goal-ledger closeout model; `provider-item` makes the external issue/work item the completion object while repo plans and milestones decompose execution."
         },
-        "epicField": { "type": "string" },
-        "orderField": { "type": "string" },
+        "epicField": {
+          "type": "string"
+        },
+        "orderField": {
+          "type": "string"
+        },
         "allowedItemWrites": {
           "type": "object",
           "description": "Per-field opt-in for normally-forbidden stakeholder-authored item writes (board-item-updates skill, Tier 2). All default false; omit the block for default-deny.",
           "properties": {
-            "title": { "type": "boolean" },
-            "body": { "type": "boolean" },
-            "labels": { "type": "boolean" },
-            "milestone": { "type": "boolean" }
+            "title": {
+              "type": "boolean"
+            },
+            "body": {
+              "type": "boolean"
+            },
+            "labels": {
+              "type": "boolean"
+            },
+            "milestone": {
+              "type": "boolean"
+            }
           },
           "additionalProperties": false
         },
@@ -270,72 +742,175 @@
         "boardProfile": {
           "type": "object",
           "description": "Freeform read-model snapshot of the board schema (status field, columns, single-selects, order candidates, custom fields) captured at the last board-adopt run. Written by backlog-board-adopt --apply."
+        },
+        "unavailablePolicy": {
+          "type": "string",
+          "enum": [
+            "block",
+            "warn"
+          ],
+          "description": "How board gates treat provider-unavailable (gh missing/unauthed/offline). block (default): an unreadable authoritative board fails the gate. warn: explicit opt-down for deliberate offline work."
         }
       }
     },
     "stakeholderQuestions": {
       "type": "object",
       "properties": {
-        "enabled": { "type": "boolean" },
-        "provider": { "type": "string", "enum": ["github-issues"] },
-        "defaultMention": { "type": "string" },
-        "unknownStakeholderPolicy": { "type": "string", "enum": ["ask-human-once"] },
-        "openLabel": { "type": "string" },
-        "answeredLabel": { "type": "string" },
+        "enabled": {
+          "type": "boolean"
+        },
+        "provider": {
+          "type": "string",
+          "enum": [
+            "github-issues"
+          ]
+        },
+        "defaultMention": {
+          "type": "string"
+        },
+        "unknownStakeholderPolicy": {
+          "type": "string",
+          "enum": [
+            "ask-human-once"
+          ]
+        },
+        "openLabel": {
+          "type": "string"
+        },
+        "answeredLabel": {
+          "type": "string"
+        },
         "syncAt": {
           "type": "array",
-          "items": { "type": "string", "enum": ["startup", "milestone-boundary", "pr-boundary", "blocked"] }
+          "items": {
+            "type": "string",
+            "enum": [
+              "startup",
+              "milestone-boundary",
+              "pr-boundary",
+              "blocked"
+            ]
+          }
         },
-        "projectStatusOnOpen": { "type": "string" },
-        "projectStatusOnAnswered": { "type": "string" }
+        "projectStatusOnOpen": {
+          "type": "string"
+        },
+        "projectStatusOnAnswered": {
+          "type": "string"
+        }
       }
     },
     "iterationReview": {
       "type": "object",
       "properties": {
-        "enabled": { "type": "boolean" },
+        "enabled": {
+          "type": "boolean"
+        },
         "granularities": {
           "type": "array",
           "minItems": 1,
-          "items": { "type": "string", "enum": ["goal", "milestone"] }
+          "items": {
+            "type": "string",
+            "enum": [
+              "goal",
+              "milestone"
+            ]
+          }
         },
         "outputs": {
           "type": "object",
           "properties": {
-            "page": { "type": "boolean" },
-            "video": { "type": "boolean" }
+            "page": {
+              "type": "boolean"
+            },
+            "video": {
+              "type": "boolean"
+            }
           }
         },
         "boundary": {
           "type": "object",
           "properties": {
-            "announce": { "type": "boolean" },
-            "autoRunAtBoundary": { "type": "boolean" }
+            "announce": {
+              "type": "boolean"
+            },
+            "autoRunAtBoundary": {
+              "type": "boolean"
+            }
           }
         },
-        "recordDir": { "type": "string", "minLength": 1 },
+        "recordDir": {
+          "type": "string",
+          "minLength": 1
+        },
         "hosting": {
           "type": "object",
           "properties": {
-            "store": { "type": "string", "enum": ["s3"] },
-            "bucket": { "type": "string" },
-            "keyPattern": { "type": "string", "minLength": 1 },
-            "cdn": { "type": "string", "enum": ["cloudfront"] },
-            "access": { "type": "string", "minLength": 1 },
-            "baseUrl": { "type": "string" }
+            "store": {
+              "type": "string",
+              "enum": [
+                "s3"
+              ]
+            },
+            "bucket": {
+              "type": "string"
+            },
+            "keyPattern": {
+              "type": "string",
+              "minLength": 1
+            },
+            "cdn": {
+              "type": "string",
+              "enum": [
+                "cloudfront"
+              ]
+            },
+            "access": {
+              "type": "string",
+              "minLength": 1
+            },
+            "baseUrl": {
+              "type": "string"
+            }
           }
         },
         "delivery": {
           "type": "object",
           "properties": {
-            "enabled": { "type": "boolean" },
-            "trigger": { "type": "string", "enum": ["after-merge"] },
-            "provider": { "type": "string", "enum": ["google-chat-webhook"] },
-            "webhookEnv": { "type": "string" },
-            "chatSpace": { "type": "string" },
-            "primaryUrl": { "type": "string", "enum": ["cloudfront-page"] },
-            "dedupe": { "type": "boolean" },
-            "sentStateDir": { "type": "string", "minLength": 1 }
+            "enabled": {
+              "type": "boolean"
+            },
+            "trigger": {
+              "type": "string",
+              "enum": [
+                "after-merge"
+              ]
+            },
+            "provider": {
+              "type": "string",
+              "enum": [
+                "google-chat-webhook"
+              ]
+            },
+            "webhookEnv": {
+              "type": "string"
+            },
+            "chatSpace": {
+              "type": "string"
+            },
+            "primaryUrl": {
+              "type": "string",
+              "enum": [
+                "cloudfront-page"
+              ]
+            },
+            "dedupe": {
+              "type": "boolean"
+            },
+            "sentStateDir": {
+              "type": "string",
+              "minLength": 1
+            }
           }
         },
         "video": {
@@ -344,63 +919,159 @@
             "music": {
               "type": "object",
               "properties": {
-                "enabled": { "type": "boolean" },
-                "source": { "type": "string", "enum": ["adapter-approved"] },
-                "defaultUrl": { "type": "string" },
-                "volume": { "type": "number", "minimum": 0, "maximum": 1 }
+                "enabled": {
+                  "type": "boolean"
+                },
+                "source": {
+                  "type": "string",
+                  "enum": [
+                    "adapter-approved"
+                  ]
+                },
+                "defaultUrl": {
+                  "type": "string"
+                },
+                "volume": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                }
               }
             }
           }
         },
-        "rendererVersion": { "type": "string", "minLength": 1 }
+        "rendererVersion": {
+          "type": "string",
+          "minLength": 1
+        }
       }
     },
     "milestoneUpdate": {
       "type": "object",
       "properties": {
-        "enabled": { "type": "boolean" },
-        "trigger": { "type": "string", "enum": ["milestone-complete"] },
-        "provider": { "type": "string", "enum": ["google-chat-webhook"] },
-        "webhookEnv": { "type": "string" },
-        "chatSpace": { "type": "string" },
-        "dedupe": { "type": "boolean" },
-        "sentStateDir": { "type": "string", "minLength": 1 },
-        "maxChars": { "type": "integer", "minimum": 500 }
+        "enabled": {
+          "type": "boolean"
+        },
+        "trigger": {
+          "type": "string",
+          "enum": [
+            "milestone-complete"
+          ]
+        },
+        "provider": {
+          "type": "string",
+          "enum": [
+            "google-chat-webhook"
+          ]
+        },
+        "webhookEnv": {
+          "type": "string"
+        },
+        "chatSpace": {
+          "type": "string"
+        },
+        "dedupe": {
+          "type": "boolean"
+        },
+        "sentStateDir": {
+          "type": "string",
+          "minLength": 1
+        },
+        "maxChars": {
+          "type": "integer",
+          "minimum": 500
+        }
       }
     },
     "productChat": {
       "type": "object",
       "properties": {
-        "enabled": { "type": "boolean" },
-        "provider": { "type": "string", "enum": ["google-chat-webhook"] },
-        "webhookEnv": { "type": "string" },
-        "chatSpace": { "type": "string" },
-        "maxChars": { "type": "integer", "minimum": 100 }
+        "enabled": {
+          "type": "boolean"
+        },
+        "provider": {
+          "type": "string",
+          "enum": [
+            "google-chat-webhook"
+          ]
+        },
+        "webhookEnv": {
+          "type": "string"
+        },
+        "chatSpace": {
+          "type": "string"
+        },
+        "maxChars": {
+          "type": "integer",
+          "minimum": 100
+        }
       }
     },
     "deploymentNotification": {
       "type": "object",
       "properties": {
-        "enabled": { "type": "boolean" },
-        "trigger": { "type": "string", "enum": ["deploy-ready"] },
-        "provider": { "type": "string", "enum": ["google-chat-webhook"] },
-        "webhookEnv": { "type": "string" },
-        "reuseIterationReviewWebhook": { "type": "boolean" },
-        "chatSpace": { "type": "string" },
-        "dedupe": { "type": "boolean" },
-        "sentStateDir": { "type": "string", "minLength": 1 },
-        "maxChars": { "type": "integer", "minimum": 100 },
+        "enabled": {
+          "type": "boolean"
+        },
+        "trigger": {
+          "type": "string",
+          "enum": [
+            "deploy-ready"
+          ]
+        },
+        "provider": {
+          "type": "string",
+          "enum": [
+            "google-chat-webhook"
+          ]
+        },
+        "webhookEnv": {
+          "type": "string"
+        },
+        "reuseIterationReviewWebhook": {
+          "type": "boolean"
+        },
+        "chatSpace": {
+          "type": "string"
+        },
+        "dedupe": {
+          "type": "boolean"
+        },
+        "sentStateDir": {
+          "type": "string",
+          "minLength": 1
+        },
+        "maxChars": {
+          "type": "integer",
+          "minimum": 100
+        },
         "pipeline": {
           "type": "object",
           "properties": {
-            "required": { "type": "boolean" },
-            "mode": { "type": "string", "enum": ["ci-post-deploy", "manual-command"] },
+            "required": {
+              "type": "boolean"
+            },
+            "mode": {
+              "type": "string",
+              "enum": [
+                "ci-post-deploy",
+                "manual-command"
+              ]
+            },
             "evidencePaths": {
               "type": "array",
-              "items": { "type": "string", "minLength": 1 }
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
             },
-            "requiredCommand": { "type": "string", "minLength": 1 },
-            "healthCheckBeforeNotify": { "type": "boolean" }
+            "requiredCommand": {
+              "type": "string",
+              "minLength": 1
+            },
+            "healthCheckBeforeNotify": {
+              "type": "boolean"
+            }
           }
         }
       }
@@ -408,79 +1079,310 @@
     "latestCode": {
       "type": "object",
       "properties": {
-        "enabled": { "type": "boolean" },
-        "remote": { "type": "string", "minLength": 1 },
-        "base": { "type": "string", "minLength": 1 },
-        "statusFile": { "type": "string", "minLength": 1 },
-        "maxAgeMinutes": { "type": "integer", "minimum": 1 },
-        "fetchAll": { "type": "boolean" },
-        "includeOpenPrs": { "type": "boolean" },
-        "includeRemoteBranches": { "type": "boolean" },
-        "maxAheadBranches": { "type": "integer", "minimum": 0 },
-        "rule": { "type": "string", "minLength": 1 }
+        "enabled": {
+          "type": "boolean"
+        },
+        "remote": {
+          "type": "string",
+          "minLength": 1
+        },
+        "base": {
+          "type": "string",
+          "minLength": 1
+        },
+        "statusFile": {
+          "type": "string",
+          "minLength": 1
+        },
+        "maxAgeMinutes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "fetchAll": {
+          "type": "boolean"
+        },
+        "includeOpenPrs": {
+          "type": "boolean"
+        },
+        "includeRemoteBranches": {
+          "type": "boolean"
+        },
+        "maxAheadBranches": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "rule": {
+          "type": "string",
+          "minLength": 1
+        }
       }
+    },
+    "laneStatus": {
+      "type": "object",
+      "properties": {
+        "startupCheck": {
+          "type": "string",
+          "enum": [
+            "off",
+            "report"
+          ]
+        },
+        "fetchTimeoutSeconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 15
+        },
+        "maxAgeMinutes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "integrationBranch": {
+          "type": "string"
+        },
+        "statusFile": {
+          "type": "string",
+          "minLength": 1
+        },
+        "claimSource": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
     },
     "modelEffortPolicy": {
       "type": "object",
       "properties": {
-        "defaultEffort": { "type": "string", "enum": ["low", "medium", "high", "xhigh"] },
-        "xhighPolicy": { "type": "string", "minLength": 1 },
-        "executionPacketSonnetEligible": { "type": "boolean" }
+        "defaultEffort": {
+          "type": "string",
+          "enum": [
+            "low",
+            "medium",
+            "high",
+            "xhigh"
+          ]
+        },
+        "xhighPolicy": {
+          "type": "string",
+          "minLength": 1
+        },
+        "executionPacketSonnetEligible": {
+          "type": "boolean"
+        }
       }
     },
     "workProfiles": {
       "type": "object",
       "description": "Explicit local work-profile support. Default remains development; non-dev profiles are selected through a local lane-start profile lock.",
       "properties": {
-        "enabled": { "type": "boolean" },
-        "defaultProfile": { "type": "string", "enum": ["development"] },
-        "profileLockPath": { "type": "string", "minLength": 1 },
-        "prePushBase": { "type": ["string", "null"], "minLength": 1 },
+        "enabled": {
+          "type": "boolean"
+        },
+        "defaultProfile": {
+          "type": "string",
+          "enum": [
+            "development"
+          ]
+        },
+        "profileLockPath": {
+          "type": "string",
+          "minLength": 1
+        },
+        "prePushBase": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
         "profiles": {
           "type": "object",
           "properties": {
             "development": {
               "type": "object",
               "properties": {
-                "description": { "type": "string", "minLength": 1 },
-                "allowedPaths": { "type": "array", "items": { "type": "string", "minLength": 1 } },
-                "additionalAllowedPaths": { "type": "array", "items": { "type": "string", "minLength": 1 } },
-                "allowedExtensions": { "type": "array", "items": { "type": "string", "pattern": "^\\." } },
-                "additionalAllowedExtensions": { "type": "array", "items": { "type": "string", "pattern": "^\\." } },
-                "blockedPaths": { "type": "array", "items": { "type": "string", "minLength": 1 } },
-                "additionalBlockedPaths": { "type": "array", "items": { "type": "string", "minLength": 1 } },
-                "maxFileBytes": { "type": "integer", "minimum": 0 },
-                "pushPolicy": { "type": "string", "enum": ["pr-branch-only", "direct-main"] }
+                "description": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "allowedPaths": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "additionalAllowedPaths": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "allowedExtensions": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "pattern": "^\\."
+                  }
+                },
+                "additionalAllowedExtensions": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "pattern": "^\\."
+                  }
+                },
+                "blockedPaths": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "additionalBlockedPaths": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "maxFileBytes": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "pushPolicy": {
+                  "type": "string",
+                  "enum": [
+                    "pr-branch-only",
+                    "direct-main"
+                  ]
+                }
               },
               "additionalProperties": false
             },
             "product-docs": {
               "type": "object",
               "properties": {
-                "description": { "type": "string", "minLength": 1 },
-                "allowedPaths": { "type": "array", "items": { "type": "string", "minLength": 1 } },
-                "additionalAllowedPaths": { "type": "array", "items": { "type": "string", "minLength": 1 } },
-                "allowedExtensions": { "type": "array", "items": { "type": "string", "pattern": "^\\." } },
-                "additionalAllowedExtensions": { "type": "array", "items": { "type": "string", "pattern": "^\\." } },
-                "blockedPaths": { "type": "array", "items": { "type": "string", "minLength": 1 } },
-                "additionalBlockedPaths": { "type": "array", "items": { "type": "string", "minLength": 1 } },
-                "maxFileBytes": { "type": "integer", "minimum": 0 },
-                "pushPolicy": { "type": "string", "enum": ["pr-branch-only", "direct-main"] }
+                "description": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "allowedPaths": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "additionalAllowedPaths": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "allowedExtensions": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "pattern": "^\\."
+                  }
+                },
+                "additionalAllowedExtensions": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "pattern": "^\\."
+                  }
+                },
+                "blockedPaths": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "additionalBlockedPaths": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "maxFileBytes": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "pushPolicy": {
+                  "type": "string",
+                  "enum": [
+                    "pr-branch-only",
+                    "direct-main"
+                  ]
+                }
               },
               "additionalProperties": false
             },
             "support-docs": {
               "type": "object",
               "properties": {
-                "description": { "type": "string", "minLength": 1 },
-                "allowedPaths": { "type": "array", "items": { "type": "string", "minLength": 1 } },
-                "additionalAllowedPaths": { "type": "array", "items": { "type": "string", "minLength": 1 } },
-                "allowedExtensions": { "type": "array", "items": { "type": "string", "pattern": "^\\." } },
-                "additionalAllowedExtensions": { "type": "array", "items": { "type": "string", "pattern": "^\\." } },
-                "blockedPaths": { "type": "array", "items": { "type": "string", "minLength": 1 } },
-                "additionalBlockedPaths": { "type": "array", "items": { "type": "string", "minLength": 1 } },
-                "maxFileBytes": { "type": "integer", "minimum": 0 },
-                "pushPolicy": { "type": "string", "enum": ["pr-branch-only", "direct-main"] }
+                "description": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "allowedPaths": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "additionalAllowedPaths": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "allowedExtensions": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "pattern": "^\\."
+                  }
+                },
+                "additionalAllowedExtensions": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "pattern": "^\\."
+                  }
+                },
+                "blockedPaths": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "additionalBlockedPaths": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "maxFileBytes": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "pushPolicy": {
+                  "type": "string",
+                  "enum": [
+                    "pr-branch-only",
+                    "direct-main"
+                  ]
+                }
               },
               "additionalProperties": false
             }
@@ -492,36 +1394,93 @@
     },
     "commands": {
       "type": "object",
-      "required": ["mainStatus", "fastPreflight", "fullPreflight", "testEnvironment", "mergeQueue", "openPrCheck", "mergeConflictCheck"],
+      "required": [
+        "mainStatus",
+        "fastPreflight",
+        "fullPreflight",
+        "testEnvironment",
+        "mergeQueue",
+        "openPrCheck",
+        "mergeConflictCheck"
+      ],
       "properties": {
-        "mainStatus": { "type": "string" },
-        "earlyWarningSmoke": { "type": "string" },
-        "fastPreflight": { "type": "string" },
-        "fullPreflight": { "type": "string" },
-        "testEnvironment": { "type": "string" },
-        "mergeQueue": { "type": "string" },
-        "openPrCheck": { "type": "string" },
-        "mergeConflictCheck": { "type": "string" },
-        "branchLivenessCheck": { "type": "string" }
+        "mainStatus": {
+          "type": "string"
+        },
+        "earlyWarningSmoke": {
+          "type": "string"
+        },
+        "fastPreflight": {
+          "type": "string"
+        },
+        "fullPreflight": {
+          "type": "string"
+        },
+        "testEnvironment": {
+          "type": "string"
+        },
+        "mergeQueue": {
+          "type": "string"
+        },
+        "openPrCheck": {
+          "type": "string"
+        },
+        "mergeConflictCheck": {
+          "type": "string"
+        },
+        "branchLivenessCheck": {
+          "type": "string"
+        }
       },
-      "additionalProperties": { "type": "string" }
+      "additionalProperties": {
+        "type": "string"
+      }
     },
     "localResourceLocks": {
       "type": "object",
-      "required": ["locksDir", "resources"],
+      "required": [
+        "locksDir",
+        "resources"
+      ],
       "properties": {
-        "locksDir": { "type": "string", "minLength": 1 },
+        "locksDir": {
+          "type": "string",
+          "minLength": 1
+        },
         "resources": {
           "type": "array",
           "items": {
             "type": "object",
-            "required": ["name", "reason", "commands"],
+            "required": [
+              "name",
+              "reason",
+              "commands"
+            ],
             "properties": {
-              "name": { "type": "string", "minLength": 1 },
-              "reason": { "type": "string", "minLength": 1 },
-              "commands": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
-              "timeoutSeconds": { "type": "integer", "minimum": 1 },
-              "pollSeconds": { "type": "integer", "minimum": 1 }
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "reason": {
+                "type": "string",
+                "minLength": 1
+              },
+              "commands": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "timeoutSeconds": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "pollSeconds": {
+                "type": "integer",
+                "minimum": 1
+              }
             }
           }
         }
@@ -529,40 +1488,84 @@
     },
     "localResourceIsolation": {
       "type": "object",
-      "required": ["envFile", "composeProjectPrefix", "portStride", "portVariables", "envTemplates", "isolatedCommands"],
+      "required": [
+        "envFile",
+        "composeProjectPrefix",
+        "portStride",
+        "portVariables",
+        "envTemplates",
+        "isolatedCommands"
+      ],
       "properties": {
-        "envFile": { "type": "string", "minLength": 1 },
-        "composeProjectPrefix": { "type": "string", "minLength": 1 },
-        "portStride": { "type": "integer", "minimum": 1 },
+        "envFile": {
+          "type": "string",
+          "minLength": 1
+        },
+        "composeProjectPrefix": {
+          "type": "string",
+          "minLength": 1
+        },
+        "portStride": {
+          "type": "integer",
+          "minimum": 1
+        },
         "portVariables": {
           "type": "array",
           "items": {
             "type": "object",
-            "required": ["name", "base"],
+            "required": [
+              "name",
+              "base"
+            ],
             "properties": {
-              "name": { "type": "string", "pattern": "^[A-Z_][A-Z0-9_]*$" },
-              "base": { "type": "integer", "minimum": 1, "maximum": 65535 }
+              "name": {
+                "type": "string",
+                "pattern": "^[A-Z_][A-Z0-9_]*$"
+              },
+              "base": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 65535
+              }
             }
           }
         },
         "envTemplates": {
           "type": "object",
-          "additionalProperties": { "type": "string", "minLength": 1 }
+          "additionalProperties": {
+            "type": "string",
+            "minLength": 1
+          }
         },
         "isolatedCommands": {
           "type": "array",
-          "items": { "type": "string", "minLength": 1 }
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
         }
       }
     },
     "review": {
       "type": "object",
-      "required": ["codexWrapper", "claudeReview", "crossModelTiming"],
+      "required": [
+        "codexWrapper",
+        "claudeReview",
+        "crossModelTiming"
+      ],
       "properties": {
-        "codexWrapper": { "type": "string" },
-        "codexPlanWrapper": { "type": "string" },
-        "codexFastMode": { "type": "boolean" },
-        "prePushReviewEvidence": { "type": "boolean" },
+        "codexWrapper": {
+          "type": "string"
+        },
+        "codexPlanWrapper": {
+          "type": "string"
+        },
+        "codexFastMode": {
+          "type": "boolean"
+        },
+        "prePushReviewEvidence": {
+          "type": "boolean"
+        },
         "roundBudgets": {
           "type": "object",
           "properties": {
@@ -571,14 +1574,27 @@
               "minimum": 0,
               "description": "Legacy adapters may declare a positive T0 budget; runtime warns and coerces it to 0 because T0 does not use cross-model implementation review."
             },
-            "T1": { "type": "integer", "minimum": 1 },
-            "T2": { "type": "integer", "minimum": 1 },
-            "T3": { "type": "integer", "minimum": 1 }
+            "T1": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "T2": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "T3": {
+              "type": "integer",
+              "minimum": 1
+            }
           },
           "additionalProperties": false
         },
-        "claudeReview": { "type": "string" },
-        "crossModelTiming": { "type": "string" }
+        "claudeReview": {
+          "type": "string"
+        },
+        "crossModelTiming": {
+          "type": "string"
+        }
       }
     },
     "derivedArtifacts": {
@@ -586,52 +1602,139 @@
       "description": "Committed artifacts generated from source files. record-stage1-sweep blocks (the machine-enforced derived-artifact freshness gate) when a declared artifact's sources changed in the reviewed base...HEAD diff without the artifact being regenerated in that same diff.",
       "items": {
         "type": "object",
-        "required": ["artifact", "sources"],
+        "required": [
+          "artifact",
+          "sources"
+        ],
         "properties": {
-          "artifact": { "type": "string", "description": "Repo-relative path of the committed derived artifact." },
+          "artifact": {
+            "type": "string",
+            "description": "Repo-relative path of the committed derived artifact."
+          },
           "sources": {
             "type": "array",
-            "items": { "type": "string" },
+            "items": {
+              "type": "string"
+            },
             "minItems": 1,
             "description": "fnmatch globs (repo-root-relative; '*' spans '/', so use '*' not '**') for the source files the artifact is generated from."
           },
-          "regenerate": { "type": "string", "description": "Command that regenerates the artifact (surfaced in the block message)." }
+          "regenerate": {
+            "type": "string",
+            "description": "Command that regenerates the artifact (surfaced in the block message)."
+          }
         },
         "additionalProperties": false
       }
     },
     "behaviorSpecs": {
       "type": "object",
-      "required": ["required", "paths", "exemption"],
+      "required": [
+        "required",
+        "paths",
+        "exemption"
+      ],
       "properties": {
-        "required": { "type": "boolean" },
-        "paths": { "type": "array", "items": { "type": "string" } },
-        "exemption": { "type": "string" },
-        "sourceMaterials": { "type": "array", "items": { "type": "string", "minLength": 1 } },
-        "sourceMaterialRule": { "type": "string", "minLength": 1 },
-        "pendingTags": { "type": "array", "items": { "type": "string", "minLength": 1 } },
-        "inactiveAcceptanceEnforcement": { "type": "string", "enum": ["warn", "strict"] },
-        "maxPendingScenarios": { "type": "integer", "minimum": 0 },
-        "pendingRequiresOwnerAndTrigger": { "type": "boolean" },
+        "required": {
+          "type": "boolean"
+        },
+        "paths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "exemption": {
+          "type": "string"
+        },
+        "sourceMaterials": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "sourceMaterialRule": {
+          "type": "string",
+          "minLength": 1
+        },
+        "pendingTags": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "inactiveAcceptanceEnforcement": {
+          "type": "string",
+          "enum": [
+            "warn",
+            "strict"
+          ]
+        },
+        "maxPendingScenarios": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "pendingRequiresOwnerAndTrigger": {
+          "type": "boolean"
+        },
         "acceptanceHarnesses": {
           "type": "array",
           "items": {
             "type": "object",
-            "required": ["name", "command", "appPath"],
+            "required": [
+              "name",
+              "command",
+              "appPath"
+            ],
             "properties": {
-              "name": { "type": "string", "minLength": 1 },
-              "command": { "type": "string", "minLength": 1 },
-              "appPath": { "type": "string", "minLength": 1 },
-              "featurePaths": { "type": "array", "items": { "type": "string", "minLength": 1 } },
-              "targetProof": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "command": {
+                "type": "string",
+                "minLength": 1
+              },
+              "appPath": {
+                "type": "string",
+                "minLength": 1
+              },
+              "featurePaths": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "targetProof": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
             }
           }
         },
         "roleVocabulary": {
           "type": "object",
           "properties": {
-            "allowed": { "type": "array", "items": { "type": "string", "minLength": 1 } },
-            "forbidden": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+            "allowed": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "forbidden": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
           }
         }
       }
@@ -639,81 +1742,246 @@
     "bugBacklog": {
       "type": "object",
       "properties": {
-        "sourceOfTruth": { "type": "string", "minLength": 1 },
-        "issueMirrors": { "type": "array", "items": { "type": "string", "minLength": 1 } },
-        "severityTaxonomy": { "type": "string", "minLength": 1 },
-        "autoP0Categories": { "type": "array", "items": { "type": "string", "minLength": 1 } },
-        "autoP1Categories": { "type": "array", "items": { "type": "string", "minLength": 1 } },
-        "requiredFields": { "type": "array", "items": { "type": "string", "minLength": 1 } },
-        "rule": { "type": "string", "minLength": 1 }
+        "sourceOfTruth": {
+          "type": "string",
+          "minLength": 1
+        },
+        "issueMirrors": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "severityTaxonomy": {
+          "type": "string",
+          "minLength": 1
+        },
+        "autoP0Categories": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "autoP1Categories": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "requiredFields": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "rule": {
+          "type": "string",
+          "minLength": 1
+        }
       }
     },
     "technologyStack": {
       "type": "object",
       "properties": {
-        "cloudProviderDefault": { "type": "string", "minLength": 1 },
-        "approvedCloudProviders": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
-        "newProjectCloudDefault": { "type": "string", "minLength": 1 },
-        "newCloudProviderRequiresApproval": { "type": "boolean" },
-        "awsCliConvention": { "type": "string", "minLength": 1 },
-        "nonNegotiable": { "type": "array", "items": { "type": "string", "minLength": 1 } },
-        "rule": { "type": "string", "minLength": 1 }
+        "cloudProviderDefault": {
+          "type": "string",
+          "minLength": 1
+        },
+        "approvedCloudProviders": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "newProjectCloudDefault": {
+          "type": "string",
+          "minLength": 1
+        },
+        "newCloudProviderRequiresApproval": {
+          "type": "boolean"
+        },
+        "awsCliConvention": {
+          "type": "string",
+          "minLength": 1
+        },
+        "nonNegotiable": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "rule": {
+          "type": "string",
+          "minLength": 1
+        }
       }
     },
     "graphify": {
       "type": "object",
       "properties": {
-        "enabled": { "type": "boolean" },
-        "preferWhenPresent": { "type": "boolean" },
-        "outputDir": { "type": "string", "minLength": 1 },
-        "reportPath": { "type": "string", "minLength": 1 },
-        "graphPath": { "type": "string", "minLength": 1 },
-        "installPackage": { "type": "string", "minLength": 1 },
-        "installCommand": { "type": "string", "minLength": 1 },
-        "setupCommand": { "type": "string", "minLength": 1 },
-        "buildCommand": { "type": "string", "minLength": 1 },
-        "updateCommand": { "type": "string", "minLength": 1 },
-        "queryCommand": { "type": "string", "minLength": 1 },
-        "pathCommand": { "type": "string", "minLength": 1 },
-        "explainCommand": { "type": "string", "minLength": 1 },
-        "gitIgnoreOutput": { "type": "boolean" },
-        "allowProjectInstaller": { "type": "boolean" },
-        "freshnessEnforcement": { "type": "string", "enum": ["strict-if-present", "warn", "disabled"] },
-        "freshnessRule": { "type": "string", "minLength": 1 },
-        "rule": { "type": "string", "minLength": 1 }
+        "enabled": {
+          "type": "boolean"
+        },
+        "preferWhenPresent": {
+          "type": "boolean"
+        },
+        "outputDir": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reportPath": {
+          "type": "string",
+          "minLength": 1
+        },
+        "graphPath": {
+          "type": "string",
+          "minLength": 1
+        },
+        "installPackage": {
+          "type": "string",
+          "minLength": 1
+        },
+        "installCommand": {
+          "type": "string",
+          "minLength": 1
+        },
+        "setupCommand": {
+          "type": "string",
+          "minLength": 1
+        },
+        "buildCommand": {
+          "type": "string",
+          "minLength": 1
+        },
+        "updateCommand": {
+          "type": "string",
+          "minLength": 1
+        },
+        "queryCommand": {
+          "type": "string",
+          "minLength": 1
+        },
+        "pathCommand": {
+          "type": "string",
+          "minLength": 1
+        },
+        "explainCommand": {
+          "type": "string",
+          "minLength": 1
+        },
+        "gitIgnoreOutput": {
+          "type": "boolean"
+        },
+        "allowProjectInstaller": {
+          "type": "boolean"
+        },
+        "freshnessEnforcement": {
+          "type": "string",
+          "enum": [
+            "strict-if-present",
+            "warn",
+            "disabled"
+          ]
+        },
+        "freshnessRule": {
+          "type": "string",
+          "minLength": 1
+        },
+        "rule": {
+          "type": "string",
+          "minLength": 1
+        }
       }
     },
     "deploymentTargets": {
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["name", "milestoneClose", "target", "procedure", "healthCheck"],
+        "required": [
+          "name",
+          "milestoneClose",
+          "target",
+          "procedure",
+          "healthCheck"
+        ],
         "properties": {
-          "name": { "type": "string", "minLength": 1 },
-          "milestoneClose": { "type": "boolean" },
-          "target": { "type": "string", "minLength": 1 },
-          "procedure": { "type": "string", "minLength": 1 },
-          "healthCheck": { "type": "string", "minLength": 1 },
-          "rollback": { "type": "string", "minLength": 1 },
-          "buildIdentity": { "type": "string", "minLength": 1 },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "milestoneClose": {
+            "type": "boolean"
+          },
+          "target": {
+            "type": "string",
+            "minLength": 1
+          },
+          "procedure": {
+            "type": "string",
+            "minLength": 1
+          },
+          "healthCheck": {
+            "type": "string",
+            "minLength": 1
+          },
+          "rollback": {
+            "type": "string",
+            "minLength": 1
+          },
+          "buildIdentity": {
+            "type": "string",
+            "minLength": 1
+          },
           "deployHealth": {
             "type": "object",
             "description": "Optional deployment workflow history gate. When enabled, Session Start runs deploy-health and blocks on latest failed deploy, repeated failures, no recent success, or unreadable deploy history.",
             "properties": {
-              "enabled": { "type": "boolean" },
-              "provider": { "type": "string", "enum": ["github-actions"] },
-              "workflow": { "type": "string" },
-              "branch": { "type": "string", "minLength": 1 },
-              "limit": { "type": "integer", "minimum": 1 },
-              "failOnLatestFailure": { "type": "boolean" },
-              "maxConsecutiveFailures": { "type": "integer", "minimum": 1 },
-              "maxSuccessAgeHours": { "type": "integer", "minimum": 0 }
+              "enabled": {
+                "type": "boolean"
+              },
+              "provider": {
+                "type": "string",
+                "enum": [
+                  "github-actions"
+                ]
+              },
+              "workflow": {
+                "type": "string"
+              },
+              "branch": {
+                "type": "string",
+                "minLength": 1
+              },
+              "limit": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "failOnLatestFailure": {
+                "type": "boolean"
+              },
+              "maxConsecutiveFailures": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "maxSuccessAgeHours": {
+                "type": "integer",
+                "minimum": 0
+              }
             }
           },
           "outcomeSignals": {
             "type": "array",
             "description": "Customer-outcome health contract (rec #1): real customer round-trips that prove a milestone-close deploy succeeded (e.g. 'guest places an order -> 201 and the order is visible'). A milestone-close target must declare at least one NON-proxy signal when healthContract.enforcement is block -- a proxy (/health, 200 OK, a DB read) does not count.",
-            "items": { "type": "string" }
+            "items": {
+              "type": "string"
+            }
           },
           "sideEffects": {
             "type": "array",
@@ -721,8 +1989,12 @@
             "items": {
               "type": "object",
               "properties": {
-                "type": { "type": "string" },
-                "receiptProof": { "type": "string" }
+                "type": {
+                  "type": "string"
+                },
+                "receiptProof": {
+                  "type": "string"
+                }
               }
             }
           }
@@ -731,36 +2003,86 @@
     },
     "continuity": {
       "type": "object",
-      "required": ["path", "archiveDir", "gitIgnore"],
+      "required": [
+        "path",
+        "archiveDir",
+        "gitIgnore"
+      ],
       "properties": {
-        "path": { "type": "string" },
-        "archiveDir": { "type": "string" },
-        "gitIgnore": { "type": "boolean" }
+        "path": {
+          "type": "string"
+        },
+        "archiveDir": {
+          "type": "string"
+        },
+        "gitIgnore": {
+          "type": "boolean"
+        }
       }
     },
     "sessionJournal": {
       "type": "object",
       "properties": {
-        "enabled": { "type": "boolean" },
-        "branch": { "type": "string", "minLength": 1 },
-        "archiveDir": { "type": "string", "minLength": 1 },
-        "cadence": { "type": "string", "enum": ["milestone", "session", "off"] },
-        "gitIgnoreLocal": { "type": "boolean" },
-        "maxBytes": { "type": "integer", "minimum": 1 }
+        "enabled": {
+          "type": "boolean"
+        },
+        "branch": {
+          "type": "string",
+          "minLength": 1
+        },
+        "archiveDir": {
+          "type": "string",
+          "minLength": 1
+        },
+        "cadence": {
+          "type": "string",
+          "enum": [
+            "milestone",
+            "session",
+            "off"
+          ]
+        },
+        "gitIgnoreLocal": {
+          "type": "boolean"
+        },
+        "maxBytes": {
+          "type": "integer",
+          "minimum": 1
+        }
       }
     },
     "observabilityEvents": {
       "type": "object",
       "properties": {
-        "enabled": { "type": "boolean" },
-        "stateDir": { "type": "string", "minLength": 1 },
-        "humanLog": { "type": "string", "minLength": 1 },
-        "jsonlLog": { "type": "string", "minLength": 1 },
-        "rotateBytes": { "type": "integer", "minimum": 1 },
-        "retainedRotations": { "type": "integer", "minimum": 1 },
+        "enabled": {
+          "type": "boolean"
+        },
+        "stateDir": {
+          "type": "string",
+          "minLength": 1
+        },
+        "humanLog": {
+          "type": "string",
+          "minLength": 1
+        },
+        "jsonlLog": {
+          "type": "string",
+          "minLength": 1
+        },
+        "rotateBytes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "retainedRotations": {
+          "type": "integer",
+          "minimum": 1
+        },
         "requiredBoundaryEvents": {
           "type": "array",
-          "items": { "type": "string", "minLength": 1 }
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
         }
       }
     },
@@ -768,130 +2090,365 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "enabled": { "type": "boolean" },
-        "cadence": { "type": "string", "enum": ["milestone", "session", "off"] }
+        "enabled": {
+          "type": "boolean"
+        },
+        "cadence": {
+          "type": "string",
+          "enum": [
+            "milestone",
+            "session",
+            "off"
+          ]
+        }
       }
     },
     "usageAccounting": {
       "type": "object",
       "properties": {
-        "enabled": { "type": "boolean" },
-        "stateDir": { "type": "string", "minLength": 1 },
-        "jsonlLog": { "type": "string", "minLength": 1 },
-        "rollupJson": { "type": "string", "minLength": 1 },
-        "rotateBytes": { "type": "integer", "minimum": 1 },
-        "retainedRotations": { "type": "integer", "minimum": 1 }
+        "enabled": {
+          "type": "boolean"
+        },
+        "stateDir": {
+          "type": "string",
+          "minLength": 1
+        },
+        "jsonlLog": {
+          "type": "string",
+          "minLength": 1
+        },
+        "rollupJson": {
+          "type": "string",
+          "minLength": 1
+        },
+        "rotateBytes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "retainedRotations": {
+          "type": "integer",
+          "minimum": 1
+        }
       }
     },
     "contextRotation": {
       "type": "object",
       "properties": {
-        "enabled": { "type": "boolean" },
-        "softPercent": { "type": "integer", "minimum": 1, "maximum": 100 },
-        "hardPercent": { "type": "integer", "minimum": 1, "maximum": 100 },
-        "heartbeatMinutes": { "type": "integer", "minimum": 1 },
-        "heartbeatBoundary": { "type": "string", "minLength": 1 },
-        "safeBoundaries": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } }
+        "enabled": {
+          "type": "boolean"
+        },
+        "softPercent": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "hardPercent": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "heartbeatMinutes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "heartbeatBoundary": {
+          "type": "string",
+          "minLength": 1
+        },
+        "safeBoundaries": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
       }
     },
     "costPreferences": {
       "type": "object",
       "properties": {
-        "fanOutCap": { "type": "integer", "minimum": 1 },
-        "costSensitive": { "type": "boolean" },
-        "suppressTokenPrompts": { "type": "boolean" },
-        "projectedTokenBudget": { "type": "integer", "minimum": 0 }
+        "fanOutCap": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "costSensitive": {
+          "type": "boolean"
+        },
+        "suppressTokenPrompts": {
+          "type": "boolean"
+        },
+        "projectedTokenBudget": {
+          "type": "integer",
+          "minimum": 0
+        }
       }
     },
     "renderBudget": {
       "type": "object",
       "description": "Adapter-tunable size budget for generated runtime files (CLAUDE.md/AGENTS.md). Replaces the previously hardcoded 15KB/31KB ceiling so a project can raise/lower it deliberately. Defaults: max 31000, min 15000, enforcement warn.",
       "properties": {
-        "maxGeneratedBytes": { "type": "integer", "minimum": 1000 },
-        "minGeneratedBytes": { "type": "integer", "minimum": 0 },
-        "enforcement": { "type": "string", "enum": ["warn", "block"] }
+        "maxGeneratedBytes": {
+          "type": "integer",
+          "minimum": 1000
+        },
+        "minGeneratedBytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "enforcement": {
+          "type": "string",
+          "enum": [
+            "warn",
+            "block"
+          ]
+        }
       },
       "additionalProperties": false
     },
     "laneState": {
       "type": "object",
-      "required": ["lockPath", "runsDir", "executionPacket", "milestoneRun", "goalRun", "gitIgnore"],
+      "required": [
+        "lockPath",
+        "runsDir",
+        "executionPacket",
+        "milestoneRun",
+        "goalRun",
+        "gitIgnore"
+      ],
       "properties": {
-        "lockPath": { "type": "string" },
-        "runsDir": { "type": "string" },
-        "executionPacket": { "type": "string" },
-        "milestoneRun": { "type": "string" },
-        "goalRun": { "type": "string" },
-        "gitIgnore": { "type": "boolean" }
+        "lockPath": {
+          "type": "string"
+        },
+        "runsDir": {
+          "type": "string"
+        },
+        "executionPacket": {
+          "type": "string"
+        },
+        "milestoneRun": {
+          "type": "string"
+        },
+        "goalRun": {
+          "type": "string"
+        },
+        "gitIgnore": {
+          "type": "boolean"
+        }
       }
     },
     "milestoneContinuation": {
       "type": "object",
       "properties": {
-        "watchdogEnabled": { "type": "boolean" },
-        "watchdogCadenceMinutes": { "type": "integer", "minimum": 1 }
+        "watchdogEnabled": {
+          "type": "boolean"
+        },
+        "watchdogCadenceMinutes": {
+          "type": "integer",
+          "minimum": 1
+        }
       }
     },
     "readiness": {
       "type": "object",
-      "required": ["sources"],
+      "required": [
+        "sources"
+      ],
       "properties": {
-        "sources": { "type": "array", "items": { "type": "string" } },
-        "enforcement": { "type": "string", "enum": ["off", "warn", "block"], "description": "Detection-baseline gate (rec #9). When block, `readiness-review` (or --strict) fails closed unless the default branch enforces required checks + strict protection, the canaryWorkflow's last run on the deployed SHA concluded success, and each alarmSources file wires an errorId/alarm. Default off." },
-        "requiredChecks": { "type": "array", "items": { "type": "string" }, "description": "Status-check contexts branch protection must require." },
-        "canaryWorkflow": { "type": "string", "description": "Name of the synthetic-canary workflow whose last conclusion on the deployed SHA must be success." },
-        "alarmSources": { "type": "array", "items": { "type": "string" }, "description": "Repo files that must contain errorId/alarm wiring (so detection is not human-only)." }
+        "sources": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "enforcement": {
+          "type": "string",
+          "enum": [
+            "off",
+            "warn",
+            "block"
+          ],
+          "description": "Detection-baseline gate (rec #9). When block, `readiness-review` (or --strict) fails closed unless the default branch enforces required checks + strict protection, the canaryWorkflow's last run on the deployed SHA concluded success, and each alarmSources file wires an errorId/alarm. Default off."
+        },
+        "requiredChecks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Status-check contexts branch protection must require."
+        },
+        "canaryWorkflow": {
+          "type": "string",
+          "description": "Name of the synthetic-canary workflow whose last conclusion on the deployed SHA must be success."
+        },
+        "alarmSources": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Repo files that must contain errorId/alarm wiring (so detection is not human-only)."
+        }
       }
     },
     "documentContext": {
       "type": "object",
       "properties": {
-        "enforcement": { "type": "string", "enum": ["warn", "strict"] },
-        "contextIndexPaths": { "type": "array", "items": { "type": "string", "minLength": 1 } },
-        "trackedDocRoots": { "type": "array", "items": { "type": "string", "minLength": 1 } },
-        "historicalPaths": { "type": "array", "items": { "type": "string", "minLength": 1 } },
-        "ignoredDocPaths": { "type": "array", "items": { "type": "string", "minLength": 1 } },
-        "maxIndexBytes": { "type": "integer", "minimum": 1 },
-        "maxIndexLines": { "type": "integer", "minimum": 1 }
+        "enforcement": {
+          "type": "string",
+          "enum": [
+            "warn",
+            "strict"
+          ]
+        },
+        "contextIndexPaths": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "trackedDocRoots": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "historicalPaths": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "ignoredDocPaths": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "maxIndexBytes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "maxIndexLines": {
+          "type": "integer",
+          "minimum": 1
+        }
       }
     },
     "ciTestGate": {
       "type": "object",
       "description": "CI/CD pipeline health check: verifies the repo's tests are actually run by CI on PR/push. Fails closed when tests exist but no workflow runs them.",
       "properties": {
-        "enabled": { "type": "boolean" },
-        "enforcement": { "type": "string", "enum": ["warn", "block"] },
-        "events": { "type": "array", "items": { "type": "string", "minLength": 1 }, "minItems": 1 },
-        "testCommandMarkers": { "type": "array", "items": { "type": "string", "minLength": 1 } },
-        "requiredWorkflow": { "type": "string" },
-        "expectTests": { "type": "boolean", "description": "Whether this repo is expected to have an automated test suite. Defaults true when the adapter declares deploymentTargets. When no tests are detected (or the scan is inconclusive) and expectTests is true, the gate fails closed instead of self-disabling (FM2 fail-open closure). Set false to explicitly assert a deliberately test-less surface." },
-        "requiredCheckName": { "type": "string", "description": "Name of the required CI status check (a GitHub Actions CheckRun name or a commit StatusContext context, e.g. a Jenkins-posted status). When set, branch_liveness fails closed if an OPEN PR's check of this name CONCLUDED a hard failure (FM3: a not-green PR is not active work). Opt-in: unset means no CI-conclusion blocking." }
+        "enabled": {
+          "type": "boolean"
+        },
+        "enforcement": {
+          "type": "string",
+          "enum": [
+            "warn",
+            "block"
+          ]
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1
+        },
+        "testCommandMarkers": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "requiredWorkflow": {
+          "type": "string"
+        },
+        "expectTests": {
+          "type": "boolean",
+          "description": "Whether this repo is expected to have an automated test suite. Defaults true when the adapter declares deploymentTargets. When no tests are detected (or the scan is inconclusive) and expectTests is true, the gate fails closed instead of self-disabling (FM2 fail-open closure). Set false to explicitly assert a deliberately test-less surface."
+        },
+        "requiredCheckName": {
+          "type": "string",
+          "description": "Name of the required CI status check (a GitHub Actions CheckRun name or a commit StatusContext context, e.g. a Jenkins-posted status). When set, branch_liveness fails closed if an OPEN PR's check of this name CONCLUDED a hard failure (FM3: a not-green PR is not active work). Opt-in: unset means no CI-conclusion blocking."
+        }
       }
     },
     "uiEvidence": {
       "type": "object",
       "description": "Opt-in UI proof gate. When enabled with block enforcement, configured goal/work-item transitions require a Playwright screenshot evidence manifest (`minervit-ui-evidence/v1`) before completion, and may automatically post the manifest summary to the linked GitHub issue as proof.",
       "properties": {
-        "enabled": { "type": "boolean" },
-        "enforcement": { "type": "string", "enum": ["off", "warn", "block"] },
-        "tool": { "type": "string", "enum": ["playwright"] },
-        "evidenceDir": { "type": "string", "minLength": 1 },
-        "manifestGlob": { "type": "string", "minLength": 1 },
-        "captureCommand": { "type": "string" },
+        "enabled": {
+          "type": "boolean"
+        },
+        "enforcement": {
+          "type": "string",
+          "enum": [
+            "off",
+            "warn",
+            "block"
+          ]
+        },
+        "tool": {
+          "type": "string",
+          "enum": [
+            "playwright"
+          ]
+        },
+        "evidenceDir": {
+          "type": "string",
+          "minLength": 1
+        },
+        "manifestGlob": {
+          "type": "string",
+          "minLength": 1
+        },
+        "captureCommand": {
+          "type": "string"
+        },
         "requiredEvents": {
           "type": "array",
-          "items": { "type": "string", "enum": ["milestone-complete", "goal-complete", "work-item-complete"] }
+          "items": {
+            "type": "string",
+            "enum": [
+              "milestone-complete",
+              "goal-complete",
+              "work-item-complete"
+            ]
+          }
         },
         "issueComments": {
           "type": "object",
           "properties": {
-            "enabled": { "type": "boolean" },
-            "provider": { "type": "string", "enum": ["github-issues"] },
+            "enabled": {
+              "type": "boolean"
+            },
+            "provider": {
+              "type": "string",
+              "enum": [
+                "github-issues"
+              ]
+            },
             "triggerEvents": {
               "type": "array",
-              "items": { "type": "string", "enum": ["milestone-complete", "goal-complete", "work-item-complete"] }
+              "items": {
+                "type": "string",
+                "enum": [
+                  "milestone-complete",
+                  "goal-complete",
+                  "work-item-complete"
+                ]
+              }
             },
-            "required": { "type": "boolean" }
+            "required": {
+              "type": "boolean"
+            }
           }
         }
       }
@@ -900,21 +2457,40 @@
       "type": "object",
       "description": "Required-runtime-secret registry (FM3/P4, the #448 class). Declares secrets that MUST be present at runtime so a missing one fails the deploy loudly (boot fail-fast / secret-parity) rather than silently degrading to an empty string via the `?? ''` idiom. When enforcement is block, methodology-status --fail-on-drift fails on a degrade-to-empty read of a registered secret.",
       "properties": {
-        "enforcement": { "type": "string", "enum": ["warn", "block"] },
+        "enforcement": {
+          "type": "string",
+          "enum": [
+            "warn",
+            "block"
+          ]
+        },
         "requiredSecrets": {
           "type": "array",
           "items": {
             "type": "object",
             "properties": {
-              "name": { "type": "string", "minLength": 1 },
-              "surface": { "type": "string" },
-              "criticalJourneyRef": { "type": "string" }
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "surface": {
+                "type": "string"
+              },
+              "criticalJourneyRef": {
+                "type": "string"
+              }
             },
-            "required": ["name"]
+            "required": [
+              "name"
+            ]
           }
         },
-        "bootAssertionCommand": { "type": "string" },
-        "secretParityCommand": { "type": "string" }
+        "bootAssertionCommand": {
+          "type": "string"
+        },
+        "secretParityCommand": {
+          "type": "string"
+        }
       }
     },
     "criticalJourneys": {
@@ -923,81 +2499,175 @@
       "items": {
         "type": "object",
         "properties": {
-          "name": { "type": "string", "minLength": 1 },
-          "featurePaths": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "featurePaths": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
         },
-        "required": ["name"]
+        "required": [
+          "name"
+        ]
       }
     },
     "migrationSafety": {
       "type": "object",
       "description": "Destructive-migration guard (FM1/data-durability). Opt-in via migrationsPath (a .sql file/dir/glob). A migration with un-guarded destructive DDL (DROP TABLE/COLUMN/CONSTRAINT, TRUNCATE, SET NOT NULL) must be reversible/expand-contract or carry a reviewed ackMarker comment, else methodology-status reports drift (blocking when enforcement is block).",
       "properties": {
-        "enforcement": { "type": "string", "enum": ["warn", "block"] },
-        "migrationsPath": { "type": "string" },
-        "ackMarker": { "type": "string" }
+        "enforcement": {
+          "type": "string",
+          "enum": [
+            "warn",
+            "block"
+          ]
+        },
+        "migrationsPath": {
+          "type": "string"
+        },
+        "ackMarker": {
+          "type": "string"
+        }
       }
     },
     "coverageFloor": {
       "type": "object",
       "description": "Diff-scoped coverage gate (rec #7 Part 2). The `diff-coverage-check` subcommand intersects the NEW lines a change adds (git diff against diffBase) with the executed lines in a coverage report (coverage.py JSON or LCOV) and fails when new-line coverage is below newCodeMinPct. Blocks only when enforcement is block; diff-scoped is the right instrument for new code (whole-repo fail_under is the coarse backstop).",
       "properties": {
-        "enforcement": { "type": "string", "enum": ["warn", "block"] },
-        "newCodeMinPct": { "type": "integer", "minimum": 0, "maximum": 100 },
-        "coverageReport": { "type": "string" },
-        "diffBase": { "type": "string" }
+        "enforcement": {
+          "type": "string",
+          "enum": [
+            "warn",
+            "block"
+          ]
+        },
+        "newCodeMinPct": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "coverageReport": {
+          "type": "string"
+        },
+        "diffBase": {
+          "type": "string"
+        }
       }
     },
     "planAcceptance": {
       "type": "object",
       "description": "Acceptance-criteria-to-test binding gate (rec #13). When enforcement is block, plan-finalization-precheck fails any acceptance criterion under an acHeadings section that names no executable test/scenario id (test_*, *.feature, Scenario:, Test:/Verified by:, etc.) or is bound to an inactive (@pending) scenario. warn surfaces the same as non-fatal warnings; off disables. Definition-of-Ready with teeth.",
       "properties": {
-        "enforcement": { "type": "string", "enum": ["off", "warn", "block"] },
-        "acHeadings": { "type": "array", "items": { "type": "string" } }
+        "enforcement": {
+          "type": "string",
+          "enum": [
+            "off",
+            "warn",
+            "block"
+          ]
+        },
+        "acHeadings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
       }
     },
     "flakyQuarantine": {
       "type": "object",
       "description": "Quarantine forcing-function (rec #14). The `flaky-quarantine-check` subcommand fails a diff that ADDS a flaky/skip/xfail marker (markers, default a cross-stack set) without recording an owner AND a due/issue/trigger in the same hunk, so a quarantined test becomes tracked debt rather than silent gate erosion. When scanPath is set and maxMarkers>=0 it also enforces a repo-wide marker ratchet (lower maxMarkers as flakies are fixed; never raise). Blocks only when enforcement is block.",
       "properties": {
-        "enforcement": { "type": "string", "enum": ["warn", "block"] },
-        "maxMarkers": { "type": "integer" },
-        "scanPath": { "type": "string" },
-        "markers": { "type": "array", "items": { "type": "string" } }
+        "enforcement": {
+          "type": "string",
+          "enum": [
+            "warn",
+            "block"
+          ]
+        },
+        "maxMarkers": {
+          "type": "integer"
+        },
+        "scanPath": {
+          "type": "string"
+        },
+        "markers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
       }
     },
     "healthContract": {
       "type": "object",
       "description": "Customer-outcome health contract (rec #1). When enforcement is block, methodology-status drift-fails any milestone-close deploymentTarget that declares no NON-proxy outcomeSignals entry -- green must mean a real customer round-trip passed, not a liveness proxy (P1 provability theater). off (default) disables; warn reports without failing.",
       "properties": {
-        "enforcement": { "type": "string", "enum": ["off", "warn", "block"] }
+        "enforcement": {
+          "type": "string",
+          "enum": [
+            "off",
+            "warn",
+            "block"
+          ]
+        }
       }
     },
     "sideEffectProof": {
       "type": "object",
       "description": "External side-effect delivery proof (rec #15). When enforcement is block, methodology-status drift-fails any milestone-close deploymentTarget whose declared sideEffects lack a provider-receipt proof (an outbox row written/queued is not delivery). off (default) disables; warn reports without failing.",
       "properties": {
-        "enforcement": { "type": "string", "enum": ["off", "warn", "block"] }
+        "enforcement": {
+          "type": "string",
+          "enum": [
+            "off",
+            "warn",
+            "block"
+          ]
+        }
       }
     },
     "remediation": {
       "type": "object",
       "description": "Open-remediation forcing function (rec #3). A committed obligation ledger (ledgerPath, a JSON list or {obligations:[...]} of {id, owner, due, status, verifiedBy}). methodology-status drift-fails (under --fail-on-drift, or always when enforcement is block) any obligation that is overdue and still open, or marked closed without a customer-outcome verify -- 'PR merged' is not proof a recurrence is fixed. No-op when the ledger file is absent.",
       "properties": {
-        "enforcement": { "type": "string", "enum": ["off", "warn", "block"] },
-        "ledgerPath": { "type": "string" }
+        "enforcement": {
+          "type": "string",
+          "enum": [
+            "off",
+            "warn",
+            "block"
+          ]
+        },
+        "ledgerPath": {
+          "type": "string"
+        }
       }
     },
     "redGreen": {
       "type": "object",
       "description": "Red-green discrimination proof (rec #8). The `red-green-check` subcommand mutates one symbol of a changed source file and runs the test command; a surviving mutation proves the tests are no-ops (they would pass even if the code broke). Fails closed on a survivor when --strict or enforcement is block. A mutation that only breaks loading/collection is rejected as a kill (inconclusive, not a pass).",
       "properties": {
-        "enforcement": { "type": "string", "enum": ["off", "warn", "block"] }
+        "enforcement": {
+          "type": "string",
+          "enum": [
+            "off",
+            "warn",
+            "block"
+          ]
+        }
       }
     },
     "generatedFiles": {
       "type": "array",
-      "items": { "type": "string" }
+      "items": {
+        "type": "string"
+      }
     }
   }
 }

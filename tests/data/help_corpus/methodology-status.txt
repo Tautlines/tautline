@@ -1,0 +1,24 @@
+usage: tautline methodology-status [-h] [--project PROJECT] [--target TARGET]
+                                   [--no-remote] [--fail-on-drift] [--strict]
+                                   [--enter-remediation-on-debt]
+
+options:
+  -h, --help            show this help message and exit
+  --project PROJECT
+  --target TARGET
+  --no-remote
+  --fail-on-drift       Exit 0 clean, 1 integrity (adapter drift or an
+                        unsupported runtime; refuses to start), or 2 debt-only
+                        (agent-fixable lane debt). Prints
+                        'methodology_status_blocking: <integrity|debt> - <gate
+                        names>' as the last line whenever the exit code is
+                        nonzero. See docs/reference/startup-remediation.md.
+  --strict              Escalate every debt gate to exit 1 as well; --strict
+                        never returns 2, including combined with --fail-on-
+                        drift.
+  --enter-remediation-on-debt
+                        (internal) Passed by the generated launcher. On a
+                        debt-only --fail-on-drift outcome, atomically persist
+                        the startup-remediation marker before exiting 2 (exit
+                        1 with a synthetic remediation_marker gate if the
+                        marker cannot be written).

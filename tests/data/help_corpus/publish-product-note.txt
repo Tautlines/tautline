@@ -1,0 +1,14 @@
+usage: tautline publish-product-note [-h] [--project PROJECT]
+                                     [--target TARGET] --title TITLE [--stdin]
+                                     [--content-file CONTENT_FILE]
+                                     [--summary SUMMARY] [--dry-run]
+
+options:
+  -h, --help            show this help message and exit
+  --project PROJECT
+  --target TARGET
+  --title TITLE
+  --stdin
+  --content-file CONTENT_FILE
+  --summary SUMMARY
+  --dry-run

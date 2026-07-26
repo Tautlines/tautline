@@ -1,0 +1,11 @@
+usage: tautline claude-review-status [-h] [--target TARGET]
+                                     [--review-dir REVIEW_DIR] [--limit LIMIT]
+
+options:
+  -h, --help            show this help message and exit
+  --target TARGET
+  --review-dir REVIEW_DIR
+                        Review artifact directory; defaults to .ai-
+                        runs/claude-review.
+  --limit LIMIT         Maximum number of recent review artifacts to
+                        summarize.

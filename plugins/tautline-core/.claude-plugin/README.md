@@ -50,7 +50,7 @@ declares them explicitly so the package is self-describing.
 
 ## Hooks and the CLI dependency
 
-`../hooks/hooks.json` invokes the `minervit-methodology` CLI from `PATH` rather than
+`../hooks/hooks.json` invokes the `tautline` CLI from `PATH` rather than
 bundling `${CLAUDE_PLUGIN_ROOT}`-relative scripts, because the CLI is installed and
 kept in sync separately by the methodology launcher. The same `hooks.json` backs both
 manifests; this package does not fork it.

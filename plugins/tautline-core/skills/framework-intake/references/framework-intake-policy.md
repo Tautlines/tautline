@@ -23,13 +23,13 @@ rails just because the proposed change came from a gap. If both apply, write
 the RCA for the regression first, then file a separate feature request for any
 net-new capability.
 
-Methodology skills are file-backed policy. If host skill tooling is unavailable, stale, or returns `Unknown skill`, resolve the methodology checkout in this order: existing `$MINERVIT_METHODOLOGY_REPO`; source `$HOME/.config/minervit/methodology.env`; run `minervit-methodology version --no-remote` and use its `methodology_repo`; then read `plugins/tautline-core/skills/framework-intake/SKILL.md` from that checkout and continue. `Unknown skill` is not a blocker unless those concrete resolution steps fail.
+Methodology skills are file-backed policy. If host skill tooling is unavailable, stale, or returns `Unknown skill`, resolve the methodology checkout in this order: existing `$MINERVIT_METHODOLOGY_REPO`; source `$HOME/.config/minervit/methodology.env`; run `tautline version --no-remote` and use its `methodology_repo`; then read `plugins/tautline-core/skills/framework-intake/SKILL.md` from that checkout and continue. `Unknown skill` is not a blocker unless those concrete resolution steps fail.
 
 The output is an incident analysis plus a prevention proposal. Keep it direct,
 evidence-backed, and free of raw transcripts, secrets, private absolute paths,
 or customer-private details.
 
-Do not write Open Brain, Claude memory, local memory, feedback-memory files, or any other memory note until after the RCA artifact is written, validated, and published. Memory capture is optional follow-up evidence only; it never replaces the RCA artifact.
+Do not write Open Brain, Claude memory, local memory, feedback-memory files, or any other memory note until after the RCA artifact is written, validated, and published. Memory capture is optional follow-up evidence only; it never replaces the RCA artifact. After publication, a memory note may only point to the published artifact and the canonical rule; it must not restate the process rule or procedure.
 
 ## Required Sequence
 
@@ -60,10 +60,10 @@ Do not write Open Brain, Claude memory, local memory, feedback-memory files, or 
 4. Output artifact:
    - Create `.ai-runs/` if needed.
    - Write `.ai-runs/<utc>-methodology-regression-rca.md`, where `<utc>` uses `YYYYMMDDTHHMMSSZ`.
-   - Gather methodology runtime facts when they are relevant to the failure: run `minervit-methodology version --no-remote` and `minervit-methodology methodology-status --target . --fail-on-drift` when a project adapter exists. If `methodology-status` cannot run, record the exact true blocker or failure output in `Evidence`.
+   - Gather methodology runtime facts when they are relevant to the failure: run `tautline version --no-remote` and `tautline methodology-status --target . --fail-on-drift` when a project adapter exists. If `methodology-status` cannot run, record the exact true blocker or failure output in `Evidence`.
    - The file must include every section in "Output Artifact" below.
-   - Before replying in chat, verify the file exists and contains every required heading by running `minervit-methodology validate-rca-artifact --file <path>`.
-   - For methodology/process regressions, publish the validated RCA into the methodology repository with `minervit-methodology publish-rca-artifact --file <path> --commit --push`. This creates a tracked copy on the maintainer repository's dedicated `methodology-rca-archive` branch, updates the archive index, commits the archive files, and pushes the branch so other machines and future agents can inspect it without loading RCA Markdown from `main`.
+   - Before replying in chat, verify the file exists and contains every required heading by running `tautline validate-rca-artifact --file <path>`.
+   - For methodology/process regressions, publish the validated RCA into the methodology repository with `tautline publish-rca-artifact --file <path> --commit --push`. This creates a tracked copy on the maintainer repository's dedicated `methodology-rca-archive` branch, updates the archive index, commits the archive files, and pushes the branch so other machines and future agents can inspect it without loading RCA Markdown from `main`.
    - `publish-rca-artifact --commit --push` uses isolated archive-branch publication. Do not write RCA archive copies into the active methodology release checkout; `--allow-release-checkout-write` is validation/preview-only and is not cross-machine durable publication.
    - Do not add new RCA Markdown artifacts to methodology `main`. RCA evidence shapes the product; it is not itself the primary product methodology.
    - If the validator cannot run, the RCA is not complete. Name the exact true blocker and do not present the RCA as complete.
@@ -95,13 +95,13 @@ Do not write Open Brain, Claude memory, local memory, feedback-memory files, or 
 4. Validate it before replying:
 
 ```bash
-minervit-methodology validate-feature-request-artifact --file .ai-runs/<utc>-methodology-feature-request.md
+tautline validate-feature-request-artifact --file .ai-runs/<utc>-methodology-feature-request.md
 ```
 
 5. Publish it to the dedicated archive branch:
 
 ```bash
-minervit-methodology publish-feature-request-artifact --file .ai-runs/<utc>-methodology-feature-request.md --commit --push
+tautline publish-feature-request-artifact --file .ai-runs/<utc>-methodology-feature-request.md --commit --push
 ```
 
 6. Summarize the request concisely and point to both the lane-local artifact and
@@ -142,7 +142,7 @@ Write `.ai-runs/<utc>-methodology-regression-rca.md` with this structure:
 Then publish the validated RCA to the methodology repo:
 
 ```bash
-minervit-methodology publish-rca-artifact --file .ai-runs/<utc>-methodology-regression-rca.md --commit --push
+tautline publish-rca-artifact --file .ai-runs/<utc>-methodology-regression-rca.md --commit --push
 ```
 
 The pushed methodology RCA branch copy is the cross-machine evidence. The lane-local `.ai-runs/` file alone is incomplete for methodology work because it is ignored and will not reach other machines through Git. A copied-but-unpushed archive file is also incomplete.
@@ -252,9 +252,10 @@ Use this skill when asked to inspect or reconcile AI development process rules.
 - RCA response patterns that write memory notes before writing, validating, and publishing the RCA artifact.
 - RCA-shaped chat responses that do not reference both the lane-local `.ai-runs/<utc>-methodology-regression-rca.md` artifact and the pushed `methodology-rca-archive` copy.
 - Host skill registry failures such as `Unknown skill` treated as blockers when the file-backed methodology skill exists in the methodology checkout.
-- Plan-finalization paths that bypass `minervit-methodology plan-finalization-precheck`, including `ExitPlanMode`, execution packet creation, ready-for-development marking, plan-only PR push, approval-to-implement prompts, or implementation start.
+- Plan-finalization paths that bypass `tautline plan-finalization-precheck`, including `ExitPlanMode`, execution packet creation, ready-for-development marking, plan-only PR push, approval-to-implement prompts, or implementation start.
 - Plan-review claims backed only by ignored lane-local logs, mtime, chat prose, or a freehand `Cross-Model Review Evidence` section instead of a tracked `.plan-reviews/` manifest written by `run-plan-review` or `finalize-plan-review`.
 - Memory notes that describe process but have no matching canonical/adapter/skill rule; these must be converted into methodology changes or tombstoned as non-authoritative history.
+- Memory writes that store process rules, gates, caps, review procedures, or escape hatches, instead of filing framework intake and pointing at the resulting artifact.
 - Rules or examples that broad-load Markdown trees, all plans, archive folders, or `.ai-*` state instead of using configured context indexes.
 - Archive or historical docs treated as current process, scope, execution authority, or next-work authority.
 - Workflows that create, complete, move, or archive Markdown artifacts without updating the relevant context index.

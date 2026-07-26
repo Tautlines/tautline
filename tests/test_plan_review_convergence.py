@@ -21,7 +21,8 @@ from test_plan_review_cli import (
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-CLI_SOURCE = (REPO_ROOT / "bin" / "tautline").read_text(encoding="utf-8")
+# Post the package-split flip (roadmap #11): the engine lives in cli.py; bin/tautline is a shim.
+CLI_SOURCE = (REPO_ROOT / "src" / "tautline_methodology" / "cli.py").read_text(encoding="utf-8")
 
 # >= 20 characters: a recorded exception must be a real reason, not a rubber stamp.
 NOTE = "R2 blockers are fixed; one bound convergence round rebinds the evidence"
@@ -585,7 +586,7 @@ POLICY_SURFACES = (
     REPO_ROOT / "docs" / "reference",
     REPO_ROOT / "methodology",
 )
-POLICY_SURFACE_FILES = (REPO_ROOT / "bin" / "tautline",)
+POLICY_SURFACE_FILES = (REPO_ROOT / "src" / "tautline_methodology" / "cli.py",)
 
 
 def _policy_surface_files() -> list[Path]:

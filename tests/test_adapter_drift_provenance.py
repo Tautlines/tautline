@@ -22,6 +22,8 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 CLI_PATH = REPO_ROOT / "bin" / "tautline"
+# Post the package-split flip (roadmap #11): bin/tautline is a thin shim; the engine lives here.
+CLI_ENGINE_PATH = REPO_ROOT / "src" / "tautline_methodology" / "cli.py"
 EXAMPLE_ADAPTER = REPO_ROOT / "adapters" / "projects" / "example-saas.json"
 PLUGIN_MANIFEST_REL = "plugins/tautline-core/.codex-plugin/plugin.json"
 
@@ -298,7 +300,14 @@ def _package_mode_cli(tmp_path: Path):
         + "\n",
         encoding="utf-8",
     )
-    loader = SourceFileLoader("tautline_package_mode_fixture", str(fixture / "bin" / "tautline"))
+    # Post the package-split flip (roadmap #11): the engine lives in the package. Copy cli.py into
+    # the fixture's package tree and load it FROM there so its REPO_ROOT (parents[2]) bakes to the
+    # fixture -- the package-shaped exec-root identity under test. Family submodules resolve via the
+    # real package already on sys.path (conftest), so only cli.py needs to sit in the fixture.
+    engine_dest = fixture / "src" / "tautline_methodology" / "cli.py"
+    engine_dest.parent.mkdir(parents=True)
+    engine_dest.write_bytes(CLI_ENGINE_PATH.read_bytes())
+    loader = SourceFileLoader("tautline_package_mode_fixture", str(engine_dest))
     spec = importlib.util.spec_from_loader("tautline_package_mode_fixture", loader)
     module = importlib.util.module_from_spec(spec)
     loader.exec_module(module)

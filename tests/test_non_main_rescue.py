@@ -1,6 +1,6 @@
 """RCA: a clean, intentionally-non-main methodology checkout must not generate phantom rescue refs.
 
-`preserve_release_main_pointer` used to create a `minervit-local-rescue/*` ref whenever local main
+`preserve_release_main_pointer` used to create a `tautline-local-rescue/*` ref whenever local main
 differed from upstream -- including when main was merely *behind* (fast-forwardable). That ref had
 nothing unique to preserve, polluted rescue-ref drift detection, and on a non-main checkout
 contributed to a fully-wedged lane. The fix: preserve only when local main carries commits the
@@ -36,7 +36,7 @@ def _repo_with_main_and_upstream(tmp_path: Path) -> Path:
 
 
 def _rescue_refs(repo: Path) -> list[str]:
-    out = _git(repo, "for-each-ref", "--format=%(refname:short)", "refs/heads/minervit-local-rescue")
+    out = _git(repo, "for-each-ref", "--format=%(refname:short)", "refs/heads/tautline-local-rescue")
     return [line for line in out.splitlines() if line.strip()]
 
 
@@ -59,7 +59,7 @@ def test_diverged_main_is_still_preserved(cli, tmp_path, monkeypatch):
     ok, detail = cli.preserve_release_main_pointer("upstream-main", "non-main")
     assert ok and "preserved prior main at" in detail
     refs = _rescue_refs(repo)
-    assert len(refs) == 1 and refs[0].startswith("minervit-local-rescue/")
+    assert len(refs) == 1 and refs[0].startswith("tautline-local-rescue/")
 
 
 def test_main_equals_upstream_creates_no_rescue_ref(cli, tmp_path, monkeypatch):
@@ -75,13 +75,13 @@ def test_main_equals_upstream_creates_no_rescue_ref(cli, tmp_path, monkeypatch):
 def test_failed_preservation_aborts_reset_without_data_loss(cli, tmp_path, monkeypatch):
     # Codex P2: if a REQUIRED preservation cannot be created, switch_release_main must abort before
     # reset --hard so divergent local main commits are never dropped. Force branch creation to fail
-    # by occupying the `minervit-local-rescue` ref namespace with a same-named branch (D/F conflict).
+    # by occupying the `tautline-local-rescue` ref namespace with a same-named branch (D/F conflict).
     repo = _repo_with_main_and_upstream(tmp_path)
     (repo / "local-only.txt").write_text("local work\n")
     _git(repo, "add", "-A")
     _git(repo, "commit", "-qm", "local-only commit on main")
     main_sha = _git(repo, "rev-parse", "refs/heads/main")
-    _git(repo, "branch", "minervit-local-rescue")  # blocks any minervit-local-rescue/* child ref
+    _git(repo, "branch", "tautline-local-rescue")  # blocks any tautline-local-rescue/* child ref
     monkeypatch.setattr(cli, "REPO_ROOT", repo)
     ok, detail = cli.preserve_release_main_pointer("upstream-main", "non-main")
     assert not ok and "could not preserve" in detail

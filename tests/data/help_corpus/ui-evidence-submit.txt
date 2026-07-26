@@ -1,0 +1,13 @@
+usage: tautline ui-evidence-submit [-h] [--project PROJECT] [--target TARGET]
+                                   --issue ISSUE [--manifest MANIFEST]
+                                   [--event {goal-complete,milestone-complete,work-item-complete}]
+
+options:
+  -h, --help            show this help message and exit
+  --project PROJECT
+  --target TARGET
+  --issue ISSUE         GitHub issue number/URL or configured Project item
+                        reference.
+  --manifest MANIFEST   Playwright UI evidence manifest. Defaults to latest
+                        configured manifest.
+  --event {goal-complete,milestone-complete,work-item-complete}

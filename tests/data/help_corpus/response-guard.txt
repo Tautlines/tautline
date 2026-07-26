@@ -1,0 +1,25 @@
+usage: tautline response-guard [-h] [--stdin] [--content-file CONTENT_FILE]
+                               [--target TARGET] [--active-monitor]
+                               [--autonomous-yield] [--rca-request]
+                               [--after-tool-rejection]
+                               [--derivable-next-action-prompt]
+                               [--terminal-stop] [--boundary-summary]
+                               [--human-discussion-request]
+                               [--phrase-checks {advisory,blocking,off}]
+
+options:
+  -h, --help            show this help message and exit
+  --stdin
+  --content-file CONTENT_FILE
+  --target TARGET
+  --active-monitor
+  --autonomous-yield
+  --rca-request
+  --after-tool-rejection
+  --derivable-next-action-prompt
+  --terminal-stop
+  --boundary-summary
+  --human-discussion-request
+  --phrase-checks {advisory,blocking,off}
+                        Override the adapter's responseGuard.phraseChecks
+                        resolution for this invocation.

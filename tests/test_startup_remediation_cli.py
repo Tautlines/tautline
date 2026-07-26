@@ -164,16 +164,18 @@ def test_hook_invoked_commands_are_all_allowed(cli):
       ...` wrapper (including the pre-push-only guard-check block), so the subcommand tokens are
       extracted from that call pattern.
     - Claude hooks: the generated settings entries are written from install-hooks' argparse
-      `default="tautline <subcommand>"` wiring in main() (--command, --branch-liveness-command,
-      ... --context-rotation-heartbeat-command), so those defaults are the template source.
+      `default="tautline <subcommand>"` wiring (--command, --branch-liveness-command, ...
+      --plan-review-pending-command). The A1 package-split carve moved that wiring out of main()
+      into a `_register_*` registrar segment, so the scan reads the whole CLI module source
+      (inspect.getsource(cli)) rather than main() alone -- migration-proof, like the carve goldens.
     """
     registered = set(cli.registered_subcommand_names())
 
     git_template_source = inspect.getsource(cli.git_branch_liveness_hook_content)
     git_invoked = set(re.findall(r"run_minervit_command '[^']*' ([a-z][a-z0-9-]*)", git_template_source))
 
-    main_source = inspect.getsource(cli.main)
-    claude_invoked = set(re.findall(r"default=\"tautline ([a-z][a-z0-9-]*)\"", main_source))
+    cli_source = inspect.getsource(cli)
+    claude_invoked = set(re.findall(r"default=\"tautline ([a-z][a-z0-9-]*)\"", cli_source))
 
     derived = git_invoked | claude_invoked
     # Sanity floor: a broken scanner must not silently pass an empty/gutted set.
@@ -205,6 +207,8 @@ def test_recovery_action_coverage_global_or_recovery_map(cli):
             cli.claude_background_command_hook_state,
             cli.claude_latest_code_hook_state,
             cli.claude_context_rotation_heartbeat_hook_state,
+            cli.claude_plan_review_pending_hook_state,
+            cli.claude_session_start_directive_hook_state,
             cli.git_branch_liveness_hook_state,
         ),
         "latest_code": (cli.latest_code_instruction_line, cli.latest_code_baseline_state, cli.print_latest_code_baseline),

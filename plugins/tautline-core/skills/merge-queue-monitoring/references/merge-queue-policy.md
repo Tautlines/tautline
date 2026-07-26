@@ -9,7 +9,7 @@ This reference keeps the detailed merge queue, auto-merge, exceptional monitor, 
 3. If final preflight takes meaningful wall-clock time, run it with monitor evidence on the frozen PR tip and use the wait for branch-isolated next-iteration planning or active polling. Do not edit the current PR diff while preflight is proving that tip; if preflight fails, hangs, goes stale, or shows resource contention, repair or recover the current PR gate before next work.
 4. Enable merge queue or auto-merge using the project adapter command.
 5. Record the PR reference in the delivery summary or lane evidence.
-6. Execution-packet work, source-of-truth-plan-backed work, and any PR implementing approved planned work are milestone work. Advance the lane ledger with `minervit-methodology milestone-advance --target . --event pr-queued --pr <PR>` and start the printed `next_action`.
+6. Execution-packet work, source-of-truth-plan-backed work, and any PR implementing approved planned work are milestone work. Advance the lane ledger with `tautline milestone-advance --target . --event pr-queued --pr <PR>` and start the printed `next_action`.
 7. Send a queued-delivery summary immediately: validated locally, PR queued or auto-merge enabled, not yet merged.
 8. Remove the clean queued PR from active attention.
 9. Continue with the next authorized task in the same turn, or prove no authorized next work remains by checking the execution packet, backlog/source-of-truth readiness, continuity handoff, open PR list, and defer/follow-up capture.

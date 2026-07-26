@@ -36,10 +36,34 @@ jobs:
       # committed lockfile; needs network for the advisory DB. Never use --offline (false
       # clean) and don't --omit=dev (a critical dev advisory must block).
       - name: npm audit (blocking — critical)
+        id: audit-critical
         run: npm audit --audit-level=critical
 
       # Visibility: report high/moderate without failing the build.
       - name: npm audit (informational — high+)
+        id: audit-high
         if: always()
         continue-on-error: true
         run: npm audit --audit-level=high
+
+      # CommandCenter evidence: a `probe` suite reporting both audit levels. `outcome` (not
+      # `conclusion`) is what continue-on-error preserves, so a failing high+ audit stays honest
+      # (a `fail` result) even though the job itself is green -- the existing (deliberate) policy
+      # expressed as evidence. The job's defaults.run.working-directory is the renderer-kit, so
+      # the composer step overrides it back to the repo root where the script lives.
+      - name: Compose evidence document
+        if: always()
+        working-directory: ${{ github.workspace }}
+        run: |
+          python3 .github/scripts/emit_evidence.py \
+            --out evidence/evidence.json \
+            --suite npm-audit:probe \
+            --result npm-audit.critical=${{ steps.audit-critical.outcome }} \
+            --result npm-audit.high=${{ steps.audit-high.outcome }}
+
+      - name: Upload evidence artifact
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: evidence
+          path: evidence/

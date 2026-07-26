@@ -8,3 +8,29 @@
 - Do not stop at arbitrary "good stopping points" or "clean checkpoints." Continue until the approved queue is exhausted, a true blocker occurs, or the operator changes direction.
 - True blockers are decisions that change approved scope, unresolved explicit approval, unavailable credentials/external access after checking adapter paths, a failing required gate with no safe fix, or lack of safe parallel work. Credential or served-origin access is not a true blocker until the agent has checked adapter-declared env, secret, cloud identity, seeded-account, deploy/status, and local-lane evidence paths.
 - Multi-step but fully executable actions are not true blockers: a methodology release (version bump, changelog, release notes, validation, PR), cross-model review, branch push, or documented multi-command sequence must complete when it gates the active goal, not justify deferral or descoping.
+
+## Unattended Operation
+
+- The standing autonomy directive is default operating policy for every lane type
+  (planning, building, remediation, maintenance). Assume the operator is AFK unless
+  the adapter disables `autonomy.standingDirective`.
+- Non-obvious decisions taken under the directive require a durable record with
+  rationale and reversibility: `decision-record` in adapter-bearing lanes; session
+  notes or working artifacts where no adapter (and therefore no ledger) exists. The
+  record, not chat prose, is the operator's review surface.
+- Operator-owned forks (per the existing true-blocker and approval categories above -
+  this section narrows none of them) are queued asynchronously - through the
+  stakeholder-question flow where the adapter enables it and no startup-remediation
+  marker is active, falling back to a hard-to-reverse decision entry carrying the
+  question whenever that flow is unavailable or fails at ask time - and do not stop
+  the run while safe authorized goal work remains. When such a fork is queued and no
+  safe authorized work remains, the existing true-blocker rules apply unchanged -
+  never invent approval.
+- Guard and review-gate mechanics are unchanged by this section; enforcement
+  tightening lands separately.
+- Lane currency is the agent's job, not the operator's. At session start the agent
+  reads the `TAUTLINE LANE STATUS` line. On any drift verdict the agent itself
+  attempts the printed remedy; it does not hand the drift back to the operator as
+  the operator's task, which is the failure this rule exists to prevent. When a
+  remedy cannot complete, the agent states the unresolved drift and its effect in
+  its own output and continues - currency is never a precondition for responding.

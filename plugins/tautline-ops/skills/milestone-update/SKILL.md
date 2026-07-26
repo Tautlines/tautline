@@ -20,7 +20,7 @@ Milestones space. They are not customer-facing iteration reviews.
 Check the active configuration:
 
 ```bash
-minervit-methodology milestone-update-status --target . --strict
+tautline milestone-update-status --target . --strict
 ```
 
 If disabled, continue normal authorized work and do not ask whether to enable it
@@ -43,7 +43,7 @@ Compose a concise internal milestone summary with these headings exactly:
 Post through the CLI:
 
 ```bash
-minervit-methodology publish-milestone-update --target . --milestone <milestone-id-or-title> --stdin
+tautline publish-milestone-update --target . --milestone <milestone-id-or-title> --stdin
 ```
 
 When an active goal ledger exists, short milestone keys such as `M3` are

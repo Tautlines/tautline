@@ -1,0 +1,5 @@
+usage: tautline blocker-clear [-h] [--target TARGET]
+
+options:
+  -h, --help       show this help message and exit
+  --target TARGET

@@ -25,6 +25,11 @@ from pathlib import Path
 
 TESTS_DIR = Path(__file__).resolve().parent
 SOURCE = TESTS_DIR.parent / "bin" / "tautline"
+# The enforcement engine is bin/tautline PLUS the tautline_methodology package (guard cores are
+# progressively extracted into package modules by the roadmap #11 package split; e.g.
+# context_rotation_decision now lives in tautline_methodology.context). A registered core must
+# resolve to a real function SOMEWHERE in the engine, so the def scan spans both.
+PACKAGE_DIR = TESTS_DIR.parent / "src" / "tautline_methodology"
 
 # Binary decision guards: return a block/allow verdict (errors list / bool / None-or-error). Each MUST
 # be shown driven to BOTH outcomes in the corpus, so a test that only ever sees one branch fails.
@@ -158,12 +163,22 @@ def _corpus() -> tuple[set[str], set[str], dict[str, set[str]]]:
     return invoked, asserted, polarities
 
 
+def _engine_defined_functions() -> set[str]:
+    """Every function defined across the enforcement engine: bin/tautline + the package tree."""
+    defined: set[str] = set()
+    sources = [SOURCE, *sorted(PACKAGE_DIR.rglob("*.py"))]
+    for path in sources:
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        defined |= {
+            n.name for n in ast.walk(tree)
+            if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
+        }
+    return defined
+
+
 def test_guard_cores_registered():
     """No enforcement-guard def may go unregistered; no registered core may have a dangling name."""
-    tree = ast.parse(SOURCE.read_text(encoding="utf-8"), filename=str(SOURCE))
-    defined = {
-        n.name for n in ast.walk(tree) if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
-    }
+    defined = _engine_defined_functions()
     dangling = [core for core in GUARD_CORES if core not in defined]
     assert not dangling, f"registered guard cores with no engine function (renamed/removed?): {dangling}"
     unregistered = sorted(

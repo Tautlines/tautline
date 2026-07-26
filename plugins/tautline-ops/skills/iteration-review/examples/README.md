@@ -13,7 +13,7 @@ media binary is committed here.
 To produce the example video from the record above:
 
 ```bash
-minervit-methodology iteration-review-renderer-setup
+tautline iteration-review-renderer-setup
 cd ~/.local/state/minervit/renderer-kit
 npx remotion render src/index.ts IterationReview /tmp/example-saas-order-catalog-taxonomy.mp4 \
   --props=<methodology-repo>/plugins/tautline-ops/skills/iteration-review/examples/example-saas-order-catalog-taxonomy.goal-review.json

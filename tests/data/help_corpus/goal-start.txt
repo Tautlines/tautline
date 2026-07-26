@@ -1,0 +1,8 @@
+usage: tautline goal-start [-h] [--project PROJECT] [--target TARGET] --goal
+                           GOAL
+
+options:
+  -h, --help         show this help message and exit
+  --project PROJECT
+  --target TARGET
+  --goal GOAL

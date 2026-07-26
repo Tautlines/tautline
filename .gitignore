@@ -7,6 +7,12 @@ __pycache__/
 htmlcov/
 .ai-runs/
 .ai-work/
+# Generated CommandCenter evidence artifacts (JUnit XML + evidence.json); uploaded by CI, never tracked.
+/evidence/
+# Local agent-session state (worktrees of other branches live under
+# .claude/worktrees). The boundary scan and export gate ignore it; ignoring
+# it here keeps a root `git add -A` from ever staging it.
+.claude/
 .tmp-session-journal-*/
 adapters/projects/.validate-*.json
 # Public releases ship only the fictional example source adapter. Real product adapters belong in the

@@ -1,0 +1,85 @@
+{
+  "behaviorChanges": [
+    "the validate workflow publishes a run artifact named `evidence` containing a tautline-evidence/v1 document with one `eval` result per gate the job runs (methodology suite, CLI compile, validate.sh freeze-check, whitespace); every gate still blocks the build exactly as before"
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "publish-pending-session-journals",
+      "removeAfter": "1.0.0",
+      "replacement": "publish-instrumentation-record",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "publish-session-journal",
+      "removeAfter": "1.0.0",
+      "replacement": "publish-instrumentation-record",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    },
+    {
+      "name": "rules-audit",
+      "path": "plugins/tautline-core/skills/rules-audit/SKILL.md",
+      "removeAfter": "1.0.0",
+      "replacement": "framework-intake",
+      "section": "skills",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [
+    {
+      "description": "Adopters can compose the same tautline-evidence/v1 conformance document from their own validate/gate job with .github/scripts/emit_evidence.py, so their validate stage renders real per-gate pass/fail counts on the CommandCenter dashboard.",
+      "id": "compose-validate-evidence-from-adopter-ci"
+    }
+  ],
+  "productsTested": [],
+  "requiredMigrations": [
+    {
+      "command": "gh auth refresh --hostname github.com -s read:project -s project",
+      "description": "Carried forward from 0.10.3 for lanes updating across it: grant the gh token the GitHub Projects scopes the fail-closed board gates need. Machines already on 0.10.3+ or whose token carries read:project and project need no action.",
+      "id": "grant-gh-project-scopes",
+      "surface": "board-provider-auth"
+    }
+  ],
+  "rollbackNotes": [
+    "Pinning back to 0.10.12 stops the validate workflow from publishing its `evidence` artifact; the four gates and their blocking behavior are unchanged either way (the evidence surface is purely additive reporting). No on-disk state moves."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.10.13",
+  "wipSafe": false
+}

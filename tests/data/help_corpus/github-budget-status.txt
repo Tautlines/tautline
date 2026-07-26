@@ -1,0 +1,7 @@
+usage: tautline github-budget-status [-h] [--target TARGET] [--refresh]
+
+options:
+  -h, --help       show this help message and exit
+  --target TARGET
+  --refresh        Ignore the cached rate-limit status and fetch fresh budget
+                   data.

@@ -24,10 +24,13 @@ ignore = ["E501"]          # frozen legacy baseline, pinned by tests/test_lint_r
 # Day-one baseline for the legacy CLI: suppress ONLY the rules it currently violates so
 # CI is green with zero code changes. Delete codes here as they are fixed — that is the
 # ratchet. NEW violations of any OTHER rule, and these rules in any OTHER file, still fail.
-"bin/tautline" = [
-    "F541",  # 5x f-string-missing-placeholders
-    "F841",  # 5x unused-variable
-    "B904",  # 1x raise-without-from-inside-except (line 2084)
+# The package-split flip (roadmap #11) moved the entire CLI engine body out of bin/tautline
+# (now a thin shim, which violates none of these) into the package's cli.py, so the legacy
+# suppressions move verbatim with the code.
+"src/tautline_methodology/cli.py" = [
+    "F541",  # f-string-missing-placeholders
+    "F841",  # unused-variable
+    "B904",  # raise-without-from-inside-except
 ]
 
 [tool.mypy]

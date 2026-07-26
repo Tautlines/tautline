@@ -12,6 +12,7 @@ cannot be run), which is how a release gets cut against code nobody can point a 
 
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tarfile
@@ -49,6 +50,16 @@ def snapshot_exec_root(tmp_path_factory):
     cli = dest / "bin" / "tautline"
     cli.write_text(CLI_PATH.read_text(encoding="utf-8"), encoding="utf-8")
     cli.chmod(0o755)
+    # `git archive` only sees HEAD; the working-tree bin under test imports its own package eagerly,
+    # so mirror the working-tree src package alongside the overwritten bin (same rationale as the
+    # bin copy above -- a real snapshot carries the full extracted package).
+    src_pkg = dest / "src" / "tautline_methodology"
+    shutil.rmtree(src_pkg, ignore_errors=True)
+    shutil.copytree(
+        REPO_ROOT / "src" / "tautline_methodology",
+        src_pkg,
+        ignore=shutil.ignore_patterns("__pycache__"),
+    )
     (dest / ".snapshot-meta.json").write_text(
         json.dumps(
             {"schema": "tautline-snapshot/v1", "commit": _git_head(REPO_ROOT), "channel": "stable"}
@@ -142,19 +153,37 @@ def test_cut_release_dry_run_lists_checksums_without_writing(run_cli, tmp_path):
     assert any(p == "bin/tautline" for _, p in shas)
     # Extracted package modules are distributed implementation and must stay
     # inside the immutable release boundary alongside the bin entrypoint.
-    assert any(p == "src/minervit_methodology/__init__.py" for _, p in shas)
-    assert any(p == "src/minervit_methodology/adapter.py" for _, p in shas)
-    assert any(p == "src/minervit_methodology/chat.py" for _, p in shas)
-    assert any(p == "src/minervit_methodology/deploy.py" for _, p in shas)
-    assert any(p == "src/minervit_methodology/gitutil.py" for _, p in shas)
-    assert any(p == "src/minervit_methodology/ghutil.py" for _, p in shas)
-    assert any(p == "src/minervit_methodology/guards.py" for _, p in shas)
-    assert any(p == "src/minervit_methodology/names.py" for _, p in shas)
-    assert any(p == "src/minervit_methodology/paths.py" for _, p in shas)
-    assert any(p == "src/minervit_methodology/profiles.py" for _, p in shas)
-    assert any(p == "src/minervit_methodology/releases.py" for _, p in shas)
-    assert any(p == "src/minervit_methodology/telemetry.py" for _, p in shas)
-    assert any(p == "src/minervit_methodology/util.py" for _, p in shas)
+    assert any(p == "src/tautline_methodology/__init__.py" for _, p in shas)
+    assert any(p == "src/tautline_methodology/core/__init__.py" for _, p in shas)
+    assert any(p == "src/tautline_methodology/core/paths.py" for _, p in shas)
+    assert any(p == "src/tautline_methodology/core/policy.py" for _, p in shas)
+    assert any(p == "src/tautline_methodology/adapter.py" for _, p in shas)
+    assert any(p == "src/tautline_methodology/adapters.py" for _, p in shas)
+    assert any(p == "src/tautline_methodology/backlog.py" for _, p in shas)
+    assert any(p == "src/tautline_methodology/chat.py" for _, p in shas)
+    # The package-split flip (roadmap #11) moved the CLI engine body here; bin/tautline is now
+    # a thin shim over it, so cli.py is the largest distributed source and must be inside the
+    # immutable release boundary.
+    assert any(p == "src/tautline_methodology/cli.py" for _, p in shas)
+    assert any(p == "src/tautline_methodology/context.py" for _, p in shas)
+    assert any(p == "src/tautline_methodology/deploy.py" for _, p in shas)
+    assert any(p == "src/tautline_methodology/events.py" for _, p in shas)
+    assert any(p == "src/tautline_methodology/gitutil.py" for _, p in shas)
+    assert any(p == "src/tautline_methodology/ghutil.py" for _, p in shas)
+    assert any(p == "src/tautline_methodology/goal.py" for _, p in shas)
+    assert any(p == "src/tautline_methodology/guards.py" for _, p in shas)
+    assert any(p == "src/tautline_methodology/iteration_review.py" for _, p in shas)
+    assert any(p == "src/tautline_methodology/lane.py" for _, p in shas)
+    assert any(p == "src/tautline_methodology/milestone.py" for _, p in shas)
+    assert any(p == "src/tautline_methodology/names.py" for _, p in shas)
+    assert any(p == "src/tautline_methodology/paths.py" for _, p in shas)
+    assert any(p == "src/tautline_methodology/profiles.py" for _, p in shas)
+    assert any(p == "src/tautline_methodology/release.py" for _, p in shas)
+    assert any(p == "src/tautline_methodology/releases.py" for _, p in shas)
+    assert any(p == "src/tautline_methodology/response_guard.py" for _, p in shas)
+    assert any(p == "src/tautline_methodology/telemetry.py" for _, p in shas)
+    assert any(p == "src/tautline_methodology/usage.py" for _, p in shas)
+    assert any(p == "src/tautline_methodology/util.py" for _, p in shas)
     assert any(p == "methodology/policy-phrases.json" for _, p in shas)
     assert "cut_release_dry_run: no files written" in res.stdout
 

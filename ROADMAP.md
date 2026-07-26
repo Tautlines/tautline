@@ -11,9 +11,12 @@ this file is the map, not the tracker.
 
 ## 0.9.x direction
 
-- [ ] **Package split** — break the single-file CLI (`bin/tautline`) into an
-  importable package. The design exists and the refactor is behavior-neutral;
-  it is a maintainability item so contributors can navigate the codebase.
+- [x] **Package split** — break the single-file CLI (`bin/tautline`) into an
+  importable package. Done across the seam + wave PRs and the terminal flip
+  (roadmap #11): `bin/tautline` is now a thin shim over
+  `tautline_methodology.cli`, with the verb families carved into
+  `tautline_methodology` modules; behavior-neutral throughout (the `--help`
+  corpus and dispatch-map goldens stayed byte-identical).
   (0.10.0 proved it is not a prerequisite for the packaged install story.)
   ([#11](https://github.com/Tautlines/tautline/issues/11))
 - [x] **Installable package** — `pipx install tautline` via a real

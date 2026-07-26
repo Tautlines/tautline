@@ -1,0 +1,9 @@
+usage: tautline event-audit [-h] [--project PROJECT] [--target TARGET]
+                            [--since SINCE] [--strict]
+
+options:
+  -h, --help         show this help message and exit
+  --project PROJECT
+  --target TARGET
+  --since SINCE
+  --strict

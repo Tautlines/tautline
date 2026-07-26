@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pytest
 
-from minervit_methodology import gitutil, paths, profiles, releases, telemetry, util
+from tautline_methodology import gitutil, paths, profiles, releases, telemetry, util
 
 
 def test_version_key_orders_numerically(cli):

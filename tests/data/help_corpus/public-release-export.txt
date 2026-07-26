@@ -1,0 +1,32 @@
+usage: tautline public-release-export [-h] --destination DESTINATION [--write]
+                                      [--force] [--include-untracked]
+                                      [--include-working-tree]
+                                      [--allow-empty-private-terms]
+                                      [--private-terms-file PRIVATE_TERMS_FILE]
+
+options:
+  -h, --help            show this help message and exit
+  --destination DESTINATION
+                        Directory to create as the clean public repo
+                        candidate.
+  --write               Create the export repo. Without --write, print the
+                        plan only.
+  --force               Replace an existing destination only when it contains
+                        .minervit-public-release-export.json from a prior
+                        export.
+  --include-untracked   Include untracked, non-ignored files. Intended for in-
+                        progress validation only; public release exports
+                        should run from a committed tree.
+  --include-working-tree
+                        Include dirty tracked working-tree content. Intended
+                        for in-progress validation only; public release
+                        exports should run from a committed tree.
+  --allow-empty-private-terms
+                        Allow export without
+                        MINERVIT_PUBLIC_RELEASE_PRIVATE_TERMS or --private-
+                        terms-file; use only for repos with no private
+                        product/client terms.
+  --private-terms-file PRIVATE_TERMS_FILE
+                        Read private product/client scan terms from an
+                        untracked local file in addition to
+                        MINERVIT_PUBLIC_RELEASE_PRIVATE_TERMS.

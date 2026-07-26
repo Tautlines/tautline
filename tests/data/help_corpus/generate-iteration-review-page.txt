@@ -1,0 +1,12 @@
+usage: tautline generate-iteration-review-page [-h] [--project PROJECT]
+                                               [--target TARGET] --record
+                                               RECORD [--output OUTPUT]
+                                               [--write]
+
+options:
+  -h, --help         show this help message and exit
+  --project PROJECT
+  --target TARGET
+  --record RECORD
+  --output OUTPUT
+  --write

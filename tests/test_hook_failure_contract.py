@@ -46,9 +46,60 @@ def test_plugin_hooks_json_registers_required_claude_guards():
     assert _commands_for_event(settings, "PreToolUse", matcher="ExitPlanMode") == [
         "tautline plan-finalization-hook"
     ]
+    # Plan Task 8 (plan-review deadlock): plugin installs take their hooks from THIS
+    # manifest, not from install-hooks/lane-start, so the pending-run edit guard must
+    # be registered here or the headline Claude package never gets it.
+    assert _commands_for_event(settings, "PreToolUse", matcher="Edit|Write|MultiEdit") == [
+        "tautline plan-review-pending-hook"
+    ]
+    # Fleet Governor: its own matcher block, which ALSO covers NotebookEdit --
+    # notebooks are files too and must not bypass the lease guard. Asserted
+    # separately from the plan-review block so a regression that merged the two
+    # (and silently dropped NotebookEdit) fails here.
+    assert _commands_for_event(
+        settings, "PreToolUse", matcher="Edit|Write|MultiEdit|NotebookEdit"
+    ) == ["tautline fleet-guard-hook"]
     assert _commands_for_event(settings, "Stop") == [
         "tautline response-guard-hook"
     ]
+
+
+def test_hook_invocation_docs_name_the_canonical_cli():
+    """SWEEP-10 (deferral sweep): hooks.json has shipped canonical `tautline ...` commands
+    since the wheel's console script landed, but the hand-maintained docs that DESCRIBE the
+    hook wiring still spelled the legacy `minervit-methodology` CLI. The docs must name the
+    command the hooks actually run, keyed off hooks.json so a future rename drags them along."""
+    settings = json.loads(HOOKS_JSON.read_text())
+    (stop_command,) = _commands_for_event(settings, "Stop")
+    assert stop_command.startswith("tautline "), "Stop guard lost its canonical CLI spelling"
+
+    policy_doc = (
+        REPO_ROOT
+        / "plugins"
+        / "tautline-core"
+        / "skills"
+        / "background-task-monitoring"
+        / "references"
+        / "background-monitoring-policy.md"
+    )
+    policy = policy_doc.read_text(encoding="utf-8")
+    assert stop_command in policy, (
+        f"{policy_doc.name} must name the Stop hook command hooks.json registers"
+    )
+    assert "minervit-methodology response-guard-hook" not in policy, (
+        f"{policy_doc.name} still spells the legacy hook invocation"
+    )
+
+    readme = (REPO_ROOT / "plugins" / "tautline-core" / ".claude-plugin" / "README.md").read_text(
+        encoding="utf-8"
+    )
+    heading = "## Hooks and the CLI dependency"
+    assert heading in readme
+    section = readme.split(heading, 1)[1].split("\n## ", 1)[0]
+    assert "`tautline` CLI" in section, "README hooks section must name the canonical CLI"
+    assert "minervit-methodology" not in section, (
+        "README hooks section still names the legacy CLI spelling"
+    )
 
 
 def test_hook_fails_open_on_unexpected_error(cli, capsys):
@@ -73,8 +124,8 @@ def test_hook_intentional_systemexit_is_preserved(cli):
 def test_hook_missing_framework_package_systemexit_fails_open(cli, capsys):
     def missing_package(_args):
         raise SystemExit(
-            "guard helpers require the framework checkout's src/minervit_methodology package"
-        ) from ModuleNotFoundError("No module named 'minervit_methodology'")
+            "guard helpers require the framework checkout's src/tautline_methodology package"
+        ) from ModuleNotFoundError("No module named 'tautline_methodology'")
 
     assert cli.dispatch_command(_args("response-guard-hook", missing_package)) == 0
     err = capsys.readouterr().err
@@ -84,7 +135,7 @@ def test_hook_missing_framework_package_systemexit_fails_open(cli, capsys):
 
 def test_hook_unrelated_systemexit_with_src_path_is_preserved(cli):
     def blocker(_args):
-        raise SystemExit("validation failed for src/minervit_methodology/guards.py")
+        raise SystemExit("validation failed for src/tautline_methodology/guards.py")
 
     with pytest.raises(SystemExit):
         cli.dispatch_command(_args("response-guard-hook", blocker))
@@ -102,57 +153,28 @@ def test_hook_normal_return_passes_through(cli):
     assert cli.dispatch_command(_args("latest-code-hook", lambda _a: 0)) == 0
 
 
-def test_real_accessors_without_src_emit_guided_systemexit_and_hooks_fail_open(tmp_path):
-    """Follow-up (review finding): the fail-open branch in dispatch_command
-    keys on the accessor SystemExit message substring. Pin that contract against the
-    REAL accessors (not a fabricated message) by running a copied bin with no sibling
-    src/ in a subprocess, and prove a real -hook invocation still fails open."""
+def test_standalone_shim_without_src_fails_open_for_hooks(tmp_path):
+    """Post the package-split flip (roadmap #11), bin/tautline is a thin shim over
+    tautline_methodology.cli. A STANDALONE copy of the shim with no sibling src/ can no longer
+    reach the engine at all, so the shim itself must honor the arch-errors-1 hook fail-open
+    contract: a ``-hook`` invocation must never wedge a lane even here (rc 0), while a non-hook
+    command fails loud with a guided message instead of an opaque ModuleNotFoundError traceback.
+
+    (The engine-side fail-open branch that keys on the accessors' guided SystemExit -- the case
+    where the package IS present -- is pinned by test_hook_missing_framework_package_systemexit_
+    fails_open above, against dispatch_command directly.)"""
     import shutil
     import subprocess
     import sys
-    import textwrap
 
-    shutil.copy2(REPO_ROOT / "bin" / "tautline", tmp_path / "minervit-methodology")
-    probe = tmp_path / "probe.py"
-    probe.write_text(
-        textwrap.dedent(
-            """
-            import importlib.machinery
-            import importlib.util
-
-            loader = importlib.machinery.SourceFileLoader("mm_standalone", "minervit-methodology")
-            spec = importlib.util.spec_from_loader("mm_standalone", loader)
-            mm = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(mm)
-
-            for accessor in (mm.guards_module, mm.public_release_module, mm.adapter_module):
-                try:
-                    accessor()
-                except SystemExit as exc:
-                    assert "require the framework checkout's src/minervit_methodology" in str(exc), (
-                        f"accessor {accessor.__name__} lost the guided-message contract: {exc}"
-                    )
-                    assert isinstance(exc.__cause__, ModuleNotFoundError), (
-                        f"accessor {accessor.__name__} lost the ModuleNotFoundError cause"
-                    )
-                else:
-                    raise AssertionError(f"{accessor.__name__} did not raise without src/")
-            print("accessors-ok")
-            """
-        )
-    )
-    result = subprocess.run(
-        [sys.executable, "probe.py"],
-        cwd=tmp_path,
-        capture_output=True,
-        text=True,
-        timeout=120,
-    )
-    assert result.returncode == 0, result.stderr
-    assert "accessors-ok" in result.stdout
+    # A copied shim with NO src/ sibling: parents[1] has no src, so the shim's bootstrap adds
+    # nothing to sys.path and the engine import fails -- the standalone fail-open path.
+    standalone = tmp_path / "standalone" / "bin" / "minervit-methodology"
+    standalone.parent.mkdir(parents=True)
+    shutil.copy2(REPO_ROOT / "bin" / "tautline", standalone)
 
     hook = subprocess.run(
-        [sys.executable, str(tmp_path / "minervit-methodology"), "response-guard-hook"],
+        [sys.executable, str(standalone), "response-guard-hook"],
         cwd=tmp_path,
         input="{}",
         capture_output=True,
@@ -161,4 +183,16 @@ def test_real_accessors_without_src_emit_guided_systemexit_and_hooks_fail_open(t
     )
     assert hook.returncode == 0, (
         f"-hook command must fail open without src/: rc={hook.returncode} stderr={hook.stderr}"
+    )
+
+    non_hook = subprocess.run(
+        [sys.executable, str(standalone), "version", "--no-remote"],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+    assert non_hook.returncode != 0, "a non-hook command must fail loud without the package"
+    assert "src/tautline_methodology" in (non_hook.stderr + non_hook.stdout), (
+        "the standalone shim must emit a guided message naming the missing package"
     )

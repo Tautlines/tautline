@@ -7,7 +7,8 @@ from pathlib import Path
 
 ADAPTER_REL = "adapters/projects/" + "demo.json"
 ROOT = Path(__file__).resolve().parents[1]
-CLI = ROOT / "bin" / "tautline"
+# Post the package-split flip (roadmap #11): the engine lives in cli.py; bin/tautline is a shim.
+CLI = ROOT / "src" / "tautline_methodology" / "cli.py"
 
 
 def _git(repo: Path, *args: str) -> str:
@@ -49,6 +50,20 @@ def test_rescue_ref_with_adapter_change_is_detected(cli, tmp_path):
     assert len(findings) == 1
     ref, paths = findings[0]
     assert ref == "minervit-local-rescue/20260610-1-fix"
+    assert paths == [ADAPTER_REL]
+
+
+def test_rescue_ref_tautline_prefix_is_detected(cli, tmp_path):
+    # write-new/read-both: rescue refs created under the new tautline prefix are enumerated too.
+    repo = _make_repo(tmp_path)
+    _git(repo, "checkout", "-q", "-b", "tautline-local-rescue/20260720-1-fix")
+    (repo / "adapters" / "projects" / "demo.json").write_text('{"project": "demo", "fixed": true}\n')
+    _git(repo, "commit", "-aq", "-m", "rescue fix")
+    _git(repo, "checkout", "-q", "main")
+    findings = cli.methodology_rescue_ref_adapter_changes(repo)
+    assert len(findings) == 1
+    ref, paths = findings[0]
+    assert ref == "tautline-local-rescue/20260720-1-fix"
     assert paths == [ADAPTER_REL]
 
 

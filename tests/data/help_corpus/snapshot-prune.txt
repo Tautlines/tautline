@@ -1,0 +1,6 @@
+usage: tautline snapshot-prune [-h] [--keep KEEP]
+
+options:
+  -h, --help   show this help message and exit
+  --keep KEEP  How many of the newest snapshots to retain regardless of use
+               (default 3).

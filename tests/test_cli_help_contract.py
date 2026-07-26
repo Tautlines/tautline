@@ -3,6 +3,7 @@ import re
 
 
 SUBCOMMAND_HELP_TOKENS = {
+    ("install-claude-launcher", "--help"): ("--operator-channel", "--runtime", "maintainer-mode"),
     ("publish-release-update", "--help"): ("--last",),
     ("sync-methodology", "--help"): (
         "--auto-rescue-local-changes",

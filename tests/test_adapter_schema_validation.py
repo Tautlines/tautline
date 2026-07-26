@@ -59,6 +59,7 @@ EXPECTED_SCHEMA_PROPERTY_NAMES = {
     "profileLockPath",
     "profiles",
     "productChat",
+    "productDevelopment",
     "product-docs",
     "repoEvidence",
     "rendererVersion",
@@ -71,6 +72,7 @@ EXPECTED_SCHEMA_PROPERTY_NAMES = {
     "sourceMaterials",
     "stateDir",
     "stakeholderQuestions",
+    "surfaces",
     "support-docs",
     "supportedRuntimes",
     "technologyStack",
@@ -374,3 +376,192 @@ def test_validate_adapter_command_warns_on_legacy_t0_budget(run_cli, tmp_path):
     assert res.returncode == 0, res.stderr
     assert "matches the adapter schema" in res.stdout
     assert "review.roundBudgets.T0=1 is legacy" in res.stderr
+
+
+# --- productDevelopment adapter key + broad-glob-rejecting loader (PM-surface classifier PR 1) ---
+
+# A safe, non-docs/product plan root so the symmetric source-of-truth guard does not reject a
+# legitimate docs/product/** surface. The committed example's plan/goal source-of-truth lives UNDER
+# docs/product/, which WOULD (correctly) overlap a docs/product surface, so accept-case tests
+# override both to a framework plan root that mirrors the real self-adapter.
+SAFE_PLAN_ROOT = "docs/superpowers/plans"
+
+
+def _adapter_with_surfaces(surfaces, *, planning_sot=SAFE_PLAN_ROOT, goal_sot=SAFE_PLAN_ROOT):
+    data = json.loads(EXAMPLE.read_text())
+    data["productDevelopment"] = {"surfaces": list(surfaces)}
+    if planning_sot is not None:
+        data["planningArtifacts"]["sourceOfTruth"] = planning_sot
+    if goal_sot is not None:
+        data["goalArtifacts"]["sourceOfTruth"] = goal_sot
+    return data
+
+
+def _load_surfaces(cli, tmp_path, surfaces, **kwargs):
+    data = _adapter_with_surfaces(surfaces, **kwargs)
+    path = tmp_path / "pd-adapter.json"
+    path.write_text(json.dumps(data))
+    return cli.load_project(path)
+
+
+def _expect_reject(cli, tmp_path, surface, **kwargs):
+    try:
+        _load_surfaces(cli, tmp_path, [surface], **kwargs)
+    except SystemExit:
+        return
+    raise AssertionError(f"loader accepted a surface it must reject: {surface!r}")
+
+
+# --- schema-level cases (validated directly against the schema) ---
+
+def test_product_development_precise_surfaces_validate(cli):
+    data = _example(cli)
+    data["productDevelopment"] = {"surfaces": ["docs/product/**", "docs/product/plans/**"]}
+    assert cli.schema_validation_errors(data, cli._adapter_schema()) == []
+
+
+def test_product_development_unknown_subkey_rejected(cli):
+    data = _example(cli)
+    data["productDevelopment"] = {"surfaces": ["docs/product/**"], "bogus": True}
+    errors = cli.schema_validation_errors(data, cli._adapter_schema())
+    assert any("bogus" in e and "unknown property" in e for e in errors)
+
+
+def test_load_project_rejects_typoed_product_development_key(cli, tmp_path):
+    """Codex R1 P2 regression: normalize_product_development must not silently drop an unknown
+    productDevelopment key (e.g. the `surface`/`surfaces` typo). It has to reach the
+    additionalProperties:false schema validation so load_project REJECTS it -- otherwise a typo'd
+    surface config loads as empty (PM exemption silently disabled) instead of erroring."""
+    data = _example(cli)
+    # `surface` (singular) is the classic typo for `surfaces`.
+    data["productDevelopment"] = {"surface": ["docs/product/**"]}
+    path = tmp_path / "typo-pd-adapter.json"
+    path.write_text(json.dumps(data))
+    try:
+        cli.load_project(path)
+    except SystemExit:
+        return
+    raise AssertionError(
+        "load_project accepted a typo'd productDevelopment key instead of rejecting it via schema"
+    )
+
+
+def test_product_development_surface_rejects_dotdot_and_home(cli):
+    for bad in ("../escape/**", "~/secrets/**"):
+        data = _example(cli)
+        data["productDevelopment"] = {"surfaces": [bad]}
+        errors = cli.schema_validation_errors(data, cli._adapter_schema())
+        assert any("surfaces" in e and "pattern" in e for e in errors), bad
+
+
+# --- default + committed-artifact validity ---
+
+def test_product_development_defaults_to_empty_surfaces(cli, tmp_path):
+    data = json.loads(EXAMPLE.read_text())
+    data.pop("productDevelopment", None)
+    path = tmp_path / "no-pd.json"
+    path.write_text(json.dumps(data))
+    normalized = cli.load_project(path)
+    assert normalized["productDevelopment"]["surfaces"] == []
+
+
+def test_committed_example_and_self_adapter_stay_valid(cli):
+    # The example adapter declares no PM surface (opt-in default empty).
+    assert cli.load_project(EXAMPLE)["productDevelopment"]["surfaces"] == []
+    # The self-adapter ships the repo's concrete PM surface (pm-surface-prepush plan T3): the
+    # loader accepts docs/product/** (bounded, under the allowlist, disjoint from the hard-excluded
+    # docs/superpowers/** plan root the self-adapter's sourceOfTruth points at).
+    self_adapter = REPO_ROOT / ".tautline" / "adapter.json"
+    assert cli.load_project(self_adapter)["productDevelopment"]["surfaces"] == ["docs/product/**"]
+
+
+# --- loader ACCEPT (bounded, under the docs/product allowlist, plan root outside it) ---
+
+def test_loader_accepts_bounded_surface(cli, tmp_path):
+    for good in ("docs/product/**", "docs/product/plans/**"):
+        normalized = _load_surfaces(cli, tmp_path, [good])
+        assert normalized["productDevelopment"]["surfaces"] == [good], good
+
+
+# --- loader REJECT: rule A (wildcard root, no bounded prefix) ---
+
+def test_loader_rejects_rule_a_wildcard_root(cli, tmp_path):
+    for surface in ("**", "*", "*/**", "**/plan-*.md", "?*", "[a-z]*"):
+        _expect_reject(cli, tmp_path, surface)
+
+
+# --- loader REJECT: rule A2 (top-level file, no slash in fixed prefix) ---
+
+def test_loader_rejects_rule_a2_top_level(cli, tmp_path):
+    for surface in ("pyproject.toml", "CHANGELOG.md", "README.md", "*.md"):
+        _expect_reject(cli, tmp_path, surface)
+
+
+# --- loader REJECT: rule A3 (not under the docs/product allowlist) ---
+
+def test_loader_rejects_rule_a3_non_product_roots(cli, tmp_path):
+    for surface in (
+        "docs/reference/**",
+        "docs/backlog/**",
+        "docs/productization/**",
+        "docs/governance/**",
+    ):
+        _expect_reject(cli, tmp_path, surface)
+
+
+# --- loader REJECT: rule A4 (wildcard mid-segment; would match docs/productization/) ---
+
+def test_loader_rejects_rule_a4_partial_segment(cli, tmp_path):
+    for surface in ("docs/product*/**", "docs/prod*/**"):
+        _expect_reject(cli, tmp_path, surface)
+
+
+# --- loader REJECT: rule B (fixed prefix overlaps a hard-excluded root, symmetric) ---
+
+def test_loader_rejects_rule_b_hard_root_overlap(cli, tmp_path):
+    for surface in (
+        "docs/**",
+        "docs/*/**",
+        "docs/superpowers/**",
+        "docs/releases/**",
+        "docs/superpowers/plans/2026-*.md",
+        "adapters/projects/prod-*.json",
+        "plugins/**/plugin.json",
+        ".claude-plugin/*",
+    ):
+        _expect_reject(cli, tmp_path, surface)
+
+
+def test_loader_rejects_fnmatch_metachar_variants(cli, tmp_path):
+    for surface in ("docs/superpowers/plans/2026-??-??.md", "docs/releases/[0-9]*.md"):
+        _expect_reject(cli, tmp_path, surface)
+
+
+def test_loader_rejects_legacy_adapter_overlaps(cli, tmp_path):
+    for surface in (".minervit/**", ".minervit-ai-delivery.json"):
+        _expect_reject(cli, tmp_path, surface)
+
+
+# --- symmetric bounded source-of-truth guard (Design 3) ---
+
+def test_loader_rejects_surface_overlapping_broad_plan_root(cli, tmp_path):
+    # A broad structured plan root "docs" contains the docs/product/** surface -> reject.
+    _expect_reject(cli, tmp_path, "docs/product/**", planning_sot="docs", goal_sot=SAFE_PLAN_ROOT)
+
+
+def test_loader_rejects_surface_overlapped_by_nested_plan_root(cli, tmp_path):
+    # A nested structured plan root under the surface -> reject (symmetric direction).
+    _expect_reject(
+        cli, tmp_path, "docs/product/**",
+        planning_sot=SAFE_PLAN_ROOT, goal_sot="docs/product/plans",
+    )
+
+
+def test_loader_skips_prose_source_of_truth(cli, tmp_path):
+    # A free-form/tracker sourceOfTruth (whitespace, not a repo-relative path) is skipped, not
+    # parsed as a path -> a legitimate docs/product surface still loads.
+    normalized = _load_surfaces(
+        cli, tmp_path, ["docs/product/**"],
+        planning_sot="GitHub issues and product docs", goal_sot=SAFE_PLAN_ROOT,
+    )
+    assert normalized["productDevelopment"]["surfaces"] == ["docs/product/**"]

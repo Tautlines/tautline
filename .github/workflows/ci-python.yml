@@ -32,6 +32,8 @@ jobs:
         run: pip install -r requirements-dev.txt
 
       - name: Run python checks
+        env:
+          PYTEST_ADDOPTS: --junitxml=evidence/pytest.junit.xml
         run: scripts/test.sh
 
       # Coverage no-regression gate (arch-validate-tests-5; quality rec #7 Part 1): BLOCKS
@@ -39,7 +41,67 @@ jobs:
       # floor lives in .coveragerc; raise it as coverage improves, never lower it to pass a
       # regression. Guard against re-defanging: tests/test_coverage_gate_enforced.py.
       - name: Coverage (ratchet floor, blocking)
-        run: pytest --cov=minervit_methodology --cov-config=.coveragerc --cov-report=term-missing
+        run: pytest --cov=tautline_methodology --cov-config=.coveragerc --cov-report=term-missing --junitxml=evidence/pytest.junit.xml
+
+      # This leg's own verdict, recorded even when it died before pytest (a ruff or mypy
+      # failure). `job.status` is success | failure | cancelled -- exactly the vocabulary the
+      # composer maps. Writing it unconditionally is what guarantees the aggregation job's
+      # downloads can never miss.
+      - name: Record this leg's outcome
+        if: always()
+        run: |
+          mkdir -p evidence
+          printf '%s' '${{ job.status }}' > evidence/leg-status.txt
+
+      - name: Upload this leg's evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: evidence-py-${{ matrix.python-version }}
+          path: evidence/
+
+  # CommandCenter evidence aggregation: compose the run's single `evidence` artifact from
+  # every ci-python job. The canonical matrix leg supplies the per-test JUnit detail (one set
+  # of `classname.name` ids, so counts are not doubled); the probe suite carries BOTH matrix
+  # legs' verdicts AND the fresh-install-smoke gate's result, so a 3.10-only failure OR a
+  # fresh-install failure shows as a `fail` result instead of vanishing behind green evidence.
+  # `needs` spans all reporting jobs so a red required check can never publish green evidence.
+  # Pins shape: tests/test_evidence_artifacts.py.
+  evidence:
+    runs-on: ubuntu-latest
+    needs: [python, fresh-install-smoke]
+    # Runs on success AND failure (the whole point), but not on a cancelled run, where the
+    # legs may never have uploaded and the downloads below would have nothing to fetch.
+    if: ${{ !cancelled() }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: evidence-py-3.10
+          path: legs/py-3.10
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: evidence-py-3.12
+          path: legs/py-3.12
+
+      - name: Compose the run's evidence
+        run: |
+          mkdir -p evidence
+          if [ -f legs/py-3.12/pytest.junit.xml ]; then
+            cp legs/py-3.12/pytest.junit.xml evidence/pytest.junit.xml
+          fi
+          python3 .github/scripts/emit_evidence.py \
+            --out evidence/evidence.json \
+            --suite ci-python:probe \
+            --result "ci-python.py-3.10=$(cat legs/py-3.10/leg-status.txt)" \
+            --result "ci-python.py-3.12=$(cat legs/py-3.12/leg-status.txt)" \
+            --result "ci-python.fresh-install-smoke=${{ needs.fresh-install-smoke.result }}"
+
+      - name: Upload evidence artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: evidence
+          path: evidence/
 
   # Fresh-install smoke (real-PyPI-package plan, Task 5): the standing acceptance test
   # for `pipx install tautline`. Every PR builds the real wheel FROM the tree under
@@ -184,14 +246,20 @@ jobs:
           # The lane-hook surface: the README quickstart's own lane verb.
           tautline lane-start --target .
 
-          # Hooks LAND: all seven Claude hooks reference the wheel's console script...
+          # Hooks LAND: all ten Claude hooks reference the wheel's console script...
           settings="$HOME/.claude/settings.json"
           for hook in plan-finalization-hook branch-liveness-hook response-guard-hook \
               tool-rejection-hook background-command-hook latest-code-hook \
-              context-rotation-heartbeat-hook; do
+              context-rotation-heartbeat-hook plan-review-pending-hook \
+              fleet-guard-hook; do
             grep -F "tautline $hook" "$settings" > /dev/null \
               || { echo "missing Claude hook: $hook in $settings" >&2; exit 1; }
           done
+          # ...including the SessionStart standing-directive hook, whose command is a
+          # fail-open shell wrapper, not a bare `tautline <verb>`, so assert its exact
+          # autonomy-directive invocation lands (a packaged lane-start omitting it goes red).
+          grep -F "autonomy-directive --hook" "$settings" > /dev/null \
+            || { echo "missing Claude SessionStart directive hook in $settings" >&2; exit 1; }
           # ...and the git branch-liveness hooks landed in the scratch repo.
           for git_hook in pre-commit pre-push; do
             test -x ".git/hooks/$git_hook"

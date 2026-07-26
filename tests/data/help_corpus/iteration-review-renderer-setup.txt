@@ -1,0 +1,9 @@
+usage: tautline iteration-review-renderer-setup [-h] [--no-install]
+                                                [--timeout-seconds TIMEOUT_SECONDS]
+
+options:
+  -h, --help            show this help message and exit
+  --no-install          Only sync renderer-kit source into the user-state
+                        cache; do not run npm.
+  --timeout-seconds TIMEOUT_SECONDS
+                        Timeout for npm dependency installation.

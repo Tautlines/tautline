@@ -1,0 +1,5 @@
+usage: tautline version [-h] [--no-remote]
+
+options:
+  -h, --help   show this help message and exit
+  --no-remote

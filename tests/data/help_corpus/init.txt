@@ -1,0 +1,10 @@
+usage: tautline init [-h] [--target TARGET] [--project-name PROJECT_NAME]
+                     [--repo REPO] [--continue]
+
+options:
+  -h, --help            show this help message and exit
+  --target TARGET
+  --project-name PROJECT_NAME
+  --repo REPO
+  --continue            Continue after answering the bootstrap interview
+                        artifact.

@@ -1,0 +1,8 @@
+usage: tautline event-tail [-h] [--project PROJECT] [--target TARGET]
+                           [--lines LINES]
+
+options:
+  -h, --help         show this help message and exit
+  --project PROJECT
+  --target TARGET
+  --lines LINES

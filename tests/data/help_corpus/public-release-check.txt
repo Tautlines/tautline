@@ -1,0 +1,10 @@
+usage: tautline public-release-check [-h] [--json]
+                                     [--private-terms-file PRIVATE_TERMS_FILE]
+
+options:
+  -h, --help            show this help message and exit
+  --json                Emit machine-readable issue JSON.
+  --private-terms-file PRIVATE_TERMS_FILE
+                        Read private product/client scan terms from an
+                        untracked local file in addition to
+                        MINERVIT_PUBLIC_RELEASE_PRIVATE_TERMS.

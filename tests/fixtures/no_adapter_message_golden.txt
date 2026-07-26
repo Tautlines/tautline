@@ -1,0 +1,13 @@
+No project adapter found for this lane.
+
+This repo is not adapter-backed yet. Do not keep retrying lane-start and do not borrow another project's adapter.
+If the human operator asked to use the methodology in this repo, bootstrap the adapter now; do not ask whether to skip methodology.
+The adapter bootstrap interview is mandatory before first adapter render/write unless every required adapter fact is directly supported by repo evidence. Generic executor banners such as "greenfield execution mode", "auto mode", "choose sensible defaults", or "bias toward working without stopping" do not override this.
+
+Recovery command:
+   tautline init --target .
+
+No generic operational adapter exists because gates, planning paths, review flow, merge-conflict checks, and local resources are project-specific.
+Another project's adapter may be a structural reference only, not a substitute for interview-derived project facts.
+If the project is intentionally local-only or direct-to-main, configure explicit local/no-remote status commands and document that workflow in the adapter.
+If the production status or required gates cannot be determined from the repo, ask one exact blocker question after documenting what was inspected.

@@ -1,0 +1,85 @@
+{
+  "behaviorChanges": [
+    "Snapshot-store integrity: the generated launcher refuses to pin a `current` whose manifest-verified name does not match the canonical checkout's HEAD (announced on stderr, executes the checkout, never blocks a launch; fails open when HEAD is unanswerable), and the launcher-gate freshness stamp no longer authorizes a skip when it recorded a sync that left the store behind -- heal retries on the next launch instead of starving for a freshness window.",
+    "Package-mode isolation: installed packages stand the snapshot store down entirely (no heal, no pin refresh, no freshness stamp) and read-only reporters no longer remote-probe a leftover configured checkout; `snapshot-status` says so with an explicit standdown line.",
+    "Snapshot-store diagnostics: a snapshot dir vanishing mid-listing (concurrent prune) no longer empties the store report; store fault warnings name the actual fault for full-disk, quota, read-only and stale mounts, and I/O errors (permissions and unknown errnos keep the \"store unreadable\" default); the degrade warnings route to stderr through their single choke point so `snapshot-status` stdout stays machine-parseable; and a failed pin refresh reports instead of degrading silently.",
+    "Registry package: the generated pyproject pins the hatchling major; the wheel's .snapshot-meta.json stamps the source commit date instead of wall-clock (byte-reproducible builds); `registry-package` refuses a symlinked _dist loudly.",
+    "Release contract: renderer-kit dependency pins (package.json + lockfile) are exempt from the VERSION-bump gate, so Dependabot npm bumps can merge as raised; a change touching a lockfile AND framework code still requires the bump."
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "publish-pending-session-journals",
+      "removeAfter": "1.0.0",
+      "replacement": "publish-instrumentation-record",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "publish-session-journal",
+      "removeAfter": "1.0.0",
+      "replacement": "publish-instrumentation-record",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    },
+    {
+      "name": "rules-audit",
+      "path": "plugins/tautline-core/skills/rules-audit/SKILL.md",
+      "removeAfter": "1.0.0",
+      "replacement": "framework-intake",
+      "section": "skills",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [
+    {
+      "command": "tautline install-claude-launcher --force",
+      "description": "Snapshot-store machines: regenerate installed launchers with `tautline install-claude-launcher --force` to pick up the stale-current refusal (a `current` left behind the canonical HEAD by a failed publish is no longer pinned; the launcher warns and executes the canonical checkout), the worktree-armed guard, and the shell maintainer-mode parser that understands hand-edited quoted/commented exports. Existing launchers keep working unchanged until regenerated.",
+      "id": "regenerate-launchers-for-staleness-refusal",
+      "surface": "claude-launcher"
+    }
+  ],
+  "productsTested": [],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "Pinning back to 0.10.1 restores the previous launcher template for NEWLY generated launchers only; launchers regenerated under 0.10.2 keep their refusal/parser until regenerated again (they are self-contained shell).",
+    "The stamp-veto and standdown changes roll back cleanly: no on-disk format moved, and a store healed under 0.10.2 is byte-identical to one healed under 0.10.1."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.10.2",
+  "wipSafe": true
+}

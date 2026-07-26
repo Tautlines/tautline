@@ -1,7 +1,7 @@
 {
   "name": "minervit-local",
   "interface": {
-    "displayName": "Minervit Local"
+    "displayName": "Tautline Local"
   },
   "plugins": [
     {

@@ -3,9 +3,12 @@ uninstall-cli reverses the shim + methodology.env so a tool that edits the user'
 clean off-ramp.
 """
 
+import hashlib
 import json
 import os
+import shutil
 import subprocess
+import types
 from pathlib import Path
 
 import pytest
@@ -276,7 +279,7 @@ def test_install_claude_launcher_writes_startup_compatible_script(run_cli, tmp_p
         "claude_autocompact_pct_override:",
         "launcher_auto_rescue_methodology_repo",
         "MINERVIT_METHODOLOGY_DISABLE_AUTO_RESCUE",
-        'minervit-local-rescue/${stamp}-$$-launcher',
+        'tautline-local-rescue/${stamp}-$$-launcher',
         'merge-base --is-ancestor refs/heads/main "$remote_head"',
         "rev-parse --abbrev-ref HEAD",
         'checkout -b "$rescue_branch"',
@@ -604,13 +607,15 @@ def test_launcher_rechecks_skip_permissions_policy_at_launch(run_cli, tmp_path):
     assert "fake sync" in proceeds.stdout
 
     # 0.9.2 rebrand: install-cli writes the tautline env + a byte-identical legacy mirror; the
-    # launcher reads the tautline path first. Downgrade both, as install-cli/update-repin keep both.
+    # launcher reads the tautline path first. Downgrade both files AND both env spellings (the
+    # compat-sunset config now dual-writes TAUTLINE_/MINERVIT_ update-policy; the skip-guard reads
+    # the TAUTLINE_ spelling first), exactly as install-cli/update-repin keep them in step.
     for env_file in (
         home / ".config" / "tautline" / "tautline.env",
         home / ".config" / "minervit" / "methodology.env",
     ):
         downgraded = env_file.read_text(encoding="utf-8").replace(
-            "MINERVIT_METHODOLOGY_UPDATE_POLICY=pinned", "MINERVIT_METHODOLOGY_UPDATE_POLICY=warn"
+            "_METHODOLOGY_UPDATE_POLICY=pinned", "_METHODOLOGY_UPDATE_POLICY=warn"
         )
         env_file.write_text(downgraded, encoding="utf-8")
 
@@ -786,6 +791,16 @@ def _snapshot_of_working_tree(dest: Path) -> Path:
     cli = dest / "bin" / "tautline"
     cli.write_text((REPO_ROOT / "bin" / "tautline").read_text(encoding="utf-8"), encoding="utf-8")
     cli.chmod(0o755)
+    # `git archive` only sees HEAD; the working-tree bin under test imports its own package eagerly,
+    # so mirror the working-tree src package alongside the overwritten bin (a real snapshot carries
+    # the full extracted package).
+    src_pkg = dest / "src" / "tautline_methodology"
+    shutil.rmtree(src_pkg, ignore_errors=True)
+    shutil.copytree(
+        REPO_ROOT / "src" / "tautline_methodology",
+        src_pkg,
+        ignore=shutil.ignore_patterns("__pycache__"),
+    )
     (dest / ".snapshot-meta.json").write_text(
         json.dumps(
             {
@@ -1102,11 +1117,185 @@ def test_launcher_warns_and_skips_export_when_current_is_dangling(run_cli, tmp_p
     assert "methodology_snapshot: store missing or broken" in run.stderr, run.stderr
 
 
+def _leave_current_behind_canonical_head(home: Path) -> str:
+    """Rename the published snapshot so `current` is runnable but names the WRONG commit.
+
+    This is the persistent-publish-fault end state: the gated sync advances the canonical
+    checkout first and publishes second, and a publish failure is an announced degrade -- so
+    `current` keeps naming (and running) the old commit on every subsequent launch.
+    """
+    store = home / STORE_REL
+    head12 = _git_head(REPO_ROOT)[:12]
+    assert head12 != "deadbeefcafe"
+    os.rename(store / head12, store / "deadbeefcafe")
+    current = store / "current"
+    current.unlink()
+    current.symlink_to(store / "deadbeefcafe")
+    return head12
+
+
+def test_launcher_refuses_to_pin_a_current_left_behind_canonical_head(run_cli, tmp_path):
+    """A runnable `current` can still be the WRONG code: materialize names each snapshot dir
+    <sha12> (manifest-verified), so a `current` whose name is not the canonical HEAD is a
+    publish that never landed, and pinning it would run outdated code for the whole session."""
+    home = tmp_path / "home"
+    launcher = _install_v2_launcher(run_cli, tmp_path)
+    fake_bin = tmp_path / "fake-launcher-bin"
+    _write_fake_launcher_bin(fake_bin)
+    head12 = _leave_current_behind_canonical_head(home)
+
+    run = _launch(launcher, home, fake_bin, tmp_path)
+    assert run.returncode == 0, run.stderr  # a stale store must never block the launch
+    assert "exec_root:missing" in run.stdout, run.stdout
+    # The warn names BOTH commits: what `current` holds and what the canonical checkout is at.
+    assert "deadbeefcafe" in run.stderr, run.stderr
+    assert head12 in run.stderr, run.stderr
+    assert "methodology_snapshot: store missing or broken" not in run.stderr, run.stderr
+
+
+def test_launcher_keeps_runnable_current_when_canonical_head_is_unavailable(run_cli, tmp_path):
+    """Fail OPEN: a canonical checkout that cannot answer rev-parse (no .git) gives the launcher
+    no HEAD to compare against, and it must keep the runnable `current` rather than refuse --
+    mirroring heal, which skips staleness reconciliation it cannot judge."""
+    home = tmp_path / "home"
+    launcher = _install_v2_launcher(run_cli, tmp_path)
+    fake_bin = tmp_path / "fake-launcher-bin"
+    _write_fake_launcher_bin(fake_bin)
+    _leave_current_behind_canonical_head(home)
+    gitless = tmp_path / "gitless-repo"
+    (gitless / "bin").mkdir(parents=True)
+    stub_cli = gitless / "bin" / "tautline"
+    stub_cli.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    stub_cli.chmod(0o755)
+
+    run = _launch(
+        launcher,
+        home,
+        fake_bin,
+        tmp_path,
+        MINERVIT_METHODOLOGY_REPO=str(gitless),
+        TAUTLINE_METHODOLOGY_REPO=str(gitless),
+    )
+    assert run.returncode == 0, run.stderr
+    expected = (home / STORE_REL / "deadbeefcafe").resolve()
+    assert f"exec_root:{expected}" in run.stdout, run.stdout
+
+
+def test_stale_current_refusal_redirects_the_cli_to_the_canonical_checkout(run_cli, tmp_path):
+    """Clearing the exec root is not enough: METHODOLOGY_CLI latches onto the store CLI
+    EARLIER in the launcher, so the refusal must also re-resolve the CLI -- or the
+    launcher runs (and snapshot-pins through) the very snapshot it just refused, while
+    its own warn claims canonical execution."""
+    home = tmp_path / "home"
+    launcher = _install_v2_launcher(run_cli, tmp_path)
+    fake_bin = tmp_path / "fake-launcher-bin"
+    _write_fake_launcher_bin(fake_bin)
+    _leave_current_behind_canonical_head(home)
+    # Every CLI in play is a marker stub, so the run is fast and the invocation
+    # trail is observable: the stale snapshot's own CLI absorbs the pre-refusal
+    # gate calls, and the canonical checkout's CLI is what the refusal must
+    # redirect to.
+    stale_cli = home / STORE_REL / "deadbeefcafe" / "bin" / "tautline"
+    stale_cli.chmod(0o755)  # materialized snapshots are read-only; unlock to stub
+    stale_cli.write_text('#!/bin/sh\necho "cli_invoked:$0"\nexit 0\n', encoding="utf-8")
+    # Minimal CLEAN canonical checkout (one commit, no remote, no drift): this test
+    # exercises ONLY the staleness refusal, not the rescue/update machinery.
+    repo = tmp_path / "methrepo"
+    stub = repo / "bin" / "tautline"
+    stub.parent.mkdir(parents=True)
+    stub.write_text('#!/bin/sh\necho "cli_invoked:$0"\nexit 0\n', encoding="utf-8")
+    stub.chmod(0o755)
+    git_env = {**os.environ, "HOME": str(tmp_path)}
+    subprocess.run(["git", "init", "-b", "main", str(repo)], check=True, capture_output=True)
+    subprocess.run(
+        ["git", "-C", str(repo), "-c", "user.name=t", "-c", "user.email=t@example.invalid",
+         "add", "-A"],
+        check=True, capture_output=True, env=git_env,
+    )
+    subprocess.run(
+        ["git", "-C", str(repo), "-c", "user.name=t", "-c", "user.email=t@example.invalid",
+         "commit", "-q", "-m", "stub"],
+        check=True, capture_output=True, env=git_env,
+    )
+    repo_head = _git_head(repo)
+
+    run = _launch(
+        launcher,
+        home,
+        fake_bin,
+        tmp_path,
+        MINERVIT_METHODOLOGY_CLI="",  # no preset: the store latch actually runs
+        MINERVIT_METHODOLOGY_REPO=str(repo),
+        TAUTLINE_METHODOLOGY_REPO=str(repo),
+        MINERVIT_METHODOLOGY_UPDATE_POLICY="pinned",
+        MINERVIT_METHODOLOGY_UPDATE_PINS=repo_head,
+    )
+    assert run.returncode == 0, run.stdout + run.stderr
+    assert f"cli_invoked:{stub}" in run.stdout, (
+        "after refusing the stale current, the launcher must run the canonical "
+        f"checkout's CLI\n{run.stdout}\n{run.stderr}"
+    )
+    # Pre-refusal gate calls may hit the stale CLI; after the refusal (the warn on
+    # stderr) every invocation must be canonical -- so no stale invocation may
+    # follow the first canonical one.
+    if f"cli_invoked:{stale_cli}" in run.stdout:
+        assert run.stdout.rindex(f"cli_invoked:{stale_cli}") < run.stdout.index(
+            f"cli_invoked:{stub}"
+        ), f"the stale snapshot CLI ran after the refusal\n{run.stdout}"
+    assert "does not match canonical" in run.stderr, run.stderr
+
+
+def test_launcher_staleness_refusal_survives_a_worktree_checkout(run_cli, tmp_path):
+    """A git-worktree checkout's .git is a FILE, not a directory, and rev-parse answers
+    there just fine -- the staleness refusal must stay armed (-e, not -d), or it silently
+    disarms on exactly the worktree checkouts the house flow uses for lane isolation."""
+    home = tmp_path / "home"
+    launcher = _install_v2_launcher(run_cli, tmp_path)
+    fake_bin = tmp_path / "fake-launcher-bin"
+    _write_fake_launcher_bin(fake_bin)
+    head12 = _leave_current_behind_canonical_head(home)
+    worktree = tmp_path / "repo-worktree"
+    subprocess.run(
+        ["git", "-C", str(REPO_ROOT), "worktree", "add", "--detach", str(worktree)],
+        check=True,
+        capture_output=True,
+    )
+    try:
+        assert (worktree / ".git").is_file(), "worktree .git must be a file for this test"
+        run = _launch(
+            launcher,
+            home,
+            fake_bin,
+            tmp_path,
+            MINERVIT_METHODOLOGY_REPO=str(worktree),
+            TAUTLINE_METHODOLOGY_REPO=str(worktree),
+        )
+    finally:
+        subprocess.run(
+            ["git", "-C", str(REPO_ROOT), "worktree", "remove", "--force", str(worktree)],
+            check=False,
+            capture_output=True,
+        )
+    assert run.returncode == 0, run.stderr
+    assert "exec_root:missing" in run.stdout, run.stdout
+    assert "deadbeefcafe" in run.stderr, run.stderr
+    assert head12 in run.stderr, run.stderr
+
+
 def test_install_claude_launcher_records_the_installed_launcher(run_cli, tmp_path):
+    """Record shape is v2 ({path, sha256}) since RCA 2026-07-22 control 4: install is the only
+    moment the framework knows what a generated launcher is supposed to contain, so it is the
+    only honest moment to take the divergence check's baseline."""
     home = tmp_path / "home"
     launcher = _install_v2_launcher(run_cli, tmp_path)
     record = json.loads((home / LAUNCHER_RECORD_REL).read_text(encoding="utf-8"))
-    assert str(launcher) in record["launchers"], record
+    assert record["schema"] == "tautline-installed-launchers/v2", record
+    entries = {entry["path"]: entry for entry in record["launchers"]}
+    assert str(launcher) in entries, record
+    assert (
+        entries[str(launcher)]["sha256"]
+        == hashlib.sha256(launcher.read_bytes()).hexdigest()
+    ), record
 
 
 def test_sync_warns_on_unrecorded_launchers_in_snapshot_mode(run_cli, tmp_path):
@@ -1346,6 +1535,36 @@ def _rescue_repo_state(repo: Path) -> tuple[str, str, str]:
             ],
             id="blank-tautline-falls-through-to-minervit",
         ),
+        # Hand-edited shapes the shlex reference parse (user_config_env_value) accepts: every
+        # one of these arms the Python side, so the shell guard must agree or the two halves
+        # of one machine disagree about the armed state (MS-IMPL-R1-P2-1 / MS-R1-P1-2).
+        pytest.param(
+            ['export TAUTLINE_METHODOLOGY_MAINTAINER_MODE="1"'],
+            id="double-quoted-value",
+        ),
+        pytest.param(
+            ["export TAUTLINE_METHODOLOGY_MAINTAINER_MODE='1'"],
+            id="single-quoted-value",
+        ),
+        pytest.param(
+            ["export TAUTLINE_METHODOLOGY_MAINTAINER_MODE=1 # armed by hand"],
+            id="trailing-comment",
+        ),
+        pytest.param(
+            ["  export TAUTLINE_METHODOLOGY_MAINTAINER_MODE=1"],
+            id="leading-whitespace",
+        ),
+        pytest.param(
+            ["TAUTLINE_METHODOLOGY_MAINTAINER_MODE=1"],
+            id="no-export-keyword",
+        ),
+        pytest.param(
+            [
+                'export TAUTLINE_METHODOLOGY_MAINTAINER_MODE=""',
+                "export MINERVIT_METHODOLOGY_MAINTAINER_MODE=1",
+            ],
+            id="quoted-blank-falls-through",
+        ),
     ],
 )
 def test_launcher_auto_rescue_stands_down_when_file_armed(run_cli, tmp_path, config_lines):
@@ -1382,7 +1601,7 @@ def test_launcher_auto_rescue_stands_down_when_file_armed(run_cli, tmp_path, con
     )
     assert "launcher_auto_rescue -" not in run.stdout + run.stderr
     assert (
-        _git_out(repo, "branch", "--format=%(refname:short)", "--list", "minervit-local-rescue/*")
+        _git_out(repo, "branch", "--format=%(refname:short)", "--list", "tautline-local-rescue/*")
         == ""
     ), "no rescue branch may be created while the mode is file-armed"
 
@@ -1458,9 +1677,11 @@ def test_live_env_cannot_disarm_the_shell_guard(run_cli, tmp_path):
 def test_generated_launcher_still_parses(run_cli, tmp_path):
     """`sh -n` on the regenerated launcher, plus the guard's load-bearing text.
 
-    The parse lines carry the TAUTLINE_METHODOLOGY_MAINTAINER_MODE token on purpose: T4's
-    content-keyed detection recognizes regenerated launchers by it, with NO
-    LAUNCHER_TEMPLATE_VERSION bump (the sibling 0.9.18 plan escalates pre-guard launchers).
+    The guard's call sites carry the TAUTLINE_METHODOLOGY_MAINTAINER_MODE token on purpose:
+    T4's content-keyed detection recognizes regenerated launchers by it, with NO
+    LAUNCHER_TEMPLATE_VERSION bump (the shelved 0.9.18 regen plan owned fleet escalation).
+    The pinned parse lines are the shlex-agreement rewrite (MS-IMPL-R1-P2-1): a widened sed
+    address (optional whitespace/`export`) plus comment/quote/whitespace normalization.
     """
     launcher = _install_plain_launcher(run_cli, tmp_path)
     text = launcher.read_text(encoding="utf-8")
@@ -1468,12 +1689,14 @@ def test_generated_launcher_still_parses(run_cli, tmp_path):
         'MAINTAINER_MODE_CONFIG="$HOME/.config/tautline/tautline.env"',
         '[ -f "$MAINTAINER_MODE_CONFIG" ] || '
         'MAINTAINER_MODE_CONFIG="$HOME/.config/minervit/methodology.env"',
-        "LAUNCHER_MAINTAINER_MODE="
-        "\"$(sed -n 's/^export TAUTLINE_METHODOLOGY_MAINTAINER_MODE=//p' "
-        '"$MAINTAINER_MODE_CONFIG" 2>/dev/null | tail -n 1)"',
+        "launcher_maintainer_mode_value() {",
+        '  sed -n "s/^[[:space:]]*\\(export[[:space:]]\\{1,\\}\\)\\{0,1\\}$1=//p" \\',
+        "    | sed -e 's/#.*$//' -e 's/[[:space:]]*$//' \\",
+        '      -e "s/^\\([\\"\']\\)\\(.*\\)\\1\\$/\\2/" \\',
+        'LAUNCHER_MAINTAINER_MODE="$(launcher_maintainer_mode_value '
+        'TAUTLINE_METHODOLOGY_MAINTAINER_MODE)"',
         '[ -n "$LAUNCHER_MAINTAINER_MODE" ] || LAUNCHER_MAINTAINER_MODE='
-        "\"$(sed -n 's/^export MINERVIT_METHODOLOGY_MAINTAINER_MODE=//p' "
-        '"$MAINTAINER_MODE_CONFIG" 2>/dev/null | tail -n 1)"',
+        '"$(launcher_maintainer_mode_value MINERVIT_METHODOLOGY_MAINTAINER_MODE)"',
         '  [ "$LAUNCHER_MAINTAINER_MODE" != "1" ] || return 0',
     ):
         assert marker in text, marker
@@ -1510,3 +1733,315 @@ def test_skip_permissions_interlock_unchanged_by_maintainer_mode(run_cli, tmp_pa
     assert "--dangerously-skip-permissions" in res.stderr
     assert policy in res.stderr
     assert not (launcher_bin / "minervit-claude-test").exists()
+
+
+# ---------------------------------------------------------------------------
+# FR-1: operator fleet launcher (install-claude-launcher --operator-channel)
+# ---------------------------------------------------------------------------
+_DEFAULT_SKIP_PERMS_GOLDEN = (
+    Path(__file__).parent / "data" / "default_skip_perms_launcher.txt"
+).read_text(encoding="utf-8")
+
+
+def _op_isolate(cli, monkeypatch, tmp_path, *, provision=None, autocompact=None, guards=None):
+    """Hermetic HOME + no-op side effects for in-process operator-install tests (the `cli` fixture,
+    unlike `run_cli`, does not isolate HOME)."""
+    home = tmp_path / "home"
+    home.mkdir(exist_ok=True)
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setattr(cli, "record_installed_launcher", lambda *a, **k: None)
+    monkeypatch.setattr(cli, "provision_operator_runtime",
+                        provision or (lambda runtime, channel=None, **k: None), raising=False)
+    monkeypatch.setattr(cli, "write_claude_autocompact_settings",
+                        autocompact or (lambda *a, **k: (tmp_path / "s.json", True)))
+    monkeypatch.setattr(cli, "install_methodology_release_guards",
+                        guards or (lambda *a, **k: "installed"))
+
+
+def test_operator_launcher_is_non_blocking_and_skip_perms(cli):
+    body = cli.operator_launcher_content(
+        "yolo", "experimental", "/home/op/Projects/Tautline-runtime"
+    )
+    assert "fetch" in body and "experimental" in body
+    assert "checkout -B experimental" in body
+    assert "set -e" not in body
+    lines = body.splitlines()
+    git_lines = [ln for ln in lines if ln.strip().startswith("git ")]
+    assert git_lines
+    for ln in git_lines:
+        assert "||" in ln, f"unguarded git step would block a start: {ln}"
+    assert "MINERVIT_METHODOLOGY_DISABLE_AUTO_RESCUE=1" in body
+    assert "TAUTLINE_METHODOLOGY_DISABLE_AUTO_RESCUE=1" in body
+    # Stage2-R2 P1b: snapshot exec disabled + inherited exec-root cleared, so child hooks/commands
+    # resolve THIS operator runtime rather than the pinned snapshot.
+    assert "MINERVIT_METHODOLOGY_DISABLE_SNAPSHOT_EXEC=1" in body
+    assert "TAUTLINE_METHODOLOGY_DISABLE_SNAPSHOT_EXEC=1" in body
+    assert "unset MINERVIT_METHODOLOGY_EXEC_ROOT" in body
+    # Stage2-R2 P1a: the fetch cannot hang the start -- no interactive prompts, bounded transport.
+    assert "GIT_TERMINAL_PROMPT=0" in body
+    assert "BatchMode=yes" in body
+    assert "http.lowSpeedTime" in body
+    assert "--dangerously-skip-permissions" in body
+    assert "MINERVIT_METHODOLOGY_REPO=" in body and "TAUTLINE_METHODOLOGY_REPO=" in body
+    assert "/home/op/Projects/Tautline-runtime" in body
+    assert cli.LAUNCHER_GENERATED_MARKER in body
+    assert cli.OPERATOR_LAUNCHER_MARKER in body
+    assert "launcher_auto_rescue_methodology_repo" not in body
+    assert "launcher_gate_repair" not in body
+    assert "refusing --dangerously-skip-permissions" not in body
+    # FR1V-R4b P2: exports come BEFORE the git steps so git hooks inherit the session env.
+    first_git = min(i for i, ln in enumerate(lines) if ln.strip().startswith("git "))
+    last_export = max(i for i, ln in enumerate(lines) if ln.strip().startswith("export "))
+    assert last_export < first_git
+
+
+def test_operator_launcher_rejects_bad_name_and_channel(cli):
+    import pytest
+    for bad in ("a;b", "a$(x)", "a b", "a\nb", "a`x`", "-x", "--upload-pack"):
+        with pytest.raises(SystemExit):
+            cli.operator_launcher_content(bad, "experimental", "/r")
+        with pytest.raises(SystemExit):
+            cli.operator_launcher_content("yolo", bad, "/r")
+    for bad_channel in ("foo/", "foo..bar", ".hidden", "foo.lock"):
+        with pytest.raises(SystemExit):
+            cli.operator_launcher_content("yolo", bad_channel, "/r")
+
+
+def test_operator_launcher_logs_failures_never_exits(cli):
+    body = cli.operator_launcher_content("yolo", "experimental", "/nonexistent")
+    assert ".local/state" in body or "minervit" in body
+    assert body.rstrip().splitlines()[-1].startswith("exec ")
+
+
+def test_install_operator_launcher_writes_body_and_no_shared_config(cli, tmp_path, monkeypatch):
+    bindir = tmp_path / "bin"
+    bindir.mkdir()
+    cfg = tmp_path / "methodology.env"
+    resolved = {"n": 0}
+    _op_isolate(cli, monkeypatch, tmp_path)
+    # A real guard, not tautology (native-review Nit): fail if the operator path resolves the
+    # shared config surface at all, and confirm nothing was written to it.
+    monkeypatch.setattr(cli, "resolve_user_config_env",
+                        lambda: (resolved.__setitem__("n", resolved["n"] + 1), cfg)[1],
+                        raising=False)
+    args = types.SimpleNamespace(name="yolo", bin_dir=bindir, operator_channel="experimental",
+                                  runtime=str(tmp_path / "runtime"),
+                                  dangerously_skip_permissions=False, force=True)
+    assert cli.install_claude_launcher(args) == 0
+    launcher = (bindir / "yolo").read_text()
+    assert "--dangerously-skip-permissions" in launcher and "launcher_gate_repair" not in launcher
+    for prefix in ("MINERVIT_", "TAUTLINE_"):
+        assert f"export {prefix}METHODOLOGY_UPDATE_POLICY=unverified" in launcher
+        assert f"export {prefix}METHODOLOGY_DISABLE_AUTO_RESCUE=1" in launcher
+        assert f"export {prefix}METHODOLOGY_REPO=" in launcher
+    assert resolved["n"] == 0  # operator path never touches the shared config surface
+    assert not cfg.exists()  # FR1V-R4b Critical: shared methodology.env untouched
+
+
+def test_install_operator_launcher_never_hits_skip_perms_install_guard(cli, tmp_path, monkeypatch):
+    monkeypatch.setattr(cli, "effective_methodology_update_policy", lambda *a, **k: "warn")
+    _op_isolate(cli, monkeypatch, tmp_path)
+    bindir = tmp_path / "bin"
+    bindir.mkdir()
+    args = types.SimpleNamespace(name="yolo", bin_dir=bindir, operator_channel="experimental",
+                                  runtime=str(tmp_path),
+                                  dangerously_skip_permissions=True, force=True)
+    assert cli.install_claude_launcher(args) == 0
+
+
+def test_install_operator_launcher_provisions_absent_runtime(cli, tmp_path, monkeypatch):
+    cloned = {}
+    _op_isolate(cli, monkeypatch, tmp_path,
+                provision=lambda runtime, channel=None, **k: cloned.update(r=runtime, ch=channel))
+    bindir = tmp_path / "bin"
+    bindir.mkdir()
+    runtime = tmp_path / "runtime"
+    args = types.SimpleNamespace(name="yolo", bin_dir=bindir, operator_channel="experimental",
+                                  runtime=str(runtime),
+                                  dangerously_skip_permissions=False, force=True)
+    assert cli.install_claude_launcher(args) == 0
+    assert cloned.get("r") == str(runtime) and cloned.get("ch") == "experimental"
+
+
+def test_operator_install_runs_post_install_side_effects(cli, tmp_path, monkeypatch):
+    calls = {"autocompact": 0, "guards": 0}
+    _op_isolate(
+        cli, monkeypatch, tmp_path,
+        autocompact=lambda *a, **k: (
+            calls.__setitem__("autocompact", calls["autocompact"] + 1),
+            (tmp_path / "s.json", True),
+        )[1],
+        guards=lambda *a, **k: (calls.__setitem__("guards", calls["guards"] + 1), "installed")[1],
+    )
+    bindir = tmp_path / "bin"
+    bindir.mkdir()
+    args = types.SimpleNamespace(name="yolo", bin_dir=bindir, operator_channel="experimental",
+                                  runtime=str(tmp_path),
+                                  dangerously_skip_permissions=False, force=True)
+    assert cli.install_claude_launcher(args) == 0
+    assert calls["autocompact"] == 1 and calls["guards"] == 1
+
+
+def test_operator_install_honors_overwrite_guard(cli, tmp_path, monkeypatch):
+    import pytest
+    _op_isolate(cli, monkeypatch, tmp_path)
+    bindir = tmp_path / "bin"
+    bindir.mkdir()
+    (bindir / "yolo").write_text("#!/bin/sh\n# hand-written, not generated\n")
+    args = types.SimpleNamespace(name="yolo", bin_dir=bindir, operator_channel="experimental",
+                                  runtime=str(tmp_path),
+                                  dangerously_skip_permissions=False, force=False)
+    with pytest.raises(SystemExit):
+        cli.install_claude_launcher(args)
+
+
+def test_operator_launcher_runtime_path_defaults_to_dedicated(cli, monkeypatch, tmp_path):
+    # FR1V-R4b P2: default is ~/Projects/Tautline-runtime, never the managed repo env.
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("MINERVIT_METHODOLOGY_REPO", "/managed/canonical/repo")
+    monkeypatch.setenv("TAUTLINE_METHODOLOGY_REPO", "/managed/canonical/repo")
+    got = cli.operator_launcher_runtime_path(types.SimpleNamespace(runtime=None))
+    assert got == str(tmp_path / "Projects" / "Tautline-runtime")
+    assert "/managed/canonical/repo" not in got
+    explicit = types.SimpleNamespace(runtime="/custom/rt")
+    assert cli.operator_launcher_runtime_path(explicit) == "/custom/rt"
+
+
+def test_operator_launcher_not_flagged_by_maintainer_scan(cli, tmp_path, monkeypatch):
+    # FR1V-R4b P2: an installed operator launcher must not be flagged missing standdown.
+    monkeypatch.setattr(cli, "read_installed_launchers", lambda: [])
+    bindir = tmp_path / "bin"
+    bindir.mkdir()
+    (bindir / "yolo").write_text(
+        cli.operator_launcher_content("yolo", "experimental", str(tmp_path / "rt"))
+    )
+    assert cli.launchers_missing_maintainer_standdown(bindir) == []
+
+
+def test_default_launcher_body_is_byte_unchanged_golden(cli):
+    body = cli.claude_launcher_content(dangerously_skip_permissions=True)
+    assert body == _DEFAULT_SKIP_PERMS_GOLDEN
+
+
+def test_default_launcher_still_refuses_skip_perms_under_warn_unverified(cli):
+    body = cli.claude_launcher_content(dangerously_skip_permissions=True)
+    assert "refusing --dangerously-skip-permissions" in body
+    assert "pinned or signed" in body
+
+
+def test_default_install_guard_still_raises_under_warn(cli, tmp_path, monkeypatch):
+    import pytest
+    monkeypatch.setattr(cli, "effective_methodology_update_policy", lambda *a, **k: "warn")
+    bindir = tmp_path / "bin"
+    bindir.mkdir()
+    args = types.SimpleNamespace(name="c", bin_dir=bindir, operator_channel=None, runtime=None,
+                                  dangerously_skip_permissions=True, force=True)
+    with pytest.raises(SystemExit):
+        cli.install_claude_launcher(args)
+
+
+def test_operator_channel_and_default_templates_are_distinct(cli):
+    default_body = cli.claude_launcher_content(dangerously_skip_permissions=True)
+    op_body = cli.operator_launcher_content("yolo", "experimental", "/r")
+    assert "launcher_gate_repair" in default_body
+    assert "launcher_gate_repair" not in op_body
+
+
+def test_provision_operator_runtime_is_non_fatal(cli, tmp_path, monkeypatch):
+    # native-review P2: exercise the REAL provision_operator_runtime (all other tests stub it).
+    # (a) an existing .git checkout -> early return, no clone attempted.
+    existing = tmp_path / "existing"
+    (existing / ".git").mkdir(parents=True)
+    calls = []
+    monkeypatch.setattr(cli, "run_command", lambda cmd, **k: (calls.append(cmd), (0, "", ""))[1])
+    cli.provision_operator_runtime(str(existing), "experimental")
+    assert not any("clone" in c for c in calls)
+    # (b) no canonical origin URL -> skip clone, never raise.
+    monkeypatch.setattr(cli, "canonical_methodology_repo", lambda: tmp_path / "canon")
+    monkeypatch.setattr(cli, "run_git", lambda target, args: "unavailable")
+    cli.provision_operator_runtime(str(tmp_path / "absent"), "experimental")
+    assert not (tmp_path / "absent").exists()
+    # (c) origin present, deep missing parent, clone fails -> parent created, non-fatal (no raise).
+    monkeypatch.setattr(cli, "run_git", lambda target, args: "https://example.invalid/repo.git")
+    cloned = []
+    clone_kwargs = {}
+    monkeypatch.setattr(cli, "run_command",
+                        lambda cmd, **k: (cloned.append(cmd), clone_kwargs.update(k),
+                                          (1, "", "boom"))[2])
+    target = tmp_path / "deep" / "nested" / "rt"
+    cli.provision_operator_runtime(str(target), "experimental")
+    assert target.parent.exists()
+    clone = next(c for c in cloned if "clone" in c)
+    # Stage2 P2: bounded + non-interactive so a private/SSH origin/stalled net can't hang install.
+    assert "--" in clone and "http.lowSpeedTime=20" in clone
+    assert clone_kwargs.get("timeout") == 120
+    assert clone_kwargs.get("env", {}).get("GIT_TERMINAL_PROMPT") == "0"
+
+
+def test_operator_launcher_not_flagged_stale_on_template_bump(cli, tmp_path):
+    # native-review P3: an operator launcher carrying an OLD template marker must NOT be reported
+    # stale -- else a regen without --operator-channel silently converts it to a gated launcher.
+    bindir = tmp_path / "bin"
+    bindir.mkdir()
+    body = cli.operator_launcher_content("yolo", "experimental", str(tmp_path / "rt"))
+    body = body.replace(cli.LAUNCHER_TEMPLATE_MARKER, "# tautline-launcher-template: 1")
+    (bindir / "yolo").write_text(body)
+    assert cli.stale_claude_launchers(bindir) == []
+
+
+def test_install_operator_channel_empty_is_rejected(cli, tmp_path, monkeypatch):
+    # native-review Nit: an explicit `--operator-channel ""` must error, not silently install a
+    # gated default launcher.
+    import pytest
+    _op_isolate(cli, monkeypatch, tmp_path)
+    bindir = tmp_path / "bin"
+    bindir.mkdir()
+    args = types.SimpleNamespace(name="yolo", bin_dir=bindir, operator_channel="",
+                                 runtime=str(tmp_path),
+                                 dangerously_skip_permissions=False, force=True)
+    with pytest.raises(SystemExit):
+        cli.install_claude_launcher(args)
+
+
+def test_install_operator_launcher_refuses_default_managed_name(cli, tmp_path, monkeypatch):
+    # Stage2-R1 P1: --operator-channel without --name (default minervit-claude) must NOT be able to
+    # clobber the managed launcher; the managed names are refused for operator installs.
+    import pytest
+    _op_isolate(cli, monkeypatch, tmp_path)
+    bindir = tmp_path / "bin"
+    bindir.mkdir()
+    for name in ("minervit-claude", "tautline-claude"):
+        args = types.SimpleNamespace(name=name, bin_dir=bindir, operator_channel="experimental",
+                                     runtime=str(tmp_path),
+                                     dangerously_skip_permissions=False, force=True)
+        with pytest.raises(SystemExit):
+            cli.install_claude_launcher(args)
+
+
+def test_operator_install_refuses_to_convert_gated_launcher(cli, tmp_path, monkeypatch):
+    # Stage2-R1 P1: an existing GATED (non-operator) generated launcher must not be silently swapped
+    # for a non-blocking operator one without --force.
+    import pytest
+    _op_isolate(cli, monkeypatch, tmp_path)
+    bindir = tmp_path / "bin"
+    bindir.mkdir()
+    (bindir / "yolo").write_text(cli.claude_launcher_content(dangerously_skip_permissions=True))
+    args = types.SimpleNamespace(name="yolo", bin_dir=bindir, operator_channel="experimental",
+                                 runtime=str(tmp_path),
+                                 dangerously_skip_permissions=False, force=False)
+    with pytest.raises(SystemExit):
+        cli.install_claude_launcher(args)
+    args.force = True  # --force allows the deliberate conversion
+    assert cli.install_claude_launcher(args) == 0
+    assert cli.OPERATOR_LAUNCHER_MARKER in (bindir / "yolo").read_text()
+
+
+def test_operator_launcher_runtime_path_expands_tilde_and_relative(cli, tmp_path, monkeypatch):
+    # Stage2-R1 P2: explicit ~ and relative runtime paths are expanded/absolutized before embedding.
+    monkeypatch.setenv("HOME", str(tmp_path))
+    got = cli.operator_launcher_runtime_path(types.SimpleNamespace(runtime="~/Projects/rt"))
+    assert got == str(tmp_path / "Projects" / "rt")
+    assert "~" not in got
+    rel = cli.operator_launcher_runtime_path(types.SimpleNamespace(runtime="relthing"))
+    from pathlib import Path as _P
+    assert _P(rel).is_absolute()

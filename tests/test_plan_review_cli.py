@@ -712,6 +712,15 @@ def test_run_plan_review_enforces_counts_round_caps_and_log_classification(tmp_p
     assert r5.returncode == 1
     assert "exceeds the hard cap of 4 rounds" in r5.stderr
 
+    # The round ladder above spent this plan's whole invocation budget, and the budget is counted
+    # in reviewer invocations, not round labels (item 24: plan-review round advance gap). The
+    # log-classification checks below are about the log scan, not the cap, so they get their own
+    # source-of-truth plan with a fresh budget.
+    classification_rel = SOURCE_ROOT / "test-plan-log-classification.md"
+    _write_plan(target, classification_rel)
+    _git(target, "add", "-A")
+    _git(target, "commit", "-m", "add log-classification plan")
+
     _write_review_script(
         target,
         "printf 'Codex review args: %s\\n' \"$*\"\n"
@@ -725,7 +734,7 @@ def test_run_plan_review_enforces_counts_round_caps_and_log_classification(tmp_p
         "--target",
         str(target),
         "--plan",
-        PLAN_REL.as_posix(),
+        classification_rel.as_posix(),
         "--round",
         "R1CriticalLog",
         "--model",
@@ -758,7 +767,7 @@ def test_run_plan_review_enforces_counts_round_caps_and_log_classification(tmp_p
         "--target",
         str(target),
         "--plan",
-        PLAN_REL.as_posix(),
+        classification_rel.as_posix(),
         "--round",
         "R2Addressed",
         "--model",
@@ -1054,3 +1063,145 @@ def test_run_plan_review_next_action_names_the_resolved_target(tmp_path):
     )
     assert f"finalize-plan-review --target {shlex.quote(str(target.resolve()))}" in next_action
     assert "--target ." not in next_action
+
+
+def _recovery_data() -> dict:
+    return {
+        "project": "example",
+        "laneState": {"runsDir": ".ai-runs"},
+        "planningArtifacts": {"sourceOfTruth": "backlog/plans"},
+    }
+
+
+def _recovery_plan(root: Path) -> Path:
+    path = root / "backlog" / "plans" / "admin.md"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("# Admin\n\n## Goal\n\nDo the work.\n", encoding="utf-8")
+    return path
+
+
+def _write_successful_run_meta(
+    cli, root: Path, plan_rel: str, plan_hash: str, *, idx: int, round_name: str
+) -> Path:
+    runs = root / ".ai-runs" / "plan-review"
+    runs.mkdir(parents=True, exist_ok=True)
+    meta = {
+        "schema": cli.PLAN_REVIEW_RUN_SCHEMA,
+        "plan_path": plan_rel,
+        "plan_content_sha256": plan_hash,
+        "review_scope": "plan-only",
+        "code_diff_review": False,
+        "review_command": f"codex-review --plan {plan_rel}",
+        "log_path": f".ai-runs/plan-review/run-{idx}.log",
+        "log_sha256": "x",
+        "wrapper_exit_code": 0,
+        "round": round_name,
+    }
+    path = runs / f"run-{idx}.meta.json"
+    path.write_text(json.dumps(meta), encoding="utf-8")
+    return path
+
+
+def _bind_clean_manifest(cli, data, root, plan, meta_path, plan_hash, *, round_name="R2"):
+    """A clean finalized manifest at plan_hash -- supersedes every run, so no self-authorized
+    round remains and the successor path is the only sanctioned exit (the genuine deadlock)."""
+    manifest_path = cli.plan_review_manifest_path(data, root, plan)
+    manifest_path.parent.mkdir(parents=True, exist_ok=True)
+    manifest_path.write_text(
+        json.dumps(
+            {
+                "round": round_name,
+                "verdict": "clean",
+                "plan_content_sha256": plan_hash,
+                "unresolved_critical_count": 0,
+                "unresolved_p1_count": 0,
+                "review_run_meta_path": meta_path.relative_to(root).as_posix(),
+                "timestamp": "2026-07-17T00:00:00Z",
+            }
+        ),
+        encoding="utf-8",
+    )
+    return manifest_path
+
+
+def test_recovery_instruction_sha_stale_at_cap_names_successor_plan(cli, tmp_path):
+    """The genuine deadlock: a clean round bound at the old hash, then the plan edited away.
+    No self-authorized round remains, so run-again is refused and the successor path is the
+    only exit. (A no-manifest state self-authorizes a rebinding round and is NOT stale-at-cap.)"""
+    data = _recovery_data()
+    plan = _recovery_plan(tmp_path)
+    stale_hash = "0" * 64
+    assert cli.plan_content_sha256(plan) != stale_hash
+    r2_meta = None
+    for idx in range(1, 3):
+        r2_meta = _write_successful_run_meta(
+            cli, tmp_path, "backlog/plans/admin.md", stale_hash, idx=idx, round_name=f"R{idx}"
+        )
+    _bind_clean_manifest(cli, data, tmp_path, plan, r2_meta, stale_hash)
+
+    instruction = cli.plan_review_recovery_instruction(data, tmp_path, plan)
+
+    assert "create a successor source-of-truth plan" in instruction
+    assert "run-plan-review" not in instruction
+
+
+def test_recovery_instruction_fresh_plan_keeps_run_finalize_precheck_text(cli, tmp_path):
+    data = _recovery_data()
+    plan = _recovery_plan(tmp_path)
+
+    instruction = cli.plan_review_recovery_instruction(data, tmp_path, plan)
+
+    assert "run-plan-review" in instruction
+    assert "finalize-plan-review" in instruction
+    assert "plan-finalization-precheck" in instruction
+    assert "create a successor source-of-truth plan" not in instruction
+
+
+def test_precheck_sha_stale_at_cap_prints_successor_next_action(cli, tmp_path):
+    home, adapter_root, target, adapter = _prepare_target(tmp_path)
+    stale_hash = "0" * 64
+    r2_meta = None
+    for idx in range(1, 3):
+        r2_meta = _write_successful_run_meta(
+            cli, target, PLAN_REL.as_posix(), stale_hash, idx=idx, round_name=f"R{idx}"
+        )
+    # The genuine deadlock state: a clean round bound at the old hash then edited away, so no
+    # self-authorized rebinding round remains and the successor path is the only exit.
+    manifest_path = _manifest_path(target)
+    manifest_path.parent.mkdir(parents=True, exist_ok=True)
+    manifest_path.write_text(
+        json.dumps(
+            {
+                "round": "R2",
+                "verdict": "clean",
+                "plan_content_sha256": stale_hash,
+                "unresolved_critical_count": 0,
+                "unresolved_p1_count": 0,
+                "review_run_meta_path": r2_meta.relative_to(target).as_posix(),
+                "timestamp": "2026-07-17T00:00:00Z",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    result = _run_cli(
+        "plan-finalization-precheck",
+        "--project",
+        str(adapter),
+        "--target",
+        str(target),
+        "--plan",
+        PLAN_REL.as_posix(),
+        home=home,
+        adapter_root=adapter_root,
+    )
+
+    assert result.returncode == 1
+    next_action = [
+        line
+        for line in result.stderr.splitlines()
+        if line.startswith("plan_finalization_next_action: ")
+    ]
+    assert len(next_action) == 1
+    assert "create a successor source-of-truth plan" in next_action[0]
+    assert "run-plan-review" not in next_action[0]

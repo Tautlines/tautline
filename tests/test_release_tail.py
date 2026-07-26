@@ -710,16 +710,26 @@ def test_pypi_copy_names_the_checkout_mode_for_full_runtime(cli) -> None:
     )
 
 
-def test_npm_copy_is_a_pointer_that_points_at_pipx(cli) -> None:
-    """npm stays a namespace pointer -- but a pointer must point at the install
-    that works, which is pipx plus the repo link, not a clone-first sequence."""
+def test_npm_copy_leads_with_the_install_not_an_apology(cli) -> None:
+    """Successor to test_npm_copy_is_a_pointer_that_points_at_pipx: the npm README
+    leads with the product and the one-command install. The name-reservation fact
+    survives (the package must never pretend to install the CLI), but as a plain
+    subordinate statement -- not self-describing registry jargon as the headline."""
     readme = cli.registry_package_files("npm", "0.9.7")["README.md"]
-    assert "namespace pointer" in readme.lower(), (
-        "the npm package must state what it is: a name reservation that does not install the CLI"
-    )
-    assert "does not install" in readme.lower()
+    assert "Tautline is a Python CLI" in readme
     assert "pipx install tautline" in readme
     assert "https://github.com/tautlines/tautline" in readme
+    first_heading = next(line for line in readme.splitlines() if line.startswith("## "))
+    assert first_heading == "## Install", (
+        "the install must be the FIRST section -- leading with anything else is the "
+        "apology this rewrite removes"
+    )
+    assert "namespace pointer" not in readme.lower(), (
+        "registry jargon reads as an apology in shipped copy; state the fact plainly"
+    )
+    assert "reserves the" in readme.lower() and "no code" in readme.lower(), (
+        "the truth that this package installs nothing must survive the tone pass"
+    )
     assert "git clone" not in readme, (
         "the clone-first sequence is no longer the npm pointer's install instruction"
     )
@@ -745,10 +755,12 @@ def test_registry_copy_points_at_the_public_roadmap(cli, registry: str) -> None:
 
 
 def test_registry_descriptions_match_their_payloads(cli) -> None:
-    """The one-line registry description must describe the ACTUAL payload: npm keeps
-    the pointer language, pypi (now a real install) drops it."""
+    """The one-line registry description must describe the ACTUAL payload without
+    apologizing for it: npm names the real install command; pypi (now a real
+    install) needs no qualifier at all."""
     npm_manifest = json.loads(cli.registry_package_files("npm", "0.9.7")["package.json"])
-    assert "namespace pointer" in npm_manifest["description"]
+    assert "pipx install tautline" in npm_manifest["description"]
+    assert "pointer" not in npm_manifest["description"].lower()
     pyproject = cli.registry_package_files("pypi", "0.9.7")["pyproject.toml"]
     description_lines = [
         line for line in pyproject.splitlines() if line.startswith("description = ")

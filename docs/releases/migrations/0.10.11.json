@@ -1,0 +1,80 @@
+{
+  "behaviorChanges": [
+    "the pre-push review-evidence + CI gates are skipped for a push whose FULL branch diff vs the configured base is entirely within the declared PM surfaces; code/mixed/ambiguous pushes and docs-only increments on branches that already carry code run the full gate (fail closed); authorized in canonical policy; operators must reinstall pre-push hooks to enable relief"
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "publish-pending-session-journals",
+      "removeAfter": "1.0.0",
+      "replacement": "publish-instrumentation-record",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "publish-session-journal",
+      "removeAfter": "1.0.0",
+      "replacement": "publish-instrumentation-record",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    },
+    {
+      "name": "rules-audit",
+      "path": "plugins/tautline-core/skills/rules-audit/SKILL.md",
+      "removeAfter": "1.0.0",
+      "replacement": "framework-intake",
+      "section": "skills",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [],
+  "productsTested": [],
+  "requiredMigrations": [
+    {
+      "command": "gh auth refresh --hostname github.com -s read:project -s project",
+      "description": "Carried forward from 0.10.3 for lanes updating across it: grant the gh token the GitHub Projects scopes the fail-closed board gates need. Machines already on 0.10.3+ or whose token carries read:project and project need no action.",
+      "id": "grant-gh-project-scopes",
+      "surface": "board-provider-auth"
+    }
+  ],
+  "rollbackNotes": [
+    "Pinning back to 0.10.10 restores the unconditional pre-push review/CI gate for every push (no PM-surface relief); no on-disk state moves in either direction."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.10.11",
+  "wipSafe": false
+}

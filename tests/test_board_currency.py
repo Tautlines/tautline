@@ -23,7 +23,9 @@ STAKEHOLDER_QUESTIONS_REFERENCE = (
     / "references"
     / "stakeholder-questions-policy.md"
 )
-CLI = ROOT / "bin" / "tautline"
+# Post the package-split flip (roadmap #11): the engine (these pinned verb/flag/handler strings)
+# lives in cli.py; bin/tautline is a thin shim.
+CLI = ROOT / "src" / "tautline_methodology" / "cli.py"
 ADAPTER_SCHEMA = ROOT / "methodology" / "adapter-schema.json"
 EXAMPLE_ADAPTER = ROOT / "adapters" / "projects" / "example-saas.json"
 DONE = ["Done"]
@@ -1692,3 +1694,112 @@ def test_missing_optional_and_custom_fields_are_mismatch(cli):
     assert any("typeField" in m and "Item Type" in m for m in mm)
     assert any("epicField" in m for m in mm)
     assert any("orderField" in m for m in mm)
+
+
+# --- provider-unavailable fail-closed (2026-07-17: the "30x recurrence" root cause) ---
+
+UNAVAILABLE_REMEDY = "gh auth refresh --hostname github.com -s read:project -s project"
+
+
+def _gate_args():
+    import argparse
+
+    return argparse.Namespace(project=None, target=None, strict=False)
+
+
+def _monkeypatch_unavailable(cli, tmp_path, monkeypatch, data):
+    monkeypatch.setattr(cli, "lane_project", lambda args: (data, None, tmp_path))
+    monkeypatch.setattr(cli, "goal_run_path", lambda d, t: tmp_path / "no-such-goal-run")
+    monkeypatch.setattr(
+        cli,
+        "provider_board_currency_issues",
+        lambda d, t, g: ([], ["gh token scopes missing read:project"], []),
+    )
+    monkeypatch.setattr(cli, "print_provider_board_business_lead_warnings", lambda d, t: None)
+    monkeypatch.setattr(cli, "print_unplaced_customer_facing_issue_warnings", lambda d, t: None)
+
+
+def test_unavailable_blocks_the_board_check_by_default(cli, tmp_path, monkeypatch, capsys):
+    """A board the gate cannot READ is not a board it can vouch for. Warn-and-pass on
+    every machine whose gh token lacks the project scope (gh auth login's default!) is
+    how months of silent board drift happened: the drift detectors are sound but never
+    received data, and all three enforcement surfaces passed anyway."""
+    _monkeypatch_unavailable(cli, tmp_path, monkeypatch, _enabled_data())
+    rc = cli.backlog_provider_board_check(_gate_args())
+    err = capsys.readouterr().err
+    assert rc == 1, "an unreadable authoritative board must BLOCK, not warn"
+    assert UNAVAILABLE_REMEDY in err, f"the block must name the exact fix\n{err}"
+
+
+def test_unavailable_blocks_the_active_check_by_default(cli, tmp_path, monkeypatch, capsys):
+    _monkeypatch_unavailable(cli, tmp_path, monkeypatch, _enabled_data())
+    rc = cli.backlog_provider_active_check(_gate_args())
+    err = capsys.readouterr().err
+    assert rc == 1, "the pre-commit/pre-push hook gate must fail closed on unavailability"
+    assert UNAVAILABLE_REMEDY in err
+
+
+def test_unavailable_policy_warn_is_a_deliberate_optout(cli, tmp_path, monkeypatch, capsys):
+    """Offline work stays possible, but only by an explicit, audit-visible adapter
+    choice -- never as the silent default."""
+    data = _enabled_data()
+    data["backlogProvider"]["unavailablePolicy"] = "warn"
+    _monkeypatch_unavailable(cli, tmp_path, monkeypatch, data)
+    assert cli.backlog_provider_board_check(_gate_args()) == 0
+    assert cli.backlog_provider_active_check(_gate_args()) == 0
+    err = capsys.readouterr().err
+    assert "backlog_provider_board_warn" in err or "backlog_provider_active_warn" in err
+
+
+def test_unavailable_policy_validates_and_defaults_to_block(cli):
+    assert cli.backlog_provider_unavailable_policy(_enabled_data()) == "block"
+    bad = _enabled_data()
+    bad["backlogProvider"]["unavailablePolicy"] = "silently-ignore"
+    with pytest.raises(SystemExit):
+        cli.backlog_provider_unavailable_policy(bad)
+
+
+def test_legacy_goal_tracker_unavailable_policy_survives_normalization(cli):
+    """Codex R1 (0.10.3): a legacy goalTracker-only adapter's unavailablePolicy: warn
+    must survive backlog_provider_from_goal_tracker -- silently dropping the opt-out
+    would hard-block deliberate offline work after migration."""
+    tracker = _enabled_tracker()
+    tracker["unavailablePolicy"] = "warn"
+    provider = cli.backlog_provider_from_goal_tracker(tracker)
+    assert provider.get("unavailablePolicy") == "warn"
+    data = {"goalTracker": {"enabled": False}, "backlogProvider": provider}
+    assert cli.backlog_provider_unavailable_policy(data) == "warn"
+    # And absence stays absent: no key means the block default, not a literal key.
+    bare = cli.backlog_provider_from_goal_tracker(_enabled_tracker())
+    assert "unavailablePolicy" not in bare
+
+
+def test_unavailable_policy_survives_the_full_normalization_round_trip(cli):
+    """Codex R2: load_project round-trips legacy adapters through BOTH converters;
+    the opt-down must survive provider->tracker->provider, and absence must stay
+    absence in both directions."""
+    tracker = _enabled_tracker()
+    tracker["unavailablePolicy"] = "warn"
+    provider = cli.backlog_provider_from_goal_tracker(tracker)
+    regenerated_tracker = cli.goal_tracker_from_backlog_provider(provider)
+    assert regenerated_tracker.get("unavailablePolicy") == "warn"
+    round_tripped = cli.backlog_provider_from_goal_tracker(regenerated_tracker)
+    assert round_tripped.get("unavailablePolicy") == "warn"
+    bare = cli.goal_tracker_from_backlog_provider(
+        cli.backlog_provider_from_goal_tracker(_enabled_tracker())
+    )
+    assert "unavailablePolicy" not in bare
+
+
+def test_snapshot_store_fault_phrases_build_without_posix_only_errnos(cli):
+    """Codex R2: EDQUOT/ESTALE are absent from errno on native Windows; the map must
+    be getattr-guarded so the CLI can IMPORT there. On POSIX all five entries exist."""
+    phrases = cli._SNAPSHOT_STORE_FAULT_PHRASES
+    assert all(isinstance(code, int) for code in phrases)
+    import errno as _errno
+
+    assert phrases[_errno.ENOSPC] == "store out of space"
+    expected = {
+        name for name in ("ENOSPC", "EDQUOT", "EROFS", "ESTALE", "EIO") if hasattr(_errno, name)
+    }
+    assert len(phrases) == len(expected)

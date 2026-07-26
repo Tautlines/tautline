@@ -1,0 +1,16 @@
+usage: tautline render-adapters [-h] --project PROJECT --target TARGET
+                                [--write] [--check] [--json-only]
+                                [--omit-domain OMIT_DOMAIN]
+
+options:
+  -h, --help            show this help message and exit
+  --project PROJECT
+  --target TARGET
+  --write
+  --check
+  --json-only           Render/check only .minervit-ai-delivery.json; preserve
+                        CLAUDE.md and AGENTS.md.
+  --omit-domain OMIT_DOMAIN
+                        Compatibility render: omit one adapter domain from the
+                        generated output. Accepts only laneStatus, for
+                        downgrading a lane below 0.21.0.

@@ -1,0 +1,9 @@
+usage: tautline public-contract [-h] [--write] [--check] [--print]
+                                [--output OUTPUT]
+
+options:
+  -h, --help       show this help message and exit
+  --write          Write methodology/public-contract-manifest.json.
+  --check          Fail if the committed manifest is stale.
+  --print          Print the manifest JSON.
+  --output OUTPUT  Write/check a path other than the default manifest.

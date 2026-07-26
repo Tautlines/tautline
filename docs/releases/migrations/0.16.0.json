@@ -1,0 +1,418 @@
+{
+  "behaviorChanges": [
+    "managed-config TAUTLINE aliases complete; marker drift messages name the resolved file; autocompact config dual-writes the TAUTLINE alias so normal startup is warning-silent; no functional change"
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "publish-pending-session-journals",
+      "removeAfter": "1.0.0",
+      "replacement": "publish-instrumentation-record",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "publish-session-journal",
+      "removeAfter": "1.0.0",
+      "replacement": "publish-instrumentation-record",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    },
+    {
+      "name": "rules-audit",
+      "path": "plugins/tautline-core/skills/rules-audit/SKILL.md",
+      "removeAfter": "1.0.0",
+      "replacement": "framework-intake",
+      "section": "skills",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_CLAUDE_AUTOCOMPACT_PCT",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_CLAUDE_AUTOCOMPACT_PCT",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_CLAUDE_AUTOCOMPACT_REQUIRED",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_CLAUDE_AUTOCOMPACT_REQUIRED",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_GITHUB_CACHE_DIR",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_GITHUB_CACHE_DIR",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_GITHUB_CACHE_READ_MODE",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_GITHUB_CACHE_READ_MODE",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_GITHUB_CACHE_TTL_SECONDS",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_GITHUB_CACHE_TTL_SECONDS",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_GITHUB_COALESCE",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_GITHUB_COALESCE",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_GITHUB_GRAPHQL_LOW_WATERMARK",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_GITHUB_GRAPHQL_LOW_WATERMARK",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_GITHUB_LOCK_STALE_SECONDS",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_GITHUB_LOCK_STALE_SECONDS",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_GITHUB_LOCK_TIMEOUT_SECONDS",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_GITHUB_LOCK_TIMEOUT_SECONDS",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_GITHUB_RATE_GUARD",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_GITHUB_RATE_GUARD",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_GITHUB_RETRY_MAX_SECONDS",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_GITHUB_RETRY_MAX_SECONDS",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_GITHUB_RETRY_MIN_SECONDS",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_GITHUB_RETRY_MIN_SECONDS",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_GITHUB_SERIALIZE",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_GITHUB_SERIALIZE",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_GITHUB_SHARED_SNAPSHOT_SECONDS",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_GITHUB_SHARED_SNAPSHOT_SECONDS",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_GITHUB_TELEMETRY_DIR",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_GITHUB_TELEMETRY_DIR",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_LANE_EPICS",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_LANE_EPICS",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_METHODOLOGY_ADAPTER_ROOT",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_METHODOLOGY_ADAPTER_ROOT",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_METHODOLOGY_ALLOW_FANOUT",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_METHODOLOGY_ALLOW_FANOUT",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_METHODOLOGY_ALLOW_NON_MAIN",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_METHODOLOGY_ALLOW_NON_MAIN",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_METHODOLOGY_AVAILABLE_VERSION",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_METHODOLOGY_AVAILABLE_VERSION",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_METHODOLOGY_CANONICAL_REPO",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_METHODOLOGY_CANONICAL_REPO",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_METHODOLOGY_CLI",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_METHODOLOGY_CLI",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_METHODOLOGY_DISABLE_AUTO_RESCUE",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_METHODOLOGY_DISABLE_AUTO_RESCUE",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_METHODOLOGY_DISABLE_SNAPSHOT_EXEC",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_METHODOLOGY_DISABLE_SNAPSHOT_EXEC",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_METHODOLOGY_RELEASE_GOOGLE_CHAT_WEBHOOK",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_METHODOLOGY_RELEASE_GOOGLE_CHAT_WEBHOOK",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_METHODOLOGY_REPO",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_METHODOLOGY_REPO",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_METHODOLOGY_RESCUE_STATE_DIR",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_METHODOLOGY_RESCUE_STATE_DIR",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_METHODOLOGY_SNAPSHOT_KEEP",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_METHODOLOGY_SNAPSHOT_KEEP",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_METHODOLOGY_SNAPSHOT_PIN_TTL_HOURS",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_METHODOLOGY_SNAPSHOT_PIN_TTL_HOURS",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_METHODOLOGY_SNAPSHOT_STORE",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_METHODOLOGY_SNAPSHOT_STORE",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_METHODOLOGY_SYNC_FRESHNESS_MINUTES",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_METHODOLOGY_SYNC_FRESHNESS_MINUTES",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_METHODOLOGY_TELEMETRY",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_METHODOLOGY_TELEMETRY",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_METHODOLOGY_TELEMETRY_PATH",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_METHODOLOGY_TELEMETRY_PATH",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_METHODOLOGY_UPDATE_PINS",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_METHODOLOGY_UPDATE_PINS",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_METHODOLOGY_UPDATE_POLICY",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_METHODOLOGY_UPDATE_POLICY",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_METHODOLOGY_UPDATE_PROBE",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_METHODOLOGY_UPDATE_PROBE",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_METHODOLOGY_UPDATE_SIGNERS",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_METHODOLOGY_UPDATE_SIGNERS",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_NO_REPAIR_SESSION",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_NO_REPAIR_SESSION",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_PREPUSH_RECORDS_FILE",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_PREPUSH_RECORDS_FILE",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_PUBLIC_RELEASE_PRIVATE_TERMS",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_PUBLIC_RELEASE_PRIVATE_TERMS",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_REAL_CODEX",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_REAL_CODEX",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_RENDERER_KIT_STATE_DIR",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_RENDERER_KIT_STATE_DIR",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_SHOW_GOAL_PROMPT",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_SHOW_GOAL_PROMPT",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "minervit-methodology",
+      "removeAfter": "1.0.0",
+      "replacement": "tautline",
+      "section": "cli",
+      "status": "deprecated"
+    },
+    {
+      "name": ".minervit-ai-delivery.json",
+      "removeAfter": "1.0.0",
+      "replacement": ".tautline.json",
+      "section": "markers",
+      "status": "deprecated"
+    },
+    {
+      "name": ".minervit/adapter.json",
+      "removeAfter": "1.0.0",
+      "replacement": ".tautline/adapter.json",
+      "section": "markers",
+      "status": "deprecated"
+    },
+    {
+      "name": "~/.config/minervit/methodology.env",
+      "removeAfter": "1.0.0",
+      "replacement": "~/.config/tautline/tautline.env",
+      "section": "markers",
+      "status": "deprecated"
+    },
+    {
+      "name": "minervit/minervit-ai-delivery-methodology",
+      "removeAfter": "1.0.0",
+      "replacement": "tautlines/tautline-dev",
+      "section": "slug",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [],
+  "productsTested": [],
+  "requiredMigrations": [
+    {
+      "command": "gh auth refresh --hostname github.com -s read:project -s project",
+      "description": "Carried forward from 0.10.3 for lanes updating across it: grant the gh token the GitHub Projects scopes the fail-closed board gates need. Machines already on 0.10.3+ or whose token carries read:project and project need no action.",
+      "id": "grant-gh-project-scopes",
+      "surface": "board-provider-auth"
+    }
+  ],
+  "rollbackNotes": [
+    "Repinning below 0.16.0 restores the residual MINERVIT_-only update-policy file read, the canonical-only marker drift naming, and the MINERVIT_-only autocompact durable-settings/launcher writes; every legacy surface keeps resolving in both directions, so no state migration is required.",
+    "grant-gh-project-scopes is carried forward from 0.10.3 (see requiredMigrations); a lane already on 0.10.3+ needs no action.",
+    "NOT WIP-safe only for the engine-gap carry-forward; the release's own change is additive alias/naming completeness safe for lanes in progress."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.16.0",
+  "wipSafe": false
+}

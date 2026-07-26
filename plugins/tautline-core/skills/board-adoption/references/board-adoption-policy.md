@@ -11,7 +11,7 @@ matches the board's live schema: columns, single-select options, fields, or
 project metadata. The resolution is always to conform the **adapter** to the
 **board**, never to alter the board. The board's schema is human-owned.
 
-Invoke this flow when `minervit-methodology backlog-provider-board-check` or
+Invoke this flow when `tautline backlog-provider-board-check` or
 `methodology-status` emits a `board schema mismatch` warning, when
 `backlog-provider-update` / `backlog-provider-next` fails because the adapter
 references a column or option the board no longer has, or when the operator asks
@@ -22,7 +22,7 @@ for board re-adoption.
 Run:
 
 ```bash
-minervit-methodology backlog-board-examine --target .
+tautline backlog-board-examine --target .
 ```
 
 This command is **read-only**. It reads the board's live schema via `gh`
@@ -60,7 +60,7 @@ for the operator to confirm all unknowns are resolved before proceeding.
 Run:
 
 ```bash
-minervit-methodology backlog-board-adopt --target . --answer KEY=VALUE [--answer KEY=VALUE ...] --apply
+tautline backlog-board-adopt --target . --answer KEY=VALUE [--answer KEY=VALUE ...] --apply
 ```
 
 The command is **operator-gated**. It refuses to apply while any unknown is

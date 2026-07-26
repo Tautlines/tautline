@@ -1,0 +1,27 @@
+usage: tautline lane-start [-h] [--project PROJECT] [--target TARGET]
+                           [--skip-update] [--allow-non-main]
+                           [--profile {development,product-docs,support-docs}]
+                           [--defer-debt-preflights]
+
+options:
+  -h, --help            show this help message and exit
+  --project PROJECT
+  --target TARGET
+  --skip-update
+  --allow-non-main      Allow startup from a non-main methodology checkout for
+                        intentional methodology development.
+  --profile {development,product-docs,support-docs}
+                        Write an explicit local work-profile lock for this
+                        session (default behavior remains development).
+  --defer-debt-preflights
+                        (internal) Passed by the generated launcher. Debt-
+                        mapped preflight failures (the latest-code baseline
+                        write, the Claude *-hook settings writes, and the
+                        autocompact settings write) degrade to
+                        `lane_start_warn:` lines and exit 0 instead of hard-
+                        refusing, deferring the pass/fail decision to
+                        methodology-status --fail-on-drift's own
+                        classification of the gate. Structural failures
+                        (adapter render, bootstrap-evidence, development-
+                        environment) still hard-refuse. Without this flag
+                        lane-start is unchanged.

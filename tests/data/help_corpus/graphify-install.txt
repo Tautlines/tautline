@@ -1,0 +1,12 @@
+usage: tautline graphify-install [-h] [--project PROJECT] [--target TARGET]
+                                 [--force] [--skip-setup] [--build] [--update]
+
+options:
+  -h, --help         show this help message and exit
+  --project PROJECT
+  --target TARGET
+  --force            Run the install command even if graphify is already on
+                     PATH.
+  --skip-setup       Skip the adapter graphify.setupCommand step.
+  --build            Build Graphify output after installing.
+  --update           Use the adapter update command when --build is set.

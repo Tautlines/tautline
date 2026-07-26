@@ -1,0 +1,9 @@
+usage: tautline branch-liveness-check [-h] [--project PROJECT]
+                                      [--target TARGET] [--strict]
+
+options:
+  -h, --help         show this help message and exit
+  --project PROJECT
+  --target TARGET
+  --strict           Fail closed when the current branch liveness cannot be
+                     verified.

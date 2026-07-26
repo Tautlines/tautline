@@ -39,12 +39,13 @@ EMBEDDED_FILE_CANARIES = (
 )
 
 
-def _git(repo: Path, *args: str) -> str:
+def _git(repo: Path, *args: str, env: dict[str, str] | None = None) -> str:
     result = subprocess.run(
         ["git", "-C", str(repo), *args],
         text=True,
         capture_output=True,
         check=True,
+        env=env,
     )
     return result.stdout.strip()
 
@@ -93,10 +94,15 @@ def _make_package_fixture(
     migrations = repo / "docs" / "releases" / "migrations"
     migrations.mkdir(parents=True)
     (migrations / "0.0.0.json").write_text("{}\n", encoding="utf-8")
-    src_dest = repo / "src" / "minervit_methodology"
+    src_dest = repo / "src" / "tautline_methodology"
     src_dest.mkdir(parents=True)
-    for path in (REPO_ROOT / "src" / "minervit_methodology").glob("*.py"):
+    for path in (REPO_ROOT / "src" / "tautline_methodology").glob("*.py"):
         shutil.copy2(path, src_dest / path.name)
+    shutil.copytree(
+        REPO_ROOT / "src" / "tautline_methodology" / "core",
+        src_dest / "core",
+        ignore=shutil.ignore_patterns("__pycache__"),
+    )
     (repo / ".gitignore").write_text("__pycache__/\n", encoding="utf-8")
     for rel in _planted_excluded_paths(excluded_prefixes):
         planted = repo / rel
@@ -202,6 +208,56 @@ def test_pypi_payload_manifest_stamps_commit_version_channel_and_install_kind(
     assert manifest.get("materializedAt"), "manifest must record when it was stamped"
 
 
+def test_pypi_payload_manifest_stamp_is_the_commit_date_not_the_build_clock(
+    cli, tmp_path
+) -> None:
+    """materializedAt is the commit's date: rebuilding one commit re-stamps identically."""
+    # A private fixture with a PINNED past commit date -- the module-scoped payload
+    # commits "now", which could collide with the build clock and pass accidentally.
+    repo = _make_package_fixture(
+        tmp_path / "fixture-repo", cli.PUBLIC_RELEASE_EXPORT_EXCLUDED_PREFIXES, git=False
+    )
+    pinned = "2026-01-02T03:04:05 +0000"
+    _git(repo, "init", "-q", "-b", "main")
+    _git(repo, "config", "user.email", "validate@example.invalid")
+    _git(repo, "config", "user.name", "validate")
+    _git(repo, "add", ".")
+    _git(
+        repo,
+        "commit",
+        "-q",
+        "-m",
+        "package fixture",
+        env={**os.environ, "GIT_AUTHOR_DATE": pinned, "GIT_COMMITTER_DATE": pinned},
+    )
+    version = (repo / "VERSION").read_text(encoding="utf-8").strip()
+    manifests: list[bytes] = []
+    for dest_name in ("pkg-first", "pkg-second"):
+        proc = _run_registry_package(
+            repo,
+            "--registry",
+            "pypi",
+            "--version",
+            version,
+            "--channel",
+            "experimental",
+            "--destination",
+            str(tmp_path / dest_name),
+            "--write",
+        )
+        assert proc.returncode == 0, (
+            "registry-package --registry pypi --write failed:\n"
+            f"stdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
+        )
+        dist = tmp_path / dest_name / "src" / "tautline" / "_dist"
+        manifests.append((dist / ".snapshot-meta.json").read_bytes())
+    stamped = json.loads(manifests[0])["materializedAt"]
+    assert stamped == "2026-01-02T03:04:05Z", (
+        f"materializedAt must be the commit's date, not the build clock: {stamped!r}"
+    )
+    assert manifests[0] == manifests[1], "two builds of one commit must stamp identically"
+
+
 def test_pypi_payload_manifest_carries_no_machine_path(pypi_payload) -> None:
     _require_built(pypi_payload)
     manifest = json.loads(
@@ -234,12 +290,19 @@ def test_pypi_payload_pyproject_declares_both_console_scripts(pypi_payload) -> N
     assert 'minervit-methodology = "tautline:main"' in pyproject
     assert 'requires-python = ">=3.10"' in pyproject
     assert 'build-backend = "hatchling.build"' in pyproject
-    assert '"hatchling"' in pyproject
+    # Exact pin: PEP 517 isolation resolves `requires` fresh at publish time, so an
+    # unpinned hatchling would let an untested major build an irreversible PyPI release.
+    assert 'requires = ["hatchling>=1.27,<2"]' in pyproject
     # python -m build builds the wheel FROM the sdist: a dotfile missing from the sdist
     # silently vanishes from the wheel, so BOTH targets need explicit inclusion.
     assert "[tool.hatch.build.targets.sdist.force-include]" in pyproject
     assert "[tool.hatch.build.targets.wheel.force-include]" in pyproject
     assert '"src/tautline/_dist"' in pyproject
+
+
+def test_pypi_pyproject_pins_the_hatchling_major(cli) -> None:
+    """No-subprocess pin of the generator itself, beside the payload-level assertion."""
+    assert 'requires = ["hatchling>=1.27,<2"]' in cli.registry_package_pyproject("1.2.3")
 
 
 def test_pypi_payload_pyproject_makes_force_include_the_only_dist_owner(pypi_payload) -> None:
@@ -395,3 +458,40 @@ def test_registry_package_clears_stale_dist_on_destination_reuse(cli, tmp_path) 
     dist = dest / "src" / "tautline" / "_dist"
     for rel in EMBEDDED_FILE_CANARIES:
         assert (dist / rel).is_file(), f"rebuild lost the embedded canary {rel}"
+
+
+@pytest.mark.parametrize("dangling", [False, True], ids=["live-link", "dangling-link"])
+def test_registry_package_refuses_a_symlinked_dist(cli, tmp_path, dangling) -> None:
+    """SWEEP-10 (deferral sweep): the export owns `_dist/` and rebuilds it from empty, so a
+    symlinked `_dist` must be REFUSED with a named cause — the house error contract for this
+    command — not crash with a raw rmtree OSError traceback (live link) or a mkdir
+    FileExistsError (dangling link). Refusal deletes nothing: not the link, never through it."""
+    repo = _make_package_fixture(
+        tmp_path / "fixture-repo", cli.PUBLIC_RELEASE_EXPORT_EXCLUDED_PREFIXES
+    )
+    dest = tmp_path / "pkg"
+    decoy = tmp_path / "decoy"
+    decoy.mkdir()
+    decoy_file = decoy / "not-ours.txt"
+    decoy_file.write_text("must survive the refusal\n", encoding="utf-8")
+    dist_link = dest / "src" / "tautline" / "_dist"
+    dist_link.parent.mkdir(parents=True)
+    dist_link.symlink_to(tmp_path / "no-such-target" if dangling else decoy)
+    proc = _run_registry_package(
+        repo,
+        "--registry",
+        "pypi",
+        "--version",
+        (repo / "VERSION").read_text(encoding="utf-8").strip(),
+        "--channel",
+        "experimental",
+        "--destination",
+        str(dest),
+        "--write",
+    )
+    assert proc.returncode != 0, "a symlinked _dist must refuse the build"
+    assert "registry-package:" in proc.stderr, f"refusal must name the real cause: {proc.stderr}"
+    assert "symlink" in proc.stderr, f"refusal must name the real cause: {proc.stderr}"
+    assert "Traceback" not in proc.stderr, f"refusal must not crash: {proc.stderr}"
+    assert dist_link.is_symlink(), "the refusal must not remove the operator's link"
+    assert decoy_file.is_file(), "the refusal must never delete through the link"

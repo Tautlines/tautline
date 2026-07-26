@@ -1,0 +1,8 @@
+usage: tautline cut-release [-h] [--dry-run] [--create-tag] [--sign] [--force]
+
+options:
+  -h, --help    show this help message and exit
+  --dry-run     Print the plan without writing the checksums manifest.
+  --create-tag  Create the annotated git tag locally (not pushed).
+  --sign        Sign the tag (git tag -s) instead of -a.
+  --force       Overwrite an existing tag (with --create-tag).

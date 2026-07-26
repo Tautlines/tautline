@@ -176,7 +176,7 @@ def test_board_goal_and_context_rotation_contracts_remain_pinned():
             "Retire the active goal ledger when its initiative ships",
             "For a goal whose source-of-truth plan explicitly declares multi-session scope",
             "`goal-next` and `goal-status` must surface known operator-input dependencies",
-            "minervit-methodology goal-start --target . --goal <source-of-truth-goal-plan>",
+            "tautline goal-start --target . --goal <source-of-truth-goal-plan>",
             "milestone-deferred",
             "Milestone completion requires validation proof or a linked milestone ledger",
             "goal-condition --target .",
@@ -261,7 +261,7 @@ def test_boundary_milestone_and_context_budget_contracts_remain_pinned():
         / "delivery-summary-policy.md",
         [
             "Boundary summaries for delivery, PR, milestone, goal, session, and handoff-for-review events must lead with the plain-language outcome and next action",
-            "minervit-methodology milestone-advance --target . --event pr-queued --pr <PR>",
+            "tautline milestone-advance --target . --event pr-queued --pr <PR>",
         ],
     )
     _assert_contains_all(
@@ -309,7 +309,7 @@ def test_graphify_database_migration_and_event_contracts_remain_pinned():
         OPS_SKILLS / "event-observability" / "SKILL.md",
         [
             "Event logs are local operational evidence",
-            "minervit-methodology log-event --target .",
+            "tautline log-event --target .",
             "Never write `events.log` or `events.jsonl` directly",
         ],
     )

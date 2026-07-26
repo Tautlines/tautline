@@ -1,0 +1,8 @@
+usage: tautline behavior-spec-status [-h] [--project PROJECT]
+                                     [--target TARGET] [--strict]
+
+options:
+  -h, --help         show this help message and exit
+  --project PROJECT
+  --target TARGET
+  --strict

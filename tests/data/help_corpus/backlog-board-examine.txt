@@ -1,0 +1,11 @@
+usage: tautline backlog-board-examine [-h] [--project PROJECT]
+                                      [--target TARGET]
+                                      [--fields-file FIELDS_FILE]
+
+options:
+  -h, --help            show this help message and exit
+  --project PROJECT
+  --target TARGET
+  --fields-file FIELDS_FILE
+                        (internal/offline) read board fields from a JSON file
+                        instead of querying gh.

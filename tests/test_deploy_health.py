@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from minervit_methodology import deploy
+from tautline_methodology import deploy
 
 
 def _cfg(cli, **overrides):

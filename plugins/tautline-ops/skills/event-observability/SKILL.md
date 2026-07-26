@@ -16,13 +16,13 @@ Event logs are local operational evidence. They are not process authority, produ
 Discover paths when useful:
 
 ```bash
-minervit-methodology event-log-path --target .
+tautline event-log-path --target .
 ```
 
 Log one compact event through the CLI:
 
 ```bash
-minervit-methodology log-event --target . \
+tautline log-event --target . \
   --event <event_name> \
   --severity <info|ok|warn|block|fail> \
   --plain "<plain-language event summary>" \
@@ -36,8 +36,8 @@ Use `--ref key=value`, `--goal`, `--milestone`, or `--pr` only when those fields
 Use the human-readable stream for Baretail or a local viewer:
 
 ```bash
-minervit-methodology event-tail --target . --lines 80
-minervit-methodology event-viewer --target .
+tautline event-tail --target . --lines 80
+tautline event-viewer --target .
 ```
 
 Use the printed viewer URL, not an assumed port. The command is safe as a fast path; read the reference for port reuse, auto-refresh, and JSON payload details.
@@ -50,4 +50,4 @@ Use snake_case names. Use `_started` for events that need a terminal event later
 
 Event logs do not replace chat-visible operator updates. For long work, autonomous yields, or PR/milestone/goal boundaries, use `delivery-summary` in chat, then log the compact event. Do not log secrets, raw terminal transcripts, complete review logs, large command output, or person-specific absolute paths. Do not let event logging become a stop signal.
 
-For audit gaps, use `minervit-methodology event-audit --target . --since 24h --strict` as evidence to inspect, not process authority.
+For audit gaps, use `tautline event-audit --target . --since 24h --strict` as evidence to inspect, not process authority.

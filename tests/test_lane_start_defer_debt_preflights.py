@@ -7,7 +7,8 @@ unguarded settings writes -- see task-089-T4-report.md for the full enumeration)
 
 - the latest-code baseline write (`latest_code_baseline`, `latest_code` debt gate)
 - the autocompact settings write (`write_claude_autocompact_settings`, `autocompact` debt gate)
-- the seven Claude `*-hook` settings writes (`hook` debt gate)
+- the ten Claude `*-hook` settings writes (`hook` debt gate; the SessionStart
+  standing-directive hook joined the set in 0.13.0)
 
 and the structural counter-case (adapter render failure via `write_generated_files`) that must
 NOT degrade even with the flag.
@@ -235,8 +236,11 @@ def test_flagged_hook_writes_warn_and_exit_0(tmp_path, run_cli):
     _break_claude_settings_home(tmp_path)
     result = _start(run_cli, target, adapter, "--defer-debt-preflights")
     assert result.returncode == 0, result.stdout + result.stderr
-    # All seven Claude *-hook settings writes must independently degrade, not just the first.
-    assert result.stdout.count("lane_start_warn: hook") == 7, result.stdout
+    # All eleven Claude *-hook settings writes must independently degrade, not just the
+    # first (the plan-edit guard hook joined the set in 0.10.5; the SessionStart
+    # standing-directive hook joined in 0.13.0; the SessionStart lane-status hook
+    # joined in 0.21.0).
+    assert result.stdout.count("lane_start_warn: hook") == 11, result.stdout
 
 
 def test_flagged_autocompact_write_warns_and_exits_0(tmp_path, run_cli):
@@ -278,7 +282,7 @@ def test_flagged_malformed_claude_settings_warns_and_exits_0(tmp_path, run_cli):
     _corrupt_claude_settings_home(tmp_path)
     result = _start(run_cli, target, adapter, "--defer-debt-preflights")
     assert result.returncode == 0, result.stdout + result.stderr
-    assert result.stdout.count("lane_start_warn: hook") == 7, result.stdout
+    assert result.stdout.count("lane_start_warn: hook") == 11, result.stdout
     assert "lane_start_warn: autocompact - " in result.stdout
 
 

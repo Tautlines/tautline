@@ -32,6 +32,12 @@ PUBLIC_PRODUCT_DOCS = [
 
 IGNORED_PARTS = {
     ".git",
+    # Local agent-session state (worktrees of OTHER branches live under
+    # .claude/worktrees): never tracked, never exported, absent in CI. Scanning
+    # it makes this suite's verdict depend on which sessions ran on the machine
+    # -- checkouts of historical branches legitimately contain text these rules
+    # now ban.
+    ".claude",
     ".superpowers",
     ".ai-runs",
     ".ai-work",
@@ -120,6 +126,23 @@ def _shippable_public_text_paths() -> list[Path]:
 def _assert_contains_all(text: str, phrases: list[str]) -> None:
     missing = [phrase for phrase in phrases if phrase not in text]
     assert missing == []
+
+
+def test_ignored_local_state_dirs_are_never_tracked():
+    """.claude is exempt from the text sweeps ONLY because it is local,
+    untracked session state (worktrees of other branches). If anything under
+    it ever became tracked, the exemption would hide shipped text from the
+    scan -- pin the invariant the exemption rests on."""
+    tracked = subprocess.run(
+        ["git", "-C", str(ROOT), "ls-files", "--", ".claude"],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert tracked.stdout.strip() == "", (
+        "files under .claude/ are tracked; either untrack them or remove "
+        "'.claude' from IGNORED_PARTS so the boundary scan sees them"
+    )
 
 
 def test_repository_text_excludes_person_specific_machine_tokens():
@@ -213,7 +236,7 @@ def test_docs_product_contains_only_public_files():
     product_dir = ROOT / "docs" / "product"
     assert product_dir.is_dir()
     names = sorted(path.name for path in product_dir.iterdir() if path.is_file())
-    assert names == ["positioning.md", "support-sla-model.md"]
+    assert names == ["README.md", "positioning.md", "support-sla-model.md"]
 
 
 def test_generated_graphify_output_is_not_tracked():
@@ -360,9 +383,10 @@ DOMAIN_SCAN_CANARY_RELATIVE_PATHS = (
     "ROADMAP.md",
     "SECURITY.md",
     "TERMS.md",
-    # The CLI is the one canary with a line-level exemption (the frozen 0.6.254 release note), so it
-    # also pins that exemption: a planted contact line is not the release note and must still fail.
-    "bin/tautline",
+    # The CLI engine (cli.py) is the one canary with a line-level exemption (the frozen 0.6.254
+    # release note), so it also pins that exemption: a planted contact line is not the release note
+    # and must still fail. Post the flip the release note lives in cli.py, not the shim.
+    "src/tautline_methodology/cli.py",
     "docs/README.md",
     "docs/product/positioning.md",
     "docs/product/support-sla-model.md",
@@ -419,7 +443,9 @@ def _is_historical_domain_record(path: Path, line: str) -> bool:
         return True
     if any(enforcement_dir in path.parents for enforcement_dir in DOMAIN_ENFORCEMENT_DIRS):
         return True
-    if path == ROOT / "bin" / "tautline":
+    # Post the package-split flip (roadmap #11): the 0.6.254 release-note literal moved with the
+    # engine body into cli.py; bin/tautline is now a thin shim carrying no release notes.
+    if path == ROOT / "src" / "tautline_methodology" / "cli.py":
         return bool(RETIRED_DOMAIN_RELEASE_NOTE_RE.search(line))
     return False
 
@@ -519,7 +545,16 @@ def test_domain_scan_reports_a_retired_domain_planted_in_any_shipped_file(cli):
 
 
 def _is_test_machinery(path: Path) -> bool:
-    return path.suffix == ".py" or "fixtures" in path.relative_to(ROOT).parts
+    # .py modules and fixtures WRITE the banned strings in order to ban them. tests/data/ holds
+    # the A1 neutrality goldens (help corpus + dispatch map); each is pinned byte-for-byte to an
+    # already-scanned source (a help .txt to bin/tautline's --help, itself a domain-scan canary;
+    # the dispatch map to AST handler names), so it cannot smuggle an unscanned contact surface.
+    rel_parts = path.relative_to(ROOT).parts
+    return (
+        path.suffix == ".py"
+        or "fixtures" in rel_parts
+        or rel_parts[:2] == ("tests", "data")
+    )
 
 
 def test_retired_domain_exemptions_are_justified_by_what_they_ship(cli):
@@ -588,7 +623,7 @@ def test_domain_scan_exempts_only_records_and_the_enforcement_surface(cli):
     assert RETIRED_DOMAIN_RE.search(migration.read_text(encoding="utf-8"))
     assert _retired_domain_offenders([migration]) == []
 
-    cli_source = ROOT / "bin" / "tautline"
+    cli_source = ROOT / "src" / "tautline_methodology" / "cli.py"
     frozen = [
         line
         for line in cli_source.read_text(encoding="utf-8").splitlines()
@@ -596,7 +631,7 @@ def test_domain_scan_exempts_only_records_and_the_enforcement_surface(cli):
     ]
     assert frozen, "the frozen 0.6.254 release-note literal is gone; drop its exemption"
     assert all(_is_historical_domain_record(cli_source, line) for line in frozen)
-    # A retired-domain line in bin/tautline that is NOT the frozen release note is still a live
+    # A retired-domain line in cli.py that is NOT the frozen release note is still a live
     # surface and still fails.
     assert not _is_historical_domain_record(cli_source, "hello@minervit.com")
 

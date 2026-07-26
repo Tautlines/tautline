@@ -2,7 +2,7 @@ import json
 import os
 import time
 
-from minervit_methodology import guards
+from tautline_methodology import guards
 
 
 def _goal_run(cli, lane, goal_id="goal-1", status="in_progress"):
@@ -94,7 +94,7 @@ def test_blocker_command_helpers_are_served_from_package(cli, tmp_path):
 
 
 # Note: the copied-bin-without-src execution mode is not supported for extracted guard
-# helpers; guards_module() now hard-requires src/minervit_methodology (SystemExit otherwise),
+# helpers; guards_module() now hard-requires src/tautline_methodology (SystemExit otherwise),
 # so the former "stale/partial guards module" fallback-parity tests were deleted.
 
 

@@ -1,0 +1,88 @@
+{
+  "behaviorChanges": [
+    "The plan-review deadlock is closed at both ends: a PreToolUse guard blocks editing a source-of-truth plan that a successful capped review run reviewed while no manifest binds the current content (the edit that previously wedged the lane), and the runtime-cap and recovery messages name the sanctioned successor-plan path instead of prescribing the run-plan-review the cap will refuse. The successor-plan practice is now documented policy.",
+    "Process authority is write-protected against memory systems: the memory policy module adds the never-write-process-to-memory rule and routes mid-session process lessons through framework-intake (RCA when a control failed, feature request when it is missing); the framework-intake reference adds the post-publication point-only memory rule, a memory-write drift pattern, and the operator-ratified decision-capture-artifact (DCA) vocabulary alias."
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "publish-pending-session-journals",
+      "removeAfter": "1.0.0",
+      "replacement": "publish-instrumentation-record",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "publish-session-journal",
+      "removeAfter": "1.0.0",
+      "replacement": "publish-instrumentation-record",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    },
+    {
+      "name": "rules-audit",
+      "path": "plugins/tautline-core/skills/rules-audit/SKILL.md",
+      "removeAfter": "1.0.0",
+      "replacement": "framework-intake",
+      "section": "skills",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [
+    {
+      "command": "tautline install-hooks --target .",
+      "description": "The plan-edit guard hook (blocks the edit that creates the plan-review sha-stale-at-cap deadlock) installs automatically at the next lane-start; run install-hooks now to arm it immediately on lanes with plans mid-review.",
+      "id": "install-plan-edit-guard-hook",
+      "surface": "claude-hooks"
+    }
+  ],
+  "productsTested": [],
+  "requiredMigrations": [
+    {
+      "command": "gh auth refresh --hostname github.com -s read:project -s project",
+      "description": "Carried forward from 0.10.3 for lanes updating across it: grant the gh token the GitHub Projects scopes the fail-closed board gates need. Machines already on 0.10.3+ or whose token carries read:project and project need no action.",
+      "id": "grant-gh-project-scopes",
+      "surface": "board-provider-auth"
+    }
+  ],
+  "rollbackNotes": [
+    "Pinning back to 0.10.4 removes the guard hook at the next hook regeneration and restores the old cap/recovery text; a lane already wedged in the sha-stale-at-cap state regains the misleading run-plan-review instruction, and the successor-plan path keeps working in both directions (it is convention, not machinery)."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.10.5",
+  "wipSafe": false
+}

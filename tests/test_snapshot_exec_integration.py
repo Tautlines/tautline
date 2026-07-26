@@ -101,6 +101,9 @@ def store(tmp_path):
 # stood BEFORE the exec) and, when the test asks it to, parks there so the test can interrogate the
 # lock while a re-exec'd gate is provably mid-flight.
 GATE_PROBE = """
+import os
+import time
+from pathlib import Path
 _probe_dir = os.environ.get("TAUTLINE_TEST_GATE_PROBE", "")
 if _probe_dir:
     _probe = Path(_probe_dir)
@@ -341,10 +344,11 @@ def test_unreadable_store_never_blocks_launch(tmp_path, store):
     assert result.returncode == 0, result.stdout + result.stderr
     assert "Traceback" not in result.stderr, result.stderr
     # Degraded, and LOUDLY: publishing failed, and the heal path's read of `current` -- the one that
-    # used to escape as an uncaught PermissionError -- reported itself instead of raising.
+    # used to escape as an uncaught PermissionError -- reported itself instead of raising. The
+    # sync lifecycle note stays on stdout; the degrade warnings are diagnostics and ride stderr.
     assert "methodology_snapshot: failed" in result.stdout
-    assert "methodology_snapshot: store unreadable" in result.stdout
-    assert "using canonical checkout" in result.stdout
+    assert "methodology_snapshot: store unreadable" in result.stderr
+    assert "using canonical checkout" in result.stderr
     # ...and the launch still adopted the new code, from the canonical checkout.
     assert SENTINEL in result.stdout
     assert REEXEC_ACCEPTED in result.stdout
@@ -367,9 +371,31 @@ def test_unreadable_store_never_blocks_snapshot_status(tmp_path, store):
 
     assert result.returncode == 0, result.stdout + result.stderr
     assert "Traceback" not in result.stderr, result.stderr
-    assert "methodology_snapshot: store unreadable" in result.stdout
+    assert "methodology_snapshot: store unreadable" in result.stderr
     assert "snapshot_store_current: none" in result.stdout
     assert "snapshot_store_count: 0" in result.stdout
+
+
+def test_unreadable_store_warning_goes_to_stderr_not_the_status_report(tmp_path, store):
+    """`snapshot-status` stdout is its machine-readable key:value report. The degrade warning is
+    an operator diagnostic, so it must ride stderr -- a warning line in the middle of the report
+    is exactly what a script parsing `snapshot_store_count:` would choke on."""
+    _source, clone, lane = _make_methodology_fixture(tmp_path)
+    store.mkdir()
+
+    result = _run_cli(
+        clone / "bin" / "tautline",
+        "snapshot-status",
+        cwd=lane,
+        env=_eacces_store_env(tmp_path, store),
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "methodology_snapshot: store unreadable" in result.stderr
+    assert "methodology_snapshot: store unreadable" not in result.stdout
+    for line in result.stdout.splitlines():
+        if line.strip():
+            assert ": " in line, f"non key:value line in the status report: {line!r}"
 
 
 def test_bootstrap_heal_rebuilds_current(tmp_path, store):
@@ -639,6 +665,42 @@ def test_fresh_stamp_with_dangling_current_still_syncs(tmp_path, store):
     assert "methodology_update: skipped - synced" not in result.stdout
     assert f"methodology_snapshot: healed current - materialized {head[:12]}" in result.stdout
     assert (store / "current").resolve() == (store / head[:12]).resolve()
+
+
+def test_fresh_stamp_recording_a_stale_store_still_syncs(tmp_path, store):
+    """A fresh stamp whose head is NOT the snapshot it names must not skip: the publish failed.
+
+    The stamp is truthful -- a sibling synced the checkout to `head`, but the store could not
+    publish, so `current` still names (and runs) the OLD commit. Honoring that stamp starves the
+    heal republish retry for a whole freshness window, and every launch inside it quietly pins
+    outdated code.
+    """
+    source, clone, lane = _make_methodology_fixture(tmp_path)
+    old_head = _bootstrap_store(clone, lane, store)
+    _advance_remote(source, "advance.txt", "new head after a failed publish")
+    _git(clone, "fetch", "-q", "origin")
+    _git(clone, "reset", "-q", "--hard", "origin/main")
+    new_head = _git(clone, "rev-parse", "HEAD")
+    assert new_head != old_head
+    assert (store / "current").resolve() == (store / old_head[:12]).resolve()
+    _write_stamp(lane, new_head, old_head[:12])  # head != snapshot: the publish never landed
+
+    result = _run_cli(
+        clone / "bin" / "tautline",
+        "sync-methodology",
+        "--launcher-gate",
+        "--no-remote",
+        cwd=lane,
+        env=_env(store),
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "methodology_update: skipped - synced" not in result.stdout
+    # A runnable-but-stale current takes heal's staleness-reconciliation path ("republished"),
+    # not the broken-current path ("healed"): the store ends up on the new head either way.
+    republished = f"methodology_snapshot: republished current - materialized {new_head[:12]}"
+    assert republished in result.stdout, result.stdout
+    assert (store / "current").resolve() == (store / new_head[:12]).resolve()
 
 
 def test_launcher_gate_lock_survives_reexec(tmp_path, store):

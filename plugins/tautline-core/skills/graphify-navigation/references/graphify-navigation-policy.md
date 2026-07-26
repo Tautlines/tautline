@@ -65,7 +65,7 @@ architecture, or feature-map claims.
 ## Install And Build
 
 - Install through the methodology CLI when asked:
-  `minervit-methodology graphify-install --target .`.
+  `tautline graphify-install --target .`.
 - Build manually when needed: `graphify .`.
 - Update after changes: `graphify . --update`.
 - Do not run `graphify claude install`, `graphify codex install`, or other

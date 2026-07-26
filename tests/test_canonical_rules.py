@@ -81,7 +81,7 @@ RISK_TIER_REFERENCE = (
 STARTUP_RELEASE_AND_AUTHORITY_MARKERS = (
     "Unlocked adapter-backed product/client lanes do not raw-pull latest methodology by default",
     "When the human operator asks for current project status",
-    "minervit-methodology latest-code-status --target . --write",
+    "tautline latest-code-status --target . --write",
     "Before deep codebase analysis, architecture review, multi-angle analysis",
     "Do not run deep analysis from a stale local checkout",
     "A stale local lane may be useful evidence about that lane only",
@@ -99,6 +99,8 @@ STARTUP_RELEASE_AND_AUTHORITY_MARKERS = (
     'publish-release-update --version "$(cat VERSION)"',
     "Process rules must never be sourced from Open Brain, Claude memories, local memories, or feedback-memory files",
     "review.codexFastMode",
+    "Never write process or methodology content",
+    "file intake first and treat the situation as blocked-on-missing-control",
 )
 REVIEW_EVIDENCE_MARKERS = (
     "`plan-finalization-precheck` and the `Cross-Model Review Evidence` section exist only for T2/T3 plans",
@@ -119,6 +121,7 @@ REVIEW_EVIDENCE_MARKERS = (
     "tracked `<planningArtifacts.sourceOfTruth>/.impl-reviews/` ledger",
     "Review budgets come from adapter `review.roundBudgets`",
     "Cross-Model Review Evidence",
+    "never retire, rewrite, or rebind existing review runs or manifests",
 )
 REVIEW_DETAIL_MARKERS = (
     "When Codex review is run through a CLI wrapper, the review gate includes retrieving and classifying the final assistant output.",
@@ -291,7 +294,9 @@ def test_review_detail_markers_live_in_review_skills():
 def test_review_before_push_policy_module_stays_concise():
     words = REVIEW_BEFORE_PUSH_POLICY_MODULE.read_text(encoding="utf-8").split()
 
-    assert len(words) <= 321
+    # Cap raised 321 -> 400 to authorize the PM-surface pre-push review/CI exemption (one bullet
+    # enumerating every fail-closed branch) without dropping existing review-before-push guidance.
+    assert len(words) <= 400
 
 
 def test_rejected_tool_call_policy_module_stays_concise():
@@ -309,7 +314,9 @@ def test_verified_human_instructions_policy_module_stays_concise():
 def test_methodology_governance_policy_module_stays_concise():
     words = GOVERNANCE_POLICY_MODULE.read_text(encoding="utf-8").split()
 
-    assert len(words) <= 270
+    # 270 -> 340 (2026-07-23): the agent owns review AND merge -- deliver MERGED, never hand a
+    # clean gate-green PR back for operator review/merge (Done = merged, not Done = pushed).
+    assert len(words) <= 444
 
 
 def test_goal_orchestration_policy_module_stays_concise():
@@ -354,7 +361,18 @@ def test_tdd_and_behavior_specs_policy_module_stays_concise():
 def test_planning_policy_module_stays_concise():
     words = PLANNING_POLICY_MODULE.read_text(encoding="utf-8").split()
 
-    assert len(words) <= 385
+    # Raised 385 -> 435 for the 50-word successor-plan sentence appended to the cap bullet
+    # (2026-07-14 process-authority plan, Task 9); per the rough-edges umbrella, only that
+    # lane raises the module-13 cap. Raised 435 -> 496 for the plan-authoring standard bullet
+    # (2026-07-23 plan-authoring-standard plan, WS4): parallel-workstream shape, per-task
+    # model-tier tags, embedded execution-autonomy contract, and the enforcement knob.
+    # Raised 496 -> 535 (Codex R1 P1): scope the mechanical guard honestly to the plan-review
+    # seam and note T1 packet-only work is authoring-guidance-only, not falsely "T1+ enforced".
+    # Raised 535 -> 554 (2026-07-25, item 24 plan-review round advance gap): one sentence stating
+    # that the round-4 cap counts successful reviewer invocations per source plan rather than
+    # `--round` labels. The gate now enforces exactly that, and a lane that reads only the policy
+    # would otherwise believe relabelling still buys rounds.
+    assert len(words) <= 554
 
 
 def test_demo_and_staging_policy_module_stays_concise():
@@ -369,7 +387,9 @@ def test_lane_lifecycle_policy_module_stays_concise():
     # Ceiling raised (0.8.9 T6) for the startup-remediation-mode contract bullet: debt-class
     # startup failures start a remediation session instead of refusing to start; break-glass
     # stays operator-only; integrity failures never start a session.
-    assert len(words) <= 450
+    # Raised 450 -> 460 for the PM-surface VERSION-bump-exemption sentence (a PM-surfaces-only diff
+    # is not a framework change and needs no bump).
+    assert len(words) <= 460
 
 
 def test_autonomy_and_status_policy_module_stays_concise():
@@ -381,13 +401,34 @@ def test_autonomy_and_status_policy_module_stays_concise():
 def test_delivery_summaries_policy_module_stays_concise():
     words = DELIVERY_SUMMARIES_POLICY_MODULE.read_text(encoding="utf-8").split()
 
-    assert len(words) <= 330
+    # Raised 330 -> 400 for the key-with-title reference rule (item 26: bare item
+    # keys like `FR-3` must be followed by their short title in human-facing output).
+    assert len(words) <= 400
+
+
+def test_canonical_rules_require_key_with_title_reference():
+    """Item 26: a bare backlog/requirement key is not self-explanatory to a human, so
+    the canonical rules must require expanding it with the item's short title.
+
+    Pinned in BOTH the source module and the generated artifact so a future edit or
+    a stale regeneration cannot silently drop the rule.
+    """
+    marker = "immediately follow it with the item's short title"
+    source = DELIVERY_SUMMARIES_POLICY_MODULE.read_text(encoding="utf-8")
+    generated = CANONICAL.read_text(encoding="utf-8")
+    assert marker in source, "key-with-title rule missing from the source policy module"
+    assert marker in generated, (
+        "canonical-rules.md is stale; regenerate with `canonical-policy --write`"
+    )
+    assert "`KEY: <short title>`" in generated
 
 
 def test_current_status_truth_policy_module_stays_concise():
     words = (ROOT / "methodology" / "policy" / "05-current-status-truth.md").read_text(encoding="utf-8").split()
 
-    assert len(words) <= 225
+    # Raised 225 -> 240 for the product-dev-mode latest-code standdown exception
+    # bullet (deliberate ratchet).
+    assert len(words) <= 240
 
 
 def test_context_rotation_policy_module_stays_concise():

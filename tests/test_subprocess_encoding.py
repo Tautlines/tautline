@@ -21,7 +21,7 @@ from pathlib import Path
 
 TESTS_DIR = Path(__file__).resolve().parent
 REPO_ROOT = TESTS_DIR.parent
-ENGINE_SOURCE = REPO_ROOT / "bin" / "tautline"
+ENGINE_SOURCE = REPO_ROOT / "src" / "tautline_methodology" / "cli.py"
 SRC_ROOT = REPO_ROOT / "src"
 
 INVALID_BYTES_CHILD = (

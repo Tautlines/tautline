@@ -65,9 +65,9 @@ separate next goal.
 Use:
 
 ```bash
-minervit-methodology backlog-provider-status --target .
-minervit-methodology backlog-provider-next --target .
-minervit-methodology backlog-provider-sync --target . --item <id-or-url> --write
+tautline backlog-provider-status --target .
+tautline backlog-provider-next --target .
+tautline backlog-provider-sync --target . --item <id-or-url> --write
 ```
 
 The `--write` sync claims the selected board item and any board-backed native
@@ -108,7 +108,7 @@ between goals. Use only the adapter-configured statuses and ship straight to a
 done status when the issue/PR lands: move active work to the configured active
 status (for example `In progress`) and then directly to a done status - do NOT
 stage work in a separate review/QA column even if the board has one. This is a
-blocking gate, not advisory: `minervit-methodology backlog-provider-board-check
+blocking gate, not advisory: `tautline backlog-provider-board-check
 --target .` and `methodology-status --strict`/`--fail-on-drift` reconcile every
 in-scope board item against its real issue/PR state. A closed/merged item must
 be in a done status, an open item must not sit in a done status, any item in a
@@ -163,7 +163,7 @@ Item Type and `Status`, or the board check warns
 For projects with existing repo backlog items, run:
 
 ```bash
-minervit-methodology backlog-provider-migration-interview --target . --write
+tautline backlog-provider-migration-interview --target . --write
 ```
 
 Walk the generated interview item by item. Present each candidate in plain
@@ -172,7 +172,7 @@ exported to the external provider for stakeholder prioritization. Export only
 interview-approved items:
 
 ```bash
-minervit-methodology backlog-provider-export --target . --item-path <repo-plan.md> --type <goal|milestone|bug|task> --write
+tautline backlog-provider-export --target . --item-path <repo-plan.md> --type <goal|milestone|bug|task> --write
 ```
 
 Do not bulk export all repo plans by default. Normal exports create real,
@@ -225,22 +225,22 @@ The lane-local goal ledger defaults to:
 Start or refresh it with:
 
 ```bash
-minervit-methodology goal-start --target . --goal <source-of-truth-goal-plan>
+tautline goal-start --target . --goal <source-of-truth-goal-plan>
 ```
 
 Read it before milestone state:
 
 ```bash
-minervit-methodology goal-next --target .
+tautline goal-next --target .
 ```
 
 Advance it at milestone boundaries:
 
 ```bash
-minervit-methodology goal-advance --target . --event milestone-complete --detail "<validation proof>"
-minervit-methodology goal-advance --target . --event milestone-deferred --reason "<policy deferral reason>"
-minervit-methodology goal-advance --target . --event milestone-blocked --reason "<true blocker>"
-minervit-methodology goal-advance --target . --event goal-complete --detail "<completion proof>" [--iteration-review-record <record>]
+tautline goal-advance --target . --event milestone-complete --detail "<validation proof>"
+tautline goal-advance --target . --event milestone-deferred --reason "<policy deferral reason>"
+tautline goal-advance --target . --event milestone-blocked --reason "<true blocker>"
+tautline goal-advance --target . --event goal-complete --detail "<completion proof>" [--iteration-review-record <record>]
 ```
 
 Do not mark a milestone complete without validation proof or a linked milestone
@@ -303,7 +303,7 @@ artifacts, and completion evidence in chat.
 Generate the completion condition from the ledger:
 
 ```bash
-minervit-methodology goal-condition --target .
+tautline goal-condition --target .
 ```
 
 The condition must include one measurable end state, proof commands/artifacts,
@@ -311,7 +311,7 @@ and relevant constraints.
 
 During long Claude `/goal` runs, do not wait for final goal completion before
 checking context pressure. Use the adapter heartbeat cadence and
-`minervit-methodology context-rotation-check --target . --boundary
+`tautline context-rotation-check --target . --boundary
 goal-heartbeat --context-percent <visible-percent> --context-percent-source
 estimate` whenever the host exposes a percent and the lane reaches a safe
 checkpoint. Pass `--context-percent-source host` only if the host literally
@@ -343,6 +343,18 @@ permission to stop at an arbitrary clean PR or milestone boundary. Context
 exhaustion by itself does not satisfy `/goal`; rotate context and resume the
 same goal.
 
+Goal-close owns the merge, not just the push. On a PR-based workflow without a
+repository-mandated human review gate, the agent commits, pushes, opens the PR,
+and queues it to merge (routine merge-queue or auto-merge per the adapter's merge
+policy; never routine `--admin`). A clean PR queued with auto-merge is delivered
+(`pr_queued` is terminal), so advance and move on without blocking on the async
+merge; run any goal/plan/adapter-required deploy, iteration-review, and
+delivery-marker closeout as the existing close sequence directs. No-remote/direct-to-main
+adapters follow their configured delivery path, and a repository-mandated human
+review gate (branch protection) is respected as the workflow. Ending goal-close at
+`ready for your review/merge` for clean, gate-green, review-clean work the agent
+CAN merge is forbidden work-evasion, the same class as stop-and-ask.
+
 If a live goal hits credential or served-origin friction, run the
 adapter-declared credential/origin discovery first. A missing credential/config
 after those checks is one exact true blocker or setup action, not a
@@ -354,7 +366,7 @@ a way around required goal validation.
 After lane startup gates and pending session-journal publication:
 
 1. If `.ai-work/GOAL_RUN.json` exists, run
-   `minervit-methodology goal-next --target .`.
+   `tautline goal-next --target .`.
 2. Start the returned `next_action` unless it names a true blocker.
 3. Then run milestone status or `milestone-next` for the active milestone.
 4. Then continue PR/tactical item work.
@@ -387,17 +399,29 @@ it includes goal progress and completion evidence.
 ## End-Of-Goal Boundary
 
 When the planned/reviewed goal work is clean, close the goal through the
-required sequence without asking for permission: commit the reviewed work, push
-to the configured origin/base branch, deploy to the adapter-declared
+required sequence without asking for permission: commit the reviewed work; on a
+PR-based workflow without a repository-mandated human review gate, push the head
+branch, open the PR (head into the configured base branch), and queue it to merge
+(routine merge-queue or auto-merge per the adapter's merge policy; never routine
+`--admin`); no-remote/direct-to-main adapters push to the configured base branch
+per their configured path and a
+mandated human review gate is respected. Then deploy to the adapter-declared
 demo/staging/production target when the goal/plan/adapter closeout requires it,
 run adapter-required delivery-ops closeout when enabled, record the required
 delivery marker, run `goal-advance --event goal-complete` with the required
 proof artifacts, refresh continuity, handle local evidence, log the boundary
-event, then continue through the next authorized goal or milestone transition. Routine push
-or deploy of reviewed work to the configured project target is `Done = shipped`,
-not an operator-confirmation action. Do not tell the human operator the deploy
-is theirs to run; stop only for a named missing credential/config after checking
-the adapter path, a failing required gate with no safe fix, or an unapproved
-scope/risk/cost/security/data change.
+event, then continue through the next authorized goal or milestone transition. A
+clean PR queued with auto-merge (or a routine push/deploy on a non-PR path) is
+`Done = shipped`, not an operator-confirmation action, and ending at "ready for
+your review/merge" is forbidden. Where a provider board is active, respect the
+board-currency reconciliation: an item's board Status reaches `Done` when its PR
+merges/closes (which the queued auto-merge does), so do not write `Done` against
+an item whose PR is still `OPEN` -- let the merge close it. (A queued-terminal
+board state that avoids this reconciliation lag is the deferred
+METH-FU-POST-MERGE-CLOSEOUT-GATE engine work.) Do not tell the human operator the deploy or
+merge is theirs to run; stop only for a named missing credential/config after
+checking the adapter path, a failing required gate with no safe fix, or an
+unapproved scope/risk/cost/security/data change.
 
-Routine push or deploy of reviewed work to the configured project target is `Done = shipped`.
+A clean PR queued with auto-merge, or a routine push/deploy of reviewed work on a
+non-PR path, is `Done = shipped`.

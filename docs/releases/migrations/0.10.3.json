@@ -1,0 +1,80 @@
+{
+  "behaviorChanges": [
+    "Board gates fail closed: with backlogProvider/goalTracker enabled, provider-unavailable (gh missing, unauthenticated, or a token without the project read scope) now BLOCKS the pre-commit/pre-push board hook, guard-check's board-currency check, and methodology-status --strict/--fail-on-drift, printing the exact gh auth refresh remedy. Previously all three surfaces warned and passed, which silently disabled board enforcement on every machine with gh's default scopes -- the root cause behind recurring board-drift incidents. The new adapter key backlogProvider.unavailablePolicy (\"block\" default, \"warn\" as an explicit opt-down for deliberate offline work) is documented in the adapter schema; provider-disabled projects are unaffected."
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "publish-pending-session-journals",
+      "removeAfter": "1.0.0",
+      "replacement": "publish-instrumentation-record",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "publish-session-journal",
+      "removeAfter": "1.0.0",
+      "replacement": "publish-instrumentation-record",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    },
+    {
+      "name": "rules-audit",
+      "path": "plugins/tautline-core/skills/rules-audit/SKILL.md",
+      "removeAfter": "1.0.0",
+      "replacement": "framework-intake",
+      "section": "skills",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [],
+  "productsTested": [],
+  "requiredMigrations": [
+    {
+      "command": "gh auth refresh --hostname github.com -s read:project -s project",
+      "description": "On every machine that runs provider-backed lanes: grant the gh token the GitHub Projects scopes the board gates need. Required wherever the adapter enables backlogProvider/goalTracker -- gh auth login's default scopes exclude read:project, and from 0.10.3 an unreadable authoritative board BLOCKS commits, pushes, and strict status instead of warning. Machines whose token already carries read:project and project need no action.",
+      "id": "grant-gh-project-scopes",
+      "surface": "board-provider-auth"
+    }
+  ],
+  "rollbackNotes": [
+    "Pinning back to 0.10.2 restores warn-and-pass on provider-unavailable -- board enforcement silently stands down again on machines without the project scope. No on-disk state moves in either direction; the unavailablePolicy adapter key is simply ignored by older runtimes."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.10.3",
+  "wipSafe": false
+}

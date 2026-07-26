@@ -5,7 +5,8 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-CLI = ROOT / "bin" / "tautline"
+# Post the package-split flip (roadmap #11): the engine lives in cli.py; bin/tautline is a shim.
+CLI = ROOT / "src" / "tautline_methodology" / "cli.py"
 CANONICAL = ROOT / "methodology" / "canonical-rules.md"
 REVIEW_BEFORE_PUSH_SKILL = (
     ROOT

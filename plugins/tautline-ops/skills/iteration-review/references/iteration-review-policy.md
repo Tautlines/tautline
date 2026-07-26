@@ -11,7 +11,7 @@ Use this skill when the human operator asks for an iteration review, `/iteration
 1. Load the active project adapter and run:
 
    ```bash
-   minervit-methodology iteration-review-status --target . --strict
+   tautline iteration-review-status --target . --strict
    ```
 
    Use `--strict` so the check fails when delivery is enabled but its webhook env var is unset/missing in this environment (otherwise after-merge delivery silently never posts). Wire the webhook env before relying on delivery.
@@ -32,20 +32,20 @@ Use this skill when the human operator asks for an iteration review, `/iteration
 5. Validate before rendering. Use adapter-aware validation when publishing or when checking a completed boundary:
 
    ```bash
-   minervit-methodology validate-iteration-review --target . --file <record.json>
+   tautline validate-iteration-review --target . --file <record.json>
    ```
 
 6. If `iterationReview.outputs.page` is true, generate the static page from the validated record:
 
    ```bash
-   minervit-methodology generate-iteration-review-page --target . --record <record.json> --write
+   tautline generate-iteration-review-page --target . --record <record.json> --write
    ```
 
    This command also writes adapter media defaults, such as an approved default
    `musicUrl` and `musicVolume`, into the JSON record when those fields are
    missing. Render video from the updated record.
 
-7. If `iterationReview.outputs.video` is true, prepare the bundled `renderer-kit` with `minervit-methodology iteration-review-renderer-setup`, then render from the user-state cache at `~/.local/state/minervit/renderer-kit/`. Do not install `node_modules` inside the plugin tree. Video, poster, screenshot, and page-media production is agent-owned delivery work, not a human handoff and not a reason to stop. Generated videos, thumbnails, screenshots, posters, clips, and render scratch output must stay out of git. Upload media output to adapter-approved S3/CloudFront hosting and place only the final URL in the JSON record. Use adapter-approved/licensed `musicUrl` or a renderer built-in music token with low `musicVolume`; do not fetch arbitrary audio.
+7. If `iterationReview.outputs.video` is true, prepare the bundled `renderer-kit` with `tautline iteration-review-renderer-setup`, then render from the user-state cache at `~/.local/state/minervit/renderer-kit/`. Do not install `node_modules` inside the plugin tree. Video, poster, screenshot, and page-media production is agent-owned delivery work, not a human handoff and not a reason to stop. Generated videos, thumbnails, screenshots, posters, clips, and render scratch output must stay out of git. Upload media output to adapter-approved S3/CloudFront hosting and place only the final URL in the JSON record. Use adapter-approved/licensed `musicUrl` or a renderer built-in music token with low `musicVolume`; do not fetch arbitrary audio.
 
 8. After adding `videoUrl` or `posterUrl` to the record, validate and run `generate-iteration-review-page --write` again so the final `index.html` embeds the hosted recap. If `videoUrl` exists and `posterUrl` is absent, the generator adds a built-in SVG poster thumbnail to the video element so embeds are not blank. Prefer a real hosted `posterUrl` when available, but do not stop solely because a custom poster has not been produced. When `iterationReview.outputs.video` is true, the CLI must not publish the review without a hosted `videoUrl`; missing recap video is not a publishable partial stakeholder update.
 
@@ -54,7 +54,7 @@ Use this skill when the human operator asks for an iteration review, `/iteration
 10. After the review PR lands on the base branch, publish stakeholder-facing artifacts through the CLI:
 
    ```bash
-   minervit-methodology publish-iteration-review --target . --record <record.json>
+   tautline publish-iteration-review --target . --record <record.json>
    ```
 
    This uploads `goal-review.json` and `index.html` to adapter-approved
@@ -74,20 +74,20 @@ Use this skill when the human operator asks for an iteration review, `/iteration
    only after deploy completion and live-site health checks:
 
    ```bash
-   minervit-methodology publish-deploy-ready-update --target . --environment <env> --url <live-url> --iteration-review-url <page-url> --source pipeline
+   tautline publish-deploy-ready-update --target . --environment <env> --url <live-url> --iteration-review-url <page-url> --source pipeline
    ```
 
    If `deploymentNotification.pipeline.required` is true, prove the actual
    deploy workflow contains that command with:
 
    ```bash
-   minervit-methodology deployment-notification-status --target . --strict
+   tautline deployment-notification-status --target . --strict
    ```
 
    Then run:
 
    ```bash
-   minervit-methodology iteration-review-delivery-check --target . --record <record.json>
+   tautline iteration-review-delivery-check --target . --record <record.json>
    ```
 
    A completed-goal close-out is not done until this check passes.
@@ -97,7 +97,7 @@ Use this skill when the human operator asks for an iteration review, `/iteration
 11. Log a boundary event:
 
    ```bash
-   minervit-methodology log-event --target . --event iteration_review --severity ok --plain "<plain outcome>" --next "<next authorized work>"
+   tautline log-event --target . --event iteration_review --severity ok --plain "<plain outcome>" --next "<next authorized work>"
    ```
 
 ## Content Rules

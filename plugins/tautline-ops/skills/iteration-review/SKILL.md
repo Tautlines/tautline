@@ -14,7 +14,7 @@ Read `references/iteration-review-policy.md` in full before status checks, `Goal
 1. Load the adapter and run strict status:
 
    ```bash
-   minervit-methodology iteration-review-status --target . --strict
+   tautline iteration-review-status --target . --strict
    ```
 
    Continue only when enabled. If disabled, state that the project has not opted in and continue normal authorized work.
@@ -30,25 +30,25 @@ Read `references/iteration-review-policy.md` in full before status checks, `Goal
    Validate before rendering:
 
    ```bash
-   minervit-methodology validate-iteration-review --target . --file <record.json>
+   tautline validate-iteration-review --target . --file <record.json>
    ```
 
 4. If page output is enabled, generate the page:
 
    ```bash
-   minervit-methodology generate-iteration-review-page --target . --record <record.json> --write
+   tautline generate-iteration-review-page --target . --record <record.json> --write
    ```
 
    Render any video from the updated record.
 
-5. If video output is enabled, run `minervit-methodology iteration-review-renderer-setup`, produce the recap from `~/.local/state/minervit/renderer-kit/`, upload media to adapter-approved S3/CloudFront, add hosted URLs, validate again, and regenerate the page. Video, poster, screenshot, and page-media production is agent-owned delivery work. Do not install dependencies inside the plugin tree. Do not say agents do not do videos or media production. When video output is required, missing recap video is not a publishable partial stakeholder update.
+5. If video output is enabled, run `tautline iteration-review-renderer-setup`, produce the recap from `~/.local/state/minervit/renderer-kit/`, upload media to adapter-approved S3/CloudFront, add hosted URLs, validate again, and regenerate the page. Video, poster, screenshot, and page-media production is agent-owned delivery work. Do not install dependencies inside the plugin tree. Do not say agents do not do videos or media production. When video output is required, missing recap video is not a publishable partial stakeholder update.
 
 6. Commit only text artifacts: the review JSON and generated `index.html`. Never commit generated videos, screenshots, thumbnails, clips, posters, or other media binaries.
 
 7. After the review PR lands, publish stakeholder-facing artifacts:
 
    ```bash
-   minervit-methodology publish-iteration-review --target . --record <record.json>
+   tautline publish-iteration-review --target . --record <record.json>
    ```
 
    The review folder slug must match the active `goal_id` before validation, publish, or delivery-check. Do not post a GitHub URL as the primary stakeholder link. Skipping Chat requires the approved operator token. If deployment notifications are required, use `publish-deploy-ready-update` and `deployment-notification-status --target . --strict`; the recap link is not proof a delayed deploy finished.
@@ -56,7 +56,7 @@ Read `references/iteration-review-policy.md` in full before status checks, `Goal
 8. Run the close-out delivery check:
 
    ```bash
-   minervit-methodology iteration-review-delivery-check --target . --record <record.json>
+   tautline iteration-review-delivery-check --target . --record <record.json>
    ```
 
    Goal close-out is not done until this check passes.

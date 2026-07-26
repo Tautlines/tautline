@@ -92,6 +92,35 @@ CLI-controlled commands. They must never write `events.log` or `events.jsonl`
 directly; the CLI performs validation, secret detection, path normalization,
 rotation, and locked appends.
 
+### Decision ledger read surface
+
+`decision-record` writes structured decision entries to the event log;
+`decisions-report` reads them back (machine-local; nothing is published):
+
+```bash
+tautline decisions-report --target .
+tautline decisions-report --target . --since 24h --until-seq 120 --json
+tautline decisions-report --target . --since-seq 40 --until-seq 55
+```
+
+- `--target` is repeatable; same-repo worktrees share one event log and are
+  de-duplicated, and both `lane` and `lane_id` print so colliding basenames stay
+  distinguishable.
+- Bounds filter the view (they prove nothing about completeness). `--since` is
+  exclusive and accepts a duration (`24h`) or an ISO-8601 timestamp;
+  zone-less timestamps mean UTC. `--until` is an inclusive ISO-8601 bound.
+  `--since-seq` (exclusive) and `--until-seq` (inclusive) take a non-negative
+  integer — including `0` — and require exactly one `--target`.
+- Every output is scoped to **retained rotations only** and says so
+  unconditionally. `--json` emits one `tautline-decisions-report/v1` envelope
+  object with a closed per-decision projection; the human header is
+  `decisions: <n> total, <k> hard-to-reverse (retained rotations only)`.
+
+`prepare-session-journal` records the same window in each journal's
+`## Session Runtime` section (`decisions_recorded`, a `decisions_report`
+convenience pointer that always runs from `.`, and a monotonic
+`decisions_watermark_seq`) — see [Session Journals](../session-journals.md).
+
 Default adapter config:
 
 ```json

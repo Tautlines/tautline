@@ -1,0 +1,11 @@
+usage: tautline deploy-health [-h] [--project PROJECT] [--target TARGET]
+                              [--runs-file RUNS_FILE] [--strict]
+
+options:
+  -h, --help            show this help message and exit
+  --project PROJECT
+  --target TARGET
+  --runs-file RUNS_FILE
+                        Offline JSON run history fixture for validation/tests.
+  --strict              Compatibility flag; configured deploy issues always
+                        return non-zero.

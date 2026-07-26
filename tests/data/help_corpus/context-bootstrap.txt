@@ -1,0 +1,11 @@
+usage: tautline context-bootstrap [-h] [--project PROJECT] [--target TARGET]
+                                  [--write] [--classify]
+                                  [--add-archive-headers]
+
+options:
+  -h, --help            show this help message and exit
+  --project PROJECT
+  --target TARGET
+  --write
+  --classify
+  --add-archive-headers

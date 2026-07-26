@@ -105,7 +105,7 @@ required scenarios are required fixes, not polish.
 
 ## Executable Coverage Integrity
 
-Run `minervit-methodology behavior-spec-status --target .` before plan
+Run `tautline behavior-spec-status --target .` before plan
 finalization, merge, delivery summaries, or claiming customer-facing behavior is
 covered.
 

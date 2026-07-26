@@ -15,6 +15,9 @@ from pathlib import Path
 import pytest
 
 CLI_PATH = Path(__file__).resolve().parents[1] / "bin" / "tautline"
+# Post the package-split flip (roadmap #11) the engine lives in the package; bin/tautline is a
+# thin shim. Load the engine module directly for the fresh-per-test in-process fixture.
+CLI_ENGINE_PATH = CLI_PATH.parents[1] / "src" / "tautline_methodology" / "cli.py"
 
 ENTRY_KEYS = {
     "schema",
@@ -33,12 +36,12 @@ ENTRY_KEYS = {
 def cli(monkeypatch, tmp_path):
     """A fresh CLI module per test with a hermetic HOME (the journal and the lane-id salt both
     live under HOME, and the module bakes HOME-derived constants at import time, so conftest's
-    session-scoped `cli` cannot be reused here). SourceFileLoader is REQUIRED because
-    bin/tautline has no .py extension."""
+    session-scoped `cli` cannot be reused here). SourceFileLoader gives a fresh engine module
+    (cli.py) per call, independent of the import cache."""
     home = tmp_path / "home"
     home.mkdir()
     monkeypatch.setenv("HOME", str(home))
-    loader = importlib.machinery.SourceFileLoader("tautline_cli", str(CLI_PATH))
+    loader = importlib.machinery.SourceFileLoader("tautline_cli", str(CLI_ENGINE_PATH))
     spec = importlib.util.spec_from_loader("tautline_cli", loader)
     module = importlib.util.module_from_spec(spec)
     loader.exec_module(module)

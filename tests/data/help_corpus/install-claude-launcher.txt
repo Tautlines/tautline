@@ -1,0 +1,28 @@
+usage: tautline install-claude-launcher [-h] [--bin-dir BIN_DIR] [--name NAME]
+                                        [--dangerously-skip-permissions]
+                                        [--force]
+                                        [--operator-channel OPERATOR_CHANNEL]
+                                        [--runtime RUNTIME]
+
+options:
+  -h, --help            show this help message and exit
+  --bin-dir BIN_DIR     Directory to install the launcher into.
+  --name NAME           Command name to create, such as minervit-claude or
+                        yolo.
+  --dangerously-skip-permissions
+                        Start Claude with --dangerously-skip-permissions.
+  --force               Replace an existing launcher even when it was not
+                        methodology-generated.
+  --operator-channel OPERATOR_CHANNEL
+                        Install a NON-BLOCKING operator launcher that fetch-
+                        advances YOUR OWN channel (e.g. experimental) and
+                        never blocks a start (FR-1). It session-scopes an
+                        unverified policy via its own exports without
+                        weakening the pinned trust gate for other launchers on
+                        the machine, and writes no shared config. This is the
+                        'I own this upstream' declaration. Distinct from
+                        maintainer-mode, which edits the framework here and
+                        does NOT fetch.
+  --runtime RUNTIME     Runtime checkout the operator launcher advances
+                        (default: ~/Projects/Tautline-runtime). Only used with
+                        --operator-channel.

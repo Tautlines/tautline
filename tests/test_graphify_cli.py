@@ -63,6 +63,10 @@ def _write_graphify_adapter(adapter_root: Path) -> Path:
     data["latestCode"] = {"enabled": False}
     data.setdefault("graphify", {})["freshnessEnforcement"] = "strict-if-present"
     data.setdefault("ciTestGate", {})["enforcement"] = "warn"
+    # This fixture's subject is graphify and its env has no gh; opt the board gate
+    # down the same way the sibling gates above are neutralized (0.10.3 fails
+    # closed on an unreadable board by default).
+    data.setdefault("backlogProvider", {})["unavailablePolicy"] = "warn"
     data["bootstrapEvidence"] = {
         "project": data["project"],
         "status": "repo-evident",

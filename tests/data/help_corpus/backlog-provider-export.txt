@@ -1,0 +1,26 @@
+usage: tautline backlog-provider-export [-h] [--project PROJECT]
+                                        [--target TARGET] --item-path
+                                        ITEM_PATH --type
+                                        {goal,milestone,bug,task}
+                                        [--customer-facing]
+                                        [--customer-facing-justification CUSTOMER_FACING_JUSTIFICATION]
+                                        [--write] [--draft]
+
+options:
+  -h, --help            show this help message and exit
+  --project PROJECT
+  --target TARGET
+  --item-path ITEM_PATH
+                        Repo-relative Markdown backlog item path approved for
+                        export by the migration interview.
+  --type {goal,milestone,bug,task}
+  --customer-facing     Affirm the item is customer-facing functionality or a
+                        customer-impacting bug. Required: the board is
+                        exclusively customer-facing — never export tech
+                        debt/cleanup/internal work.
+  --customer-facing-justification CUSTOMER_FACING_JUSTIFICATION
+                        Required customer-impact justification when the item
+                        trips a technical-debt / non-customer-facing signal.
+  --write
+  --draft               Create a board-only GitHub Project draft item instead
+                        of the default real repository issue.

@@ -15,7 +15,7 @@ board state, goal plan readiness, ledger transitions, deferral/blocking,
 
 ## Fast Path
 
-1. If a goal ledger exists, run `minervit-methodology goal-next --target .`.
+1. If a goal ledger exists, run `tautline goal-next --target .`.
 2. Start the returned `next_action` unless it names a true blocker, then inspect
    milestone state.
 3. If no active ledger exists and work is substantial, create or update the
@@ -35,8 +35,8 @@ board state, goal plan readiness, ledger transitions, deferral/blocking,
 - Goal completion requires ledgers, source plans, validation evidence,
   PR/branch state, continuity, and journal evidence.
 - `@pending`/pending/skipped/disabled/quarantined/wrong-target tests are gaps, not proof.
-- Routine reviewed push/deploy closeout is `Done = shipped`, not a permission
-  question.
+- On a PR workflow, closeout opens+queues the PR (auto-merge; never hand back; non-PR/human-gated
+  follow their path); a queued auto-merging PR is `Done = shipped`, not permission.
 
 ## Required Follow-Through
 

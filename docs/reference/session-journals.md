@@ -49,6 +49,33 @@ There is no publish step. `publish-session-journal` and `publish-pending-session
 as of 0.9.0 and refuse in every mode, printing a migration message and
 exiting non-zero; there is no session-archive branch.
 
+## Decision window lines (0.14.0)
+
+`prepare-session-journal` records three machine-readable lines in the
+`## Session Runtime` section, all computed at **preparation time** over the
+lane's **retained** event-log rotations only:
+
+- `decisions_recorded: <n> (...)` — how many countable decision records this
+  preparation saw. A first journal reads `<n> (all retained through seq <B>)`; a
+  subsequent one reads `<n> (after seq <A>, through seq <B>, retained rotations
+  only)`, or the qualified zero form `0 (no retained decisions newer than seq
+  <A>)` when nothing newer remains. The count is a preparation-time measurement,
+  not a completeness guarantee.
+- `decisions_report: tautline decisions-report --target . --since-seq <A>
+  --until-seq <B>` — a convenience pointer that reproduces the window over the
+  currently retained rotations. The target is always the literal `.` (journals
+  run from the lane root and reject person-specific absolute paths).
+- `decisions_watermark_seq: <B>` — where `B = max(prior watermark, max retained
+  countable decision seq)`. It is monotonic, so a full eviction carries the
+  prior watermark forward and the window never inverts.
+
+`<A>` is the watermark of the **nearest older journal that both validates and
+carries a valid watermark**; discovery scans backward past valid journals that
+have no watermark (they stay valid but are non-chainable). These fields are
+**optional** in the `minervit-session-journal/v1` validator, so journals written
+before 0.14.0 stay valid; when `decisions_watermark_seq` is present it must parse
+as a non-negative integer or validation fails loudly.
+
 ## Contributing sanitized signal upstream
 
 To contribute signal back to the framework, use an **instrumentation record** instead of a

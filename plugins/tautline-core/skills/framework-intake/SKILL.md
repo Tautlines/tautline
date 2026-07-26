@@ -1,12 +1,13 @@
 ---
 name: framework-intake
-description: "Use for Minervit framework intake: methodology/process regressions, rules audits, why/RCA/root-cause requests, decision traces, and net-new methodology feature requests or enhancements."
+description: "Use for Minervit framework intake: methodology/process regressions, rules audits, why/RCA/root-cause requests, decision traces (decision capture artifact / DCA), and net-new methodology feature requests or enhancements."
 ---
 
 # Framework Intake
 
 Use for methodology/process regressions, rules audits, why/RCA/root-cause
-requests, decision traces, and net-new Tautline feature requests.
+requests, decision traces (decision capture artifact / DCA), and net-new
+Tautline feature requests.
 
 Read `references/framework-intake-policy.md` before gathering evidence,
 classifying root cause, handling RCA artifacts, auditing rule surfaces, writing
@@ -27,8 +28,8 @@ memory notes, sending RCA-shaped responses, or handling feature requests.
 1. Produce first-pass analysis from current conversation context before tools.
 2. Inspect only named artifacts needed to resolve stated uncertainty.
 3. Write `.ai-runs/<utc>-methodology-regression-rca.md` with runtime evidence.
-4. Validate with `minervit-methodology validate-rca-artifact --file <path>`.
-5. Publish with `minervit-methodology publish-rca-artifact --file <path>
+4. Validate with `tautline validate-rca-artifact --file <path>`.
+5. Publish with `tautline publish-rca-artifact --file <path>
    --commit --push`.
 
 ## Non-Negotiables

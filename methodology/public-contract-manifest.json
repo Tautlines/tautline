@@ -17,6 +17,10 @@
       "status": "internal"
     },
     {
+      "name": "autonomy",
+      "status": "stable"
+    },
+    {
       "name": "backlogAdapter",
       "status": "stable"
     },
@@ -89,6 +93,10 @@
       "status": "stable"
     },
     {
+      "name": "fleet",
+      "status": "stable"
+    },
+    {
       "name": "generatedFiles",
       "status": "stable"
     },
@@ -135,6 +143,10 @@
       "status": "stable"
     },
     {
+      "name": "laneStatus",
+      "status": "stable"
+    },
+    {
       "name": "latestCode",
       "status": "stable"
     },
@@ -171,11 +183,19 @@
       "status": "stable"
     },
     {
+      "name": "planning",
+      "status": "stable"
+    },
+    {
       "name": "planningArtifacts",
       "status": "stable"
     },
     {
       "name": "productChat",
+      "status": "stable"
+    },
+    {
+      "name": "productDevelopment",
       "status": "stable"
     },
     {
@@ -259,6 +279,10 @@
     {
       "name": "audit",
       "status": "stable"
+    },
+    {
+      "name": "autonomy-directive",
+      "status": "experimental"
     },
     {
       "name": "background-command-hook",
@@ -381,6 +405,14 @@
       "status": "stable"
     },
     {
+      "name": "decision-record",
+      "status": "experimental"
+    },
+    {
+      "name": "decisions-report",
+      "status": "experimental"
+    },
+    {
       "name": "deploy-health",
       "status": "stable"
     },
@@ -438,6 +470,14 @@
     },
     {
       "name": "flaky-quarantine-check",
+      "status": "stable"
+    },
+    {
+      "name": "fleet-guard-hook",
+      "status": "internal"
+    },
+    {
+      "name": "fleet-lease",
       "status": "stable"
     },
     {
@@ -565,6 +605,10 @@
       "status": "stable"
     },
     {
+      "name": "lane-status",
+      "status": "stable"
+    },
+    {
       "name": "latest-code-hook",
       "status": "internal"
     },
@@ -625,12 +669,20 @@
       "status": "stable"
     },
     {
+      "name": "plan-authoring-standard",
+      "status": "stable"
+    },
+    {
       "name": "plan-finalization-hook",
       "status": "internal"
     },
     {
       "name": "plan-finalization-precheck",
       "status": "stable"
+    },
+    {
+      "name": "plan-review-pending-hook",
+      "status": "internal"
     },
     {
       "name": "prepare-continuity",
@@ -643,6 +695,10 @@
     {
       "name": "prepare-session-journal",
       "status": "stable"
+    },
+    {
+      "name": "product-dev-mode",
+      "status": "experimental"
     },
     {
       "name": "public-contract",
@@ -905,7 +961,7 @@
       "status": "stable"
     },
     {
-      "name": ".minervit/pin.json",
+      "name": ".tautline/pin.json",
       "status": "stable"
     }
   ],
@@ -1215,6 +1271,11 @@
       "status": "stable"
     },
     {
+      "name": "plan-authoring",
+      "path": "plugins/tautline-core/skills/plan-authoring/SKILL.md",
+      "status": "stable"
+    },
+    {
       "name": "project-bootstrap",
       "path": "plugins/tautline-core/skills/project-bootstrap/SKILL.md",
       "status": "stable"
@@ -1272,5 +1333,5 @@
       "status": "stable"
     }
   ],
-  "version": "0.10.0"
+  "version": "0.25.0"
 }

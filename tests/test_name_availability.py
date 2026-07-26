@@ -6,7 +6,7 @@ degrades to 'unknown' on network errors, never raising. USPTO/domain/GitHub rema
 import io
 from urllib.error import HTTPError
 
-from minervit_methodology import names
+from tautline_methodology import names
 
 
 class _Resp(io.BytesIO):

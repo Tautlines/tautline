@@ -16,6 +16,9 @@ from pathlib import Path
 import pytest
 
 CLI_PATH = Path(__file__).resolve().parents[1] / "bin" / "tautline"
+# Post the package-split flip (roadmap #11): the engine lives in the package; bin/tautline is a
+# thin shim. Load and source-scan the engine module (cli.py); CLI_PATH stays a repo-relative anchor.
+CLI_ENGINE_PATH = CLI_PATH.parents[1] / "src" / "tautline_methodology" / "cli.py"
 
 # Both alias spellings of every managed key this module resolves. The operator's live shell
 # exports several of these (the launcher sources the installed config env), so a test that
@@ -38,14 +41,14 @@ def cli(monkeypatch, tmp_path):
     Function-scoped ON PURPOSE (conftest's session-scoped `cli` cannot be used here): the
     module bakes HOME-derived constants (USER_CONFIG_ENV) at import time and caches the
     resolved canonical repo in a module global, so both must be established per test.
-    SourceFileLoader is REQUIRED because bin/tautline has no .py extension.
+    SourceFileLoader gives a fresh engine module (cli.py) per test.
     """
     for name in MANAGED_ENV_NAMES:
         monkeypatch.delenv(name, raising=False)
     home = tmp_path / "home"
     home.mkdir()
     monkeypatch.setenv("HOME", str(home))
-    loader = importlib.machinery.SourceFileLoader("tautline_cli", str(CLI_PATH))
+    loader = importlib.machinery.SourceFileLoader("tautline_cli", str(CLI_ENGINE_PATH))
     spec = importlib.util.spec_from_loader("tautline_cli", loader)
     module = importlib.util.module_from_spec(spec)
     loader.exec_module(module)
@@ -710,7 +713,7 @@ def test_no_self_report_rev_parses_the_exec_root():
     never meant to catch it. Naming the exemption keeps the guard honest and absolute everywhere
     else.
     """
-    source = CLI_PATH.read_text(encoding="utf-8").splitlines()
+    source = CLI_ENGINE_PATH.read_text(encoding="utf-8").splitlines()
     pattern = re.compile(r"""run_git\(\s*REPO_ROOT\s*,\s*\[\s*["']rev-parse""")
 
     # The guard must be able to go RED: if a refactor ever renames run_git or REPO_ROOT, this

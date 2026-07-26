@@ -1,0 +1,12 @@
+usage: tautline backlog-provider-migration-interview [-h] [--project PROJECT]
+                                                     [--target TARGET]
+                                                     [--type {goal,milestone,bug,task}]
+                                                     [--limit LIMIT] [--write]
+
+options:
+  -h, --help            show this help message and exit
+  --project PROJECT
+  --target TARGET
+  --type {goal,milestone,bug,task}
+  --limit LIMIT
+  --write

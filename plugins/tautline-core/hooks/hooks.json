@@ -29,6 +29,24 @@
             "command": "tautline plan-finalization-hook"
           }
         ]
+      },
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "tautline plan-review-pending-hook"
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write|MultiEdit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "tautline fleet-guard-hook"
+          }
+        ]
       }
     ],
     "Stop": [
@@ -37,6 +55,28 @@
           {
             "type": "command",
             "command": "tautline response-guard-hook"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/bin/sh -c 'command -v tautline >/dev/null 2>&1 && tautline autonomy-directive --hook 2>/dev/null || true'",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/bin/sh -c 'command -v tautline >/dev/null 2>&1 && tautline lane-status --hook 2>/dev/null || true'",
+            "timeout": 25
           }
         ]
       }

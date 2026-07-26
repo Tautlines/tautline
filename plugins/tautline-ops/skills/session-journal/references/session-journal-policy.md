@@ -31,14 +31,14 @@ product-information capacity) — `publish-instrumentation-record`; see
 3. Prepare a compact journal:
 
 ```bash
-minervit-methodology prepare-session-journal --target . --stdin
+tautline prepare-session-journal --target . --stdin
 ```
 
 4. Include only high-level summary evidence, not raw terminal transcripts.
 5. Validate the written journal (read-only; there is no publish step):
 
 ```bash
-minervit-methodology validate-session-journal --file .ai-runs/session-journals/<utc>-session-journal.md
+tautline validate-session-journal --file .ai-runs/session-journals/<utc>-session-journal.md
 ```
 
 6. The journal stays lane-local. It is ignored lane-local state and may be lost
@@ -49,7 +49,7 @@ minervit-methodology validate-session-journal --file .ai-runs/session-journals/<
    `"instrumentation": {"enabled": true}` and run:
 
 ```bash
-minervit-methodology publish-instrumentation-record --target .
+tautline publish-instrumentation-record --target .
 ```
 
 ## Required Sections

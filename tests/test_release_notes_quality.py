@@ -26,3 +26,16 @@ def test_release_notes_stub_preserves_current_version_identity():
     text = _release_notes_text()
 
     assert re.search(rf"^## {re.escape(VERSION)} - [0-9]{{4}}-[0-9]{{2}}-[0-9]{{2}}$", text, flags=re.M)
+
+
+def test_changelog_carries_no_conflict_markers():
+    """A rebase that resolves CHANGELOG.md by hand can leave a marker behind, and
+    the file IS the published release notes -- a `>>>>>>> <sha> (subject)` line
+    would ship verbatim. Cheap guard against an expensive embarrassment."""
+    text = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
+    offenders = [
+        f"{n}: {line}"
+        for n, line in enumerate(text.splitlines(), start=1)
+        if line.startswith(("<<<<<<< ", ">>>>>>> ")) or line.rstrip() == "======="
+    ]
+    assert not offenders, "conflict markers in CHANGELOG.md: " + "; ".join(offenders)

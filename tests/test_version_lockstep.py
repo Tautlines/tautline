@@ -48,7 +48,8 @@ def test_marketplace_manifest_version_is_locked():
 
 
 def test_lane_session_plugin_version_contracts_remain_pinned(cli):
-    cli_source = (ROOT / "bin" / "tautline").read_text(encoding="utf-8")
+    # Post the package-split flip (roadmap #11): the engine lives in cli.py; bin/tautline is a shim.
+    cli_source = (ROOT / "src" / "tautline_methodology" / "cli.py").read_text(encoding="utf-8")
 
     assert "lane_session_plugin_version_at_start" in cli_source
     assert "plugin_version_drift" in cli_source

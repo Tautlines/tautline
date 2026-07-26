@@ -1,0 +1,12 @@
+usage: tautline uninstall-cli [-h] [--bin-dir BIN_DIR]
+                              [--config-env CONFIG_ENV] [--keep-env]
+                              [--dry-run]
+
+options:
+  -h, --help            show this help message and exit
+  --bin-dir BIN_DIR
+  --config-env CONFIG_ENV
+                        Config env file; defaults to the effective one
+                        (tautline path, else legacy).
+  --keep-env            Keep methodology.env; remove only the shim.
+  --dry-run             Print planned removals without changing anything.

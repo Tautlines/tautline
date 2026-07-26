@@ -1,0 +1,80 @@
+{
+  "behaviorChanges": [
+    "SessionStart standing-directive hook registered (plugin manifest + settings writer + install-hooks + self-enforcing lane-start migration) for directive-core's `autonomy-directive --hook`; the hook ALWAYS emits (no dedup), so compaction/resume re-inject the directive by construction (at-most-double emission on dual-registered machines is accepted, cosmetic). The hook-state gate extends to a NINTH required hook: methodology-status --fail-on-drift now blocks startup when the SessionStart entry is missing on a settings-managed install -- a previously-passing install can now block, recoverable with `tautline install-hooks`. No guard/gate/review semantics change beyond the existing hook-state gate covering one more artifact."
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "publish-pending-session-journals",
+      "removeAfter": "1.0.0",
+      "replacement": "publish-instrumentation-record",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "publish-session-journal",
+      "removeAfter": "1.0.0",
+      "replacement": "publish-instrumentation-record",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    },
+    {
+      "name": "rules-audit",
+      "path": "plugins/tautline-core/skills/rules-audit/SKILL.md",
+      "removeAfter": "1.0.0",
+      "replacement": "framework-intake",
+      "section": "skills",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [],
+  "productsTested": [],
+  "requiredMigrations": [
+    {
+      "command": "gh auth refresh --hostname github.com -s read:project -s project",
+      "description": "Carried forward from 0.10.3 for lanes updating across it: grant the gh token the GitHub Projects scopes the fail-closed board gates need. Machines already on 0.10.3+ or whose token carries read:project and project need no action.",
+      "id": "grant-gh-project-scopes",
+      "surface": "board-provider-auth"
+    }
+  ],
+  "rollbackNotes": [
+    "Rolling back THIS release alone leaves the persisted ~/.claude/settings.json SessionStart entry active, and directive-core (the immediate predecessor) already ships `autonomy-directive --hook`, so injection CONTINUES after rollback until the operator either deletes the SessionStart entry carrying this release's exact command string `/bin/sh -c 'command -v tautline >/dev/null 2>&1 && tautline autonomy-directive --hook 2>/dev/null || true'` (foreign SessionStart entries preserved) OR sets `autonomy.standingDirective: false` in the lane adapter. The missing-executable fail-open only covers rollback to pre-directive-core versions; on those the shell guard exits 0 silently and the directive stops. Nothing on disk migrates."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.13.0",
+  "wipSafe": false
+}

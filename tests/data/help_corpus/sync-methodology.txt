@@ -1,0 +1,30 @@
+usage: tautline sync-methodology [-h] [--project PROJECT] [--target TARGET]
+                                 [--skip-update] [--no-remote]
+                                 [--allow-non-main]
+                                 [--auto-rescue-local-changes]
+                                 [--no-auto-rescue-local-changes]
+                                 [--launcher-gate]
+
+options:
+  -h, --help            show this help message and exit
+  --project PROJECT     Project adapter used with --target for release-
+                        track/WIP checks.
+  --target TARGET       Adopter repo whose framework pin and WIP state should
+                        gate the sync.
+  --skip-update
+  --no-remote
+  --allow-non-main      Allow sync from a non-main methodology checkout for
+                        intentional methodology development.
+  --auto-rescue-local-changes
+                        Preserve dirty methodology checkout changes on a local
+                        rescue branch, reset release main to upstream, and re-
+                        run. This is already the default when invoked from
+                        outside the methodology repo.
+  --no-auto-rescue-local-changes
+                        Disable project-startup auto-rescue and fail closed on
+                        dirty stale methodology checkouts.
+  --launcher-gate       Serialize concurrent lane launches on a lock, and skip
+                        the sync when another lane already synced within the
+                        freshness window
+                        (MINERVIT_METHODOLOGY_SYNC_FRESHNESS_MINUTES, default
+                        10 minutes; 0 disables the skip).

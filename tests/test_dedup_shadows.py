@@ -5,7 +5,7 @@ this pins their behavior so the dead-shadow deletion is provably no-change.
 
 from pathlib import Path
 
-from minervit_methodology import util
+from tautline_methodology import util
 
 
 def test_slugify_basic_and_fallback(cli):
@@ -36,7 +36,11 @@ def test_path_is_under(cli, tmp_path):
 
 
 def test_no_duplicate_top_level_defs():
-    """The shadowed defs are gone: each name is defined exactly once at module top level."""
-    text = (Path(__file__).resolve().parents[1] / "bin" / "tautline").read_text()
+    """The shadowed defs are gone: each name is defined exactly once at module top level.
+
+    Post the package-split flip (roadmap #11) the engine (and these defs) live in cli.py;
+    bin/tautline is a thin shim, so scan the engine module."""
+    engine = Path(__file__).resolve().parents[1] / "src" / "tautline_methodology" / "cli.py"
+    text = engine.read_text()
     assert text.count("\ndef slugify(") == 1
     assert text.count("\ndef path_is_under(") == 1

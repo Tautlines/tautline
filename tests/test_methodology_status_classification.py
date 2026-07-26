@@ -172,7 +172,8 @@ def test_no_bin_tautline_code_path_compares_methodology_status_exit_to_1_specifi
     codes elsewhere in this ~36k-line file) by windowing around each real call site."""
     import re
 
-    text = (REPO_ROOT / "bin" / "tautline").read_text(encoding="utf-8")
+    # Post the package-split flip (roadmap #11): the engine lives in cli.py; bin/tautline is a shim.
+    text = (REPO_ROOT / "src" / "tautline_methodology" / "cli.py").read_text(encoding="utf-8")
     lines = text.splitlines()
     invocation_markers = ("methodology-status", "methodology_status(args)")
     forbidden = re.compile(r"==\s*1\b|-eq\s+1\b|=\s*[\"']1[\"']")

@@ -1,0 +1,22 @@
+usage: tautline decisions-report [-h] [--target TARGET] [--since SINCE]
+                                 [--until UNTIL] [--since-seq SINCE_SEQ]
+                                 [--until-seq UNTIL_SEQ] [--goal GOAL]
+                                 [--json]
+
+options:
+  -h, --help            show this help message and exit
+  --target TARGET       Lane root; repeatable (default `.`). Same-repo
+                        worktrees share one event log.
+  --since SINCE         Lower time bound (exclusive): a duration (30m/24h/7d)
+                        or ISO-8601; zone-less = UTC.
+  --until UNTIL         Upper time bound (inclusive): an ISO-8601 timestamp;
+                        zone-less = UTC.
+  --since-seq SINCE_SEQ
+                        Lower seq bound (exclusive); non-negative; requires
+                        exactly one --target.
+  --until-seq UNTIL_SEQ
+                        Upper seq bound (inclusive); non-negative; requires
+                        exactly one --target.
+  --goal GOAL           Only decisions whose recorded goal equals this value.
+  --json                Emit one tautline-decisions-report/v1 envelope object
+                        instead of human output.

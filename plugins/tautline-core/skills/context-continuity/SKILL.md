@@ -17,7 +17,7 @@ planning-on-resume, bounded Markdown audits, archives, or index hygiene.
 ## Fast Path
 
 1. Write handoff state to the adapter continuity path with:
-   `minervit-methodology prepare-continuity --target . --stdin`.
+   `tautline prepare-continuity --target . --stdin`.
 2. Include process position, branch/worktree, decisions, changed files,
    validation/review state, PRs, goal/milestone ledgers, risks/blockers, and
    exact next action.
@@ -26,7 +26,7 @@ planning-on-resume, bounded Markdown audits, archives, or index hygiene.
 4. For Markdown context, read configured indexes first and avoid broad-loading
    plans, archives, or doc trees.
 5. When creating, completing, moving, or archiving Markdown artifacts, update
-   the relevant index and run `minervit-methodology context-status --target .`.
+   the relevant index and run `tautline context-status --target .`.
 6. At workflow boundaries or context pressure, refresh continuity, handle
    required journals/ledgers, rotate context when needed, and continue the next
    authorized action.

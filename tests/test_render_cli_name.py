@@ -10,7 +10,8 @@ def test_cli_name_constant(cli):
 
 def test_generated_wrapper_prefers_tautline_and_falls_back():
     # The emitted lane wrapper must resolve `tautline` first, `minervit-methodology` as fallback.
-    text = (ROOT / "bin/tautline").read_text()
+    # Post the package-split flip (roadmap #11): the wrapper-generating engine lives in cli.py.
+    text = (ROOT / "src" / "tautline_methodology" / "cli.py").read_text()
     assert "command -v tautline" in text
     assert "command -v minervit-methodology" in text  # fallback retained
 

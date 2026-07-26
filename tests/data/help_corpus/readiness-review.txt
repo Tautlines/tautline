@@ -1,0 +1,10 @@
+usage: tautline readiness-review [-h] [--project PROJECT] [--repo REPO]
+                                 [--source SOURCE] [--strict]
+
+options:
+  -h, --help         show this help message and exit
+  --project PROJECT
+  --repo REPO
+  --source SOURCE
+  --strict           Fail closed when the detection baseline (branch
+                     protection + canary-on-SHA + errorId alarm) is not met.

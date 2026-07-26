@@ -1,0 +1,7 @@
+usage: tautline check-name-availability [-h] name
+
+positional arguments:
+  name        Candidate package/product name to check.
+
+options:
+  -h, --help  show this help message and exit

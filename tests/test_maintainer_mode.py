@@ -42,6 +42,10 @@ from test_install_uninstall import (
 from test_sync_methodology_cli import _advance_remote, _git, _make_methodology_fixture, _run_cli
 
 CLI_PATH = Path(__file__).resolve().parents[1] / "bin" / "tautline"
+# Post the package-split flip (roadmap #11): the engine lives in the package; bin/tautline is a
+# thin shim. Load the engine module (cli.py) for the in-process fixture; CLI_PATH stays the source
+# of the real CLI bytes for the copied-CLI export-root filesystem fixtures.
+CLI_ENGINE_PATH = CLI_PATH.parents[1] / "src" / "tautline_methodology" / "cli.py"
 
 # Both alias spellings of the mode key, plus every managed key the arming predicate resolves.
 # The operator's live shell exports several managed keys (the launcher sources the installed
@@ -67,14 +71,13 @@ def _cli_module_for_home(monkeypatch, home: Path):
 
     The module bakes HOME-derived constants (USER_CONFIG_ENV, LEGACY_USER_CONFIG_ENV) at
     import time and caches the resolved canonical repo in a module global, so both must be
-    established per load. SourceFileLoader is REQUIRED because bin/tautline has no .py
-    extension.
+    established per load. SourceFileLoader gives a fresh engine module (cli.py) per call.
     """
     for name in MAINTAINER_MODE_ENV_NAMES + MANAGED_ENV_NAMES:
         monkeypatch.delenv(name, raising=False)
     home.mkdir(parents=True, exist_ok=True)
     monkeypatch.setenv("HOME", str(home))
-    loader = importlib.machinery.SourceFileLoader("tautline_cli", str(CLI_PATH))
+    loader = importlib.machinery.SourceFileLoader("tautline_cli", str(CLI_ENGINE_PATH))
     spec = importlib.util.spec_from_loader("tautline_cli", loader)
     module = importlib.util.module_from_spec(spec)
     loader.exec_module(module)
@@ -200,6 +203,47 @@ def test_blank_or_zero_value_counts_as_unset(cli):
     _write_config_env(cli, ["export TAUTLINE_METHODOLOGY_MAINTAINER_MODE=0"])
     assert cli.maintainer_mode_configured() is False
     assert cli.maintainer_mode_armed() is False
+
+
+@pytest.mark.parametrize(
+    "config_lines",
+    [
+        pytest.param(['export TAUTLINE_METHODOLOGY_MAINTAINER_MODE="1"'], id="double-quoted"),
+        pytest.param(["export TAUTLINE_METHODOLOGY_MAINTAINER_MODE='1'"], id="single-quoted"),
+        pytest.param(
+            ["export TAUTLINE_METHODOLOGY_MAINTAINER_MODE=1 # armed by hand"],
+            id="trailing-comment",
+        ),
+        pytest.param(["  export TAUTLINE_METHODOLOGY_MAINTAINER_MODE=1"], id="leading-whitespace"),
+        pytest.param(["TAUTLINE_METHODOLOGY_MAINTAINER_MODE=1"], id="no-export-keyword"),
+        pytest.param(
+            [
+                'export TAUTLINE_METHODOLOGY_MAINTAINER_MODE=""',
+                "export MINERVIT_METHODOLOGY_MAINTAINER_MODE=1",
+            ],
+            id="quoted-blank-falls-through",
+        ),
+    ],
+)
+def test_hand_edited_shapes_configure_python_side(cli, config_lines):
+    """The shlex reference parse accepts these hand-edit shapes: they CONFIGURE the mode.
+
+    Agreement lock for MS-IMPL-R1-P2-1: the launcher shell guard must arm on the same shapes
+    (test_launcher_auto_rescue_stands_down_when_file_armed carries the shell half), and the
+    divergence is fixed shell-side -- user_config_env_value is the reference semantics and
+    weakening it here is never the fix.
+    """
+    _write_config_env(cli, config_lines)
+    assert cli.maintainer_mode_configured() is True
+
+
+def test_nested_quoted_value_stays_literal_and_does_not_configure(cli):
+    """`="'1'"` is the three-character string '1' WITH quotes: shlex keeps inner
+    quotes literal, so the mode is NOT configured -- and the launcher shell guard
+    agrees (its substitution strips exactly one layer of MATCHING quotes, never
+    two), keeping both halves of the machine in the same armed state."""
+    _write_config_env(cli, ["export TAUTLINE_METHODOLOGY_MAINTAINER_MODE=\"'1'\""])
+    assert cli.maintainer_mode_configured() is False
 
 
 def test_armed_requires_canonical_git_checkout(cli, tmp_path, monkeypatch):

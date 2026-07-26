@@ -1,0 +1,25 @@
+usage: tautline publish-iteration-review [-h] [--project PROJECT]
+                                         [--target TARGET] --record RECORD
+                                         [--skip-chat]
+                                         [--skip-chat-reason SKIP_CHAT_REASON]
+                                         [--force]
+                                         [--repeat-chat-reason REPEAT_CHAT_REASON]
+                                         [--force-partial-video]
+                                         [--partial-video-reason PARTIAL_VIDEO_REASON]
+                                         [--operator-approval-token OPERATOR_APPROVAL_TOKEN]
+                                         [--dry-run] [--allow-unmerged]
+
+options:
+  -h, --help            show this help message and exit
+  --project PROJECT
+  --target TARGET
+  --record RECORD
+  --skip-chat
+  --skip-chat-reason SKIP_CHAT_REASON
+  --force
+  --repeat-chat-reason REPEAT_CHAT_REASON
+  --force-partial-video
+  --partial-video-reason PARTIAL_VIDEO_REASON
+  --operator-approval-token OPERATOR_APPROVAL_TOKEN
+  --dry-run
+  --allow-unmerged

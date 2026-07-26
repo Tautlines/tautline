@@ -1,0 +1,12 @@
+usage: tautline flaky-quarantine-check [-h] [--project PROJECT]
+                                       [--target TARGET] [--base BASE]
+                                       [--diff-file DIFF_FILE]
+
+options:
+  -h, --help            show this help message and exit
+  --project PROJECT
+  --target TARGET
+  --base BASE           Diff base ref (default: origin/main).
+  --diff-file DIFF_FILE
+                        Read the unified diff from this file instead of
+                        running git (for tests/CI).

@@ -69,7 +69,7 @@ A feature item is Ready when ALL hold:
    touches.
 5. A native sub-issue link to the parent epic exists.
 6. Feature number is unique within the configured series, with no collisions.
-7. `minervit-methodology validate-grooming --target . --epic <EPIC>` exits 0.
+7. `tautline validate-grooming --target . --epic <EPIC>` exits 0.
 
 Run `validate-grooming` read-only before moving any item into a ready status. It
 never edits the board; fix the source item and re-run.

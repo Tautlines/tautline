@@ -36,9 +36,11 @@ CI_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "ci-python.yml"
 # or a ruleset) the moment the tier allows it, and re-run the gh api verification.
 SMOKE_JOB_ID = "fresh-install-smoke"
 
-# The seven Claude hooks lane-start installs; the smoke job must assert every one
+# The nine Claude hooks lane-start installs; the smoke job must assert every one
 # of them lands in the scratch HOME's settings (PP-R1-P2-1: a wheel that omits or
-# breaks the hook payload must turn the job red).
+# breaks the hook payload must turn the job red). The SessionStart standing-directive
+# hook is registered as a fail-open shell wrapper, so it is identified by its exact
+# `autonomy-directive --hook` invocation rather than a bare `tautline <verb>`.
 CLAUDE_HOOK_NAMES = (
     "plan-finalization-hook",
     "branch-liveness-hook",
@@ -47,6 +49,9 @@ CLAUDE_HOOK_NAMES = (
     "background-command-hook",
     "latest-code-hook",
     "context-rotation-heartbeat-hook",
+    "plan-review-pending-hook",
+    "fleet-guard-hook",
+    "autonomy-directive --hook",
 )
 
 # The embedded-tree canaries: the sdist->wheel data-fidelity trap silently drops

@@ -15,7 +15,7 @@ supervising review rounds, or reporting terminal monitor state.
 
 ## Fast Path
 
-1. Start work with `minervit-methodology background-run --log <log> -- <cmd>`
+1. Start work with `tautline background-run --log <log> -- <cmd>`
    or the adapter-approved monitor wrapper.
 2. Capture log path, PID/meta path, command, cwd, start time, and next poll due.
 3. Poll on the required cadence; record observed state and next poll.

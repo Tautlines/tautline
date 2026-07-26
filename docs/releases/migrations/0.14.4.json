@@ -1,0 +1,84 @@
+{
+  "behaviorChanges": [
+    "session-start surfaces (lane-start, sync-methodology, methodology-status) report the genuinely available framework version and a non-blocking `framework_update_offer:` line naming the FIRST real unblock (trust-aware: pinned -> update-repin then sync; signed/experimental -> sync; stable+untrusted -> the full trust chain), instead of the silent `methodology_update: skipped`. Display-only: no update policy, trust gate, auto-advance, or exit-code changes; framework_update_decision and framework_available_version are byte-identical.",
+    "a read-only, fail-open, cached update probe (`~/.cache/tautline/update-probe.json`) discovers the available version via a single `ls-remote` per launch; launches never fetch. Opt out with `TAUTLINE_METHODOLOGY_UPDATE_PROBE=off`. Any probe failure yields byte-identical session-start output to before.",
+    "methodology-status (only, and only without --no-remote) performs one bounded fetch into a disposable `refs/tautline-update-probe/*` ref + FETCH_HEAD to resolve a not-yet-local candidate's version; it never touches HEAD, the working tree, the index, or the branch tracking ref, and currency stays HEAD-based."
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "publish-pending-session-journals",
+      "removeAfter": "1.0.0",
+      "replacement": "publish-instrumentation-record",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "publish-session-journal",
+      "removeAfter": "1.0.0",
+      "replacement": "publish-instrumentation-record",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    },
+    {
+      "name": "rules-audit",
+      "path": "plugins/tautline-core/skills/rules-audit/SKILL.md",
+      "removeAfter": "1.0.0",
+      "replacement": "framework-intake",
+      "section": "skills",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [],
+  "productsTested": [],
+  "requiredMigrations": [
+    {
+      "command": "gh auth refresh --hostname github.com -s read:project -s project",
+      "description": "Carried forward from 0.10.3 for lanes updating across it: grant the gh token the GitHub Projects scopes the fail-closed board gates need. Machines already on 0.10.3+ or whose token carries read:project and project need no action.",
+      "id": "grant-gh-project-scopes",
+      "surface": "board-provider-auth"
+    }
+  ],
+  "rollbackNotes": [
+    "Repinning below 0.14.4 removes the update-availability/offer lines and the probe; the silent `methodology_update: skipped` behavior returns. No state migration: the probe cache and the disposable probe ref are inert and can be deleted.",
+    "grant-gh-project-scopes is carried forward from 0.10.3 (see requiredMigrations); a lane already on 0.10.3+ needs no action.",
+    "NOT WIP-safe only for the engine-gap carry-forward; the release's own change is display-only and safe for lanes in progress."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.14.4",
+  "wipSafe": false
+}

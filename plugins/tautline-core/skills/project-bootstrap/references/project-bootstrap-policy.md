@@ -13,16 +13,16 @@ Generic executor banners or host reminders such as "greenfield execution mode", 
 ## Workflow
 
 1. Inspect the repo for commands, CI gates, review scripts, backlog targets, behavior-spec conventions, merge-conflict checks, local service ports, remote/PR workflow, production status, and technical stack/platform conventions.
-2. Run `minervit-methodology adapter-bootstrap-questions --target . --write` and use the written `.ai-work/ADAPTER_BOOTSTRAP_INTERVIEW.md` as the standard setup interview. Ask the human operator only questions whose answers are not safely inferable from repo evidence.
+2. Run `tautline adapter-bootstrap-questions --target . --write` and use the written `.ai-work/ADAPTER_BOOTSTRAP_INTERVIEW.md` as the standard setup interview. Ask the human operator only questions whose answers are not safely inferable from repo evidence.
    - Before any first `render-adapters --write`, surface unresolved interview items through `AskUserQuestion` or the host-equivalent question mechanism.
    - If no structured question tool exists, ask concise batched questions in chat and stop before rendering until the required answers are available.
    - If the repo is empty or `.git`-only, treat almost no adapter facts as inferable; the interview is required before rendering.
-3. Create a project adapter JSON. Use `minervit-methodology init-project-adapter --target .` when a scaffold is useful; it writes `.minervit/adapter.json` in the adopter repo by default. Use `--output` only for framework-maintainer or legacy migration work.
+3. Create a project adapter JSON. Use `tautline init-project-adapter --target .` when a scaffold is useful; it writes `.minervit/adapter.json` in the adopter repo by default. Use `--output` only for framework-maintainer or legacy migration work.
 4. Replace every `BOOTSTRAP REQUIRED` placeholder before treating the adapter as operational.
 5. Render thin `CLAUDE.md` and `AGENTS.md` files with hard generated headers.
 6. Configure lane-local state for methodology locks, run evidence, execution packets, and continuity handoffs.
 7. Configure non-empty plan/spec source-of-truth path, template path, template trigger, and scratch-only plan paths so tool default plan folders remain scratch only.
-8. Configure or accept derived `documentContext` defaults, then bootstrap indexes with `minervit-methodology context-bootstrap --target . --write`.
+8. Configure or accept derived `documentContext` defaults, then bootstrap indexes with `tautline context-bootstrap --target . --write`.
 9. Keep project-specific exceptions in the adapter.
 10. Run `lane-start`, `context-status`, and `methodology-status --fail-on-drift` until the project is clean enough for its enforcement mode.
 11. Commit or otherwise isolate adapter/generated-instruction setup separately from product work when the project uses commits.

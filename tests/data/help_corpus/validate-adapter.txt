@@ -1,0 +1,5 @@
+usage: tautline validate-adapter [-h] --project PROJECT
+
+options:
+  -h, --help         show this help message and exit
+  --project PROJECT  Path to the adapter JSON to validate.

@@ -3,7 +3,7 @@ import io
 import json
 import os
 
-from minervit_methodology import deploy
+from tautline_methodology import deploy
 
 
 def _notification_data(**overrides):

@@ -15,7 +15,7 @@ declaring stack/cloud defaults, or adopting repo-local `.minervit/adapter.json`.
 
 ## Fast Path
 
-1. Run `minervit-methodology init --target .` for unmanaged repos.
+1. Run `tautline init --target .` for unmanaged repos.
 2. Capture unresolved setup questions with `adapter-bootstrap-questions --target .`.
 3. Put reusable process in methodology files and project choices in the adapter.
 4. Render generated adapters from the source adapter; do not hand-edit generated

@@ -1,0 +1,23 @@
+usage: tautline release-tail [-h] [--dry-run] [--skip-registry]
+                             [--timeout TIMEOUT]
+                             [--poll-interval POLL_INTERVAL]
+                             [--allow-empty-private-terms]
+                             [--private-terms-file PRIVATE_TERMS_FILE]
+
+options:
+  -h, --help            show this help message and exit
+  --dry-run             Print the full plan and mutate nothing. The default
+                        posture for an agent.
+  --skip-registry       One-time bootstrap: push the mirror, tag, and create
+                        the Release as a DRAFT (a draft fires no publish
+                        workflow). Rerun without this flag to publish it.
+  --timeout TIMEOUT     Seconds to wait for the publish workflow runs to reach
+                        a terminal state.
+  --poll-interval POLL_INTERVAL
+                        Seconds between publish-run polls.
+  --allow-empty-private-terms
+                        Allow the export gate to run with no private terms
+                        configured.
+  --private-terms-file PRIVATE_TERMS_FILE
+                        Read private product/client scan terms from an
+                        untracked local file.

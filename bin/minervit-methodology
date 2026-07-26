@@ -10,5 +10,11 @@ shim here broke every 0.7.x -> 0.8.x upgrade mid-flight with a SyntaxError
 import os
 import sys
 
+# Compat-sunset chokepoint 2 (roadmap #16): record the legacy CLI-name invocation in a
+# process-private env marker BEFORE execv rewrites argv0 to the canonical tautline path. os.putenv
+# is documented to propagate through execv (and, unlike a mapping subscript write, keeps this shim
+# a pure env WRITER with no env read). The real CLI main() sees the marker, warns ONCE, strips it.
+# The shim itself NEVER warns (a shim warning would be unsuppressible/double stderr).
+os.putenv("TAUTLINE_LEGACY_LAUNCHER_INVOKED", "minervit-methodology")
 _TAUTLINE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "tautline")
 os.execv(_TAUTLINE, [_TAUTLINE, *sys.argv[1:]])

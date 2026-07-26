@@ -1,0 +1,75 @@
+{
+  "behaviorChanges": [
+    "The npm registry copy leads with the product and the real install (`Tautline is a Python CLI. Install it with pipx`) instead of self-describing as a namespace pointer; the name-reservation fact stays in plain words -- the package reserves the name and contains no code. The payload and its shape guards are unchanged -- there is still no npm wrapper by decision. The published npm page updates at the next release-tail.",
+    "Dev toolchain: mypy 2.3.0 (from Dependabot #384, adopted through the version-bump contract); CI type-checking behavior is otherwise unchanged (0 issues at adoption).",
+    "Repo process: Dependabot raises PRs against `experimental` instead of the promotion-only `main`; four pre-0.9.16 implementation-review ledgers carry backfilled finding titles (derived from their own recorded summaries; no reclassification); and the public boundary scan AND the release export's dirty-state gate both ignore `.claude/` local agent-session state, whose untracked worktree checkouts of historical branches made scan verdicts and export refusals depend on which sessions ran on the machine."
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "publish-pending-session-journals",
+      "removeAfter": "1.0.0",
+      "replacement": "publish-instrumentation-record",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "publish-session-journal",
+      "removeAfter": "1.0.0",
+      "replacement": "publish-instrumentation-record",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    },
+    {
+      "name": "rules-audit",
+      "path": "plugins/tautline-core/skills/rules-audit/SKILL.md",
+      "removeAfter": "1.0.0",
+      "replacement": "framework-intake",
+      "section": "skills",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [],
+  "productsTested": [],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "Pinning back to 0.10.0 restores the namespace-pointer npm copy in `registry-package` output; nothing else to roll back -- no on-disk state, command surface, or adapter content moves in either direction."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.10.1",
+  "wipSafe": true
+}

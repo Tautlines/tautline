@@ -15,7 +15,7 @@ a true blocker.
 
 ## Fast Path
 
-1. Check status with `minervit-methodology stakeholder-question-status --target
+1. Check status with `tautline stakeholder-question-status --target
    . --sync`.
 2. Ask only concrete product/stakeholder questions with
    `stakeholder-question-ask --target .`.

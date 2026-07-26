@@ -1,0 +1,11 @@
+usage: tautline update-repin [-h] [--config-env CONFIG_ENV]
+                             [--channel {experimental,stable}]
+
+options:
+  -h, --help            show this help message and exit
+  --config-env CONFIG_ENV
+                        Config env file; defaults to the effective one
+                        (tautline path, else legacy).
+  --channel {experimental,stable}
+                        Framework channel whose origin branch to trust
+                        (stable|experimental).

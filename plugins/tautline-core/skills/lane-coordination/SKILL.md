@@ -18,9 +18,9 @@ Adapter `laneCoordination` config defines the cross-lane contract path, lane boa
 ## Commands
 
 ```bash
-minervit-methodology lane-coordination-status --target .
-minervit-methodology lane-coordination-bootstrap --target . --write
-minervit-methodology lane-coordination-note --target . --lane <lane> --goal "<goal>" --current "<current work>" --depends-on "<dependencies>" --provides "<provided interfaces>" --blockers "<blockers>" --pr "<PR or commit>" --write
+tautline lane-coordination-status --target .
+tautline lane-coordination-bootstrap --target . --write
+tautline lane-coordination-note --target . --lane <lane> --goal "<goal>" --current "<current work>" --depends-on "<dependencies>" --provides "<provided interfaces>" --blockers "<blockers>" --pr "<PR or commit>" --write
 ```
 
 Use bootstrap only when artifacts are missing outside startup; `lane-start` normally creates them.

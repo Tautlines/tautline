@@ -1,0 +1,17 @@
+usage: tautline milestone-advance [-h] [--project PROJECT] [--target TARGET]
+                                  --event
+                                  {item-blocked,item-complete,pr-abandoned,pr-merged,pr-queued,startup}
+                                  [--item-index ITEM_INDEX] [--branch BRANCH]
+                                  [--pr PR] [--reason REASON]
+                                  [--detail DETAIL]
+
+options:
+  -h, --help            show this help message and exit
+  --project PROJECT
+  --target TARGET
+  --event {item-blocked,item-complete,pr-abandoned,pr-merged,pr-queued,startup}
+  --item-index ITEM_INDEX
+  --branch BRANCH
+  --pr PR
+  --reason REASON
+  --detail DETAIL

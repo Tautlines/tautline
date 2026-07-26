@@ -1,9 +1,9 @@
 {
   "author": {
     "name": "Minervit",
-    "url": "https://github.com/minervit"
+    "url": "https://github.com/tautlines"
   },
-  "description": "Minervit delivery operations skills for iteration reviews, milestone updates, runtime evidence, session journals, usage accounting, and migration repair.",
+  "description": "Tautline delivery operations skills for iteration reviews, milestone updates, runtime evidence, session journals, usage accounting, and migration repair.",
   "homepage": "https://github.com/tautlines/tautline",
   "interface": {
     "brandColor": "#2563EB",
@@ -20,10 +20,10 @@
       "Resolve a database migration collision."
     ],
     "developerName": "Minervit",
-    "displayName": "Minervit Delivery Ops",
+    "displayName": "Tautline Delivery Ops",
     "longDescription": "Packages Minervit's optional delivery operations workflows separately from the reusable methodology core. Use it for adapter-enabled iteration reviews, milestone updates, product delivery communications, runtime event evidence, session journals, usage accounting, and database migration collision repair.",
     "privacyPolicyURL": "https://github.com/tautlines/tautline/blob/main/PRIVACY.md",
-    "shortDescription": "Optional delivery ops workflows for Minervit methodology lanes.",
+    "shortDescription": "Optional delivery ops workflows for Tautline methodology lanes.",
     "termsOfServiceURL": "https://github.com/tautlines/tautline/blob/main/TERMS.md",
     "websiteURL": "https://github.com/tautlines/tautline"
   },
@@ -38,5 +38,5 @@
   "name": "tautline-ops",
   "repository": "https://github.com/tautlines/tautline",
   "skills": "./skills/",
-  "version": "0.10.0"
+  "version": "0.25.0"
 }

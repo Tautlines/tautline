@@ -1,0 +1,12 @@
+usage: tautline init-project-adapter [-h] [--target TARGET] [--output OUTPUT]
+                                     [--project-name PROJECT_NAME]
+                                     [--repo REPO] [--overwrite]
+
+options:
+  -h, --help            show this help message and exit
+  --target TARGET
+  --output OUTPUT       Override the source adapter path; defaults to
+                        <target>/.minervit/adapter.json.
+  --project-name PROJECT_NAME
+  --repo REPO
+  --overwrite

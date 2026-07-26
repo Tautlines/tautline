@@ -1,0 +1,8 @@
+usage: tautline lane-status [-h] [--target TARGET] [--hook] [--json]
+
+options:
+  -h, --help       show this help message and exit
+  --target TARGET
+  --hook           Hook-safe mode: contained, always exits 0.
+  --json           Emit the tautline-lane-status/v1 payload instead of the
+                   report.

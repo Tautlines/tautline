@@ -1,0 +1,8 @@
+usage: tautline milestone-start [-h] [--project PROJECT] [--target TARGET]
+                                --plan PLAN
+
+options:
+  -h, --help         show this help message and exit
+  --project PROJECT
+  --target TARGET
+  --plan PLAN

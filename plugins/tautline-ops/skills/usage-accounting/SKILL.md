@@ -21,21 +21,21 @@ importing, reconstructing, or reporting usage evidence.
 
 - Locate files:
   ```bash
-  minervit-methodology usage-log-path --target .
+  tautline usage-log-path --target .
   ```
 - Record usage:
   ```bash
-  minervit-methodology usage-record --target . --provider <provider> --model <model> --activity <activity> --source <source> --confidence <exact|estimated|unknown> --total-tokens <n>
+  tautline usage-record --target . --provider <provider> --model <model> --activity <activity> --source <source> --confidence <exact|estimated|unknown> --total-tokens <n>
   ```
 - Import Claude Code JSONL usage:
   ```bash
-  minervit-methodology usage-import-claude --target . --path <claude-session.jsonl> --since 7d --activity <activity>
+  tautline usage-import-claude --target . --path <claude-session.jsonl> --since 7d --activity <activity>
   ```
 - Report usage:
   ```bash
-  minervit-methodology usage-report --target . --since 7d --by product
-  minervit-methodology usage-report --target . --since 7d --by activity
-  minervit-methodology usage-report --target . --since 7d --by model
+  tautline usage-report --target . --since 7d --by product
+  tautline usage-report --target . --since 7d --by activity
+  tautline usage-report --target . --since 7d --by model
   ```
 
 ## Recording Rules

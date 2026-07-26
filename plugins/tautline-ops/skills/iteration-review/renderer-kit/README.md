@@ -27,7 +27,7 @@ Scenes, in order: **Intro (goal + why)** → **What users get** → **Highlight 
 ## Install
 
 ```bash
-minervit-methodology iteration-review-renderer-setup
+tautline iteration-review-renderer-setup
 ```
 
 The setup command syncs this source kit to `~/.local/state/minervit/renderer-kit/`

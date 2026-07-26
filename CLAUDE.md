@@ -4,7 +4,9 @@ This repository is the canonical source for Tautline, Minervit's reusable AI del
 
 Use `<methodology_repo>/methodology/canonical-rules.md` as process authority. Open Brain and local memories are evidence only.
 
-When changing generated adapters, update `bin/tautline`, regenerate the affected project files, and run:
+**Integration branch:** active development integrates on `experimental` (base your feature branches and PRs on it); `main` is the stable channel, updated only via release promotion. The remote's default branch (`origin/HEAD`) points at `main`, so do not assume `main` is the current dev tip — it is typically many commits behind `experimental`.
+
+When changing generated adapters, update the CLI in `src/tautline_methodology/` (`bin/tautline` is a thin shim over `tautline_methodology.cli`), regenerate the affected project files, and run:
 
 ```bash
 scripts/test.sh

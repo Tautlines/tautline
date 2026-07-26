@@ -20,9 +20,9 @@ the stack-specific gates.
 
 - Session start checks `make ci-status-main`, active-agent open PRs, branch
   liveness, and merge conflict risk against `origin/main`.
-- Before commit, run `minervit-methodology lane-run --target . -- make pf-fast`.
+- Before commit, run `tautline lane-run --target . -- make pf-fast`.
 - Before commit, review, push, or tactical subagent dispatch on an existing PR
-  branch, run `minervit-methodology branch-liveness-check --target . --strict`.
+  branch, run `tautline branch-liveness-check --target . --strict`.
 - Before push, run the isolated test environment and full preflight through
   `lane-run`: `make test-env-up`, then `make preflight`.
 - Use the project's wrapped Codex review script, not bare `codex review`.

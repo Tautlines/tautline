@@ -41,7 +41,8 @@ ROOT = Path(__file__).resolve().parents[1]
 POLICED_SOURCES = tuple(
     sorted(
         [ROOT / "bin" / "tautline", ROOT / "bin" / "minervit-methodology"]
-        + list((ROOT / "src" / "minervit_methodology").glob("*.py"))
+        + list((ROOT / "src" / "tautline_methodology").glob("*.py"))
+        + list((ROOT / "src" / "tautline_methodology" / "core").glob("*.py"))
     )
 )
 
@@ -74,30 +75,43 @@ EXEMPT_DIRECT_READS = {
     # it to pin the snapshot the session is really executing. Aliased, a stale TAUTLINE_ spelling
     # would make Python pin one snapshot while the shell half of the same session execs another.
     "MINERVIT_METHODOLOGY_EXEC_ROOT": "session exec root; single-spelling handoff with the shim",
+    # Compat-sunset (roadmap #16): the legacy CLI-name invocation marker. The shim and the wheel
+    # wrapper set it pre-exec/pre-runpy; main() consumes+strips it. A process-private signal that
+    # survives the argv0-rewriting exec hops -- aliasing it would let a stale shell value forge a
+    # legacy-name warning (or, worse under removal, a behavior) the operator never triggered.
+    "TAUTLINE_LEGACY_LAUNCHER_INVOKED": "legacy CLI-name invocation marker; process-private",
+    # The sunset-warning suppression knob, honored under BOTH spellings, read DIRECTLY at renderer
+    # bootstrap: routing either through resolve_env would recurse into the MINERVIT_ warner the knob
+    # exists to silence before suppression is even known.
+    "TAUTLINE_SUPPRESS_SUNSET_WARNINGS": "sunset suppression knob (preferred); direct-read",
+    "MINERVIT_SUPPRESS_SUNSET_WARNINGS": "sunset suppression knob (legacy spelling); direct-read",
+    # The collision-safe shell->Python once-only handoff: the surfaces the shell launcher already
+    # warned, read+popped directly at bootstrap so a stale shell value can never be aliased in.
+    "TAUTLINE_SUNSET_SHELL_WARNED": "shell->python once-only sunset handoff; process-private",
 }
 
 # Reads whose KEY is runtime data rather than a Tautline setting, so no static key exists to check
 # and resolve_env has nothing to alias. Keyed by (repo-relative path, enclosing function).
 UNPROVABLE_KEY_SITES = {
     (
-        "src/minervit_methodology/util.py",
+        "src/tautline_methodology/util.py",
         "resolve_env",
     ): "this IS the resolver: its key is the caller's parameter",
     (
-        "bin/tautline",
+        "src/tautline_methodology/cli.py",
         "brand_env_pairs",
     ): "this IS the aliaser: it mirrors each MINERVIT_ key of the mapping to its TAUTLINE_ "
     "spelling, so its key is a loop variable over that mapping's own keys, not a setting it read",
     (
-        "src/minervit_methodology/chat.py",
+        "src/tautline_methodology/chat.py",
         "google_chat_webhook_url",
     ): "reads a caller-injected mapping; the key is the project's configured delivery.webhookEnv",
     (
-        "src/minervit_methodology/deploy.py",
+        "src/tautline_methodology/deploy.py",
         "deployment_notification_webhook_url",
     ): "reads a caller-injected mapping; the key is the project's configured delivery.webhookEnv",
     (
-        "src/minervit_methodology/deploy.py",
+        "src/tautline_methodology/deploy.py",
         "deployment_notification_ci_detected",
     ): "reads a caller-injected mapping; the keys are third-party CI markers (GITHUB_ACTIONS, ...)",
 }
@@ -643,11 +657,11 @@ def test_no_source_names_the_environment_without_the_guard_seeing_a_read():
 
 def test_exempt_env_names_are_declared_as_constants_in_bin():
     """An exemption that names nothing real is a licence nobody asked for."""
-    text = (ROOT / "bin/tautline").read_text(encoding="utf-8")
+    text = (ROOT / "src/tautline_methodology/cli.py").read_text(encoding="utf-8")
     for name in EXEMPT_DIRECT_READS:
         pattern = rf"^[A-Z0-9_]+ = \"{name}\"$"
         assert re.search(pattern, text, re.MULTILINE), (
-            f"{name} is exempted from the resolver but is not defined in bin/tautline"
+            f"{name} is exempted from the resolver but is not defined in the CLI engine (cli.py)"
         )
 
 
@@ -671,7 +685,7 @@ def test_exempt_env_names_never_pass_through_the_resolver():
     Resolving one would let a TAUTLINE_-spelled shell variable override an inherited file
     descriptor, an exec token, or the session's exec root -- see EXEMPT_DIRECT_READS.
     """
-    text = (ROOT / "bin/tautline").read_text(encoding="utf-8")
+    text = (ROOT / "src/tautline_methodology/cli.py").read_text(encoding="utf-8")
     for name in EXEMPT_DIRECT_READS:
         match = re.search(rf"^([A-Z0-9_]+) = \"{name}\"$", text, re.MULTILINE)
         assert match is not None

@@ -721,7 +721,7 @@ def test_risk_tier_plan_review_finalization_is_numbered_procedure():
     assert "3. For T2/T3 plan review" in section
     assert "4. Inspect and classify the printed log." in section
     assert "5. If Codex reports Critical/P1" in section
-    assert "6. Then run `minervit-methodology plan-finalization-precheck --target . --plan <source-of-truth-plan>`" in section
+    assert "6. Then run `tautline plan-finalization-precheck --target . --plan <source-of-truth-plan>`" in section
     assert "7. Do not rerun Codex just to bind manifest evidence." in section
     assert (
         "Do not ask whether to execute, implement, approve, discuss with the human operator first"
@@ -749,7 +749,7 @@ def test_goal_orchestration_skill_is_concise_entrypoint():
         GOAL_ORCHESTRATION_REFERENCE,
         required=(
             "Goal -> Milestone -> PR / tactical item",
-            "minervit-methodology goal-next --target .",
+            "tautline goal-next --target .",
             "Planning counts as starting",
             "Done = shipped",
         ),
@@ -770,9 +770,9 @@ def test_goal_orchestration_reference_retains_detailed_policy():
     assert "The board-currency gate is scope-aware" in text
     assert "Planning counts as starting" in text
     assert "filing a customer-facing bug is not done until it is on the board" in normalized
-    assert "minervit-methodology backlog-provider-status --target ." in text
-    assert "minervit-methodology backlog-provider-next --target ." in text
-    assert "minervit-methodology backlog-provider-sync --target . --item <id-or-url> --write" in text
+    assert "tautline backlog-provider-status --target ." in text
+    assert "tautline backlog-provider-next --target ." in text
+    assert "tautline backlog-provider-sync --target . --item <id-or-url> --write" in text
     assert "backlog-provider-migration-interview --target . --write" in text
     assert "backlog-provider-export --target . --item-path <repo-plan.md> --type <goal|milestone|bug|task> --write" in text
     assert "Do not bulk export all repo plans by default" in text
@@ -780,10 +780,10 @@ def test_goal_orchestration_reference_retains_detailed_policy():
     assert "Board-only GitHub Project draft\nitems require explicit `--draft`" in text
     assert "Claude Code `/goal`" in text
     assert "Claude `/goal` is session-scoped and requires Claude Code `v2.1.139+`" in text
-    assert "minervit-methodology goal-start --target . --goal <source-of-truth-goal-plan>" in text
-    assert "minervit-methodology goal-next --target ." in text
-    assert "minervit-methodology goal-advance --target . --event milestone-complete" in text
-    assert "minervit-methodology goal-advance --target . --event milestone-deferred" in text
+    assert "tautline goal-start --target . --goal <source-of-truth-goal-plan>" in text
+    assert "tautline goal-next --target ." in text
+    assert "tautline goal-advance --target . --event milestone-complete" in text
+    assert "tautline goal-advance --target . --event milestone-deferred" in text
     assert "Do not mark a milestone complete without validation proof or a linked milestone ledger" in normalized
     assert "adapter enables delivery-ops closeout" in normalized
     assert "If the source-of-truth goal plan names operator-input dependencies" in text
@@ -792,8 +792,8 @@ def test_goal_orchestration_reference_retains_detailed_policy():
     assert "Context exhaustion by itself does not satisfy `/goal`" in normalized
     assert "authorized per-session increment" in text
     assert ".ai-work/GOAL_RUN.json" in text
-    assert "minervit-methodology goal-condition --target ." in text
-    assert "Do not tell the human operator the deploy is theirs to run" in normalized
+    assert "tautline goal-condition --target ." in text
+    assert "Do not tell the human operator the deploy or merge is theirs to run" in normalized
     assert "--customer-facing-justification" in text
     assert "## What this delivers" in text
     assert "## Why it matters" in text
@@ -963,7 +963,7 @@ def test_review_before_push_reference_retains_detailed_policy():
     assert "Starting a final, R3, `cap`, rerun, or any other named terminal/retry review round does not complete the review gate" in text
     assert "A live but idle review process with no log/check progress past the stale threshold is wedged" in text
     assert "Per-task, subagent, or milestone reviews do not satisfy this gate" in text
-    assert "bind that existing trusted log with `minervit-methodology finalize-plan-review" in normalized
+    assert "bind that existing trusted log with `tautline finalize-plan-review" in normalized
 
 
 def test_framework_intake_reference_retains_detailed_policy():
@@ -993,6 +993,11 @@ def test_framework_intake_reference_retains_detailed_policy():
     assert "Routine `--admin` merge" in text
     assert "Plan-review loops that continue past the hard cap of four rounds" in text
     assert "Claude/Codex rule files that duplicate large policy blocks and drift" in normalized
+    assert "After publication, a memory note may only point to the published artifact" in normalized
+    assert (
+        "Memory writes that store process rules, gates, caps, review procedures, or escape hatches"
+        in normalized
+    )
     assert "Forbidden phrasing includes" not in text
     assert "must start with exactly one of the outcomes below on its first non-empty line" not in normalized
 
@@ -1005,7 +1010,7 @@ def test_context_continuity_skill_owns_document_context_budget_entrypoint():
         required=(
             "configured indexes first",
             "avoid broad-loading",
-            "minervit-methodology context-status --target .",
+            "tautline context-status --target .",
         ),
     )
 
@@ -1032,7 +1037,7 @@ def test_context_continuity_reference_retains_document_context_budget_policy():
     assert "`Active Work` contains current in-flight artifacts" in text
     assert "`Ready Next` contains approved ready work" in text
     assert "`Needs Classification` must be empty before strict enforcement" in text
-    assert "minervit-methodology context-status --target ." in text
+    assert "tautline context-status --target ." in text
     assert "`context-bootstrap` creates indexes, classifies tracked Markdown candidates, and adds archive headers" in normalized
     assert "It must not move docs automatically" in text
     assert "`context-status --strict` fails for missing indexes, oversized indexes, unclassified tracked Markdown, missing archive headers, or generated adapter drift" in normalized
@@ -1052,11 +1057,11 @@ def test_usage_accounting_skill_is_concise_entrypoint():
     assert "Do not write usage files directly" in text
     assert "Never present estimates as exact" in text
     assert "Human or inferred values must be `estimated`; missing cost remains `unknown`" in text
-    assert "minervit-methodology usage-log-path --target ." in text
-    assert "minervit-methodology usage-record --target ." in text
+    assert "tautline usage-log-path --target ." in text
+    assert "tautline usage-record --target ." in text
     assert "--confidence <exact|estimated|unknown>" in text
-    assert "minervit-methodology usage-import-claude --target ." in text
-    assert "minervit-methodology usage-report --target . --since 7d --by product" in text
+    assert "tautline usage-import-claude --target ." in text
+    assert "tautline usage-report --target . --since 7d --by product" in text
     assert "Record usage at meaningful boundaries" in text
     assert "startup, plan-review round, implementation/code-review round, PR queue/merge, milestone completion, goal completion, context rotation, and session closeout" in normalized
     assert "Do not calculate price unless the pricing source and model mapping are explicit in the same work" in text
@@ -1075,7 +1080,7 @@ def test_usage_accounting_reference_retains_detailed_policy():
     assert "It is not process authority, product documentation, a continuity handoff, a session journal, or approval evidence" in normalized
     assert "Every usage record must carry a `source` and `confidence` value" in text
     assert "`exact`, `estimated`, or `unknown`" in normalized
-    assert "minervit-methodology usage-record --target ." in text
+    assert "tautline usage-record --target ." in text
     assert "usage-import-claude" in text
     assert "usage-report --target . --since 7d --by model" in text
     assert "Record usage at meaningful boundaries when data is available" in text
@@ -1158,7 +1163,7 @@ def test_methodology_regression_rca_reference_retains_feature_request_policy():
     assert "If host skill tooling is unavailable, stale, or returns `Unknown skill`" in normalized
     assert "$MINERVIT_METHODOLOGY_REPO" in text
     assert "$HOME/.config/minervit/methodology.env" in text
-    assert "minervit-methodology version --no-remote" in text
+    assert "tautline version --no-remote" in text
     assert "Classify the request" in text
     assert "Do not run broad repo discovery just to make an intake artifact more elaborate" in normalized
     assert "`YYYYMMDDTHHMMSSZ`" in text
@@ -1299,8 +1304,8 @@ def test_delivery_summary_reference_retains_detailed_policy():
     assert 'do not use "what would you like" as a context-rotation fallback' in text
     assert "A queued-delivery summary is incomplete unless it ends with one of two concrete outcomes" in text
     assert "Statements such as `no more P1 followups`" in text
-    assert "minervit-methodology milestone-next --target ." in text
-    assert "minervit-methodology goal-next --target ." in text
+    assert "tautline milestone-next --target ." in text
+    assert "tautline goal-next --target ." in text
     assert "Every workflow completion, delivery summary, session summary, milestone summary, queued-delivery summary, handoff-for-review, or completed execution packet must refresh the configured continuity handoff" in normalized
 
     assert "technical-only boundary status such as `PR #327 merged; 5 of 6 batch items landed`" in normalized
@@ -1318,7 +1323,7 @@ def test_milestone_update_skill_is_concise_entrypoint():
     assert "name: milestone-update" in lines
     assert "references/milestone-update-policy.md" in text
     assert "internal operator visibility artifacts" in text
-    assert "minervit-methodology milestone-update-status --target . --strict" in text
+    assert "tautline milestone-update-status --target . --strict" in text
     assert "do not ask whether to enable it" in text
     assert "do not mark the milestone complete until the env is configured" in normalized
     assert "## Plain English" in text
@@ -1327,7 +1332,7 @@ def test_milestone_update_skill_is_concise_entrypoint():
     assert "## Validation" in text
     assert "## Next" in text
     assert "## Technical Details" in text
-    assert "minervit-methodology publish-milestone-update --target ." in text
+    assert "tautline publish-milestone-update --target ." in text
     assert "short milestone keys such as `M3`" in text
     assert "canonicalized to the active milestone title" in text
     assert "goal-advance --event milestone-complete` is not allowed until the Product Milestones delivery marker exists" in normalized
@@ -1345,7 +1350,7 @@ def test_milestone_update_reference_retains_detailed_policy():
     assert "internal, professional, text-only Google Chat cards" in text
     assert "adapter-configured Product Milestones space" in text
     assert "technical and meta detail" in normalized
-    assert "minervit-methodology milestone-update-status --target . --strict" in text
+    assert "tautline milestone-update-status --target . --strict" in text
     assert "If disabled, continue normal authorized work" in text
     assert "If enabled but the webhook env is missing, that is a setup blocker for milestone completion" in normalized
     assert "methodology-status --fail-on-drift` fails when the configured Product Milestones webhook env is missing" in normalized
@@ -1356,7 +1361,7 @@ def test_milestone_update_reference_retains_detailed_policy():
     assert "## Validation" in text
     assert "## Next" in text
     assert "## Technical Details" in text
-    assert "minervit-methodology publish-milestone-update --target ." in text
+    assert "tautline publish-milestone-update --target ." in text
     assert "Do not re-post under a different milestone spelling" in text
     assert "goal-advance --event milestone-complete` is not allowed until the Product Milestones delivery marker exists" in normalized
     assert "Keep `Plain English` first and useful" in text
@@ -1402,7 +1407,7 @@ def test_graphify_navigation_reference_retains_detailed_policy():
     assert "fall back to narrow `rg`/file reads" in text
     assert "`graphify-status --target . --strict`" in text
     assert "`methodology-status --fail-on-drift`" in text
-    assert "minervit-methodology graphify-install --target ." in text
+    assert "tautline graphify-install --target ." in text
     assert "Do not run `graphify claude install`, `graphify codex install`" in text
     assert "Minervit owns generated `CLAUDE.md` and `AGENTS.md`" in text
     assert "`graphify-out/` is generated local output" in text
@@ -1416,7 +1421,7 @@ def test_lane_lifecycle_skill_is_concise_entrypoint():
         "lane-lifecycle",
         LANE_LIFECYCLE_REFERENCE,
         required=(
-            "minervit-methodology lane-start --target .",
+            "tautline lane-start --target .",
             "methodology-status --target . --fail-on-drift",
             "Product/client lanes do not raw-pull latest methodology by default",
             "branch-liveness-check --target . --strict",
@@ -1461,7 +1466,7 @@ def test_lane_lifecycle_reference_retains_detailed_policy():
     assert "Lane startup also reports context rotation policy" in text
     assert "Do not ask the human operator to run `/compact`" in text
     assert "Claude context-rotation heartbeat hook" in text
-    assert "minervit-methodology milestone-advance --target . --event <event>" in text
+    assert "tautline milestone-advance --target . --event <event>" in text
     assert "document context budget state" in text
     assert "context-continuity" in text
     assert "Prefer lane-local resource isolation over broad machine locks" in text
@@ -1538,12 +1543,12 @@ def test_event_observability_skill_is_concise_entrypoint():
     assert "references/event-observability-policy.md" in text
     assert "Read `references/event-observability-policy.md` in full" in text
     assert "Event logs are local operational evidence" in text
-    assert "minervit-methodology event-log-path --target ." in text
-    assert "minervit-methodology log-event --target ." in text
+    assert "tautline event-log-path --target ." in text
+    assert "tautline log-event --target ." in text
     assert "Never write `events.log` or `events.jsonl` directly" in text
     assert "Baretail" in text
-    assert "minervit-methodology event-tail --target . --lines 80" in text
-    assert "minervit-methodology event-viewer --target ." in text
+    assert "tautline event-tail --target . --lines 80" in text
+    assert "tautline event-viewer --target ." in text
     assert "The command is safe as a fast path" in text
     assert "Use snake_case names" in text
     assert "Event logs do not replace chat-visible operator updates" in text
@@ -1570,7 +1575,7 @@ def test_event_observability_reference_retains_detailed_policy():
     assert "`goal_advance_<event>`" in text
     assert "`milestone_advance_<event>`" in text
     assert "The human-readable file is intended for Baretail" in text
-    assert "minervit-methodology event-tail --target . --lines 80" in text
+    assert "tautline event-tail --target . --lines 80" in text
     assert "`event-viewer` starts a local HTTP viewer" in text
     assert "`127.0.0.1:18765`" in text
     assert "verifies an existing Minervit viewer before reusing a port" in text
@@ -1595,7 +1600,7 @@ def test_session_journal_skill_is_concise_entrypoint():
     assert "references/session-journal-policy.md" in text
     assert "Read `references/session-journal-policy.md` in full" in text
     assert "Session journals are evidence only" in text
-    assert "minervit-methodology prepare-session-journal --target . --stdin" in text
+    assert "tautline prepare-session-journal --target . --stdin" in text
     assert "validate-session-journal --file .ai-runs/session-journals/<utc>-session-journal.md" in text
     # 0.9.0: publication is disabled; the skill must document the refusal + name the replacement.
     assert "Local-only as of 0.9.0" in text
@@ -1966,7 +1971,7 @@ def test_migrated_prose_policy_validate_pins_are_preserved():
             [
                 "risk-tier",
                 "milestone-start --target . --plan <source-of-truth-plan>",
-                "minervit-methodology goal-next --target .",
+                "tautline goal-next --target .",
                 "milestone-advance --target . --event pr-queued --pr <PR>",
                 "At PR boundaries, `milestone-next` is the controller",
                 "At goal boundaries, `goal-next` is the controller",
@@ -1979,16 +1984,16 @@ def test_migrated_prose_policy_validate_pins_are_preserved():
                 "grounded progress narrative",
                 "what capability was unlocked for users, admins, operators, or delivery velocity",
                 "Use headings or labels only when they improve readability",
-                "minervit-methodology goal-next --target .",
+                "tautline goal-next --target .",
                 "queued-delivery or PR-completion summary is incomplete until the milestone ledger is advanced",
                 "Execution-packet work, source-of-truth-plan-backed work, and any PR implementing approved planned work are milestone work",
-                "minervit-methodology milestone-advance --target . --event pr-queued --pr <PR>",
+                "tautline milestone-advance --target . --event pr-queued --pr <PR>",
                 "At every PR queued/completed boundary, milestone completion, goal boundary, workflow summary, session summary, handoff-for-review, or long `/goal` heartbeat, check visible context pressure",
                 'do not use "what would you like" as a context-rotation fallback',
                 "Every human-facing boundary summary must also log a compact event",
                 "the board must be reconciled at every delivery / queued-delivery boundary",
                 "backlog_provider_board_unplaced_warn",
-                "minervit-methodology milestone-next --target .",
+                "tautline milestone-next --target .",
             ],
         ),
         (
@@ -2009,7 +2014,7 @@ def test_migrated_prose_policy_validate_pins_are_preserved():
         (
             MERGE_QUEUE_REFERENCE,
             [
-                "Advance the lane ledger with `minervit-methodology milestone-advance --target . --event pr-queued --pr <PR>`",
+                "Advance the lane ledger with `tautline milestone-advance --target . --event pr-queued --pr <PR>`",
             ],
         ),
         (
@@ -2023,10 +2028,10 @@ def test_migrated_prose_policy_validate_pins_are_preserved():
             EVENT_OBSERVABILITY_SKILL,
             [
                 "name: event-observability",
-                "minervit-methodology log-event --target .",
-                "minervit-methodology event-viewer --target .",
+                "tautline log-event --target .",
+                "tautline event-viewer --target .",
                 "Never write `events.log` or `events.jsonl` directly",
-                "minervit-methodology event-audit --target . --since 24h --strict",
+                "tautline event-audit --target . --since 24h --strict",
                 "Baretail",
             ],
         ),
@@ -2066,7 +2071,7 @@ def test_migrated_prose_policy_validate_pins_are_preserved():
                 "branch-liveness-check --target .",
                 "branch-liveness-check --target . --strict",
                 "If no active goal exists or the prior goal ledger is complete, use the printed `next_goal_name`, `next_goal_short_description`, `next_goal_claude_prompt`, and `next_goal_next_action`",
-                "minervit-methodology goal-next --target .",
+                "tautline goal-next --target .",
                 "Lane startup also reports milestone run state",
                 "Lane startup also reports cross-lane coordination state and bootstraps missing coordination artifacts by default",
                 "missing, stale, untracked, uncommitted, or unpushed state in the current lane's own status file, "
@@ -2077,8 +2082,8 @@ def test_migrated_prose_policy_validate_pins_are_preserved():
                 "Lane startup also reports context rotation policy",
                 "Do not ask the human operator to run `/compact`",
                 "Claude context-rotation heartbeat hook",
-                "minervit-methodology milestone-next --target .",
-                "minervit-methodology milestone-advance --target . --event <event>",
+                "tautline milestone-next --target .",
+                "tautline milestone-advance --target . --event <event>",
                 "document context budget state",
                 "context-continuity",
             ],
@@ -2121,8 +2126,8 @@ def test_context_continuity_reference_orders_resume_gates_before_handoff_use():
     text = CONTEXT_CONTINUITY_REFERENCE.read_text(encoding="utf-8")
     resolve = text.index("Resolve the methodology CLI")
     missing = text.index("If neither the CLI nor portable checkout fallback can be found")
-    lane = text.index("Run `minervit-methodology lane-start --target .`")
-    status = text.index("Run `minervit-methodology methodology-status --target . --fail-on-drift`")
+    lane = text.index("Run `tautline lane-start --target .`")
+    status = text.index("Run `tautline methodology-status --target . --fail-on-drift`")
     failure = text.index("If the status gate fails")
     skipped = text.index("If either methodology gate is skipped or fails")
     no_questions = text.index("Do not ask clarifying questions")
@@ -2147,11 +2152,11 @@ def test_iteration_review_skill_is_concise_entrypoint():
     assert "## Content And Media" in text
     assert "## Boundary Rules" in text
     assert "iterationReview.enabled" in text
-    assert "minervit-methodology iteration-review-status --target . --strict" in normalized
-    assert "minervit-methodology validate-iteration-review --target . --file <record.json>" in normalized
-    assert "minervit-methodology generate-iteration-review-page --target . --record <record.json> --write" in normalized
-    assert "minervit-methodology publish-iteration-review --target . --record <record.json>" in normalized
-    assert "minervit-methodology iteration-review-delivery-check --target . --record <record.json>" in normalized
+    assert "tautline iteration-review-status --target . --strict" in normalized
+    assert "tautline validate-iteration-review --target . --file <record.json>" in normalized
+    assert "tautline generate-iteration-review-page --target . --record <record.json> --write" in normalized
+    assert "tautline publish-iteration-review --target . --record <record.json>" in normalized
+    assert "tautline iteration-review-delivery-check --target . --record <record.json>" in normalized
     assert "publish-deploy-ready-update" in text
     assert "deployment-notification-status --target . --strict" in text
     assert "The review folder slug must match the active `goal_id`" in text
@@ -2268,9 +2273,9 @@ def test_board_item_updates_reference_retains_detailed_policy():
     assert "The three tiers" in text
     assert "Do these freely. Always through the sanctioned path, never raw `gh project ...` or GraphQL" in text
     assert "Post a progress update, status note, blocker, or handoff" in text
-    assert "minervit-methodology backlog-provider-update --item <id-or-url> --status" in text
+    assert "tautline backlog-provider-update --item <id-or-url> --status" in text
     assert "Native sub-issues/subtasks that are also board items have their own Status" in text
-    assert "The normal active-claim path is `minervit-methodology backlog-provider-sync --item <id-or-url> --write`" in text
+    assert "The normal active-claim path is `tautline backlog-provider-sync --item <id-or-url> --write`" in text
     assert "Later sanctioned parent status moves reconcile board-backed subtasks too" in text
     assert "Sanctioned subtask active-status moves reconcile the native parent active too" in text
     assert "an open board-backed subtask blocks marking the parent done" in text
@@ -2335,7 +2340,7 @@ def test_example_service_preflight_skill_is_concise_entrypoint():
     assert "make ci-status-main" in text
     assert "branch-liveness-check --target . --strict" in text
     assert "Before commit, review, push, or tactical subagent dispatch" in text
-    assert "minervit-methodology lane-run --target . -- make pf-fast" in text
+    assert "tautline lane-run --target . -- make pf-fast" in text
     assert "make test-env-up" in text
     assert "make preflight" in text
     assert "Use the project's wrapped Codex review script, not bare `codex review`" in text
@@ -2356,7 +2361,7 @@ def test_example_service_preflight_reference_retains_detailed_policy():
     assert "Run `make ci-status-main`" in text
     assert "gh pr list --author '@me' --state open --limit 50" in text
     assert "number,title,url,createdAt,headRefName,baseRefName,isDraft,mergeStateStatus,statusCheckRollup" in text
-    assert "minervit-methodology branch-liveness-check --target . --strict" in text
+    assert "tautline branch-liveness-check --target . --strict" in text
     assert "queued, auto-merge-enabled, merged, or closed current-branch PR is inactive" in normalized
     assert "git fetch origin main --quiet && git merge-tree --write-tree HEAD origin/main >/dev/null" in text
     assert "main health is bad, deploy failed, an open PR has failed/blocked checks" in normalized

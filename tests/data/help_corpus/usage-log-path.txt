@@ -1,0 +1,6 @@
+usage: tautline usage-log-path [-h] [--project PROJECT] [--target TARGET]
+
+options:
+  -h, --help         show this help message and exit
+  --project PROJECT
+  --target TARGET

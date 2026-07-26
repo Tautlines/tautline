@@ -1,0 +1,34 @@
+usage: tautline run-plan-review [-h] [--project PROJECT] [--target TARGET]
+                                --plan PLAN [--round REVIEW_ROUND]
+                                [--model MODEL]
+                                [--verdict {blocked,clean,clean-with-deferrals}]
+                                [--unresolved-critical-count UNRESOLVED_CRITICAL_COUNT]
+                                [--unresolved-p1-count UNRESOLVED_P1_COUNT]
+                                [--classified-findings-json CLASSIFIED_FINDINGS_JSON]
+                                [--structural-critical-evidence STRUCTURAL_CRITICAL_EVIDENCE]
+                                [--exception-note EXCEPTION_NOTE]
+                                [--no-output-timeout-seconds NO_OUTPUT_TIMEOUT_SECONDS]
+                                ...
+
+positional arguments:
+  review_args
+
+options:
+  -h, --help            show this help message and exit
+  --project PROJECT
+  --target TARGET
+  --plan PLAN
+  --round REVIEW_ROUND
+  --model MODEL
+  --verdict {blocked,clean,clean-with-deferrals}
+  --unresolved-critical-count UNRESOLVED_CRITICAL_COUNT
+  --unresolved-p1-count UNRESOLVED_P1_COUNT
+  --classified-findings-json CLASSIFIED_FINDINGS_JSON
+  --structural-critical-evidence STRUCTURAL_CRITICAL_EVIDENCE
+                        Legacy alias for --exception-note.
+  --exception-note EXCEPTION_NOTE
+                        Recorded reason this round is needed. Required to
+                        record any round past the convergence target; rounds
+                        3-4 are self-authorized and never need operator
+                        approval.
+  --no-output-timeout-seconds NO_OUTPUT_TIMEOUT_SECONDS

@@ -1,0 +1,18 @@
+usage: tautline set-framework-channel [-h] [--target TARGET]
+                                      [--source {pin,adapter}] [--adapter]
+                                      [--adapter-path ADAPTER_PATH]
+                                      {experimental,stable}
+
+positional arguments:
+  {experimental,stable}
+
+options:
+  -h, --help            show this help message and exit
+  --target TARGET
+  --source {pin,adapter}
+                        Write a lane-local pin (default) or update the repo-
+                        local adapter _framework.channel.
+  --adapter             Alias for --source adapter.
+  --adapter-path ADAPTER_PATH
+                        Adapter path to update with --source adapter; defaults
+                        to .tautline/adapter.json.

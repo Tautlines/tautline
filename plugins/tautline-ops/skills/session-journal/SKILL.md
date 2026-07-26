@@ -18,8 +18,8 @@ Session journals are evidence only. They are not process authority, product docs
 Write or refresh the continuity handoff first when the boundary also requires continuity.
 
 ```bash
-minervit-methodology prepare-session-journal --target . --stdin
-minervit-methodology validate-session-journal --file .ai-runs/session-journals/<utc>-session-journal.md
+tautline prepare-session-journal --target . --stdin
+tautline validate-session-journal --file .ai-runs/session-journals/<utc>-session-journal.md
 ```
 
 The journal stays lane-local; there is no publish step.

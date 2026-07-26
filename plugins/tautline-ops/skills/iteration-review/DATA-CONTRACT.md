@@ -215,7 +215,7 @@ the mapping table can be pre-filled mechanically; the `why`,
 After the review PR is merged, publish from the merged mainline checkout:
 
 ```bash
-minervit-methodology publish-iteration-review --target . --record docs/iteration-reviews/<goal-id>/goal-review.json
+tautline publish-iteration-review --target . --record docs/iteration-reviews/<goal-id>/goal-review.json
 ```
 
 `publish-iteration-review` uploads both `goal-review.json` and `index.html` to

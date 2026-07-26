@@ -18,8 +18,8 @@ runtime checks, or generated-adapter cleanup.
 
 1. Resolve the methodology CLI from `PATH`, `$MINERVIT_METHODOLOGY_REPO`, or
    `$HOME/.config/minervit/methodology.env`.
-2. Run `minervit-methodology lane-start --target .` before new work.
-3. Run `minervit-methodology methodology-status --target . --fail-on-drift`.
+2. Run `tautline lane-start --target .` before new work.
+3. Run `tautline methodology-status --target . --fail-on-drift`.
 4. Read continuity and active goal/milestone/provider output after startup
    gates pass.
 5. On PR branches, run `branch-liveness-check --target . --strict`; queued,

@@ -1,0 +1,11 @@
+usage: tautline work-profile-check [-h] [--project PROJECT] [--target TARGET]
+                                   [--event {pre-commit,pre-push,status}]
+                                   [--base BASE]
+
+options:
+  -h, --help            show this help message and exit
+  --project PROJECT
+  --target TARGET
+  --event {pre-commit,pre-push,status}
+  --base BASE           Override the base ref used for pre-push diff
+                        classification.

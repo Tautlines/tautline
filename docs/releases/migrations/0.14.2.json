@@ -1,0 +1,78 @@
+{
+  "behaviorChanges": [
+    "policy prose, plugin skill/reference prose, and product display names (plugin displayNames, the local marketplace displayName, and the auto-maintained GitHub-comment footers) now say Tautline, and author.url points at github.com/tautlines. Company name, copyright, and marketplace owner stay Minervit. The shim keeps the legacy command working, so there is no runtime behavior change.",
+    "the framework channel pin migrates from .minervit/pin.json to .tautline/pin.json (mirroring the adapter-dir move): new pins write the tautline path, and a legacy .minervit/pin.json is still read and is copied onto the tautline path on read.",
+    "MINERVIT_* env vars now emit a once-only stderr deprecation warning when read from the process environment without their TAUTLINE_ alias set; the value still resolves. This starts the deprecation clock for the MINERVIT_* family (removed at a future major release)."
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "publish-pending-session-journals",
+      "removeAfter": "1.0.0",
+      "replacement": "publish-instrumentation-record",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "publish-session-journal",
+      "removeAfter": "1.0.0",
+      "replacement": "publish-instrumentation-record",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    },
+    {
+      "name": "rules-audit",
+      "path": "plugins/tautline-core/skills/rules-audit/SKILL.md",
+      "removeAfter": "1.0.0",
+      "replacement": "framework-intake",
+      "section": "skills",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [],
+  "productsTested": [],
+  "requiredMigrations": [],
+  "rollbackNotes": [
+    "Repinning below 0.14.2 restores the .minervit/pin.json write path. A .tautline/pin.json written by 0.14.2 is ignored by older versions, which read the legacy .minervit/pin.json (never deleted by the migration), so the channel is preserved.",
+    "MINERVIT_* env vars keep resolving in both directions; only the once-only warning and the tautline-branded prose/display strings are removed on rollback.",
+    "Stable clients remain on the stable channel unless they explicitly opt into experimental.",
+    "This release is WIP-safe: it changes no gate, guard, or review behavior."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.14.2",
+  "wipSafe": true
+}

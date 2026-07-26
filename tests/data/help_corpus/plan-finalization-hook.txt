@@ -1,0 +1,4 @@
+usage: tautline plan-finalization-hook [-h]
+
+options:
+  -h, --help  show this help message and exit

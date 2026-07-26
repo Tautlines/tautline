@@ -1,7 +1,7 @@
 # Coverage config for the extension-less CLI (bin/minervit-methodology).
 #
 # The dual-fixture pytest harness (tests/conftest.py) imports the CLI in-process
-# under the module name "minervit_methodology" via SourceFileLoader, so coverage
+# under the module name "tautline_methodology" via SourceFileLoader, so coverage
 # is attributed to that import name (not a file path or package dir). Measuring by
 # module name is what lets `pytest --cov --cov-config=.coveragerc` collect data;
 # `source = bin/minervit-methodology` collects nothing because the file has no
@@ -14,7 +14,7 @@
 # tests/test_coverage_gate_enforced.py.
 
 [run]
-source = minervit_methodology
+source = tautline_methodology
 branch = false
 
 [report]

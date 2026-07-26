@@ -86,6 +86,21 @@ case "$1 $2" in
   "api graphql")
     printf '%s\\n' "${GH_GRAPHQL_JSON:?missing GH_GRAPHQL_JSON}"
     ;;
+  "auth status")
+    # 0.10.3: board gates fail closed on unavailability, so the fake must present a
+    # properly-scoped token or every hook test blocks on the board gate instead of
+    # exercising its own subject.
+    printf 'Token scopes: gist, read:org, read:project, project, repo, workflow\\n'
+    ;;
+  "project item-list")
+    case "$*" in
+      *--help*) printf -- 'Usage: gh project item-list\\n  -q, --query string\\n  -L, --limit int\\n' ;;
+      *) printf '{"items":[]}\\n' ;;
+    esac
+    ;;
+  "project field-list")
+    printf '{"fields":[{"name":"Status","type":"ProjectV2SingleSelectField","options":[{"name":"Ready"},{"name":"In Progress"},{"name":"Done"},{"name":"Blocked"}]}]}\\n'
+    ;;
   *)
     printf 'unexpected gh call: %s\\n' "$*" >&2
     exit 1

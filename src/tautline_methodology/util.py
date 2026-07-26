@@ -6,7 +6,9 @@ import hashlib
 import os
 import re
 import shlex
+import sys
 import tempfile
+import urllib.parse
 from collections.abc import Mapping
 from datetime import datetime, timezone
 from pathlib import Path
@@ -241,10 +243,148 @@ def resolve_env(name: str, default: str = "", environ: Mapping[str, str] | None 
         value = source.get(alias)
         if value is not None and value.strip() != "":
             return value
+        legacy = source.get(name)
+        if legacy is not None and legacy.strip() != "":
+            # Falling back to the legacy MINERVIT_ name: start the deprecation clock. Warn once per
+            # name, and only for a real process-env read (environ is None) so internal child-env
+            # assembly and test-injected mappings stay silent.
+            if environ is None:
+                _warn_minervit_env_deprecation(name, alias)
+            return legacy
+        return default
     value = source.get(name)
     if value is not None and value.strip() != "":
         return value
     return default
+
+
+# --- Compat-sunset deprecation warnings (shared renderer core) --------------------------------
+#
+# ONE process-wide emitted-set and ONE suppression decision, shared by resolve_env's `env`-family
+# warning below and bin/tautline's sunset_warning() for the `cli`/`markers`/`slug` families (util
+# cannot import bin, so bin delegates here). Both layers dedup against the SAME state, so a concrete
+# legacy surface warns at most once per process across the shell launcher, bin, and util. Every
+# piece of this block is removed with the MINERVIT_ family at METH-FU-TAUTLINE-FALLBACK-REMOVAL.
+_SUNSET_EMITTED: set[tuple[str, str]] = set()
+_SUNSET_SUPPRESSED: bool | None = None
+_SUNSET_SEEDED = False
+
+# The suppression knob (both spellings) and the shell->Python once-only handoff are DIRECT-read
+# here, never through resolve_env: routing them through resolve_env would recurse into the MINERVIT_
+# warner they exist to silence/dedup. They are declared EXEMPT in tests/test_env_reads_use_resolver.
+SUNSET_SUPPRESS_ENV = "TAUTLINE_SUPPRESS_SUNSET_WARNINGS"
+SUNSET_SUPPRESS_LEGACY_ENV = "MINERVIT_SUPPRESS_SUNSET_WARNINGS"
+SUNSET_SHELL_WARNED_ENV = "TAUTLINE_SUNSET_SHELL_WARNED"
+
+
+def _reset_sunset_state() -> None:
+    """Test hook: clear the process-wide dedup set + the memoized suppression/seed flags so a
+    fixture that monkeypatches the environment gets a fresh decision (suppression and the shell
+    handoff are read-once/cached, and would otherwise leak across tests)."""
+    global _SUNSET_SUPPRESSED, _SUNSET_SEEDED
+    _SUNSET_EMITTED.clear()
+    _SUNSET_SUPPRESSED = None
+    _SUNSET_SEEDED = False
+
+
+def _sunset_line(legacy: str, replacement: str) -> str:
+    """The one fixed message shape, reused by the shell launcher echo verbatim."""
+    return (
+        f"deprecation_warning: {legacy} is deprecated and will be removed in 1.0; "
+        f"use {replacement}"
+    )
+
+
+def _sunset_truthy(value: str | None) -> bool:
+    return bool(value) and value.strip() not in ("", "0")
+
+
+def is_hook_invocation(argv: list[str]) -> bool:
+    """A hook-shaped invocation, detected from argv (not parsed args, because warnings can fire
+    during bootstrap before argparse runs): a `--hook` flag anywhere, or a first non-flag verb
+    ending in `-hook`. Hook processes must never inject stderr noise into a Claude session."""
+    if "--hook" in argv:
+        return True
+    for tok in argv:
+        if not tok.startswith("-"):
+            return tok.endswith("-hook")
+    return False
+
+
+def _sunset_suppress_value() -> str | None:
+    """The effective suppression value under TAUTLINE-first-nonblank-else-legacy precedence, to
+    match resolve_env's alias model and the shell launcher's `${TAUTLINE:-${MINERVIT:-}}` form: the
+    TAUTLINE_ spelling wins only when set and non-blank (after strip), otherwise the MINERVIT_
+    spelling. A blank/whitespace-only TAUTLINE_ value is treated as unset so it falls through, so
+    all three layers (shell, util, bin fallback) agree on a self-contradictory config."""
+    taut = os.environ.get(SUNSET_SUPPRESS_ENV)
+    if taut is not None and taut.strip() != "":
+        return taut
+    return os.environ.get(SUNSET_SUPPRESS_LEGACY_ENV)
+
+
+def _sunset_suppressed() -> bool:
+    """Whether sunset warnings are silenced for this process, read ONCE and memoized. Suppressed
+    when the effective (TAUTLINE-first) suppression value is truthy, or by hook context."""
+    global _SUNSET_SUPPRESSED
+    if _SUNSET_SUPPRESSED is None:
+        _SUNSET_SUPPRESSED = (
+            _sunset_truthy(_sunset_suppress_value())
+            or is_hook_invocation(sys.argv[1:])
+        )
+    return _SUNSET_SUPPRESSED
+
+
+def parse_sunset_handoff(raw: str) -> list[tuple[str, str]]:
+    """Decode the shell->Python once-only handoff: comma-joined `pct(family):pct(legacy)` tokens,
+    each component URL-quoted so a pathological legacy name carrying `,`/`:`/newline round-trips.
+    Malformed tokens are skipped, never raised."""
+    pairs: list[tuple[str, str]] = []
+    for token in raw.split(","):
+        if not token:
+            continue
+        fam_enc, sep, leg_enc = token.partition(":")
+        if not sep:
+            continue
+        pairs.append((urllib.parse.unquote(fam_enc), urllib.parse.unquote(leg_enc)))
+    return pairs
+
+
+def _seed_sunset_from_shell(environ: Mapping[str, str] | None = None) -> None:
+    """Seed the emitted-set with the (family, legacy) surfaces the shell launcher already warned,
+    then strip the handoff env so a child re-exec cannot re-seed. Idempotent (once per process);
+    whichever of bin/util runs first seeds the shared set and the other is a no-op."""
+    global _SUNSET_SEEDED
+    if _SUNSET_SEEDED:
+        return
+    _SUNSET_SEEDED = True
+    source = os.environ if environ is None else environ
+    raw = source.get(SUNSET_SHELL_WARNED_ENV)
+    if raw:
+        for pair in parse_sunset_handoff(raw):
+            _SUNSET_EMITTED.add(pair)
+    if environ is None:
+        os.environ.pop(SUNSET_SHELL_WARNED_ENV, None)
+
+
+def _sunset_warning(family: str, legacy: str, replacement: str) -> None:
+    """Emit the fixed-shape sunset line once per (family, legacy) per process. Seeds from the shell
+    handoff first, so a surface the shell launcher already warned stays silent here."""
+    _seed_sunset_from_shell()
+    if _sunset_suppressed():
+        return
+    key = (family, legacy)
+    if key in _SUNSET_EMITTED:
+        return
+    _SUNSET_EMITTED.add(key)
+    print(_sunset_line(legacy, replacement), file=sys.stderr)
+
+
+def _warn_minervit_env_deprecation(name: str, alias: str) -> None:
+    """Env-family sunset warning (deminervit 2A, unified onto the shared renderer). The MINERVIT_
+    -> TAUTLINE_ replacement is pure string slicing, so computed/webhook-style names warn correctly
+    and each distinct name dedups on its own ("env", name) key."""
+    _sunset_warning("env", name, alias)
 
 
 def env_value_with_user_config_fallback(name: str, config_env: Path, secrets_env: Path) -> str:

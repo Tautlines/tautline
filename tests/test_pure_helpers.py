@@ -2,7 +2,7 @@
 
 import inspect
 
-from minervit_methodology import guards
+from tautline_methodology import guards
 
 
 def test_normalize_repo_slug(cli):

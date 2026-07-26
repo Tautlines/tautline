@@ -1,0 +1,9 @@
+usage: tautline goal-tracker-next [-h] [--project PROJECT] [--target TARGET]
+                                  [--epic EPIC]
+
+options:
+  -h, --help         show this help message and exit
+  --project PROJECT
+  --target TARGET
+  --epic EPIC        Restrict selection to this assigned epic (repeatable).
+                     Defaults to MINERVIT_LANE_EPICS, else top of the board.

@@ -1,0 +1,17 @@
+usage: tautline diff-coverage-check [-h] [--project PROJECT] [--target TARGET]
+                                    [--base BASE] [--report REPORT]
+                                    [--min-pct MIN_PCT]
+                                    [--diff-file DIFF_FILE]
+
+options:
+  -h, --help            show this help message and exit
+  --project PROJECT
+  --target TARGET
+  --base BASE           Diff base ref (default: adapter coverageFloor.diffBase
+                        or origin/main).
+  --report REPORT       Coverage report path (coverage.py JSON or LCOV;
+                        default: adapter coverageFloor.coverageReport).
+  --min-pct MIN_PCT     Override the new-code minimum coverage percent.
+  --diff-file DIFF_FILE
+                        Read the unified diff from this file instead of
+                        running git (for tests/CI).

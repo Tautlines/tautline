@@ -6,6 +6,7 @@ build/
 .turbo/
 .cache/
 coverage/
+evidence/
 *.mp4
 *.mov
 *.webm

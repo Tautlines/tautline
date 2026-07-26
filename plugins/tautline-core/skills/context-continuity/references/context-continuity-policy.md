@@ -99,7 +99,7 @@ Indexes should keep current context small:
 Run:
 
 ```bash
-minervit-methodology context-status --target .
+tautline context-status --target .
 ```
 
 Use `--strict` during migration validation or when the adapter enables strict
@@ -128,7 +128,7 @@ approved future work belongs in `Ready Next`, and old evidence belongs in
 2. Prefer the CLI:
 
 ```bash
-minervit-methodology prepare-continuity --project <adapter.json> --target <lane> --stdin
+tautline prepare-continuity --project <adapter.json> --target <lane> --stdin
 ```
 
 3. Include:
@@ -146,8 +146,8 @@ minervit-methodology prepare-continuity --project <adapter.json> --target <lane>
    - open risks or blockers
    - exact next action
    - checks proving no authorized next work remains, if no next action exists
-   - required startup gates, including `minervit-methodology lane-start --target .`
-   - `minervit-methodology methodology-status --target . --fail-on-drift` as a required startup gate
+   - required startup gates, including `tautline lane-start --target .`
+   - `tautline methodology-status --target . --fail-on-drift` as a required startup gate
    - a statement that ad hoc `git status`, `git log`, CI checks, or local tests do not replace the methodology status gate
    - a portable fallback using `$HOME/.config/minervit/methodology.env` or `$MINERVIT_METHODOLOGY_REPO/bin/minervit-methodology` when `minervit-methodology` is missing from `PATH` or exits 127/command-not-found
    - a statement that a missing `PATH` entry is not a failed methodology gate, not a reason to ask for a person-specific path, and the same gate must be rerun with the resolved portable CLI
@@ -192,8 +192,8 @@ At session start, check the configured continuity path before starting new work.
 2. Resolve the methodology CLI: use `minervit-methodology` from `PATH`, or source `$HOME/.config/minervit/methodology.env` and use `$MINERVIT_METHODOLOGY_REPO/bin/minervit-methodology` if `PATH` is missing it or the command exits 127/command-not-found.
 3. A missing `PATH` entry is not a failed methodology gate, not permission to substitute ad hoc checks, and not a reason to ask for a person-specific checkout path; rerun the same gate with the resolved portable CLI.
 4. If neither the CLI nor portable checkout fallback can be found, name that true blocker instead of substituting ad hoc checks.
-5. Run `minervit-methodology lane-start --target .`, or the resolved portable CLI equivalent.
-6. Run `minervit-methodology methodology-status --target . --fail-on-drift`, or the resolved portable CLI equivalent.
+5. Run `tautline lane-start --target .`, or the resolved portable CLI equivalent.
+6. Run `tautline methodology-status --target . --fail-on-drift`, or the resolved portable CLI equivalent.
 7. If the status gate fails, fix the reported adapter drift, planning path issue, or relevant scratch-plan issue before continuing from the handoff.
 8. If either methodology gate is skipped or fails, stop before using Handoff Content, resolve the gate failure, rerun the gate, and proceed only after it exits clean. If it cannot be resolved safely, name the exact true blocker.
 9. Do not ask clarifying questions, report substantive status, or start analysis from Handoff Content before the methodology gates pass. The only exception is naming a true blocker that prevents running the methodology CLI.
@@ -202,8 +202,8 @@ At session start, check the configured continuity path before starting new work.
 12. Continuity holds are condition-scoped evidence only. Once the named condition is resolved, the hold expires and never overrides canonical rules or adapter invariants such as reviewed-work push, required iteration review, continuity refresh, or journal handling.
 13. Run project-specific startup gates such as main status and open PR checks after both methodology gates are clean.
 14. Resume from its `Next Action`.
-15. If `.ai-work/GOAL_RUN.json` exists, run `minervit-methodology goal-next --target .` after startup gates and start the printed `next_action` before milestone work unless a true blocker occurs. The goal ledger wins over a milestone-only or vague handoff summary at goal/milestone boundaries.
-16. If `.ai-work/MILESTONE_RUN.json` exists, run `minervit-methodology milestone-next --target .` after goal state and startup gates, then start the printed `next_action` unless a true blocker occurs. The milestone ledger wins over a vague handoff summary at PR boundaries.
+15. If `.ai-work/GOAL_RUN.json` exists, run `tautline goal-next --target .` after startup gates and start the printed `next_action` before milestone work unless a true blocker occurs. The goal ledger wins over a milestone-only or vague handoff summary at goal/milestone boundaries.
+16. If `.ai-work/MILESTONE_RUN.json` exists, run `tautline milestone-next --target .` after goal state and startup gates, then start the printed `next_action` unless a true blocker occurs. The milestone ledger wins over a vague handoff summary at PR boundaries.
 17. If there is pending adapter-required local evidence after startup gates, publish it through the owning ops skill. If publishing fails, record the exact blocker in the next continuity handoff instead of silently ignoring it.
 18. If no goal ledger next action, execution packet, handoff next action, or implementation-ready tactical PR plan is on deck after startup gates, inspect the adapter, backlog/source-of-truth planning path, readiness markers, and latest delivery or continuity handoff. Also check milestone ledger state when present. For substantial/multi-milestone T2/T3 work, create or update the source-of-truth goal plan first, run Codex plan review, pass plan-finalization precheck, and verify explicit or standing approval before implementation. For T0/T1 work, use brief inline/packet planning or the minimal adapter-required artifact, then continue to implementation gates. Do not ask whether to plan.
 19. Archive or replace the handoff only when a newer handoff is prepared.

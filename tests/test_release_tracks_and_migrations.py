@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from minervit_methodology import public_release
+from tautline_methodology import public_release
 
 CLI_PATH = Path(__file__).resolve().parents[1] / "bin" / "tautline"
 SRC_ROOT = CLI_PATH.parents[1] / "src"
@@ -40,7 +40,7 @@ def _digest_embedding_a_twelve_digit_run() -> str:
 
 
 def _copy_cli_with_package(source: Path) -> Path:
-    """Copy bin/minervit-methodology alongside its required src/minervit_methodology
+    """Copy bin/minervit-methodology alongside its required src/tautline_methodology
     package into `source`. Note: the copied-bin-without-src execution mode is not
     supported for extracted helpers, so any fixture that runs a copied CLI end-to-end
     must bring the package with it."""
@@ -116,7 +116,7 @@ def test_set_framework_channel_writes_repo_local_pin(run_cli, tmp_path):
     res = run_cli("set-framework-channel", "--target", str(tmp_path), "experimental")
 
     assert res.returncode == 0, res.stderr
-    pin = json.loads((tmp_path / ".minervit" / "pin.json").read_text(encoding="utf-8"))
+    pin = json.loads((tmp_path / ".tautline" / "pin.json").read_text(encoding="utf-8"))
     assert pin["channel"] == "experimental"
     assert pin["updatePolicy"] == "manual"
     assert "framework_pin: channel=experimental" in res.stdout
@@ -191,7 +191,7 @@ def test_set_framework_channel_adapter_aligns_existing_lane_pin(run_cli, cli, tm
     assert res.returncode == 0, res.stderr
     adapter = json.loads(source.read_text(encoding="utf-8"))
     generated = json.loads((target / ".tautline.json").read_text(encoding="utf-8"))
-    pin = json.loads((target / ".minervit" / "pin.json").read_text(encoding="utf-8"))
+    pin = json.loads((target / ".tautline" / "pin.json").read_text(encoding="utf-8"))
     assert adapter["_framework"]["channel"] == "experimental"
     assert generated["_framework"]["channel"] == "experimental"
     assert pin["channel"] == "experimental"
@@ -1755,6 +1755,44 @@ def test_release_migration_report_is_release_specific(cli):
         cli.release_migration_report_data(version="0.7.2")
 
 
+def test_migration_commands_after_0_10_0_use_portable_cli_spellings(cli):
+    """SWEEP-10 (deferral sweep): forward-only command-spelling ratchet.
+
+    0.10.0's `bin/tautline install-cli` requiredMigration stays as committed — amending a
+    frozen report re-opens the release (`release-migration-report --check` byte-binds it;
+    precedent CODEX-R1-P2-1 in .impl-reviews/fix-review-guard-followups.json), and the bare
+    spelling is correct for the pre-rename checkout machines that migration targets. NEW
+    reports must not repeat it: bare `bin/tautline` does not exist for a pipx/wheel user, so
+    commands are spelled mode-independently (`tautline ...`) or checkout-relative
+    (`<methodology_repo>/bin/tautline ...`, the launcher's own spelling)."""
+    migrations_dir = CLI_PATH.parents[1] / "docs" / "releases" / "migrations"
+    frozen_floor = cli.version_tuple("0.10.0")
+    reports_after = sorted(
+        (
+            path
+            for path in migrations_dir.glob("*.json")
+            if cli.version_tuple(path.stem) > frozen_floor
+        ),
+        key=lambda path: cli.version_tuple(path.stem),
+    )
+    assert reports_after, "expected at least one committed migration report after 0.10.0"
+    for report_path in reports_after:
+        report = json.loads(report_path.read_text(encoding="utf-8"))
+        migrations = [
+            ("requiredMigration", item) for item in report.get("requiredMigrations") or []
+        ] + [
+            ("optionalMigration", item) for item in report.get("optionalMigrations") or []
+        ]
+        for kind, item in migrations:
+            command = str(item.get("command", ""))
+            outside_sanctioned = command.replace("<methodology_repo>/bin/tautline", "")
+            assert "bin/tautline" not in outside_sanctioned, (
+                f"{report_path.name} {kind} {item.get('id')!r} uses the checkout-only "
+                f"spelling in {command!r}; spell it `tautline ...` (mode-independent) or "
+                "`<methodology_repo>/bin/tautline ...` (checkout-relative)"
+            )
+
+
 def test_release_migration_report_0_8_9_startup_remediation(cli):
     current = cli.release_migration_report_data(
         version="0.8.9",
@@ -1847,6 +1885,130 @@ def test_release_migration_report_0_9_1_no_dead_ends_and_repo_slug(cli):
     assert any("never advances to unverified code" in change for change in current["behaviorChanges"])
     assert any("exact executable remedy" in change for change in current["behaviorChanges"])
     assert any("legacy" in change and "tautlines/tautline-dev" in change for change in current["behaviorChanges"])
+
+
+def test_release_migration_report_0_16_0_and_ceiling_gap_guards(cli):
+    # P2 #2 (compat-sunset warn PR2): the 0.15.0 minor bump left the 0.14.8+ patch range with no
+    # gap guard (it fabricated a bogus 0.6.125-era report). The gap guards refuse the 0.14.8+,
+    # 0.15.1+, and 0.16.6+ (below-0.17.0) patch ranges; the ceiling now sits at > 0.18.2 (the
+    # suite-hermeticity test-only release took 0.18.1, the next free patch after the Plan-Authoring
+    # Standard minor's 0.18.0, which itself skipped the 0.17.6+ patch range its own gap guard
+    # refuses). All skipped ranges plus anything above the ceiling must refuse; only the declared
+    # minors and 0.16.1..0.16.5 plus 0.17.0..0.17.5 plus 0.18.0..0.18.1 fall through.
+    for undeclared in ("0.14.8", "0.14.9", "0.15.1", "0.15.9", "0.16.6", "0.16.7", "0.17.6", "0.17.9"):
+        with pytest.raises(SystemExit, match="not declared for " + undeclared):
+            cli.release_migration_report_data(version=undeclared)
+    # 0.17.5 now declares: docs/policy release, NOT WIP-safe, carrying forward the engine-gap
+    # required migrations (framework_update_decision reads only the latest report).
+    r175 = cli.release_migration_report_data(version="0.17.5", products_tested=[])
+    assert r175["version"] == "0.17.5"
+    assert r175["wipSafe"] is False
+    assert any(item["id"] == "install-fleet-guard-hook" for item in r175["requiredMigrations"])
+    assert any(item["id"] == "grant-gh-project-scopes" for item in r175["requiredMigrations"])
+    r15 = cli.release_migration_report_data(version="0.15.0", products_tested=[])
+    assert r15["version"] == "0.15.0"
+    r16 = cli.release_migration_report_data(version="0.16.0", products_tested=[])
+    assert r16["version"] == "0.16.0"
+    # Engine-gap carry-forward: NOT WIP-safe, carries grant-gh-project-scopes forward from 0.10.3.
+    assert r16["wipSafe"] is False
+    assert any(item["id"] == "grant-gh-project-scopes" for item in r16["requiredMigrations"])
+    # Package-split A1 (0.16.1): internal refactor -> WIP-safe, but still carries the engine-gap
+    # grant-gh-project-scopes migration (framework_update_decision reads only the latest report).
+    r161 = cli.release_migration_report_data(version="0.16.1", products_tested=[])
+    assert r161["version"] == "0.16.1"
+    assert r161["wipSafe"] is True
+    assert any(item["id"] == "grant-gh-project-scopes" for item in r161["requiredMigrations"])
+    assert any("internal refactor" in change for change in r161["behaviorChanges"])
+    # Package-split A2 (0.16.2): core/{paths,policy} + events/usage leaves extracted; internal
+    # refactor -> WIP-safe, still carries the engine-gap grant-gh-project-scopes migration.
+    r162 = cli.release_migration_report_data(version="0.16.2", products_tested=[])
+    assert r162["version"] == "0.16.2"
+    assert r162["wipSafe"] is True
+    assert any(item["id"] == "grant-gh-project-scopes" for item in r162["requiredMigrations"])
+    assert any("internal refactor" in change for change in r162["behaviorChanges"])
+    # Package-split W1 (0.16.3): response_guard + iteration_review leaves extracted; internal
+    # refactor -> WIP-safe, still carries the engine-gap grant-gh-project-scopes migration.
+    r163 = cli.release_migration_report_data(version="0.16.3", products_tested=[])
+    assert r163["version"] == "0.16.3"
+    assert r163["wipSafe"] is True
+    assert any(item["id"] == "grant-gh-project-scopes" for item in r163["requiredMigrations"])
+    assert any("internal refactor" in change for change in r163["behaviorChanges"])
+    # Package-split W2 (0.16.4): goal + milestone + backlog leaves extracted; internal
+    # refactor -> WIP-safe, still carries the engine-gap grant-gh-project-scopes migration.
+    r164 = cli.release_migration_report_data(version="0.16.4", products_tested=[])
+    assert r164["version"] == "0.16.4"
+    assert r164["wipSafe"] is True
+    assert any(item["id"] == "grant-gh-project-scopes" for item in r164["requiredMigrations"])
+    assert any("internal refactor" in change for change in r164["behaviorChanges"])
+    # Package-split W3 (0.16.5): publish/adapters/release/install families -- the closure-clean
+    # adapters + release leaves extracted (publish/install fully deferred); internal refactor ->
+    # WIP-safe, still carries the engine-gap grant-gh-project-scopes migration.
+    r165 = cli.release_migration_report_data(version="0.16.5", products_tested=[])
+    assert r165["version"] == "0.16.5"
+    assert r165["wipSafe"] is True
+    assert any(item["id"] == "grant-gh-project-scopes" for item in r165["requiredMigrations"])
+    assert any("internal refactor" in change for change in r165["behaviorChanges"])
+    # Package-split W4 (0.17.1): lane + context ROOT families -- the closure-clean lane/context
+    # leaves extracted (every stateful handler deferred); the carve itself is behavior-neutral, but
+    # the report is NOT WIP-safe because it carries FORWARD 0.17.0's install-fleet-guard-hook
+    # required migration (framework_update_decision reads only the LATEST report, so a pre-0.17.0
+    # machine upgrading straight to 0.17.1 must still install the fleet-guard-hook), alongside the
+    # engine-gap grant-gh-project-scopes migration. Re-versioned from its original 0.16.6 to 0.17.1
+    # (the next free patch) because the 0.17.0 Fleet Governor minor merged first and skipped 0.16.6.
+    r171 = cli.release_migration_report_data(version="0.17.1", products_tested=[])
+    assert r171["version"] == "0.17.1"
+    assert r171["wipSafe"] is False
+    assert any(item["id"] == "install-fleet-guard-hook" for item in r171["requiredMigrations"])
+    assert any(item["id"] == "grant-gh-project-scopes" for item in r171["requiredMigrations"])
+    assert any("internal refactor" in change for change in r171["behaviorChanges"])
+    # Package-split THE FLIP (0.17.2): the whole CLI engine body moves into cli.py and bin/tautline
+    # becomes a thin shim; behavior-neutral, but NOT WIP-safe -- it carries forward 0.17.0's
+    # install-fleet-guard-hook migration (plus the engine-gap grant-gh-project-scopes) because
+    # framework_update_decision reads only the LATEST report.
+    r172 = cli.release_migration_report_data(version="0.17.2", products_tested=[])
+    assert r172["version"] == "0.17.2"
+    assert r172["wipSafe"] is False
+    assert any(item["id"] == "install-fleet-guard-hook" for item in r172["requiredMigrations"])
+    assert any(item["id"] == "grant-gh-project-scopes" for item in r172["requiredMigrations"])
+    assert any("thin shim over" in change for change in r172["behaviorChanges"])
+    # Sunset per-surface deprecatedSurfaces auto-carry into 0.16.0 (>= 0.15.0).
+    assert any(
+        s["section"] == "cli" and s["name"] == "minervit-methodology"
+        for s in r16["deprecatedSurfaces"]
+    )
+    env_surfaces = [s for s in r16["deprecatedSurfaces"] if s["section"] == "env"]
+    # Presence guard: `all(... if section == "env")` is vacuously True with zero env rows, so it
+    # would still pass if SUNSET_WARNED_ENV_NAMES regressed to empty (or the surface builder
+    # stopped emitting env rows). Assert the env surfaces are present AND match the warned-env
+    # inventory exactly before checking removeAfter, mirroring the non-vacuous cli-surface any().
+    assert env_surfaces, r16["deprecatedSurfaces"]
+    assert len(env_surfaces) == len(cli.SUNSET_WARNED_ENV_NAMES)
+    assert all(s["removeAfter"] == "1.0.0" for s in env_surfaces)
+
+    # 0.18.0 (Plan-Authoring Standard) is declared: additive plan-shape surface, NOT WIP-safe
+    # (carries forward the engine-gap required migrations), with a plan-authoring behaviorChange.
+    r180 = cli.release_migration_report_data(version="0.18.0", products_tested=[])
+    assert r180["version"] == "0.18.0"
+    assert r180["wipSafe"] is False
+    assert any(item["id"] == "grant-gh-project-scopes" for item in r180["requiredMigrations"])
+    assert any("plan-authoring-standard" in change for change in r180["behaviorChanges"])
+
+    # 0.18.1 (suite environment hermeticity) is declared: tests-only, so it ships NO behavior
+    # change, but still carries the engine-gap required migrations forward.
+    r181 = cli.release_migration_report_data(version="0.18.1", products_tested=[])
+    assert r181["version"] == "0.18.1"
+    assert r181["wipSafe"] is False
+    assert any(item["id"] == "grant-gh-project-scopes" for item in r181["requiredMigrations"])
+    assert any("none shipped" in change for change in r181["behaviorChanges"])
+
+    # 0.18.2 (FR-2 trust-held remedy) is declared: display-only, NOT WIP-safe, carrying forward the
+    # engine-gap required migrations (framework_update_decision reads only the latest report).
+    r182 = cli.release_migration_report_data(version="0.18.2", products_tested=[])
+    assert r182["version"] == "0.18.2"
+    assert r182["wipSafe"] is False
+    assert any(item["id"] == "install-fleet-guard-hook" for item in r182["requiredMigrations"])
+    assert any(item["id"] == "grant-gh-project-scopes" for item in r182["requiredMigrations"])
+    assert any("display-only" in change for change in r182["behaviorChanges"])
 
 
 def test_current_release_migration_report_exists_and_is_fresh(cli):
@@ -2772,6 +2934,13 @@ def test_public_release_export_ignores_dirty_and_untracked_excluded_internal_doc
     untracked = source / "docs" / "superpowers" / "plans" / "scratch.md"
     untracked.parent.mkdir(parents=True)
     untracked.write_text("scratch\n", encoding="utf-8")
+    # Local agent-session state: worktrees of other branches under .claude/
+    # appear as untracked noise on workstations and must not make release
+    # validation session-dependent (same rationale as the boundary scan's
+    # .claude exemption).
+    session_state = source / ".claude" / "worktrees" / "wt" / "README.md"
+    session_state.parent.mkdir(parents=True)
+    session_state.write_text("historical branch checkout\n", encoding="utf-8")
 
     result = cli.public_release_export_repository(source, tmp_path / "public")
 
@@ -2781,6 +2950,7 @@ def test_public_release_export_ignores_dirty_and_untracked_excluded_internal_doc
     assert (tmp_path / "public" / "README.md").exists()
     assert not (tmp_path / "public" / "docs/backlog/methodology-backlog.md").exists()
     assert not (tmp_path / "public" / "docs/superpowers/plans/scratch.md").exists()
+    assert not (tmp_path / "public" / ".claude").exists()
 
 
 def test_public_release_export_can_include_untracked_when_explicit(cli, tmp_path):
@@ -2979,7 +3149,7 @@ def test_public_release_export_copied_cli_accepts_json_private_terms_file(tmp_pa
 
 
 # Note: the copied-bin-without-src execution mode is not supported for extracted
-# public-release helpers; public_release_module() now hard-requires src/minervit_methodology
+# public-release helpers; public_release_module() now hard-requires src/tautline_methodology
 # (SystemExit otherwise, adapter_module()-style), so the former
 # test_public_release_export_copied_cli_uses_fallback_with_stale_public_release_package and
 # test_public_release_export_copied_cli_uses_fallback_when_public_release_submodule_missing
@@ -3412,3 +3582,21 @@ def test_deprecated_command_warns_without_dispatch_wrapper_exit_change(run_cli, 
 
     assert "deprecation_warning: command 'goal-tracker-status' is deprecated" in result.stderr
     assert result.returncode != 0
+
+
+def test_release_migration_report_0_10_4_carries_the_0_10_3_gate_forward(cli):
+    """Codex R1 (0.10.4): framework_update_decision consults only the LATEST report,
+    so a 0.10.2 patch-auto lane seeing 0.10.4 would skip 0.10.3's NOT-WIP-safe auth
+    migration and adopt the fail-closed board gates mid-work. Until the engine
+    considers intermediate reports, every report spanning 0.10.3 stays unsafe and
+    carries the required migration forward."""
+    current = cli.release_migration_report_data(
+        version="0.10.4",
+        products_tested=["methodology-framework"],
+    )
+    assert current["wipSafe"] is False
+    assert any(
+        item["id"] == "grant-gh-project-scopes"
+        and "gh auth refresh" in item["command"]
+        for item in current["requiredMigrations"]
+    )

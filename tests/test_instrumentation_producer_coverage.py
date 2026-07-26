@@ -20,7 +20,9 @@ import ast
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-SOURCE_PATH = REPO_ROOT / "bin" / "tautline"
+# Post the package-split flip (roadmap #11): the engine (its instrumentation producers) lives in
+# cli.py; bin/tautline is a thin shim.
+SOURCE_PATH = REPO_ROOT / "src" / "tautline_methodology" / "cli.py"
 
 
 def _resolve_event_arg(node: ast.AST, dynamic_expansions: dict) -> set[str]:
@@ -31,6 +33,14 @@ def _resolve_event_arg(node: ast.AST, dynamic_expansions: dict) -> set[str]:
     if isinstance(node, ast.Attribute) and node.attr == "event" and isinstance(node.value, ast.Name) and node.value.id == "args":
         # `event=args.event`: the public `log-event` command's RUNTIME passthrough (bin/tautline's
         # log_event()). Deliberately unconstrained per the design -- contributes no name to classify.
+        return set()
+    if isinstance(node, ast.Name) and node.id == "event":
+        # `event=event`: the write_event()/try_write_event() wrapper forwarding its own `event`
+        # parameter into build_event_payload(). Now that build_event_payload is a scanned call site
+        # (to catch DIRECT producers like decision_record), that internal forwarding call is seen
+        # too; it carries no literal name of its own -- the wrapper's real callers
+        # already contribute their literal names -- so it contributes nothing.
+        # Fail-closed remains for any OTHER unresolved shape below.
         return set()
     if isinstance(node, ast.JoinedStr):
         if (
@@ -44,9 +54,15 @@ def _resolve_event_arg(node: ast.AST, dynamic_expansions: dict) -> set[str]:
     raise AssertionError(f"producer-coverage scanner cannot resolve event= expression: {ast.dump(node)}")
 
 
+EVENT_PRODUCER_FUNCS = {"try_write_event", "write_event", "build_event_payload"}
+
+
 def scan_emitted_event_names(source: str, dynamic_expansions: dict | None = None) -> set[str]:
-    """Every literal (or registry-resolvable dynamic) `event=` value passed to a `write_event(...)`
-    or `try_write_event(...)` call in `source`. Uses `ast` so a call site can never be missed by a
+    """Every literal (or registry-resolvable dynamic) `event=` value passed to a `write_event(...)`,
+    `try_write_event(...)`, or DIRECT `build_event_payload(...)` call in `source`. The direct
+    build_event_payload path is scanned too because a producer can compose build_event_payload +
+    append_event_payload directly (e.g. `decision_record`), bypassing the write_event wrappers and
+    otherwise escaping this coverage invariant. Uses `ast` so a call site can never be missed by a
     superficial text/comment match, and raises loudly (fail-closed) on any `event=` expression shape
     it does not recognize, rather than silently skipping it."""
     dynamic_expansions = dynamic_expansions or {}
@@ -57,7 +73,7 @@ def scan_emitted_event_names(source: str, dynamic_expansions: dict | None = None
             continue
         func = node.func
         func_name = func.id if isinstance(func, ast.Name) else None
-        if func_name not in {"try_write_event", "write_event"}:
+        if func_name not in EVENT_PRODUCER_FUNCS:
             continue
         event_kwarg = next((kw for kw in node.keywords if kw.arg == "event"), None)
         if event_kwarg is None:
@@ -144,6 +160,37 @@ def test_producer_coverage_gate_fails_on_a_newly_added_unclassified_event(cli):
     assert unclassified == {"brand_new_unclassified_event"}, (
         "the negative fixture must reproduce exactly one unclassified producer name until it is "
         f"explicitly mapped or ignored, got: {unclassified}"
+    )
+
+
+def test_producer_coverage_gate_fails_on_a_new_unclassified_direct_build_producer(cli):
+    """Negative fixture for the DIRECT composition path: a producer that builds a payload with
+    build_event_payload() and appends it directly (like decision_record) -- bypassing the
+    write_event wrappers -- must still be caught by the same diff-against-classified-and-ignored
+    logic. Proves the build_event_payload scan extension actually closes the escape route."""
+    hostile_source = (
+        "def build_event_payload(data, target, *, event, severity, plain, next_action, **kw):\n"
+        "    return {}\n"
+        "\n"
+        "\n"
+        "def some_direct_producer(data, target):\n"
+        "    payload = build_event_payload(\n"
+        "        data,\n"
+        "        target,\n"
+        "        event=\"brand_new_direct_producer\",\n"
+        "        severity=\"info\",\n"
+        "        plain=\"x\",\n"
+        "        next_action=\"y\",\n"
+        "    )\n"
+        "    return payload\n"
+    )
+    scanned = scan_emitted_event_names(hostile_source)
+    classified = _classified_names(cli)
+    ignored = set(cli.INSTRUMENTATION_IGNORED_EVENTS)
+    unclassified = scanned - classified - ignored
+    assert unclassified == {"brand_new_direct_producer"}, (
+        "the direct-build negative fixture must reproduce exactly one unclassified producer name "
+        f"until it is explicitly mapped or ignored, got: {unclassified}"
     )
 
 

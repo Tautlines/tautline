@@ -1,0 +1,15 @@
+usage: tautline publish-pending-session-journals [-h] [--project PROJECT]
+                                                 [--target TARGET]
+                                                 [--archive-dir ARCHIVE_DIR]
+                                                 [--branch BRANCH]
+
+DEPRECATED/DISABLED (0.9.0, removal >=1.0.0): pending narrative journals stay
+LOCAL; there is no remote publication path. Run publish-instrumentation-record
+for sanitized upstream signal.
+
+options:
+  -h, --help            show this help message and exit
+  --project PROJECT
+  --target TARGET
+  --archive-dir ARCHIVE_DIR
+  --branch BRANCH

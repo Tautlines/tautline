@@ -1,0 +1,23 @@
+usage: tautline decision-record [-h] [--project PROJECT] [--target TARGET]
+                                --summary SUMMARY --rationale RATIONALE
+                                [--alternatives ALTERNATIVES]
+                                [--reversibility {reversible,hard-to-reverse}]
+                                [--surface SURFACE] [--next NEXT]
+                                [--goal GOAL] [--milestone MILESTONE]
+                                [--pr PR]
+
+options:
+  -h, --help            show this help message and exit
+  --project PROJECT
+  --target TARGET
+  --summary SUMMARY     One-line statement of the decision (non-blank).
+  --rationale RATIONALE
+                        Why the decision was made (non-blank).
+  --alternatives ALTERNATIVES
+                        Options considered and rejected.
+  --reversibility {reversible,hard-to-reverse}
+  --surface SURFACE     A surface this decision touches; repeatable.
+  --next NEXT           Next action after the decision.
+  --goal GOAL
+  --milestone MILESTONE
+  --pr PR
