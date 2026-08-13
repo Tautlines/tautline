@@ -17,11 +17,13 @@ using, committing around, or ignoring Graphify output.
    output paths.
 2. If current output exists, use Graphify report/query/path/explain before broad
    source scans.
-3. If output is missing and graph context is needed, run `graphify .` or the
-   adapter-approved update command.
-4. After code changes, run `graphify . --update` when the graph is part of the
-   workflow.
-5. Keep `graphify-out/` generated and out of git.
+3. If output is missing and graph context is needed, run `graphify update .` or
+   the adapter-approved build command; it cold-builds with no LLM backend.
+4. After code changes, run `graphify update .` -- the no-LLM refresh, and the
+   only Graphify invocation the blocking freshness gate ever names.
+5. Semantic labeling is a separate NON-blocking step with an explicit backend:
+   `GRAPHIFY_CLAUDE_CLI_MODEL=haiku graphify label . --backend=claude-cli`.
+6. Keep `graphify-out/` generated and out of git.
 
 ## Non-Negotiables
 

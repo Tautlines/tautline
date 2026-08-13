@@ -99,7 +99,13 @@ RETAGGED_CHECK_IDS = frozenset(
 # The mechanism tags on response_guard_hook's own direct guard_log_event(...) calls (outside
 # response_guard_errors, so invisible to test_response_guard_errors_taxonomy_matches_pinned_sets
 # above). See module docstring for why these two check_ids land in different buckets.
-PINNED_HOOK_STATE_CHECK_IDS = frozenset({"stop.goal_boundary_claim"})
+# `stop.done_bar` (batch 2026-08-11 B7 WS3) is "state" on the binding E1 rule and not by
+# convenience: it reads GOAL_RUN.json's terminal status and session stamp, BLOCKER.json's
+# freshness, live PR state, the test-run store and the review ledger. It touches no transcript
+# prose at all. It is also the only direct call in this hook that is advisory -- it emits through
+# hook_additional_context, never hook_decision -- so a future PR retagging or re-routing it has
+# to come through this pin.
+PINNED_HOOK_STATE_CHECK_IDS = frozenset({"stop.goal_boundary_claim", "stop.done_bar"})
 PINNED_HOOK_PHRASE_CHECK_IDS = frozenset({"stop.recovery_cancellation_without_explicit_stop"})
 
 

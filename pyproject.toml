@@ -8,10 +8,15 @@
 
 [tool.ruff]
 # The floor rationale below is verified and shared verbatim with CONTRIBUTING.md
-# (tests/test_front_door_docs.py pins both): no syntax forces 3.10 anymore — the
-# tree parses clean under the 3.9 grammar — but zip(strict=) (PEP 618) is a
-# 3.10-only runtime API, and 3.10 is the floor every CI gate actually verifies.
-target-version = "py310"   # zip(strict=) is 3.10-only, and CI proves the floor on 3.10 every PR
+# (tests/test_front_door_docs.py pins both).
+#
+# Raised 3.10 -> 3.12 on 2026-07-31 by operator decision. Nothing in the tree ever REQUIRED 3.10:
+# it parses clean under the 3.9 grammar, and the floor rested entirely on zip(strict=) (PEP 618),
+# which exists in every version from 3.10 up. So the old floor was a support PROMISE, not a
+# dependency -- and keeping it cost a second CI interpreter leg that had to be hand-built into the
+# self-hosted runner image, because Ubuntu 24.04 ships only 3.12. The operator's call: adopters
+# still on 3.10/3.11 upgrade. 3.12 is what the runner ships and what every gate now proves.
+target-version = "py312"   # 3.12 is the declared floor, and CI proves it on every merge
 line-length = 100
 
 [tool.ruff.lint]
@@ -27,14 +32,18 @@ ignore = ["E501"]          # frozen legacy baseline, pinned by tests/test_lint_r
 # The package-split flip (roadmap #11) moved the entire CLI engine body out of bin/tautline
 # (now a thin shim, which violates none of these) into the package's cli.py, so the legacy
 # suppressions move verbatim with the code.
+# F541 was FIXED and deleted (carve item: a suppressed violation inside a carved span
+# resurfaces in the destination file, where no suppression covers it -- the first W1
+# carve failed the gate exactly that way). The remaining two are behaviour-adjacent
+# (side-effect assignments, exception chaining); each carve lane clears its own region
+# in a reviewed pre-carve hygiene commit before relocating it.
 "src/tautline_methodology/cli.py" = [
-    "F541",  # f-string-missing-placeholders
     "F841",  # unused-variable
     "B904",  # raise-without-from-inside-except
 ]
 
 [tool.mypy]
-python_version = "3.10"          # match the declared 3.10 floor (mypy verified green at 3.10)
+python_version = "3.12"          # match the declared 3.12 floor (mypy verified green at 3.12)
 check_untyped_defs = false
 warn_unused_ignores = false      # 6 existing `# type: ignore` stay; flip true in ratchet step 5
 warn_return_any = false

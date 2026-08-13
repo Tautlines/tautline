@@ -218,7 +218,7 @@
     "codexPlanWrapper": "./scripts/codex-review.sh",
     "codexFastMode": true,
     "prePushReviewEvidence": true,
-    "roundBudgets": { "T0": 0, "T1": 1, "T2": 2, "T3": 2 },
+    "roundBudgets": { "T0": 0, "T1": 2, "T2": 3, "T3": 4 },
     "claudeReview": "Use Claude Superpowers review if installed; otherwise use the configured Claude review agents and project checklist.",
     "crossModelTiming": "before push"
   },

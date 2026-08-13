@@ -13,9 +13,23 @@ def test_fleet_domain_declared_and_optional():
     assert "fleet" in SCHEMA["properties"]
     assert "fleet" not in SCHEMA.get("required", [])
     props = SCHEMA["properties"]["fleet"]["properties"]
-    assert set(props) == {"enabled", "enforcement", "defaultTtlMinutes"}
+    assert set(props) == {"enabled", "enforcement", "defaultTtlMinutes", "occupancy"}
     assert props["enforcement"]["enum"] == ["block", "advise", "observe"]
     assert SCHEMA["properties"]["fleet"]["additionalProperties"] is False
+
+    # Pinned ONE LEVEL DEEPER than the parent set, because an occupancy sub-object that accepted
+    # unknown keys would take a typo silently -- and a coordination gate reading a key nobody
+    # spelled correctly is the failure this schema exists to prevent.
+    occupancy = props["occupancy"]
+    assert occupancy["additionalProperties"] is False
+    assert set(occupancy["properties"]) == {
+        "enabled",
+        "mode",
+        "primaryCheckout",
+        "ttlMinutes",
+    }
+    assert occupancy["properties"]["mode"]["enum"] == ["refuse", "auto-worktree", "observe"]
+    assert occupancy["properties"]["primaryCheckout"]["enum"] == ["report", "refuse"]
 
 
 def test_fleet_domain_accepted_by_validator(cli, tmp_path):

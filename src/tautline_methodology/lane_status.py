@@ -30,6 +30,10 @@ LANE_STATUS_SCHEMA = "tautline-lane-status/v1"
 # Ordered: the report leads with the most identity-destroying verdict first. A tuple, not a list --
 # UPPER_CASE list-of-str constants are auto-collected into the policy-phrases SSOT (C15).
 LANE_STATUS_FINDING_ORDER: tuple[str, ...] = (
+    # FIRST: another session in this worktree destroys identity harder than anything below it.
+    # Every other finding describes a state this lane can reason about; this one says the lane's
+    # own edits may not be its own.
+    "CONCURRENT",
     "DETACHED",
     "ORPHANED",
     "MERGED",
@@ -140,8 +144,36 @@ def compute_lane_status_findings(facts: dict) -> list[dict]:
             f"{facts.get('remote')}/{integration}",
         )
 
+    foreign = facts.get("foreign_lease")
+    if foreign:
+        # `drift`, not a blocking severity: this module has none, and it carries a never-blocks
+        # contract because it runs as a session-start hook. The blocking teeth are PR2's
+        # lane-start refusal, which a human ran on purpose and can answer. Deliberately NOT in
+        # LANE_STATUS_RESOLVING_FINDINGS -- the SQUATTED precedent -- because a rerun cannot clear
+        # a live peer, and promising one would loop forever.
+        holder = str(foreign.get("session_id") or "another session")
+        branch = str(foreign.get("branch") or "")
+        where = f" on {branch}" if branch else ""
+        add(
+            "CONCURRENT",
+            "drift",
+            f"{holder} is working in this worktree{where} - your edits and theirs overwrite each "
+            "other with no error; work in your own worktree instead",
+        )
+
     if facts.get("dirty"):
-        add("DIRTY", "info", "uncommitted changes inherited from a prior session")
+        if foreign:
+            # Reworded ONLY when there is a foreign lease. The no-lease line below is pinned
+            # byte-identical by adapter greps and the policy-phrase SSOT, so a blanket rewording
+            # would break callers that never see a peer at all.
+            add(
+                "DIRTY",
+                "drift",
+                "uncommitted changes, and another session is in this worktree - they may not be "
+                "yours",
+            )
+        else:
+            add("DIRTY", "info", "uncommitted changes inherited from a prior session")
 
     # Tri-state: only an actively-checked-and-unmatched claim is a finding. Adopters who configure
     # no claim source get "not-checked", which is silent.

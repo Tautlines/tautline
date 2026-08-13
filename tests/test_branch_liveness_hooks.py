@@ -1,3 +1,4 @@
+import json
 import os
 import subprocess
 import sys
@@ -53,7 +54,39 @@ def _prepare_branch_liveness_repo(tmp_path: Path) -> Path:
     _git(root, "add", "README.md")
     _git(root, "commit", "-qm", "init")
     _git(root, "checkout", "-qb", "feature/dead-branch")
-    res = _run_cli("render-adapters", "--project", str(EXAMPLE), "--target", str(root), "--write", cwd=root)
+    # item 37 R2: this fixture exercises the branch-liveness HOOKS, and the lane has never run a
+    # suite. Test-evidence enforcement defaults to block, so rendering the example adapter as-is
+    # would refuse the "live branch" push for a reason unrelated to what is under test. Render from
+    # a copy with the knob off rather than weakening the shipped example.
+    # item 37 R2: this fixture exercises the branch-liveness HOOKS, and the lane has never run a
+    # suite, so block-by-default test-evidence enforcement would refuse the "live branch" push for
+    # a reason unrelated to what is under test. Written to .tautline/adapter.json inside the target
+    # -- a trusted source location that needs no env var, so every later hook invocation resolves
+    # it the same way. The shipped example adapter is deliberately NOT weakened.
+    for name in ("validation-bootstrap-evidence-1.txt", "validation-bootstrap-evidence-2.txt"):
+        evidence = root / ".ai-work" / name
+        evidence.parent.mkdir(parents=True, exist_ok=True)
+        evidence.write_text("evidence\n", encoding="utf-8")
+    adapter = root / ".tautline" / "adapter.json"
+    adapter.parent.mkdir(parents=True, exist_ok=True)
+    adapter_data = json.loads(EXAMPLE.read_text(encoding="utf-8"))
+    adapter_data["testEvidence"] = {
+        **(adapter_data.get("testEvidence") or {}),
+        "enforcement": "off",
+    }
+    adapter_data["bootstrapEvidence"] = {
+        "project": adapter_data["project"],
+        "status": "repo-evident",
+        "summary": "Pytest fixture for branch-liveness hook coverage.",
+        "repoEvidence": [
+            {"path": ".ai-work/validation-bootstrap-evidence-1.txt", "fact": "evidence one exists"},
+            {"path": ".ai-work/validation-bootstrap-evidence-2.txt", "fact": "evidence two exists"},
+        ],
+    }
+    adapter.write_text(json.dumps(adapter_data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    res = _run_cli(
+        "render-adapters", "--project", str(adapter), "--target", str(root), "--write", cwd=root
+    )
     assert res.returncode == 0, res.stderr
     workflow = root / ".github" / "workflows" / "ci.yml"
     workflow.parent.mkdir(parents=True, exist_ok=True)
@@ -296,7 +329,19 @@ def test_installed_git_hooks_enforce_branch_liveness_and_fail_closed_without_ada
     assert "MINERVIT-BRANCH-LIVENESS-HOOK" in pre_push.read_text(encoding="utf-8")
     pre_push_text = pre_push.read_text(encoding="utf-8")
     assert "guard-check --target . --boundary prepush" in pre_push_text
-    assert pre_push_text.index(str(CLI_PATH)) < pre_push_text.index("MINERVIT_METHODOLOGY_REPO/bin/minervit-methodology")
+    # The baked install path is probed LAST of the four recorded candidates -- after the lane's own
+    # checkout and after both methodology-repo exports. This assertion used to read the other way
+    # round, pinning the baked path ahead of the env probes, and it was the only order assertion in
+    # the suite; that ordering is exactly what stopped a release which ADDS an adapter-schema key
+    # from being pushed, because the hook validated the new adapter against whichever install last
+    # ran `lane-start`. Updated rather than deleted: a resolution-order change with no order
+    # assertion is how the defect shipped unnoticed in the first place. The exhaustive
+    # label-by-label pin lives in tests/test_prepush_schema_skew.py.
+    assert "# probe: lane-self-checkout" in pre_push_text
+    baked_at = pre_push_text.index(str(CLI_PATH))
+    assert pre_push_text.index("# probe: lane-self-checkout") < baked_at
+    assert pre_push_text.index("TAUTLINE_METHODOLOGY_REPO/bin/tautline") < baked_at
+    assert pre_push_text.index("MINERVIT_METHODOLOGY_REPO/bin/minervit-methodology") < baked_at
 
     hook_env = _gh_env(fake_bin, MERGED_PR, QUEUE_FALSE)
     blocked = subprocess.run(
@@ -324,6 +369,13 @@ def test_installed_git_hooks_enforce_branch_liveness_and_fail_closed_without_ada
     adapter = root / ".tautline.json"
     backup = root / ".tautline.json.bak"
     adapter.rename(backup)
+    # Starve the SOURCE adapter too. The fixture now writes .tautline/adapter.json (item 37 R2, to
+    # turn test-evidence enforcement off for a lane that has never run a suite), and that is itself
+    # a trusted adapter source -- leaving it in place means this phase is no longer "without
+    # adapter", it is "without the rendered lane config", which produces a different message.
+    source_adapter = root / ".tautline" / "adapter.json"
+    source_backup = root / ".tautline" / "adapter.json.bak"
+    source_adapter.rename(source_backup)
     missing_adapter = subprocess.run(
         [str(pre_push)],
         cwd=root,
@@ -333,6 +385,7 @@ def test_installed_git_hooks_enforce_branch_liveness_and_fail_closed_without_ada
         timeout=60,
     )
     backup.rename(adapter)
+    source_backup.rename(source_adapter)
     assert missing_adapter.returncode == 1
     assert "No project adapter found for this lane" in missing_adapter.stderr
     assert "tautline init --target ." in missing_adapter.stderr

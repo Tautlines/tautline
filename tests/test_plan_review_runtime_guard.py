@@ -876,3 +876,65 @@ def test_finalizable_run_excludes_a_run_the_manifest_already_passed(cli, tmp_pat
 
     found = cli.plan_review_finalizable_run_meta(_data(), tmp_path, plan, plan_rel, plan_hash)
     assert found is None
+
+
+# --- item 31 (label trust in the remaining plan-review call sites) ----------------------------
+
+
+def test_edit_guard_blocks_on_a_later_run_with_a_lower_label(cli, tmp_path):
+    """The plan-edit guard used its own label-based ordering while the cap refusal used time, so
+    the two disagreed. In a relabelled lane a run recorded AFTER a later manifest can still be
+    called `R1`; the guard discarded it and let the operator edit away the only run they could
+    still finalize -- the exact loss this guard exists to prevent."""
+    plan = _plan(tmp_path)
+    plan_rel = "backlog/plans/admin.md"
+    plan_hash = cli.plan_content_sha256(plan)
+    bound = _write_run_meta(cli, tmp_path, plan_rel, "0" * 64, idx=1, round_name="R3")
+    _bind_clean_manifest(cli, tmp_path, plan, bound, "0" * 64, round_name="R3")
+    manifest_path = cli.plan_review_manifest_path(_data(), tmp_path, plan)
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["timestamp"] = "2026-07-26T10:00:00+00:00"
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+    later = _write_run_meta(cli, tmp_path, plan_rel, plan_hash, idx=2, round_name="R1")
+    meta = json.loads(later.read_text(encoding="utf-8"))
+    meta["finished_at"] = "2026-07-26T12:00:00+00:00"
+    later.write_text(json.dumps(meta), encoding="utf-8")
+
+    reason = cli.plan_review_pending_block_reason(_data(), tmp_path, plan)
+
+    assert reason and "awaiting finalize-plan-review" in reason
+
+
+def test_a_same_second_run_stays_superseded(cli, tmp_path):
+    """`now_iso()` has SECOND resolution, so a run finishing either side of a finalize can share
+    the manifest's stamp and a tie cannot be ordered from the evidence at all.
+
+    Both readings fail. Calling a tie PENDING surfaces a possibly-superseded run, and the edit
+    guard then refuses the normal follow-up edit that addresses a blocked manifest's findings.
+    Calling it SUPERSEDED can send an operator toward a split when finalize would have worked. The
+    blocking failure is worse, so ties stay superseded -- a tie-break, not a fix. Sub-second stamps
+    are the real answer (item 35: plan-review timestamps need sub-second resolution).
+    """
+    plan = _plan(tmp_path)
+    plan_rel = "backlog/plans/admin.md"
+    plan_hash = cli.plan_content_sha256(plan)
+    bound = _write_run_meta(cli, tmp_path, plan_rel, "0" * 64, idx=1, round_name="R1")
+    _bind_clean_manifest(cli, tmp_path, plan, bound, "0" * 64, round_name="R1")
+    manifest_path = cli.plan_review_manifest_path(_data(), tmp_path, plan)
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["timestamp"] = "2026-07-26T10:00:00+00:00"
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+    tied = _write_run_meta(cli, tmp_path, plan_rel, plan_hash, idx=2, round_name="R2")
+    meta = json.loads(tied.read_text(encoding="utf-8"))
+    meta["finished_at"] = "2026-07-26T10:00:00+00:00"   # same second as the manifest
+    tied.write_text(json.dumps(meta), encoding="utf-8")
+
+    assert cli.plan_review_finalizable_run_meta(_data(), tmp_path, plan, plan_rel, plan_hash) is None
+
+    # A run that unambiguously finished LATER is still pending -- the ordering fix stands.
+    meta["finished_at"] = "2026-07-26T10:00:01+00:00"
+    tied.write_text(json.dumps(meta), encoding="utf-8")
+    found = cli.plan_review_finalizable_run_meta(_data(), tmp_path, plan, plan_rel, plan_hash)
+    assert found == tied

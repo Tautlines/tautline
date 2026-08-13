@@ -5,6 +5,6 @@ Full narrative entries are archived on
 `CHANGELOG.md` is the concise main-branch release history.
 Migration reports under `docs/releases/migrations/` own compatibility notes.
 
-## 0.25.0 - 2026-07-26
+## 0.75.0 - 2026-08-13
 
 Current release identity for validation. Do not append narrative entries here.

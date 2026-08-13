@@ -1,0 +1,25 @@
+usage: tautline test-run [-h] [--project PROJECT] [--target TARGET]
+                         [--command COMMAND] [--report REPORT]
+                         [--report-format {junit-xml,pytest-json}]
+                         [--label LABEL]
+                         [--fresh-checkout | --no-fresh-checkout]
+
+options:
+  -h, --help            show this help message and exit
+  --project PROJECT
+  --target TARGET
+  --command COMMAND     Command to run; defaults to the adapter's
+                        commands.fullPreflight.
+  --report REPORT       Path the runner writes its machine-readable report to;
+                        defaults to the adapter's testEvidence.report.path.
+  --report-format {junit-xml,pytest-json}
+                        Format of --report; defaults to adapter
+                        testEvidence.report.format.
+  --label LABEL         Label recorded with the run (e.g. full-preflight,
+                        targeted).
+  --fresh-checkout      Run the gate in a throwaway checkout holding only what
+                        git can see, so gitignored runtime state (.ai-runs/,
+                        .ai-work/) cannot make a test pass locally and fail in
+                        CI.
+  --no-fresh-checkout   Run the gate in place even when the adapter defaults
+                        to a fresh checkout.

@@ -9,6 +9,7 @@ import re
 from pathlib import Path
 
 
+
 GOAL_TERMINAL_STATUSES = {"complete", "deferred"}
 
 
@@ -374,19 +375,47 @@ def goal_tracker_print_sync_result(item_ref: str, status: str, result: dict) -> 
     print(f"goal_tracker_sync_status: {status}")
 
 
-def goal_tracker_done_evidence_for_transition(event: str, detail: str, milestone: dict | None = None) -> str:
+def goal_tracker_done_evidence_for_transition(
+    event: str,
+    detail: str,
+    milestone: dict | None = None,
+    ac_verification: str = "",
+) -> str:
+    """Compose the done evidence a goal transition posts to the linked item.
+
+    `ac_verification` (item 81) is the AC pass/fail table, resolved by the caller from
+    `--verification-evidence[-file|-url]`. It lands ahead of
+    the `Milestone run:` line so the table reads as the verification and the run link as its
+    provenance. With no table supplied the composition is BYTE-IDENTICAL to the pre-81 shape --
+    `goal-advance` had no operator evidence channel at all, and every existing ledger must keep
+    composing exactly as it did.
+    """
+    ac_verification = (ac_verification or "").strip()
     if event == "goal-complete":
-        return detail.strip()
+        parts = [text for text in [detail.strip(), ac_verification] if text]
+        return "\n\n".join(parts).strip()
     if event != "milestone-complete" or not milestone:
         return ""
-    parts: list[str] = []
+    parts = []
     detail = detail.strip()
     if detail:
         parts.append(detail)
     for value in milestone.get("validationEvidence", []) if isinstance(milestone.get("validationEvidence"), list) else []:
         text = str(value or "").strip()
+        # A corrected table REPLACES a stale one; it does not sit below it. Codex R5: because a FAIL
+        # row anywhere in the evidence fails its criterion -- deliberately, so no ordering can hide a
+        # failure -- appending a corrected table under an old one left the stale FAIL still refusing
+        # the closure, which defeated the very correction path the flag exists for.
         if text and text not in parts:
             parts.append(text)
+    if ac_verification:
+        # Appended UNCONDITIONALLY, and therefore LAST. The de-duplication above is right for
+        # validationEvidence entries and wrong here: when a correction repeats text that already
+        # appears earlier, dropping it as a duplicate leaves a stale FAIL as the last verdict and
+        # the closure is refused by the correction that was meant to clear it.
+        if ac_verification in parts:
+            parts.remove(ac_verification)
+        parts.append(ac_verification)
     milestone_run = str(milestone.get("milestoneRun") or "").strip()
     if milestone_run:
         parts.append(f"Milestone run: {milestone_run}")

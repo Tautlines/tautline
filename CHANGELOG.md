@@ -10,14 +10,1833 @@ each entry summarizes user-visible behavior, not every commit. The full,
 narrative per-release log (Executive Summary, Why It Matters, Operator/Developer
 Impact, Validation, Residual Risk) is archived in the maintainer's release-notes
 archive.
-Pre-launch history through 0.6.265 is preserved in the maintainer's private
-development repository.
+Pre-launch history through 0.6.268 — every release before the 0.7.0 public
+launch — is preserved in the maintainer's private development repository, and
+summarized for maintainers in `docs/productization/archive/changelog-prelaunch-root.md`
+(internal: `docs/productization/` is not part of the public release export, so
+that file is not present in a published copy). This file starts at 0.7.0.
 
 ## [Unreleased]
 
 ### Added
 
 ### Changed
+
+## [0.75.0] - 2026-08-13
+
+### Changed
+- Code ownership is an organization team (`@tautlines/maintainers`) rather than a
+  personal GitHub handle. A personal handle in a public repository publishes a
+  maintainer's identity on every review notification and in every fork; a team
+  handle routes review requests identically and publishes no one's.
+- The public-boundary scan no longer exempts `CODEOWNERS` from its person-reference
+  check. That exemption existed on the reasoning that routing required a personal
+  handle; it does not, so `CODEOWNERS` is now scanned like every other surface.
+- The boundary scanner no longer embeds the tokens it scans for as plain literals,
+  so the file guarding against publishing an identity stops publishing one itself.
+- The session-journal shell-transcript heuristic no longer carries one maintainer's
+  username in its prompt-prefix list. The entry is removed, not replaced: detection
+  narrows slightly and broadens nothing, so no journal that validated before is refused
+  now. Generalizing the heuristic to recognize any user's prompt is a real improvement
+  and a real behavior change; it is filed separately rather than carried by a
+  sanitization release.
+- `tests/test_public_boundary_scan.py` is excluded from the public release export. It is
+  a private-repo guard whose content IS the denylist of identifiers that must not reach
+  the export, so it cannot ship without publishing exactly what it exists to withhold.
+  The scan itself is unchanged and still runs where the export is produced.
+- `tools/carve/HANDOFF.md` is excluded from the public release export: it is
+  internal cross-machine campaign state naming workstations, worktrees, and local
+  run counts. The carve tooling beside it still ships, because `cli.py` and shipped
+  release migrations reference it.
+
+## [0.74.0] - 2026-08-12
+
+QUEUE item 101: pull requests say which backlog item they advance, and whether they finish it.
+
+### Added
+
+- **The PR↔backlog reference contract**, in canonical policy and in the generated adapter of every
+  repo whose backlog is GitHub issues. A separate agent now mirrors build progress onto the
+  stakeholder board by reading pull requests and issue states alone, so PR text is its only
+  evidence: the item's **issue** number goes in every PR title (never the Project number or a
+  project item id); a PR that **completes** an item carries one closing keyword per item on its own
+  line; a PR that only **advances** one carries no closing keyword anywhere, and references the
+  item in the title alone. Never reference an issue the PR does not implement.
+- **The `board-item-updates` skill carries the operational detail** — the reference forms GitHub
+  honours, the one-keyword-per-issue rewrite for `Resolves #A, #B`, and the advancing-versus-
+  completing decision.
+
+### Changed
+
+- **The auto-close is stated with its condition, not as a promise.** GitHub honours a PR-body
+  closing keyword only when that PR's base is the repository's **default** branch. A lane
+  integrating on another branch gets no auto-close at merge; its squash commit message is what
+  carries the keyword to the promotion that fires it. The rule says so, because a rule that
+  promises a mechanism which silently does not fire is worse than no rule.
+- **The rule states its own enforcement gap.** The closing-reference gate still demands a keyword
+  from every non-exempt PR body, so an advancing PR can be refused for obeying the new rule. The
+  published rule names that gap and names the wrong way around it: never satisfy the demand with a
+  reference to an issue the PR does not implement.
+- **This repository stops doing exactly that.** Its own lanes had been satisfying the gate with the
+  backlog QUEUE number, and every one of those numbers addressed an unrelated already-merged PR in
+  this repo. `backlogProvider.allowRepoOnlyGoals` is now set, which is simply true here: no
+  GitHub-issue backlog, no board, work items in an external Markdown queue.
+- **`backlogProvider.planRepo` is set for this repo**, turning on the plan-in-place review that
+  0.73.0 shipped the capability for but left unconfigured.
+
+### Fixed
+
+- **Repos with no issue-backed backlog render none of this.** The contract text is gated on the
+  same three conditions as the board pin — provider enabled, owner, project number — and an
+  issue-less adapter renders byte-identically, proven by mutation rather than by absence.
+
+## [0.73.0] - 2026-08-12
+
+QUEUE item 59: a plan may live outside the lane that reviews it.
+
+### Added
+
+- **`run-plan-review` accepts an external plan**, addressed as `<root>:<path>` where the root token
+  is the plan checkout's directory basename. Every batch packet this framework has shipped carried
+  a workaround for the absence of this — copy the plan into the lane first — and that copy is what
+  made a reviewed plan and its published original two different files.
+- **`backlogProvider.planRepo`** names that checkout. Empty by default, which means lane-only —
+  exactly what every existing lane already does.
+
+### Changed
+
+- **Manifest identity is the recorded reference resolved to a path, not its spelling**, so two ways
+  of naming one plan adopt the same evidence instead of forking it. All existing review manifests
+  stay byte-identical.
+- **WIP-safe and additive.** A recorded reference with no root token keeps its current meaning.
+
+## [0.72.0] - 2026-08-12
+
+Item 80 (N6): plan content problems surface while fixing them is still free.
+
+### Changed
+
+- **`run-plan-review` now warns at round one** about content problems that
+  `plan-finalization-precheck` would refuse later — missing assumptions, dependencies, acceptance
+  criteria, completion definition. The point is *when*: plan edits before R1 cost no review budget
+  and void no evidence, while the same fix after a round unbinds the evidence that round produced.
+- **WIP-safe.** `planning.contentPregate.enforcement` defaults to `warn`, so nothing new refuses.
+  Set it to `block` to refuse section-shaped gaps at zero observed runs; length and marker
+  heuristics stay advisory even then, and everything is advisory once a round has been observed —
+  forcing an edit mid-loop is the defect this closes, not a stricter version of it.
+
+### Added
+
+- **`tautline plan-substance-check`** answers the same question explicitly, and is *not* softened
+  by that knob. `--list` needs no adapter.
+- **`planning.templateCoverage`** (default `report`; no blocking value exists) measures the shipped
+  template against the same contract: if a lane can fill it in completely and still fail, the
+  template is the defect.
+- A **sizing advisory** at the same seam — hint-grade, permanently non-blocking, and silent on
+  every plan this repo ships.
+
+## [0.71.0] - 2026-08-12
+
+Item 68 PR4 (occupancy, wave 2.6). Closes the occupancy chain.
+
+### Changed
+
+- **A recorded `codex-run` now takes a review lease and refuses when another round is already
+  running against the same checkout.** Two rounds on one diff spend two reviewer invocations
+  against one budget and race to write the same evidence log. **Not WIP-safe.** The refusal names
+  the holder and both ways out: wait for that round, or review from your own worktree.
+  Non-recorded invocations take no lease.
+- The lease is released in a `finally`, so a killed or crashed round frees it. A round whose
+  wrapper is gone is reclaimed on the next attempt; a 90-minute TTL is the backstop.
+- **Occupancy records gain an optional `owner` field, defaulting to `session_id`.** A record
+  written without it keeps its exact previous meaning, so lane leases already on disk stay valid
+  and every 0.68.0/0.70.0 behaviour is unchanged. The field exists because a *session* and a
+  review *run* are different holders of the same mechanism.
+
+## [0.70.0] - 2026-08-12
+
+Item 68 PR3 (occupancy, wave 2.5).
+
+### Changed
+
+- **`tautline lane-status` reports a new finding, `CONCURRENT`**, when another live session is
+  working in this worktree. It leads the report: every other finding describes a state the lane
+  can reason about, this one says the lane's own edits may not be its own.
+- Rendered at `drift` severity. The report never blocks — 0.68.0's `lane-start` refusal is where
+  occupancy has teeth. A rerun cannot clear a live peer, so the report does not offer one.
+- **WIP-safe.** Nothing new refuses, and a lane with no peer sees exactly what it saw before: the
+  uncommitted-changes line is reworded *only* when a foreign session is present.
+
+## [0.69.0] - 2026-08-12
+
+Batch 2026-08-11 item B7. Tautline now has one definition of done, and it is enforced.
+
+Released as `0.69.0`. `0.64.0` (#532), `0.65.0` (#533), `0.66.0` (#535), `0.67.0` (#536) and
+`0.68.0` (#537) were each claimed by another lane while this change was in review -- five times. Versions are expectations, never reservations.
+
+### Added
+
+- **One definition of done, named and adapter-overridable.** Seven conditions — `scope_complete`,
+  `tests_written`, `tests_green`, `review_clean`, `evidence_bound`, `pr_handed_off`,
+  `board_updated` — each with a real checker over real lane state, in the new leaf module
+  `done_definition.py`. Before this there was no `definition_of_done` symbol anywhere, no
+  statement of one in the canonical rules, and three unrelated fragments standing in for it.
+- **`done-check`**, which prints the verdict condition by condition (`pass` / `fail` / `unknown` /
+  `skipped`) with a summary line and a machine-readable `--json`. It exits 1 only on a `fail`.
+- **`goal-assignment --out <path>`**, which writes the goal's exact bytes to a file and prints the
+  copy command. A goal is an artifact, not chat prose: the file bypasses every renderer between
+  composition and paste.
+- **`definitionOfDone` adapter key** (`enforcement`, `conditions`, `integrationBranch`), read-side
+  only on the `autonomy` precedent, so an absent key stays absent and no existing adapter
+  regenerates. Rendered-adapter cost: **zero bytes, asserted as a delta against the merge base.**
+
+### Changed
+
+- **`goal-advance --event goal-complete` refuses a failing condition under `enforcement: block`**, at the same pre-flight seam
+  as the closure gate and **before it**, so a refused done move mutates nothing on any board. A
+  condition the checker could not read is `unknown`: reported loudly, never `0`, and never
+  blocking — a bar that blocked on what it could not read would wedge an offline lane.
+- **The done bar is HANDOFF, not merge.** `pr_handed_off` passes when the PR is out of the lane's
+  hands — merged, auto-merge armed, or in the merge queue, targeting the integration branch. An
+  open PR with nothing armed fails. **It never requires a lane to wait for a queued PR to land**,
+  which would trade one waste for the worse one the `watch-until-merged` detector already forbids.
+  The integration branch is adapter-resolved, never hardcoded to `main`.
+- **Every composed goal states the bar it will be judged by.** `compose_goal_assignment`'s
+  completion clause is built from the project's *effective* enabled condition set instead of a
+  hardcoded sentence, so a project that disables `pr_handed_off` is not handed a goal demanding a
+  PR. The old clause ended "the PR is queued to merge" — the framework's own goal-writer
+  authorizing the exact stop being complained about. Composed goals also state that the human is
+  away for the duration.
+- **`goal-condition` states the same bar, from the same source.** The documented Claude `/goal`
+  path composes goals too, from what used to be its own hardcoded completion sentence — so fixing
+  only `compose_goal_assignment` left the framework stating two different bars depending on which
+  verb you ran, and the one an operator actually runs was still the pre-B7 text. Both surfaces now
+  read `goal_assignment_effective_conditions`; disabling a condition drops its clause from both.
+- **`goal_assignment_shape_issues` now has teeth on content**: a completion clause that names no
+  handoff condition is refused.
+- **A `goal-complete` rerun with no resolvable session id clears the previous stamp** instead of
+  inheriting it. A stale `completedBySession` made the Stop arm correlate a completion to a session
+  that had already ended, suppressing the advisory for the session actually at the boundary.
+- **A goal is length-checked against a new authoring ceiling of 3,600**, below the delivered cap of
+  4,000. The check was measuring the source string while the goal's real path is
+  `source → render → terminal → copy → paste`; a measured 3,659-character goal had 5.17 spaces per
+  line of headroom, so a six-space renderer indent delivered an over-limit goal that had passed.
+  Refusals name both numbers.
+- **The Stop boundary no longer goes silent when a session declares its own goal done.** It warns —
+  through the advisory channel, never a block decision, per RCA DECISION 4 — naming the failing
+  conditions and the next action, and a fresh `blocker-declare` record releases it. The warning
+  fires only for a goal *this* session completed, correlated by a new `completedBySession` stamp;
+  an un-correlatable completion reports one honest `unknown` line rather than guessing.
+
+## [0.68.0] - 2026-08-12
+
+Item 68 PR2 (occupancy, wave 2.4).
+
+### Changed
+
+- **`tautline lane-start` now refuses when another live session already holds this checkout.**
+  Two sessions editing one worktree overwrite each other's files with no error and no way to tell
+  whose change survived. **Not WIP-safe.** The refusal carries its own way out: a runnable
+  `git worktree add`, and the command to clear a lease whose session is gone.
+- **`fleet.occupancy` is new, on by default**, with `mode: refuse`. Set `mode: observe` to report
+  without refusing, or `fleet.occupancy.enabled: false` to opt out; the master `fleet.enabled:
+  false` still turns it off along with everything else.
+- **`lane-status` records the session on every session start**, before its own `startupCheck`
+  early return, so lanes that turned the startup check off still leave a trace. That path never
+  refuses and never raises — it runs as a hook.
+
+## [0.67.0] - 2026-08-12
+
+Items 76 + 77 (batch-1 slot W1.3), one PR per INDEX section 3.
+
+### Changed
+
+- **`codex-plan-review` refuses a direct invocation** and names `run-plan-review` as the way in.
+  The launcher is what holds the in-flight lease, so a direct call was a round nothing was
+  serialising — two reviewers could launch against one plan and neither would know. **A previously
+  working invocation now refuses**; the message carries the fix.
+- **A reviewer log with no recognisable verdict heading no longer finalizes.** The parser's
+  prompt-echo defect was fixed at the mechanism level, but a log that never contained a real
+  verdict could still bind evidence — which is the failure the fix was for. Applies to logs
+  recorded from this release onward.
+- **`run-plan-review` takes a 2-hour in-flight lease.** A malformed or stale lease cannot crash
+  the launcher or lock a lane out; clock skew is not evidence a round ended; and the handshake is
+  dual-written so the evidence log stays clean.
+
+## [0.66.0] - 2026-08-12
+
+Item 79 WS1.
+
+### Changed
+
+- **A merge now records the board closeout it owes.** Closing the board card is work the merge
+  *causes* but cannot finish inside the merge itself — the PR is not merged until it is merged, so
+  at that instant the closeout can only be owed. Writing the debt down is what makes it survivable:
+  a lane that dies between merge and closeout now leaves a record naming exactly what is owed,
+  instead of a silently unclosed card nobody knows about.
+- **`tautline backlog-provider-closeout-check` settles that debt**, and the prepush boundary
+  refuses while one is outstanding. **Not WIP-safe**: a lane that merges and then pushes again
+  without closing out will be stopped, with the owed closeout named.
+- The merge itself is never blocked by this. Blocking a merge on post-merge work would be a
+  deadlock, which is why the debt is recorded rather than enforced there.
+
+## [0.65.0] - 2026-08-12
+
+Item 79 WS2. Closes RCA `2026-06-15` (#307/#260) and RCA `2026-07-18` control 3.
+
+### Changed
+
+- **A PR body now has to bind the issues it closes.** Two checks run at the prepush board gate and
+  at `tautline merge`:
+  - `Resolves #A, #B` is refused. GitHub honors a closing keyword for the **first** ref only and
+    drops the rest silently — #260 stayed open and nothing warned, because from GitHub's side
+    nothing went wrong.
+  - A body with **no** closing reference is refused: merging it auto-closes nothing, and 18 of 60
+    merged PRs were measured in exactly that state. The comma-list check cannot catch this — zero
+    refs yields zero list errors — which is why both checks exist.
+
+  **Not WIP-safe: a previously green PR body can now refuse.** Each message carries its own fix.
+
+- The missing-reference check is **exempt** where the lane has already said the obligation does not
+  apply — a non-development work profile, a recorded `board-binding` decision, or
+  `allowRepoOnlyGoals`. All three resolve through **one** function both boundaries call, so prepush
+  and merge cannot disagree about the same lane. None of them excuses a *malformed* comma list.
+  At merge both checks ride the existing `mergeGate.enforcement` switch and run **before** the
+  `--override` decision record, so a refusal cannot leave the ledger claiming a break-glass for a
+  merge nothing attempted. The `board-binding` exemption is scoped to a decision recorded
+  **newer than the branch's merge-base** — an unscoped scan would mean that using the
+  documented escape hatch once exempted every later PR in the repository forever, a control
+  that disables itself the first time someone legitimately uses it.
+- GitHub's cross-repository closing form `owner/repo#123` is accepted; it auto-closes exactly
+  like `#123`, and refusing it meant the gate rejecting correct work.
+- A `body` field **absent** from the provider response is an unanswered question, not an empty
+  body: both boundaries warn and proceed rather than refuse a PR whose body was never read.
+
+## [0.64.0] - 2026-08-12
+
+Item 71 PR3 (WS4). Closes RCA `2026-07-31` control 4 and completes item 71.
+
+### Added
+
+- **`allowRepoOnlyGoals`** — a new optional adapter key, **off by default**, on both `goalTracker`
+  and `backlogProvider`. A goal with no GitHub Project Source item can proceed repo-only instead of
+  refusing.
+
+  The sync used to raise **unconditionally** and name no way out, so a lane whose work genuinely
+  has no board item had exactly two exits, both bad: disable the tracker wholesale, or hand-edit
+  the ledger. A refusal that names no sanctioned alternative is where bypasses get invented, and an
+  invented bypass is worse than the allowance it replaces.
+
+  The refusal now names the knob, still offers the sync remedy first, and says the change belongs
+  in the **source** adapter and must be re-rendered. With the knob set, the run prints
+  `goal_tracker_repo_only_goal:` and states that board status is not updated for that goal —
+  proceeding silently would be its own defect. The **drift gate honors the same knob**, because a
+  gate reporting drift for the exact state its own sync sanctions makes the sanctioned path
+  unusable. A goal that *does* have an item takes the normal path either way.
+
+  **The allowance covers the goal item and nothing else.** A board-backed **milestone** under
+  a repo-only parent still syncs, and milestone drift is still checked — an early return
+  would have turned a parent-goal allowance into a milestone-sync opt-out, silently, because
+  the run would report success while writing nothing to the board. The pre-existing fallback
+  that rolls an unmapped milestone up to the parent item does not fire when there is no
+  parent item to roll up to.
+
+### Note on the record
+
+QUEUE row 71 recorded this workstream as shipped in 0.46.0 (#513). `git grep allowRepoOnlyGoals`
+returned **zero hits** on the merged tree and the sync still raised unconditionally — it never
+landed. The row stated claim-time intent, not merged code. Corrected in the backlog; it ships here.
+
+## [0.63.0] - 2026-08-12
+
+Item 71 PR2. Closes RCA `20260702T202523Z` and the read-side half of `20260627T193516Z`.
+
+### Added
+
+- **The board's identity is adapter-declared, and now verifiable.** The generated adapter renders
+  `- Board pin: <owner>/projects/<n>` when the enabled provider carries one — and renders nothing
+  when it does not, because a lane with no pin should get no line rather than a line that guesses.
+  `backlog-provider-board-check` compares the identity recorded in every synced goal source against
+  that pin and **blocks on a mismatch**, on the same exit-1 path as drift: a board that is not the
+  pinned board is not out of date, it is the wrong board. Its ok path prints `board_identity:`, so a
+  passing gate is distinguishable from a gate that never ran.
+- **A `github-projects-reads` skill**, the read-side complement to `board-item-updates`, carrying
+  the four controls with the surface traps that produced them — including that
+  `gh project item-list --format json` omits `fieldValues` on some `gh` versions, where a null is
+  not an empty field but an unanswered question.
+
+### Fixed
+
+- **The board position map read one page and believed it was the board.** A single un-cursored
+  `items(first:100)` meant that on any board past a hundred items, every later item was missing from
+  the authoritative order — and the selection site then ranked it by a synthetic
+  `len(position_map) + position`, putting real board order and fallback order in the same sort key.
+  It now paginates to the same ceiling the verified read uses, and returns an **empty** map rather
+  than a partial one on a mid-pagination failure: a half-filled map looks authoritative while
+  silently ranking the items it contains above every item it does not.
+- **Two warning-only board reads degraded silently.** `provider_board_business_lead_gaps` and
+  `lane_unplaced_customer_facing_issues` still return `[]` on an unreadable board — they are
+  non-blocking by design — but now say `board read incomplete` first. Both report what is *missing*,
+  so an unreadable board produced the most reassuring possible answer from the least evidence.
+- The currency gate's truncation-drift branch shipped in 0.46.0 with no regression test and has been
+  unpinned for six releases. It is pinned now, with its positive twin.
+
+### Changed
+
+- Policy states both rules: a queried project number differing from the configured `projectNumber`
+  is **blocking drift, not a fallback candidate**; and operator-observed UI state is **ground
+  truth** against an agent's API result — arguing with operator evidence is a stop-the-line defect.
+
+## [0.62.0] - 2026-08-11
+
+Closes RCA `20260707T181643Z-methodology-regression-rca`. With 0.61.0, this completes item 75.
+
+### Changed
+
+- **Implementation-review rounds are counted by execution, not by label.** Six executions against
+  one lineage, every one invoked as `R1`, each passed a label-derived cap as round 1 while the
+  aggregate was round 6. Rounds are now counted per outgoing lineage (branch plus review base).
+
+  **Two currencies**, because one number cannot serve both comparisons: the absolute ceiling counts
+  **total** executions — all six of the incident's runs were confirming-by-predicate, so only
+  quantity separates a pathology from a healthy remediation loop — while the tier budget and the
+  self-authorization rung count **charged** executions, the confirming predicate replayed over the
+  recorded sequence. Every free round stays free and the budget stays reachable.
+
+  **The recorded `branch` is verified, not inferred from the filename slug.** `feat/a-b` and
+  `feat/a_b` slugify to the same filename component and share a glob, so a fresh branch could
+  warn, spend budget, or hit the hard cap on another branch's reviews.
+
+  **The confirming predicate reads the same ledger as the counters.** Given a lineage base it
+  scopes to that lineage, so a branch carrying an old-base or void manifest no longer has its
+  first new-lineage round admitted free and then replayed as charged — free going in and
+  charged coming out is a budget bug in either direction.
+
+  A void manifest is not counted as a spent execution, and a `--review-round` label the ladder
+  would reject — no digits at all, or a non-positive marker like `R0` — reaches that refusal
+  unchanged. Only a positive parsed marker is effective-counted; promoting the others would
+  hand the ladder a positive number and silently retire a validation it already had.
+
+- **Not WIP-safe.** A branch that has already recorded rounds is now at the round its *executions*
+  say, so a lane mid-remediation — especially one that has been relabelling — can meet the hard cap
+  sooner than it expects on its next run. Both exits are unchanged and neither needs another Codex
+  execution.
+
+### Added
+
+- **A visible per-lineage counter.** `codex-run` prints `codex_run_execution_count:` on every run,
+  label or not, and warns when this attempt would be the third. It reports an **attempt** alongside
+  the recorded and charged counts, not an execution: the line prints before the run is known to
+  record anything, and claiming a spend that did not happen would be the same dishonest accounting
+  this release removes.
+- Stage 2 manifest filenames carry microseconds — separated by a `.`, so the time-of-day and the
+  microseconds never run together into twelve consecutive digits, which the public-release scan
+  correctly reads as an account-like identifier. These filenames are recorded *into* the tracked
+  `.impl-reviews/` ledger, so without the separator every future review would ship a false
+  positive into a public repo. The manifest and the log it pins share **one** stamp definition. Two executions inside one second used to collide; fixing only the manifest
+  would make the first execution's evidence permanently unfinalizable.
+
+## [0.61.0] - 2026-08-11
+
+Closes RCA `2026-07-28-empty-diff-review-recorded-clean`.
+
+### Added
+
+- **A review with no subject is refused before it can be recorded, ledgered, or charged.**
+  `head_sha == base_sha`, zero diff bytes, or `diff_sha256` equal to the empty-string digest now
+  refuses at manifest validation — closing `finalize-implementation-review` and the prepush
+  evidence scan together — in `codex-run` before the wrapper is invoked, in the evidence writer
+  itself (which recomputes state *after* the wrapper, so a wrapper that moves `HEAD` cannot slip a
+  void manifest past the pre-flight), and in `record-stage1-sweep`, whose narrower
+  zero-bytes-only check let a sweep over nothing unlock a review of nothing. Each marker refuses
+  independently, so a forged manifest that omits `diff_bytes` cannot slip past; absence of all
+  three is **not** voidness, so an underived subject falls through rather than minting a refusal.
+  `review-evidence-check` is the one deliberate exemption: an empty *outgoing* diff at push time
+  legitimately owes no evidence.
+
+  The original incident is exactly this shape — a void manifest matched a void state, because the
+  equality check that binds evidence to a subject passed on the **absence** of one.
+
+### Changed
+
+- **A recorded `codex-run` that writes no manifest now exits non-zero.** A zero wrapper exit with
+  no evidence is not a successful review: nothing was recorded, nothing can be finalized, nothing
+  binds the diff.
+- Prose-completeness and coverage-breadth findings on non-authoritative documentation now have a
+  written default of P2 in `17-review-before-push` — a rule both source RCAs asked for and which
+  `grep` confirmed existed nowhere.
+
+## [0.60.0] - 2026-08-11
+
+### Fixed
+
+- **A done-evidence comment now goes to the item's repository, not the lane's.** For a board item
+  backed by an issue in another repository, the verification claim was posted to the **same-numbered
+  issue of the lane's own repo** — a real, unrelated issue belonging to someone else. The closure
+  gate had already learned to *read* the acceptance criteria from the item's own repo, so one
+  command read from one repository and wrote to another. Both sides now share a single resolver, so
+  they cannot diverge again. `stakeholder_issue_post_comment` takes a **required** repo argument:
+  the default that produced this defect is gone rather than corrected.
+
+### Changed
+
+- **An unresolvable evidence target is refused, not guessed.** An item whose linked URL yields an
+  issue number but no parseable `owner/name` (an enterprise host, an API-shaped URL) no longer falls
+  back to the lane's repository. That fallback was unreachable for an item with no link at all —
+  which has no issue number either and is refused a line earlier — and in the one case that did
+  reach it, the lane's repo was a guess that published a third party's claim onto an unrelated
+  issue.
+- **The refusal lands before anything is mutated.** The evidence target for the parent *and every
+  board-backed subtask* is resolved in a pre-flight that runs ahead of the first status edit, and is
+  reachable from `goal-advance`'s closure pre-flight — which is the only seam earlier than the
+  required UI-evidence comment. The pre-flight is pure URL parsing and adds no network call, so a
+  single-repo lane pays nothing for it.
+- **`stakeholder-question-ask --issue <url>` refuses a URL naming another repository.** It
+  previously kept only the issue number and commented on the lane's same-numbered issue. A URL whose
+  repository cannot be parsed is refused too — that is the case a "does the repo differ?" check
+  would wave through. Pass a bare issue number to act on the lane repository.
+
+Known residual, tracked as this item's Release B: a repository that is now addressed **correctly**
+may still refuse the write, and that failure can surface partway through a multi-subtask sweep. No
+read-only check can predict it, so it is not claimed closed here.
+
+## [0.59.0] - 2026-08-11
+
+### Changed
+
+- **The canonical rules now state the oracle-discipline rule the gate has been enforcing** since
+  0.56.0. `methodology/policy/10b-board-currency.md` — and the `board-item-updates` skill and its
+  reference — say it in three parts, none inferable from the others: closure evidence for a
+  provider-backed item is measured against that item's **written acceptance criteria** and carries
+  one PASS/FAIL row per criterion; **an unmet criterion is a FAILED AC, never a deferral**; and
+  verifying the implementation against itself — "within the shipped model" — is forbidden, because
+  a table built from the code cannot fail. Prose only; no code path changes. A lane already passing
+  the gate sees no difference, and a lane that meets the `strict` refusal can now read why.
+
+## [0.58.0] - 2026-08-11
+
+### Added
+
+- **`goal-advance` reads an optional milestone `acVerification` key** — inline AC table text, or a
+  repo-relative path to one — so a lane that authors the table into the milestone before advancing
+  needs no command-line flag. That is what keeps the primary autonomous closure path usable
+  unattended once the gate is `strict`. The key is optional and absent-stays-absent: unset, the
+  composed evidence is byte-identical to 0.57.0. The path must resolve **inside the checkout**,
+  symlinks included, because its contents are posted to the linked issue. There is no precedence
+  rule between the key and the `--verification-evidence*` flags, deliberately: both are appended,
+  milestone first, and the gate decides per criterion by the last verdict recorded — so a
+  command-line correction lands after the milestone's table and decides.
+- **The `milestone-complete` evidence guard accepts that table as completion evidence** — alongside
+  `--detail`, `--milestone-run`, a recorded `milestoneRun`, and `validationEvidence`. Widening only:
+  nothing that satisfied the guard before stops satisfying it. Without it the no-flag channel is
+  unreachable, because a lane that authored the table into the milestone and supplied nothing else
+  was refused before composition ever ran. The guard weighs the **resolved text**, not the key's
+  truthiness, so an empty or whitespace-only file does not open it — otherwise the command could
+  publish its required UI-proof comment and only then refuse, mutating on a refused move. The value
+  is resolved for `milestone-complete` only: `milestone-started`, `-blocked`, and `-deferred` never
+  use AC verification, and a stale or out-of-tree path must not be able to block the transitions a
+  lane uses to report that something is wrong.
+
+## [0.57.0] - 2026-08-11
+
+### Fixed
+
+- **A false refusal shipped in 0.56.0, and the mechanism that caused it.** 0.56.0 decided at
+  *compose* time whether fresh evidence displaced a recorded AC table, and dropped the recorded
+  table whenever the supplied evidence merely contained PASS/FAIL rows — a CI matrix, a test grid —
+  after which the gate refused the closure for criteria it had just discarded. That decision cannot
+  be made correctly where it was being made: two rows can each name the same acceptance criterion
+  without naming each other, and the composer does not have the criteria. It is gone. The gate,
+  which does have them, now judges each criterion by the **last verdict recorded against it**, so a
+  correction appended after a stale entry decides and nothing is dropped from the posted evidence at
+  all. A `PASS` row written *above* a `FAIL` row for the same criterion still fails it.
+
+## [0.56.0] - 2026-08-11
+
+### Added
+
+- Closure verification is now measured against the item's own written acceptance criteria. When a
+  provider-backed item's linked issue carries an acceptance-criteria section, the done evidence must
+  contain a line-by-line pass/fail table with one PASS/FAIL row matched to each criterion. Rows are
+  matched injectively, so duplicate or paraphrased rows cannot cover distinct criteria, and a
+  `DEFERRED`/`PARTIAL`/`N/A` verdict is not a row at all. A `FAIL` row refuses the done move: an
+  unmet criterion is a FAILED AC, never a deferral, and no ordering of rows or of matching stages
+  can hide one. The check runs as a pre-flight, before any board write or comment, so a refused
+  done move mutates nothing.
+- `tautline ac-verify --item <ref>` prints the fill-in table skeleton from the item's own criteria,
+  optionally writing it with `--out`. It is the runnable continuation every refusal on this surface
+  names, and it derives the skeleton from the same splitter the gate uses, so the table a lane is
+  told to produce is exactly the table the gate accepts. The **unfilled** skeleton is refused: a
+  form that verifies itself is not verification.
+- `goal-advance` gains `--verification-evidence`, `--verification-evidence-file` and
+  `--verification-evidence-url`, composed through the same helper the other two done verbs already
+  use, so file reading and URL validation keep one definition. A supplied AC table supersedes a
+  stale one already recorded in the milestone's `validationEvidence` — a FAIL row anywhere in the
+  evidence fails its criterion, so an appended correction would leave the stale FAIL refusing the
+  closure it was meant to unblock. Before this release the primary autonomous closure path had no
+  operator evidence channel at all, and with none supplied the composed evidence is byte-identical
+  to before.
+- Verification-claiming comments posted through the CLI are measured against the same criteria under
+  the same knob. Comments that claim nothing about verification are never fetched and never checked.
+  Named residual, not closed: a claim written into a PR body, chat, or a summary composed outside
+  the CLI is not covered.
+
+### Changed
+
+- New adapter knob `backlogProvider.doneEvidence.acTable` (`off` | `warn` | `strict`), default
+  **`warn`**: the finding is printed and the move proceeds. An unreadable issue body reports an
+  explicit `done_evidence_ac_state: unknown` rather than degrading into a silent pass, so the
+  fail-open rate is measurable before anyone considers `strict`. The migration report publishes the
+  criteria for that promotion. The canonical rule that states this discipline in prose ships in a
+  following release (WS3); this one ships the mechanism.
+
+### Known gaps
+
+- A done move on a **cross-repo** board item still posts its evidence comment to the lane's repo
+  rather than the item's. That predates this release and is filed as backlog item 95; this release
+  makes it visible because the gate reads the criteria from the item's own repo. Same-repo items
+  are unaffected.
+
+## [0.55.0] - 2026-08-10
+
+### Added
+- **`behavior-spec-status --base <ref>` reports the inactive scenarios your branch added.** The
+  repo-wide counts answered "how much debt is there", which a repo carrying long-standing debt
+  answers identically whether a change added to it or not — so growth per change was invisible at
+  the one surface policy 15 requires before every finalization, merge and delivery. `--base` prints
+  `behavior_specs_added_inactive: <N> (vs <ref>)` — every scenario newly inactive since the merge
+  base, annotated or not, because a fully annotated `@pending` is still growth — alongside
+  `behavior_specs_added_issues: <N> (vs <ref>)` and one `behavior_specs_added_issue:` line per
+  scenario the branch left without the owner and un-pend-trigger annotations, each citing the
+  canonical form. **The two counts are different sets, not nested:** stripping metadata from a
+  scenario that already existed reports `0` added and `1` issue, because that is debt the branch
+  introduced without introducing a scenario.
+- It compares two committed trees, so an uncommitted edit never moves the answer, and **both**
+  counts print `unknown` rather than `0` whenever it cannot see — an unresolvable or blank ref, no
+  common ancestor, an unreadable feature file, a path scope that selects nothing, or an unexpected
+  failure. A check that cannot look must not print what a clean branch prints. Where
+  `behaviorSpecs.pendingRequiresOwnerAndTrigger` is `false`, the issue half reports
+  `disabled by adapter` and the growth count still reports.
+- `--base` is **reporting only and never changes the exit code.** The exit code stays exactly what
+  it was: repo-wide issues under `--strict` or strict enforcement. Enforcement of the same rule at
+  the boundary that creates the debt is `behavior-spec-delta-check`, which refuses the
+  metadata-less scenarios a staged change introduces and lets pre-existing debt through.
+
+### Known gaps
+- **A Gherkin scenario has no stable identity, and this report inherits that.** Same-named
+  scenarios in one feature file are paired in line order, so inserting a new bare `@pending`
+  *above* an existing same-named one and annotating the original makes the new instance take the
+  old one's slot: growth is still counted, but the issue half attributes it to the pre-existing
+  scenario and reports `behavior_specs_added_issues: 0`. Deferred deliberately, not overlooked —
+  the pairing helper is shared with `behavior-spec-delta-check`, and three of four review rounds
+  in 0.50.0 showed every patch to it minted a fresh false refusal on that gate. Scenario identity
+  is the successor plan's subject; a narrow under-report on a report is the cheaper side of that
+  trade. Pinned by a test that is documented to fail when the successor closes it.
+
+### Changed
+- `behavior_specs_instruction:` now cites the machine-checkable annotation form
+  (`@pending @owner:<goal-or-lane> @reason:<why> @unpend:<trigger>`), interpolated from the same
+  constant the refusals use. Authors were discovering the shape by trial. The
+  `behavior_specs_issue:` lines are unchanged byte-for-byte — consumers parse those.
+- `behavior-spec-status` and `methodology-status` each scan the behavior-spec surface **once** per
+  invocation instead of twice. Both computed the repo-wide record for their report and again for
+  their strictness decision, and `methodology-status` runs before every plan finalization, merge
+  and delivery. It gains no delta line and no new git work: no base ref is resolved anywhere in its
+  scope, so producing one would mean adding a merge-base and a unified diff to that hot path.
+
+## [0.54.0] - 2026-08-11
+
+### Changed
+- **The blocking Graphify freshness gate no longer depends on an LLM backend.** `DEFAULT_GRAPHIFY`
+  prescribed a bare `graphify .` invocation with an update flag as the command that satisfied a
+  BLOCKING pre-commit/pre-push gate. That form makes Graphify auto-detect a backend from ambient
+  credentials, and when the provider retired the model auto-detect landed on, the documented gate
+  command failed permanently — while the flag the gate actually checks (an mtime comparison) only
+  ever needed the dependency-free no-LLM AST refresh. `updateCommand` and `buildCommand` now
+  default to `graphify update .`, which was measured cold-building a repo from nothing with no API
+  key and no `AWS_PROFILE`, so the auto-detect form survives in no default at all. A lane on
+  defaults gets this automatically; a lane that pinned the old command keeps its pin and should
+  adopt the split.
+- **Semantic enrichment is a separate, non-blocking, backend-explicit step.** Two new adapter keys
+  carry it: `graphify.semanticCommand` (default
+  `GRAPHIFY_CLAUDE_CLI_MODEL=haiku graphify label . --backend=claude-cli`) and
+  `graphify.semanticRule`. Both are required non-blank and are published in
+  `methodology/adapter-schema.json`; adapters that omit them inherit the defaults and keep
+  validating. A new contract test asserts every `DEFAULT_GRAPHIFY` key appears in the published
+  schema, so the next default key cannot escape the public contract the way these two would have —
+  `properties.graphify` carries no `additionalProperties: false`, so the omission would have been
+  silent.
+- **The gate prints the command the adapter configured, not a hardcoded one.** `graphify-status`,
+  the generated git hooks, and the rendered adapter's Graphify Navigation bullet now interpolate
+  `graphify.updateCommand`/`graphify.buildCommand`. A project that had already moved off the broken
+  invocation was still being told to run it — the divergence between the documented command and the
+  printed one is what let the break survive. The rendered `(no-LLM)` qualifier is attached only
+  when the configured command *is* the no-LLM default, so an adapter that pins an LLM-backed
+  invocation is never handed a generated file claiming its gate needs no backend.
+- Policy 25, the canonical rules, the `graphify-navigation` skill and the reference docs state the
+  split, plus the general rule that a Graphify invocation which auto-detects its backend is never a
+  gate command in any adapter, and the prevention-gap rule that **a review finding that a documented
+  blocking gate command does not run is a source defect, never "doc staleness"**, and may not be
+  downgraded without evidence that the command executes.
+
+## [0.53.0] - 2026-08-10
+
+### Added
+- **`methodology-status` and `audit` now report which quality controls are actually on.** Every
+  diagnosed safeguard ships as an adapter opt-in defaulting to off or warn, and a control that is
+  off, absent or self-disabled printed *nothing* — silence that is indistinguishable from healthy.
+  A lane could therefore carry every go-live gate in schema form while enforcing none of them.
+  `methodology-status` now prints one `control_posture:` line summarising every control by state
+  (`block`/`warn`/`off`/`empty`/`unreachable`) with a `drift=` list, and `tautline audit` prints
+  the full table in both its findings and its clean branch. Three states are computed rather than
+  read off an `enforcement` string, because that string lies: a `ciTestGate` with `enabled: false`
+  or a taken `expectTests` self-disable never runs whatever it claims to enforce; the
+  detection-baseline gate keys on `readiness.enforcement`, not on the `readiness.sources` file
+  list; and a binding preflight that cannot exercise the declared primary user surface is its own
+  row rather than a footnote on `uiEvidence`.
+
+### Changed
+- **`methodology-status --posture`** prints one `control_posture_warn:` line per drifting control
+  with the reason. It is behind a flag because `methodology-status` is the surface an agent reads
+  first, and the summary line is the whole default cost. Posture is diagnostic in this release: no
+  posture row enters any failure list at any flag combination, including `--strict` and
+  `--fail-on-drift`, and no exit code changes.
+
+## [0.52.0] - 2026-08-10
+
+### Added
+- **Review findings are routed by acceptance-criteria traceability, not by severity alone.** The
+  Done gate is AC-scoped and routing was severity-scoped, so a Critical *not* open against the
+  item's acceptance criteria was neither blocking nor routable. Classified findings now carry
+  `ac_ref` (the criterion violated, or `null` when out of scope), `disposition`
+  (`fixed`/`routed`/`refuted`) and `routed_to`, and `finalize-implementation-review` enforces them
+  on a push-eligible verdict. A finding open against a criterion is fixed or refuted regardless of
+  severity -- never routed, never downgraded to make routing legal.
+- **A deferred Critical/P1 carries its reason and its criterion.** `status: "deferred"` was the
+  cheapest escape on the record; a Critical/P1-origin deferral now requires `deferral_rationale`
+  (>=12 characters) and `acceptance_criterion` on both the plan-review and implementation-review
+  paths. `--verdict clean-with-deferrals` requires `--classified-findings-json` with at least one
+  finding, so the rule cannot be bypassed by omitting an optional flag. A deferred P2 owes nothing.
+- `review-evidence-check --strict` runs the whole contract over **both** recorded copies — the
+  manifest and the tracked `.impl-reviews/` ledger, compared field-for-field — so evidence edited
+  after finalize cannot pass. Non-strict warns. `methodology-status` prints one `critical_deferral:` line
+  per recorded Critical/P1-origin deferral -- a ledger surface, never a gate.
+- One documentation surface for the whole contract at
+  `docs/reference/operations/cli-operations.md`, cited by every refusal, with the flag's
+  path-vs-inline difference between the two verbs stated explicitly.
+
+### Changed
+- Canonical rules, policy 17 and the `review-before-push` skill now state routing in terms of
+  acceptance-criteria traceability at honest severity. "No unresolved Critical/Important ships"
+  reads "unresolved **against the acceptance criteria**".
+- `--verdict blocked` requires none of the above and never runs the log cross-check. Recording what
+  review actually found stays the cheapest verdict there is.
+
+## [0.51.0] - 2026-08-10
+
+### Added
+- On a hook boundary only, an adapter-schema refusal that is **provably** version skew now reports
+  and continues instead of refusing the push. Provable means one thing: the adapter sits inside a
+  framework checkout whose own schema is a different file and accepts the adapter. That is the only
+  signal that consults a schema which actually declares the key.
+- The refusal that previously named no remedy at all now says something. Where the skew is provable
+  the remedy's reinstall is **qualified to the authoritative checkout** rather than routed through
+  `PATH` -- which may still resolve the stale install that produced the report. Where the only
+  signal is a newer generator stamp, which cannot distinguish a new key from a misspelling, it
+  emits a labelled **hint** naming both branches and promising neither.
+
+### Changed
+- The generated hooks export `TAUTLINE_HOOK_BOUNDARY`, and unset it before invoking a wrapped
+  backup hook on both branches so a custom hook cannot inherit downgrade semantics outside the gate
+  chain that earns them.
+
+### Fixed
+- Nothing about `additionalProperties: false`, which is unchanged. A misspelled key still refuses,
+  and so does a lane whose only signal is a newer generator stamp. `validate-adapter` stays the
+  strict oracle everywhere.
+
+## [0.50.0] - 2026-08-09
+
+### Added
+
+- **`behavior-spec-delta-check`: the owner/un-pend rule now sits at the boundary where the debt is
+  created.** 0.47.0 gave the rule one definition and published its form, but left it reachable only
+  from `codex-run`'s evidence path and the repo-wide status report — a commit crossing neither
+  landed metadata-less `@pending` scenarios silently, which is how one adopter's debt reached 268
+  scenarios before a repo-wide gate detonated on an unrelated PR. The new verb reads the staged
+  tree and exits 1 when a scenario the change *introduces* lacks owner or un-pend metadata.
+- Pre-existing debt never blocks. "Introduced" is decided by **comparing the inactive scenarios in
+  the staged tree against those at `HEAD`**, not by intersecting line ranges — a proxy that was
+  wrong in both directions: a deletion above an untouched scenario made it look introduced, and a
+  feature-level `@pending` made a file's worth of newly inactive scenarios look untouched. A file
+  renamed between two in-scope paths keeps its history; one renamed in from outside scope brings
+  its debt to the gate for the first time.
+- The check is **fail-open**: any git failure warns and reports `unknown`, never `0`, so a check
+  that could not look never reads as a clean one. An unreadable `HEAD` reports `unknown` too,
+  rather than treating "no prior debt" as proven and refusing the commit. No boundary is wired to
+  the verb in this release — it ships callable by hand, so nothing changes for adopters on upgrade.
+
+- If the adapter differs between the worktree and the index, the check **refuses to answer** and
+  reports `unknown`. Policy and scenarios have to come from the same revision: an adapter edited
+  but not staged would otherwise set the rules for a tree it is not part of, and flipping
+  `pendingRequiresOwnerAndTrigger` to false in the worktree alone would silence an enforcing staged
+  adapter without that change ever being committed.
+
+### Fixed
+
+- **`codex-run`'s diff scoping did not decode git-quoted paths.** Its hunk parser was a second copy
+  of the same logic and had drifted: under the default `core.quotePath` a non-ASCII path was stored
+  under its escaped name, which never matched the real filename, so an unannotated scenario added
+  in a file like `é.feature` was invisible while the gate reported success. Both parsers are now
+  one, and rename detection is pinned on at the invocation rather than left to `diff.renames`.
+
+### Known gaps
+
+- **`codex-run` still does not see debt introduced by *deletion*.** Removing an `@owner:` line adds
+  no lines, so the `+N,0` hunk carries no range and the push-boundary gate reads the
+  now-noncompliant scenario as pre-existing debt. A base-vs-tip scenario comparison sees it; that
+  comparison was wired into `codex-run` during this release and then taken back out, because four
+  review rounds each found a fresh **false refusal** in it — and this is a blocking push gate,
+  where refusing correct work is the expensive failure. It returns once scenario identity across
+  revisions is settled. `behavior-spec-delta-check` catches the case today, wired to no boundary.
+- The verb's own identity handling has known rough edges deferred with it: duplicate scenarios of
+  the same name are paired by line order, which mis-pairs when their cardinality changes; a move
+  that also rewrites a file below git's rename-similarity threshold loses its history; and a
+  literal-Unicode path inside C quotes (possible with `core.quotePath=false`) is not decoded
+  faithfully. Each can produce a false refusal from the verb — which is why it is wired to no
+  boundary in this release.
+
+## [0.49.0] - 2026-08-09
+
+### Fixed
+- The generated `pre-commit`/`pre-push` hooks now probe the lane's own checkout for a CLI first,
+  then `TAUTLINE_METHODOLOGY_REPO` and `MINERVIT_METHODOLOGY_REPO`, and only then the baked
+  install path. Probing the baked path first made the environment branches unreachable whenever
+  that path existed and was executable, so a release that ADDS an adapter-schema key could not be
+  pushed from such a machine: the hook validated the new adapter against the old install's schema,
+  the closed schema refused it, and the only way out was `--no-verify` on a release boundary. A
+  repository shipping both the framework engine and the adapter schema is the authority on its own
+  schema. `additionalProperties: false` is unchanged, and a misspelled key still refuses.
+- The resolver is now evaluated once per hook run rather than once per gate.
+
+### Changed
+- The resolution order is pinned by a new `HOOK_CLI_RESOLUTION_ORDER` constant and asserted
+  label-for-label against the emitted template for both hook names.
+
+**Reach:** this fix arrives on a machine only when `lane-start` or `install-hooks` rewrites the hook
+there. The drift substrings are unchanged, so no gate reports an existing hook as stale; until the
+rewrite that machine keeps its pre-upgrade behaviour, which is a hard refusal and never a silent
+pass. Update the install BEFORE reinstalling — see the migration report.
+
+## [0.47.1] - 2026-08-09
+
+### Fixed
+- Behavior-spec path scoping: a pattern whose last segment is `**` names the directories to
+  descend into, not files. `features/*/**` therefore no longer selects `features/a.feature`
+  directly -- measured against `Path.glob`, which returns only directories for such a pattern and
+  lets `behavior_feature_files` rglob beneath them. The predicate had widened scope for these
+  patterns, which is the worse drift direction for a gate.
+
+## [0.47.0] - 2026-08-09
+
+### Changed
+- The owner + un-pend rule for inactive (`@pending`) behavior scenarios now has ONE definition,
+  `behavior_pending_missing_metadata`, in `core.runtime`. It previously existed only as inline
+  string checks duplicated between `behavior-spec-status` and the `codex-run` review block --
+  two copies of a rule that was never written down anywhere an author could read it.
+- Policy 15 now SHOWS the machine-checkable form,
+  `@pending @owner:<goal-or-lane> @reason:<why> @unpend:<trigger>`, instead of only naming the
+  three things it requires. The form is a strict
+  subset of the legacy prose tokens, so adopting it breaks no existing annotation and no existing
+  annotation breaks under it.
+- Behavior-spec path scoping is now segment-aware and shared between globbing and predicate
+  matching, so the two cannot drift. The previous `fnmatch`-based approach would have treated `/`
+  as an ordinary character, matching `x/a.feature` against `*.feature` and failing to match a
+  root-level `a.feature` against `**/*.feature`.
+
+## [0.46.0] - 2026-08-09
+
+### Changed
+
+- **A GitHub Project board read is now verifiably complete, or it refuses.** One page was fetched
+  and the payload's `totalCount` discarded, so "not in the first page" and "not on the board" were
+  indistinguishable — `goal-start` refused an item that was present. A short read escalates; a
+  still-short read fails closed with `truncated at N of M` rather than anything an agent could read
+  as absence. A miss over a complete read names how many items were actually searched.
+- Scoped reads (`backlogProvider.scopeQuery`) distrust `totalCount` in both directions — never to
+  clear a read, never to accuse one, and never as a retry bound — because gh may report the
+  project-wide total while `--query` filters the items it returns.
+
+## [0.45.1] - 2026-08-09
+
+### Added
+
+- **Session↔worktree occupancy primitives** (`tautline_methodology.occupancy`): lease identity,
+  liveness, foreignness, and atomic acquire/release for the record that answers "which SESSION
+  holds this worktree" — the sibling of the fleet lease, which answers "which WORKTREE holds these
+  paths". Two sessions inside one checkout resolve to the same fleet holder and pass unchallenged;
+  that is the mechanism behind two recorded incidents, one of which swept a peer session's staged
+  files into a foreign commit. Identity resolves to the **agent session process** from a measured
+  runtime variable or not at all — never the CLI invocation, its shell, or the POSIX session
+  leader that two agents in one terminal share. Exclusivity rests on one rule: without a real
+  kernel lock, only a publish into an empty slot is permitted, and mutating an existing record
+  requires the lock. Every predicate is total over hostile file data: a malformed lease is stale,
+  never a blocker and never an exception. Internal only at this release — no CLI verb, no adapter
+  key, no hook content, no refusal.
+
+## [0.45.0] - 2026-08-09
+
+### Changed
+
+- **The refusal-continuation machinery moved to a shared test module.** The runnable-command check
+  and the allowlist-with-reason discipline now live in `tests/refusal_continuations_common.py`, so
+  a second refusal surface can apply the SAME check instead of a drifting copy. Refactor only: the
+  review-surface suite's checks, prefixes and allowlist entries are unchanged, and its run output
+  is byte-identical before and after.
+
+## [0.44.0] - 2026-08-09
+
+### Added
+
+- **`codex-run` refuses a review round whose only dirty files are the generated adapters.** The
+  review wrapper flips to `--uncommitted` on any dirty tree, so a tool-injected re-render would
+  become the round's subject and spend its whole budget. Mixed dirt warns instead of refusing;
+  `--allow-adapter-dirt` reviews the adapters deliberately. A hand-written `CLAUDE.md`/`AGENTS.md`
+  is the lane's own work and never counts as adapter dirt. The refusal's discard commands are
+  derived from what git distinguishes — in HEAD, staged-add, untracked — so following them
+  actually clears the dirt.
+
+## [0.43.1] - 2026-08-09
+
+### Fixed
+
+- **Four package modules were missing from the release artifact registry** and are now
+  registered: `core/runtime.py` — which the W1 carve moved 391 symbols into at 0.41.0 —
+  `goal_assignment.py`, `merge_gate.py`, and `test_evidence.py`. That list is what `cut-release`
+  checksums, so a missing module was omitted from the integrity record a verifier checks:
+  manifests from releases before this one are **incomplete**, not merely different — they attest
+  to a subset of what shipped. A new guard asserts the registry against the tree in both
+  directions — every shipped module registered, every registered path present — so it cannot
+  drift again; the list stays explicit rather than globbed, because a manifest built by walking
+  the filesystem would checksum whatever happened to be lying in the tree.
+
+## [0.43.0] - 2026-08-09
+
+### Added
+
+- **Generated adapters record the template that rendered them.** `CLAUDE.md` and `AGENTS.md` now
+  carry a `tautline-template-version` comment on line 2 (line 1 is unchanged, so every existing
+  runtime still recognizes them). A render whose on-disk files were produced by a **newer**
+  template no longer silently rolls them back: `lane-start` narrates and skips the file, and
+  `render-adapters --write` exits 1 with the repin remedy plus a `--allow-template-downgrade`
+  override for a deliberate one. The stamp is identity, not content — a stamp-only difference is
+  never drift and never a rewrite, so a release bump does not re-dirty every lane.
+- **Renders name themselves.** Both render paths print `adapter_render_trigger:` and record an
+  `adapter_render` event carrying the trigger, pid, argv0, cwd and runtime version — enough to
+  tell two concurrent sibling-worktree sessions apart. Refused downgrades record
+  `adapter_render_refused` with the on-disk stamp.
+
+### Changed
+
+- `lane-start` and `render-adapters --write` no longer rewrite a generated Markdown file whose
+  content is unchanged. Previously every lane-start rewrote both files unconditionally.
+
+### Notes
+
+- This closes render skew only **between runtimes at or after 0.43.0**. A machine still pinned
+  below it can perform the same silent downgrade; the fleet repin is the control for that
+  population. See the 0.43.0 migration report.
+
+## [0.42.0] - 2026-08-03
+
+### Added
+
+- **W2 enablement for the monolith split** (`tools/carve/`): `plan_core.plan()` gains a
+  `restrict` parameter that derives the largest provably-safe SUBSET of a verb family under the
+  full gate ladder, and `apply.py` gains alias-aware importability — an eager re-export left by
+  an earlier carve (`X = _core_runtime_mod.X`) now counts as importable directly from its carved
+  module, so later waves can move symbols that call already-carved helpers (proven end-to-end by
+  a two-stage carve test). Maintainer tooling only; no shipped surface changes. Measurement at
+  this base, recorded in `tools/carve/HANDOFF.md`: zero W2 family lanes pass clean today — every
+  release/public family member reaches unmovable monolith state — so the next carve waves start
+  from a regenerated plan rather than a family assumption.
+
+## [0.41.0] - 2026-08-03
+
+### Changed
+
+- **W1 core extraction (cli.py monolith split, wave 1)**: 391 shared-core symbols (4,858 LOC)
+  relocated byte-identically from `cli.py` into `tautline_methodology.core.runtime` by the 0.40.0
+  carve tooling, driven by the first committed batch (`carve/batches/core.json`, a derived
+  artifact reproducible from the base commit). Eager guarded aliases at the deletion site keep
+  `cli.<name>` attribute reach, every in-repo call site, the suite's monkeypatch seams, and the
+  hook fail-open contract working unchanged — zero behaviour change by construction, proven by
+  the full gate on the carved tree. Internal refactor only: no adapter key, no CLI surface, no
+  policy change reaches an adopter.
+
+## [0.40.0] - 2026-08-03
+
+### Added
+
+- **Carve tooling for the `cli.py` monolith split** (`tools/carve/`): a tested, manifest-driven
+  tool that relocates top-level symbols out of the CLI monolith by byte-slice, so a batch's diff
+  is a pure function of (base commit, batch) and parallel lanes recompute instead of merging.
+  Maintainer/dev-repo tooling only — no shipped CLI surface changes. The tool refuses, rather
+  than miscompiles, every analysed hazard class: origin back-edges, module-scope consumers on the
+  fail-open path, per-load mutable or environment-derived state (including function defaults),
+  test-suite monkeypatch seams, relative imports, module-introspecting bodies, multi-name binding
+  statements, the `_MissingFrameworkPackage` binding floor, import-order displacement past
+  effectful survivors, and broken-versus-absent destination packages. `tools/carve/analyze.py`
+  derives the split plan from the reference graph; `tools/carve/plan_core.py` emits the largest
+  provably safe shared-core batch.
+
+### Fixed
+
+- **`scripts/test.sh` xdist probe on Python 3.13+**: the gate's pytest-xdist detection matched on
+  `-n numprocesses` help text that 3.13-era pytest no longer prints; it now matches on
+  `--numprocesses`, so the fail-closed test gate works on every supported interpreter again.
+- **`cli.py` F541 hygiene**: the seven placeholder-free f-strings were de-prefixed (byte-identical
+  string values) and `F541` was deleted from the per-file lint baseline — required so the first
+  carved batch, which relocates one of those strings, lands in a destination file the frozen lint
+  gate accepts.
+
+## [0.39.2] - 2026-08-02
+
+### Changed
+
+- **`renderer-ci` and `npm-audit` now run on local hardware.** Both select their runner through
+  `CI_RUNNER_LABEL` and assert, immediately after checkout, that the job actually landed there —
+  reusing the `assert-runner-identity` action from 0.38.1. Eight locally-routed jobs across five
+  workflows now carry the assertion. These were the last two workflows that actually billed on this
+  repository.
+
+  This supersedes 0.38.1's recommendation to leave them hosted, which rested on there being no bill
+  worth saving. The operator instruction of 2026-08-02 is categorical, not a cost threshold.
+
+  Unchanged deliberately: `publish-pypi` and `publish-npm` stay hosted, because a release must never
+  depend on whether a laptop is awake; `release-drift-check` is gated to the public mirror and never
+  runs here.
+
+  **The trade this accepts:** both run `npm ci`, which executes dependency lifecycle scripts. The
+  container protects the host, so this is not host-user execution — but jobs are not isolated from
+  each other, and the machine is on the operator's LAN.
+
+- **This does not achieve zero billed hosted runs, and does not claim to.** Scheduled and `push`
+  triggers resolve from the **default branch**, and `main` predates `CI_RUNNER_LABEL` routing
+  entirely, so its copies stay hardcoded `ubuntu-latest` until a release promotion:
+
+  | Resolves from `main` until promotion | Detail |
+  | --- | --- |
+  | `ci-python` (3 jobs), `validate` | hardcoded hosted, **no path filter** on `pull_request` |
+  | `npm-audit` `push` → `main` | **no path filter** — every push to `main` |
+  | `npm-audit` weekly cron | `0 6 * * 1`, ~1–2 min |
+  | `renderer-ci` main-path push, manual dispatch | path-filtered / manual |
+
+  0.39.1 disabling Dependabot removed the largest *automatic* driver of that residual: security
+  updates ignored `target-branch` and opened against `main`, where one PR could trigger six hosted
+  jobs including the full Python suite. With Dependabot off, what remains is human PRs to `main`,
+  pushes to `main`, and the weekly cron. **Promoting `main` closes the rest.**
+
+- The `assert-runner-identity` header, both moved workflows' comments, and the runner README now
+  state one consistent model: the canonical-repo check is a **routing guard, not fork containment**.
+  On `pull_request`, `github.repository` is the base repository, so a fork PR passes it and routes
+  to the self-hosted runner. Containment rests on the repository being private — a precondition,
+  not a property — and making it public requires a fork guard on every `pull_request`-triggered
+  self-hosted job first.
+
+## [0.39.1] - 2026-08-02
+
+### Changed
+
+- Dependabot is disabled in this repository by operator decision: an automated vector that pushes
+  dependency changes into the product without the operator's approval is not wanted for now. The
+  config is renamed to `.github/dependabot.yml.disabled` rather than deleted, so it and its caveats
+  survive; renaming it back is the whole re-enable.
+- The trade is written into the disabled file rather than left implicit: no automatic notice when a
+  dependency ships a security fix, and pins drift silently. `npm-audit.yml` still reports known npm
+  advisories, so the JS side keeps a watcher; pip and github-actions have none while this is off.
+- No adopter-visible change: `.github/dependabot.yml` is excluded from the public release export, so
+  no adopter tree ever contained it.
+
+## [0.39.0] - 2026-08-02
+
+### Added
+
+- `tautline merge` refuses a merge whose resulting commit subject names a version the PR head does
+  not ship. A squash takes its subject from the PR title, which goes stale whenever a branch is
+  renumbered — and the resulting commit cannot be corrected once published, so this is checked at
+  the last point where the subject is both knowable and still editable. Fix the title (or the
+  `--subject`) and re-run.
+- A test asserting that every commit touching `VERSION` whose subject carries a version token names
+  the version it actually ships. Two published commits that violate it are pinned in a frozen
+  allowlist that may only shrink; they are on every clone and cannot be corrected.
+
+### Changed
+
+- The subject check reads `--subject` when supplied and the PR title otherwise, because
+  `gh pr merge --subject/-t` overrides the title outright. It is skipped for an explicit
+  `--merge`/`--rebase`, whose subject does not come from the title, but **not** for a bare merge:
+  with no strategy flag the effective strategy is the repository's default, which the command
+  cannot read, so the ambiguous case is checked.
+- `VERSION` is read from the repository owning the PR **head**, so the guard still runs on a fork
+  PR. When it cannot be read the merge proceeds with an explicit notice that the subject was *not*
+  verified — an unreadable check must never become a lockout.
+
+## [0.38.3] - 2026-08-02
+
+### Added
+
+- **Three shipped releases were in no changelog at all, and nothing could tell.** 0.6.266, 0.6.267
+  and 0.6.268 each shipped a migration report and appeared in neither this file (which starts at
+  0.7.0) nor the pre-launch archive (which stopped at 0.6.265) — three releases with no
+  reader-facing record anywhere. It hid behind this file's own boundary sentence, "Pre-launch
+  history through 0.6.265": true of the *archive's* coverage, and so it read as intentional rather
+  than as a description of a hole. The three entries are reconstructed from their own migration
+  reports, every file they name verified to exist, and their dates are bracketed rather than
+  guessed — 0.6.265 and 0.7.0 are both 2026-07-08.
+
+- **The durable part is the test, and it immediately found the gap is 24 versions, not 3.** Every
+  migration report must now have an entry in one of the two changelogs. The archive also skips
+  0.6.123–0.6.126, 0.6.128 and 0.6.160–0.6.175. Those 21 are **not** fixed here and are not
+  deferred by preference: their content is recoverable from the migration reports, but the archive
+  is dated per entry and those dates exist only in the private pre-launch repository. Inventing 21
+  dates to turn a check green would put fabricated history into the release record. They are
+  enumerated in `KNOWN_PRELAUNCH_CHANGELOG_GAP`, and the test asserts that list may only **shrink**
+  — so a newly cut release that forgets its changelog section fails immediately, and every
+  backfilled entry must delete its own line.
+
+## [0.38.2] - 2026-08-02
+
+### Changed
+
+- **A diff that ships nothing no longer owes a release.** Two of this repository's own gates
+  contradicted each other, and a docs-only planning PR sat on the contradiction for eleven days:
+  `review-evidence-check` refuses a push until the tracked
+  `docs/superpowers/plans/.impl-reviews/` ledger is **committed**, and the version-bump contract
+  then counted that same commit as a framework change owing a full release — version bump,
+  changelog section, migration report, nine version surfaces. One gate demanded the file; the
+  other charged a release for it. The only exits were burning a version number on a planning
+  document or bypassing a gate with `--no-verify`.
+
+  The release-change contract now exempts paths under `docs/superpowers/` — plans, specs, and
+  review ledgers. The exemption is provable rather than a judgement call: that prefix is already
+  in `PUBLIC_RELEASE_EXPORT_EXCLUDED_PREFIXES`, so nothing under it has ever reached an adopter.
+  The test keys on that constant instead of copying the string, so if the export ever starts
+  shipping plans, the exemption's justification fails loudly rather than silently widening over
+  consumer-visible surface.
+
+  It stays **per-path**, like every other rule in that contract: a diff mixing a plan with real
+  code still owes its release. Only a docs-only push is exempt. The test-only half of the same
+  backlog item (`tests/**`) is deliberately not taken here — tests *do* ship in the public export,
+  so that case needs its own argument rather than riding this one.
+
+## [0.38.1] - 2026-08-01
+
+### Added
+
+- **The hosted-runner fallback can no longer be taken silently.** `runs-on: ${{ vars.CI_RUNNER_LABEL
+  || 'ubuntu-latest' }}` failed *open*: clear the repo variable and all six locally-routed jobs move
+  back to billed GitHub compute while still reporting green — the exact regression the self-hosted
+  move existed to end, with no signal that anything changed. A new
+  `.github/actions/assert-runner-identity` composite action runs immediately after checkout in
+  `validate`, both `ci-python` jobs, and all three `ci-python-full` jobs, and fails the run when an
+  unset `CI_RUNNER_LABEL` means the local runner was silently lost.
+
+  Both behaviours that legitimately depend on the fallback survive. **Forks** still fall back
+  quietly — hosted is the only compute they have — via a case-insensitive canonical-repo check.
+  The **runner-down escape hatch** still works, now taken deliberately with
+  `CI_ALLOW_HOSTED_FALLBACK=1` instead of by silence; affected jobs then pass with a `::warning` on
+  every run, so an open hatch stays visible rather than turning up on an invoice.
+
+  It deliberately does **not** claim to detect an offline, deregistered, or typoed runner label:
+  GitHub queues those jobs rather than falling back, so no step runs and no runtime check can see
+  it. That case has its own signal — nothing merges.
+
+  Maintainer-repo only. No adapter key, no CLI surface, no policy change; adopter lanes are
+  untouched in either direction.
+
+### Changed
+
+- The workflow SHA-pin guard exempts same-repo `./` action references — keyed on the `./` prefix
+  rather than on the absence of an `@pin`, which would have re-admitted an unpinned
+  `actions/checkout` — and now also covers `ci-python-full.yml`, which had been declared and then
+  left out of the only supply-chain check in the suite.
+
+## [0.38.0] - 2026-08-01
+
+### Added
+
+- **"The tests passed" stops being a sentence anyone can type.** 0.28.0 made a test run produce a
+  tamper-evident receipt (`tautline-test-run/v1`). Nothing read it — `classify_test_run_evidence`
+  computed `red` and its only consumer in the whole codebase was a `print`. Two boundaries now read
+  it: `guard-check --boundary prepush` gains a fourth check, and `finalize-implementation-review`
+  refuses a push-eligible verdict without it.
+
+  New adapter key `testEvidence.enforcement` (`off|warn|block`). **Absent means `block`** — an
+  operator decision, overriding this item's own plan, whose default was `warn`. A warn default
+  makes the control opt-in, and an opt-in control does not fix a recurring failure.
+
+  Refused under `block`: a record that is missing, invalid, stale, red, **exit-code-only**, or that
+  proves no test executed — **zero collected, or every test skipped**. That last pair is the real
+  bypass: point a suite at a glob matching no files and it produces a structurally valid report
+  that turns every gate green. Skipped tests are not evidence.
+
+  The **report outranks the exit code**: a `pytest … || true` command swallows the process status
+  while the report still records the failures.
+
+  `unavailable` — a classifier internal error — **fails open in every mode, including `block`**,
+  per the 2026-07-22 startup-gate lockout precedent. A control that cannot tell must not stop the
+  lane. Recording a `blocked` verdict likewise never requires evidence: that verdict is how a lane
+  honestly reports that review found something, and gating it would make the truthful verdict the
+  hardest one to record.
+
+  Every refusal prints its remedy — the command that produces evidence, the report declaration that
+  makes counts parse, and the deliberate downgrade *including the re-render*, since a source-adapter
+  edit is inert until rendered. Downstream projects mostly land in `missing`, not `red`, and a
+  project blocked with no way out teaches its operator `--no-verify`, which removes every gate
+  rather than just this one.
+
+  **Five defects in this release's own classifier, found by consecutive review rounds and fixed
+  here rather than shipped.** The record declares the digest exclusions it was measured under and
+  the classifier re-applies them — deliberately, so widening the defaults never reclassifies an old
+  record. The cost is that the record names its own comparison basis: an entry of `.`, or git
+  pathspec magic like `:(top)`, excluded the whole worktree, making the recorded digest the
+  empty-tree hash that the classifier then recomputed to the same value for *any* tree. An
+  option-shaped entry such as `--bad-option` was parsed by git as a **flag**, exiting non-zero into
+  `unavailable`, which fails open by design. Exclusions are now an allowlist over what the writer
+  emits, passed after `--` and as `:(literal)` pathspecs so neither flags nor globs are
+  interpreted — while a legal filename like `report[1].xml` is still accepted.
+
+  A record whose `git` block was a string rather than an object raised into that same fail-open
+  catch; it now classifies `invalid`. In the other direction, a record **store** that cannot be
+  listed is a checker outage (`unavailable`, fails open) rather than absent evidence, and pytest's
+  `xfailed`/`xpassed`/`deselected` outcomes are mapped into the count buckets — a green suite using
+  expected-failure markers could not push. `finalize-implementation-review` also refuses a record
+  whose exclusions predate the ledger path instead of accepting it and leaving the push blocked one
+  line later, gated on `enforcement=block` so `warn`/`off` keep their non-blocking contract.
+
+## [0.37.0] - 2026-08-01
+
+### Changed
+
+- **Implementation review got the round ladder plan review already had, and no round decision on
+  that surface is an operator escalation any more.** `codex-run` carried two independent round
+  refusals, and the budget one returned before the other could be reached — so
+  `--allow-extra-rounds`, which is wired to the *other* gate (two finalized clean rounds, per its
+  own `--help`), was unreachable on the budget path. The review-before-push policy nevertheless
+  told lanes to use that flag for the confirming round it mandates on a remediated diff. Policy had
+  assigned the flag a meaning it never had since 0.17.5, so the refusal was unconditional, its
+  message said "escalate", and agents stopped to ask the operator a question with exactly one valid
+  answer. On 2026-07-30 that stopped four development lanes overnight.
+
+  Now: rounds up to the adapter budget are free, rounds up to **budget + 2** self-authorize with a
+  recorded `--extra-round-reason`, and past that refusal is absolute and says so. Every refusal on
+  the path carries a runnable continuation, and none of them can tell an agent to consult a human —
+  pinned by `tests/test_codex_run_round_ladder.py`, which is also the first test in the suite to
+  cover this refusal at all. That absence is why the defect survived fourteen releases.
+
+- **A confirming round on an already-remediated diff is no longer charged.** Re-binding an owed
+  verdict to a changed diff hash is not new inquiry, and charging it as a fresh round is what made
+  any PR whose review found something twice unpushable without break-glass. `codex-run` now prints
+  `codex_run_confirming_round:` when the exemption applies; the exemption is bounded by the hard cap
+  and fails closed whenever it cannot prove the prior rounds were voided.
+
+- **`review.roundBudgets` defaults re-shaped: `{T0:0, T1:1, T2:2, T3:2}` → `{T0:0, T1:2, T2:3,
+  T3:4}`.** The old shape gave T3 — the highest risk tier — no more rounds than T2, and T1=1 made
+  the mandated confirming round illegal on the first finding. With the ladder's +2 margin, T3's
+  absolute ceiling is 6. Adapters that pin `review.roundBudgets` explicitly are unaffected; those
+  relying on the default get the new values on update.
+
+- **The review-before-push policy now describes the ladder that actually ships.** Policy had told
+  lanes since 0.17.5 to take the owed confirming round with `--allow-extra-rounds` — a meaning that
+  flag never had. The policy module and the `review-before-push` skill reference are reconciled
+  against shipped behavior, and 0.17.5's migration record is left byte-identical on purpose (it is
+  the record of what that release *claimed*); the correction is published here instead.
+
+### Added
+
+- **"No dead ends" is an enforced invariant on the review surface, not a principle.**
+  `tests/test_refusal_continuations.py` walks `cli.py` for every refusal on the review/gate
+  boundary and asserts three things: none may instruct an agent to escalate, ask, or wait for a
+  person; a refusal that denies an action on *policy* grounds must name a runnable continuation;
+  and any command a refusal names must actually exist with the flags it shows. Allowlists are keyed
+  by message fragment (not line number) and every entry carries its reason in the test file — the
+  goal is that each dead end is a deliberate, named decision, not that the count is zero. All three
+  checks are mutation-verified against the defect they exist to catch.
+
+### Fixed
+
+- **Every dependabot PR touching a workflow file was red on arrival, permanently, with no compliant
+  path.** `.github/workflows/*.yml` ships inside the public release export, so a pinned-action
+  change there is consumer-visible and genuinely needs a VERSION bump — but a bot cannot bump
+  `VERSION`, and the gate's failure message listed the changed files and named no way to satisfy
+  it (PR #413, `actions/checkout` 4→7). The exemption is deliberately *not* widened; the message
+  now names the maintainer commit that clears it, including the `gh pr checkout` path for a bot's
+  branch. A gate with no compliant path is how a team learns to ignore red.
+
+- **`record-plan-review` refused a Critical/P1 count mismatch without saying which side was
+  wrong.** It now prints both the counts derived from the findings file and the counts passed, plus
+  the exact corrected re-invocation.
+
+## [0.36.1] - 2026-08-01
+
+### Fixed
+
+- **The runner operations docs said `ci-python-full` stays hosted; 0.36.0 had just moved it.** That
+  file is what an operator reads when deciding where CI runs, so the split table, the "deliberately
+  stays hosted" claim, and the paragraph naming the hosted run as *the backstop for when the machine
+  is off* were all actively misleading. There is no hosted backstop any more — with the runner down,
+  nothing CI-related runs anywhere, and the recovery is to unset `CI_RUNNER_LABEL`, which now returns
+  all three CI workflows to `ubuntu-latest` together. `ci-python.yml`'s "deliberately NOT applied to
+  ci-python-full" comment and its stale `3.10 + 3.12 matrix` phrasing are corrected too.
+
+  Documentation and comments only — no workflow expression or code path changed.
+
+## [0.36.0] - 2026-07-31
+
+### Changed
+
+- **The Python support floor moves 3.10 → 3.12, and the last GitHub-hosted workflow moves onto the
+  self-hosted runner.** These are one change: keeping the 3.10 floor was the *only* thing forcing
+  `ci-python-full` to stay hosted, because Ubuntu 24.04 ships only 3.12 and `setup-python`'s
+  portable CPython cannot be used here — its `libpython` is not on the loader path and dies the
+  moment a test spawns it as a subprocess (531 failures on the first self-hosted run).
+
+  **Nothing in the tree ever required 3.10.** It parses clean under the 3.9 grammar, and the floor
+  rested entirely on `zip(strict=)` (PEP 618), which exists in every version from 3.10 up. The
+  floor was a support *promise*, not a dependency — and honouring it meant hand-building a second
+  interpreter into the runner image to prove a version no adopter had been asked to stay on.
+  Operator decision: adopters still on 3.10/3.11 upgrade.
+
+  `ci-python-full`'s three jobs now use the same `CI_RUNNER_LABEL` selection as the per-PR
+  workflows. **Unset still resolves to `ubuntu-latest`**, so a fork of the public release export is
+  untouched and never queues against a runner it does not have.
+
+  **Three things the floor raise would otherwise have broken, caught in review:** `ci-python-full`'s
+  evidence job still downloaded `evidence-py-3.10` and read `legs/py-3.10/leg-status.txt` — an
+  artifact no job uploads once the leg is gone — which would have failed that job on *every* run
+  while both real jobs passed. The generated PyPI package still emitted `requires-python = ">=3.10"`
+  and a `Requires Python 3.10+` README, so `pip`/`pipx` would have gone on installing the wheel onto
+  the two interpreters this release drops; both now derive from `cli.PYTHON_FLOOR`, pinned to
+  pyproject by test. And the 0.36.0 migration report had lost the `grant-gh-project-scopes`
+  carry-forward that every report since 0.10.3 carries — the update engine reads only the latest
+  report, so a lane jumping from pre-0.10.3 would have hit fail-closed board gates with no
+  instruction explaining them.
+
+  Two stale claims corrected while doing it: the workflow said match statements forced the floor
+  (there is not one in the tree), and the matrix guard hardcoded `"3.10"` — it now **derives** the
+  floor from `pyproject.toml`, so a future raise cannot leave it asserting a version nothing runs.
+
+## [0.35.3] - 2026-07-30
+
+### Changed
+
+- **Per-PR CI moved onto a self-hosted runner, and superseded runs stopped being paid for.**
+  Hosted Actions spend was projecting **~$137/mo** against a $70 ceiling, and a measurement over
+  Jul 23–30 (283 billed jobs, per-job round-up, all Linux at $0.008/min) put **93% of it in two
+  workflows**: `ci-python` ($23.42/wk) and `validate` ($6.53/wk). Both now select their runner via
+  the `CI_RUNNER_LABEL` repo variable — **unset resolves to `ubuntu-latest`, so forks of the public
+  release export are untouched**; set to a runner label, the job routes to that runner and costs
+  nothing, because GitHub does not meter minutes for hardware it does not own. The same suite runs
+  in **101s locally against 18m45s hosted**. Both workflows also cancel superseded PR runs, scoped
+  to `pull_request` only so a push run composing the `evidence` artifact a gate consumes is never
+  cancelled. `ci-python-full` and the publish workflows are deliberately unchanged and stay hosted,
+  so the authoritative interpreter matrix and anything that ships a release never depend on a local
+  machine being awake. New `.github/runner/` holds the containerized runner and its operations.
+
+### Fixed
+
+- **A GitHub runner registration token could be left behind in the host's shared `/tmp`.**
+  `.github/runner/runner.sh` removed the temp token file only after a successful `docker cp`, so
+  an interrupted or failed copy left a world-readable bearer token for the rest of its ~1h life,
+  enough for another local user to enrol a runner reporting checks for this repo. Cleanup is now
+  a trap armed before the token is written, covering the failure and Ctrl-C paths.
+
+## [0.35.2] - 2026-07-30
+
+### Changed
+
+- **Two test suites were re-doing identical work once per parametrized case.** Measured by file,
+  `test_package_split_wave.py` was **431.8s — 20.7% of the whole suite**, because a pin
+  parametrized over ~300 moved names re-read and re-parsed the 2.6MB CLI engine *per parameter*.
+  Reads and parses are now cached per worker: **431.8s → 12.4s**. Together with the cubic
+  registrar-carve pin, a same-machine A/B at CI's parallelism (`-n 2`) measures the suite at
+  **488.6s → 312.7s (36% faster)**, with user CPU time halving from 681s to 336s — confirming work
+  removed rather than merely rebalanced. Both rewrites keep their assertions and were proven
+  non-vacuous by mutation.
+
+- **The suite's slowest test was accidentally cubic: 35.56s → 0.85s.** Measured before touching
+  anything: `ruff` is 0.05s and *cold* `mypy` 2.0s, so essentially all 994 of the CI Python leg's
+  1019 seconds is pytest — and `--durations` showed one test at 35.56s against 10.73s for the next.
+  For each of ~190 `add_parser` calls it walked the entire 52k-line module AST, then re-walked each
+  candidate function's subtree. Rewritten as one pass. The assertion is unchanged, and was proven
+  non-vacuous by planting a stray `add_parser` in `main()` and confirming it still fails. On an
+  xdist worker a single 35s test is a floor no other worker can lower, so the gain is largest where
+  the worker count is smallest — CI.
+
+## [0.35.1] - 2026-07-30
+
+### Fixed
+
+- **`tautline merge <pr> -- <gh flags>` now applies those flags.** The `--` separator was stripped
+  only when it came *first*, so after an explicit PR reference it reached `gh` — which stops option
+  parsing at `--` and read `--squash` as a positional, merging with the default strategy instead of
+  the requested one. That shape is the one the verb's own refusal text suggests.
+- **A caller-supplied `--match-head-commit` is refused rather than honoured.** It suppressed the
+  pin the gate had just verified and forwarded the caller's SHA instead — an override of the
+  race protection recording no reason, while every other override in this verb (`--override`,
+  `--admin`) records a decision. It now joins `--repo` / `-R` / `--admin` as a refused passthrough
+  flag, and the verified head is passed unconditionally.
+- **A green suite could be recorded as "the command did not write its report", and the faster the
+  machine the more often.** `tautline test-run` proved a declared report belonged to the run by
+  requiring its mtime to be at or after the run's start reading — but those two timestamps come
+  from different clocks. File timestamps come from the kernel's coarse-grained clock, refreshed
+  once per timer tick, so a report written immediately after the run started could carry an mtime
+  *earlier* than the start reading: **188 of 200 trials** on a local runner. Every one produced
+  `predates this run`, dropped the counts, and **synthesised exit code 1 out of a passing suite**.
+  The floor now carries a documented tolerance for that skew.
+- **A run whose command wrote no report at all could inherit the previous run's counts.** The
+  stable report path is reused between runs, so a command that exited 0 without writing its
+  declared report left the last run's file sitting there — and any mtime slack wide enough to
+  survive clock skew is also wide enough for back-to-back runs to land inside. `test-run` now
+  clears the declared report *before* the command runs, in place exactly as it already did for
+  fresh-checkout mode, so absence afterwards is the proof; the record store's own copy of every
+  accepted report is untouched. A clear that *fails* is recorded as its own error rather than
+  falling through to the mtime floor, which is wider than the gap between two consecutive runs.
+- **The "most recent goal plan" could be whichever plan sorted last by filename.** Plans written
+  within one timer tick share an mtime (98 of 100 consecutive writes), and a fresh clone stamps
+  *every* plan with the single checkout time — so ties were the normal case, not the exotic one.
+  Sorting `(mtime, name)` in reverse resolved those ties reverse-alphabetically, silently making
+  the last name in the directory "the newest plan". Ordering is now newest-first with ties broken
+  ascending by name.
+
+## [0.35.0] - 2026-07-30
+
+### Added
+
+- **`tautline merge` — the gate starts refusing.** The verb consuming 0.34.0's kernel. It reads
+  the PR's live `statusCheckRollup`, refuses on a failing check (or, by default, one that has not
+  reported yet), then merges via `gh`. **Tautline's own adapter is armed to `block`**: on a repo
+  where `ci-health-check` reports `platform_required_checks: unavailable`, this is the only thing
+  standing between a red commit and `experimental`.
+  - The PR is an explicit **argument**, or the current branch's PR — never parsed out of a command
+    string. With no PR reference, separate gh flags with `--`; the separator is consumed rather
+    than forwarded, since gh would otherwise stop option parsing and read `--squash` as a
+    positional.
+  - **Target-changing flags are refused, not forwarded** (`--repo`, `-R`, `--admin`, in every
+    spelling `gh` accepts). Forwarded, they let the gate verify one PR and merge another.
+  - **A PR URL reveals its own repo**, so the cross-repo fail-closed rule fires for URL targets
+    even without `--repo`.
+  - **The verified head commit is pinned** with `--match-head-commit`, so a push landing between
+    verification and merge cannot be merged on the old commit's checks.
+  - Same-repo unverifiable **fails open with an explicit notice**; cross-repo **fails closed**.
+    Routine `--admin` stays forbidden; `--override <reason>` records a hard-to-reverse decision
+    **before** the merge.
+- **`mergeGate` adapter knob** (`enforcement: off | advise | block`, `blockOnPending`), absent-safe
+  and defaulting to `advise`.
+
+### Fixed
+
+- **Both kernel defects deferred from 0.34.0**, fixed here where the code first becomes reachable:
+  pending now outranks unknown in *both* modes (matching the module's documented precedence), and
+  wrapper flags taking non-numeric operands (`sudo -u build gh …`, `env -C /tmp gh …`,
+  `timeout --signal TERM 30 gh …`) no longer hide a wrapped raw merge.
+
+## [0.34.0] - 2026-07-30
+
+### Added
+
+- **The merge gate's verdict kernel** (`tautline_methodology.merge_gate`). Backlog item 21 option 3,
+  selected by the operator on 2026-07-24. Branch protection is a paid feature for private
+  repositories, so this repo cannot carry a required status check on *any* branch — PR #482 proved
+  a deliberately failing commit stays `MERGEABLE` here. When the platform cannot enforce the gate,
+  the methodology will. This release lands the pure decision logic on its own; the `tautline merge`
+  verb that consumes it is the successor PR, so **nothing calls this yet and no behavior changes**.
+  - `classify_merge_gate()` returns `block` / `allow` / `unverifiable` over a PR's
+    `statusCheckRollup`. `STALE` blocks unconditionally — a stale run no longer corresponds to the
+    head commit. Precedence is failure > pending > unknown, pinned in both directions. An
+    unreadable rollup is `unverifiable`, never a block: a gate that blocks when it cannot see is a
+    lockout.
+  - `is_raw_pr_merge()` coarsely detects the `gh pr merge` command class — yes/no only, never a
+    target or flag resolution. It steps over a wrapper *with its own flags and operands*
+    (`sudo -E gh …`, `env -i X=1 gh …`, `timeout 30 gh …`) and recognises every spelling of gh's
+    repo selector including attached values (`--repo=o/r`, `-Ro/r`), since a detector that misses
+    a valid invocation is a bypass, not a nuisance.
+
+## [0.33.1] - 2026-07-30
+
+### Fixed
+
+- **The recommended packaging-smoke dispatch names the branch it means.** `gh workflow run
+  ci-python-full.yml` with no `--ref` dispatches on the *default* branch, so the pre-release smoke
+  the 0.33.0 migration recommended would have covered `main` — the stable channel — instead of
+  `experimental`. The CHANGELOG and the workflow comment already carried the correct form; the
+  migration report did not, which is the worst place for the wrong one to live, because the other
+  two make it look verified. A test now fails any recommended `gh workflow run` that omits `--ref`.
+- **The 3.10 floor rationale no longer overstates its cadence.** `CONTRIBUTING.md`,
+  `pyproject.toml` and the front-door doc contract test all pinned "CI proves the floor on 3.10
+  every PR". As of 0.33.0 the 3.10 leg runs on every merge and on the daily schedule, not per PR.
+  The floor is still genuinely proven — the pairing test fails closed if the full matrix stops
+  covering what per-PR CI dropped — but a repo must not contract-test a false statement about its
+  own gate.
+- **Frozen migration reports are now guarded against retroactive edits.** Correcting the dispatch
+  command inside the *0.33.0* branch would have made `release-migration-report --version 0.33.0
+  --check` call its own archived report stale — an operator auditing an old release must get the
+  bytes that release actually shipped. The fix lives in 0.33.1 only, and a new test re-generates
+  every archived report and requires it to match, with the six pre-launch reports that had already
+  drifted named individually rather than excluded by a version cutoff, so any *new* drift fails
+  closed.
+
+## [0.33.0] - 2026-07-30
+
+### Changed
+
+- **The heavyweight gates moved off the per-push path.** The blocking coverage ratchet and the
+  fresh-install packaging smoke now run in `ci-python-full` — on every merge into `experimental`,
+  plus the daily schedule and on demand — and the `validate`
+  workflow no longer re-runs the whole suite — `scripts/validate.sh` is a frozen 5-line alias of
+  `scripts/test.sh`, so that was a duplicate execution of the same tests against the same tree
+  (~18 minutes of it, on every push). Together with 0.31.1 and 0.32.0, a push went from **four
+  full-suite runs plus a fifth in `validate`** to **one**.
+- **The validate-freeze whole-suite guarantee is intact.** `validate.sh` still invokes the entire
+  suite, `tests/test_validate_freeze.py` still enforces that inside every `ci-python` run, and
+  `ci-python-full` now invokes the suite *through the alias* daily, so the alias stays exercised
+  end to end. `validate` also gained a fail-closed check that it still delegates to the real gate.
+- **Coverage keeps its teeth, in a new place.** Same 24% floor, same blocking behavior, now on the
+  full matrix. A new guard fails closed if the workflow carrying the ratchet ever stops firing —
+  otherwise "we moved coverage off the PR path" and "we deleted the coverage gate" look identical
+  from the repo. The gate runs on every merge, so it cannot go dark waiting for a schedule that a
+  non-default branch never receives.
+- **A scheduled packaging smoke tests the integration branch.** A scheduled run starts on the
+  default branch, so the moved job's checkout is redirected at `experimental` the same way the
+  matrix job's is — otherwise the daily smoke would build and install `main` and report green about
+  a tree nobody develops on.
+- **Honest cost of moving the packaging smoke:** a `pipx install` break is now caught within a day
+  rather than at the PR that caused it, so the blast radius is every PR merged in between. It was
+  only ~1 minute of compute, so this move is about keeping a release-shaped gate off the
+  per-change path rather than about wall clock. It still runs on every merge into `experimental`,
+  so the exposure is "merged but not yet integrated", not "a whole day". Dispatch `ci-python-full`
+  (`gh workflow run ci-python-full.yml --ref experimental`) before a release, and before merging
+  anything touching `pyproject.toml`, the registry-package tree, or hook payloads.
+
+## [0.32.1] - 2026-07-30
+
+### Fixed
+
+- **An unverifiable platform probe no longer announces that nothing is protecting the branch.**
+  `ci-health-check` appended its "no platform gate is blocking merges into `<branch>`; CI is
+  advisory there" note for *every* non-armed state — including `unverifiable`, which means the
+  probe could not run at all (`gh` missing, unauthenticated, offline, or a slug it cannot see).
+  That contradicted the state line printed directly above it, and told an operator whose gate *is*
+  armed that they were unprotected: the same overclaim the probe exists to prevent, pointed the
+  other way. The note is now emitted only for `absent` and `unavailable`, where absence was
+  positively established; `unverifiable` gets its own note stating the state is **unknown**, saying
+  explicitly that this is not a report that no gate exists, and naming what would make it knowable.
+
+## [0.32.0] - 2026-07-30
+
+### Added
+
+- **`ci-python-full`: the whole 3.10 + 3.12 matrix, off the per-PR path.** A new workflow that runs
+  the full interpreter matrix with the blocking coverage ratchet. It exists so the per-PR trim
+  below is not a coverage loss, and a test fails closed if it ever stops covering every interpreter
+  per-PR CI dropped.
+  - It fires on **every merge into `experimental`**, plus a daily 09:00 UTC schedule and
+    `workflow_dispatch`. The push trigger is the load-bearing one: GitHub runs `schedule` **only
+    from the repository's default branch**, which here is `main` — the stable channel, many minors
+    behind. A schedule-only workflow declared on `experimental` would not have run at all until a
+    release promotion carried the file to `main`, so the trim would have left the 3.10 floor
+    covered by nothing while looking, from the repo, exactly like coverage. Verified against this
+    repo's own `npm-audit` history, whose scheduled runs all report `headBranch=main`.
+  - A scheduled run is dispatched from `main`, so its checkout is redirected at `experimental` —
+    otherwise it would test the stable channel and report green about a tree nobody develops on.
+- **`ci-health-check` now reports whether a platform gate is actually armed.** Wiring tests into CI
+  and CI being *able to block a merge* are different properties, and this repo proves they come
+  apart: branch protection is a paid feature for private repositories, so every branch here —
+  including `main` — returns 403 and a green CI run gates nothing. The check prints
+  `platform_required_checks: armed | absent | unavailable | unverifiable` and, when nothing is
+  armed, says plainly that CI is advisory on that branch and that the local gates cannot stop a
+  merge someone else performs. `unavailable` (the platform refuses) is deliberately distinct from
+  `absent` (nobody configured it), and a probe that could not run reports `unverifiable` rather
+  than claiming there is no gate — a bare `404` counts as *could not run*, because a token without
+  access, a wrong slug and a deleted branch all read the same. **Both** ways of arming the gate are
+  consulted: legacy branch protection *and* repository rulesets, since a ruleset-protected branch
+  404s on the protection endpoint and would otherwise be reported as unguarded. **Report-only, permanently** — whether GitHub can gate a merge is
+  not something a lane can fix, so failing on it would be a lockout with no remedy.
+
+### Changed
+
+- **Per-PR CI runs one Python leg (3.12) instead of two.** A second interpreter re-running the
+  identical suite answers "is this change broken?" twice. The 3.10 floor is not abandoned — it
+  moves to the daily `ci-python-full` matrix. Combined with 0.31.1's single covered pass, a push
+  now runs the suite **once** where it used to run it four times.
+
+## [0.31.1] - 2026-07-30
+
+### Changed
+
+- **CI runs the suite once per Python leg instead of twice.** `ci-python` ran the whole suite bare
+  via `scripts/test.sh` and then a *second* full pass under `--cov`, for a coverage number that is
+  measurably the same either way. The ratchet now rides on the single run through `PYTEST_ADDOPTS`
+  (so the `pytest` line in `scripts/test.sh` stays bare and the validate-freeze whole-suite
+  guarantee is intact) and the second pass is gone. Re-proved like-for-like *before* deleting
+  anything: both shapes report **29845 statements, 12907 missed, TOTAL 56.75%** against the
+  unchanged 24% floor, with the same 4301 tests passing. The gate is exactly as blocking folded in
+  — `pytest` exits non-zero on `fail_under` and `scripts/test.sh` runs under `set -e`.
+
+### Fixed
+
+- **The per-leg JUnit evidence was being produced by the pass that was about to be deleted.**
+  `scripts/test.sh` appends its own `--junitxml` last and pytest takes the last value, so the first
+  pass's `PYTEST_ADDOPTS: --junitxml=evidence/pytest.junit.xml` had never written anything — only
+  the coverage pass did. The report is now copied from the stable path `scripts/test.sh` actually
+  writes, under `if: always()` so a red run still publishes its per-test detail. The workflow-shape
+  test asserts that property instead of pinning the flag that silently did nothing.
+
+## [0.31.0] - 2026-07-29
+
+### Added
+
+- **`tautline test-run --fresh-checkout` reproduces CI's checkout state locally.** The gate runs in
+  a throwaway `git worktree` holding exactly what git can see — `HEAD`, plus your working-tree diff,
+  plus untracked-but-not-ignored files — and nothing `.gitignore` covers. A test that reads
+  gitignored runtime state (`.ai-runs/`, `.ai-work/`) passes on the authoring machine and fails on
+  every fresh clone; one did, after **eight** local suite runs that were each structurally incapable
+  of catching it, and it reddened all three CI jobs. Your real tree is never touched: the worktree
+  is created outside the repo and removed afterwards, and the record, the output log and the tree
+  digest still belong to the real project.
+- **`testEvidence.freshCheckout` adapter knob.** `default` picks the lane's mode (`--fresh-checkout`
+  / `--no-fresh-checkout` override it per run) and `carryPaths` names the gitignored dependency
+  directories CI installs out-of-tree — `.venv`, `node_modules` — which are symlinked into the fresh
+  tree so the configured gate can actually start. Absent stays absent: a lane that never declares it
+  keeps running in place, so no existing adapter needs regenerating and no adopter has the mode
+  turned on under them. Tautline's own adapter opts in.
+- **The record says which mode ran.** A fresh run carries a `freshCheckout` block
+  (`method`, `appliedWorkingTreeDiff`, `copiedUntracked`, `carriedPaths`), and the `lane-start` /
+  pre-push evidence line reports `freshCheckout=yes|no`. In a lane that defaults to fresh, an
+  in-place record is called out and the remedy names `--fresh-checkout` — `current` alone does not
+  say which mode produced it.
+
+### Changed
+
+- **A fresh-checkout run that cannot be set up refuses; it never falls back to an in-place run.**
+  The whole value of the mode is that its green means something an in-place green cannot, so a
+  silent downgrade would hand back the weaker signal under the stronger label. `--no-fresh-checkout`
+  is the deliberate, visible opt-out. Carrying a *tracked* path is likewise refused rather than
+  quietly symlinked over.
+
+## [0.30.2] - 2026-07-29
+
+### Changed
+
+- **The behavior gate runs in parallel: 955s → ~110s.** `pytest-xdist` is pinned into the dev
+  toolchain and `scripts/test.sh` passes `-n auto` (via `PYTEST_ADDOPTS`, so the `pytest` line stays
+  bare and the validate-freeze whole-suite guarantee is intact). Measured on a 28-core machine: the
+  same 4277 tests, a junit report with identical `tests`/`failures`/`errors`/`skipped`, so
+  `tautline test-run` records the same counts. Debug a single failure with
+  `PYTEST_ADDOPTS='-n 0' scripts/test.sh`. CI parallelizes its coverage pass the same way —
+  total coverage is unchanged at 56.58% against the 24% floor, so the blocking ratchet is unmoved.
+- **The gate fails closed when `pytest-xdist` is absent**, naming the pinned-toolchain install. It
+  never falls back to serial silently: a silent fallback would hide a ~16-minute regression that
+  nobody would notice.
+
+### Fixed
+
+- **A latent flaky test that parallel execution exposed.** The tree-digest isolation test compared
+  *every* file under `.git/objects`, including git's transient `maintenance.lock`, which background
+  auto-maintenance writes and removes on its own schedule — so the comparison depended on git's
+  timing rather than on what the digest wrote. It could flake at any concurrency. It now ignores
+  `*.lock` and asserts on *added* objects rather than set equality, since git may legitimately
+  repack its own files mid-test.
+
+## [0.30.1] - 2026-07-29
+
+### Fixed
+
+- **A goal-assignment test depended on gitignored evidence, reddening CI.** The block-versus-`--raw`
+  byte-equality test composed from a *finalized* repo plan, but finalization requires the plan-review
+  log and run metadata under `.ai-runs/plan-review/`, which is gitignored — that evidence exists only
+  on the machine that ran the review. The test therefore passed locally and failed on every fresh
+  checkout, including all three CI jobs. The assertion is about the emitted block matching `--raw`,
+  not about finalization, so it now passes `--allow-unfinalized` and depends on no untracked state.
+  No runtime behavior changed.
+
+## [0.30.0] - 2026-07-29
+
+### Added
+
+- **`goal-assignment`: the goal a finalized plan hands to a builder lane.** Between "planning is
+  finalized" and "a builder lane picks up the work" sits a step nothing owned: the operator needs
+  one goal they can paste to assign. The Claude Code harness refuses a goal prompt over 4000
+  characters, so an over-long goal fails at *paste* time — after the planning session that wrote
+  it has ended. Telling the author to keep it short repeatedly failed to hold, so the goal is now
+  composed under a budget instead of estimated. `tautline goal-assignment --target . --plan <plan>`
+  emits an assignable goal carrying the plan reference, the scope, the completion condition, the
+  autonomy contract, and the proof command, and prints its exact character count and headroom. The
+  goal is emitted between `goal_assignment_begin` / `goal_assignment_end` markers rather than
+  behind a label, because `char_count` certifies the goal text alone and any prefix pasted along
+  with it eats into the same budget; `--raw` prints those bytes and nothing else, for piping.
+- **A fail-closed check for goals you already wrote.** `goal-assignment --check <file|->` validates
+  an authored goal and exits 1 when it is over the limit, naming the exact count and the overage so
+  the remedy is derivable from the refusal. It also flags a goal that states no completion
+  condition or omits the plan reference. Run without `--plan`, the plan-reference check cannot
+  run, and the output says so on `goal_assignment_plan_reference_check:` rather than passing
+  silently — a skipped check must never read as a clean one.
+
+### Changed
+
+- **The irreducible core of a goal is never trimmed.** The plan reference, completion condition and
+  proof command always survive; if they alone cannot fit the limit, composition *refuses* rather
+  than emit a goal that cannot tell a builder when to stop. Only the milestone list flexes, and
+  every dropped or shortened entry is reported on `goal_assignment_milestones:` and marked in the
+  goal itself as `(+N more in the plan)` — nothing is silently truncated. That the plan *has*
+  milestones is core, not flexible: when the budget admits no full entry, the goal still says
+  `Milestones: all N are in the plan`, so omitted work is never invisible at any limit.
+- **A goal cannot be emitted for an unfinalized plan.** Composition is gated on the plan's
+  finalization precheck and refuses with the plan-review recovery path, so unreviewed work is not
+  handed to a builder lane. `--allow-unfinalized` dry-runs the wording and labels its own output as
+  not-yet-assignable.
+- **`plan-finalization-precheck` now names the next step on success.** Its pass output carries one
+  additional `plan_finalization_next_action:` line pointing at `goal-assignment` with the plan
+  already bound, so the goal is emitted in the same turn planning finalized. Advisory and
+  print-only; the precheck's exit codes are unchanged.
+
+## [0.29.0] - 2026-07-27
+
+### Added
+
+- **Succession-chain accounting for plan review (item 32).** The plan-review hard cap counts
+  reviewer invocations *per plan path*, so starting a successor plan — the sanctioned exit the cap
+  refusal itself names — hands out a brand-new four-round budget. Nothing counted what a *chain*
+  spent: one live item ran 22 legal rounds across six chained plans, and every ledger read it as
+  six fresh starts; a second chain's only record of its 6 cumulative rounds was a sentence someone
+  typed into a free-text note. `run-plan-review` now accepts `--predecessor <plan>`, which records
+  the succession link on the run meta and carries it into the finalized manifest along with the
+  chain's depth and cumulative recorded rounds. Both ceremonies print the running total —
+  `plan_review_chain_ledger:` at run time, `plan_review_chain_status:` at finalize — and the
+  finalize event carries the chain refs.
+- **A cumulative-spend advisory that never blocks.** Past 8 cumulative recorded rounds or a chain
+  depth of 3, one `plan_review_chain_advisory:` line prints at both surfaces, states plainly that
+  nothing is blocked, and names only the two remedies that work from there: decompose the scope,
+  or carry non-blocking findings into the implementation review focus list. Exit codes do not move
+  and succession is never refused by chain accounting — the escape hatch the round cap depends on
+  stays unconditionally reachable, which is the 2026-07-14 deadlock's standing constraint.
+- **Honest totals, marked as such.** A chain member whose spend cannot be established from
+  evidence is reported as `unknown` and the total is printed *and persisted* as a floor (`>=`,
+  `chain_evidence: floor`), so a stored number can never masquerade as an exact count. Each member
+  is counted exactly once from its own records — never from another member's chain total, which
+  would double-count every shared ancestor.
+- **Adoption pressure, not inference.** The successor instruction the cap refusal prints now names
+  the flag, and a plan whose name has the strict `-vN` shape with a reviewed predecessor and no
+  recorded lineage gets one `plan_review_lineage_hint:` line. It records nothing: auto-recording a
+  guessed predecessor would put an invented fact into an evidence record.
+
+### Changed
+
+- Lineage is append-once. A repeated `--predecessor` matching the recorded value is a no-op; a
+  conflicting one is refused quoting both values, because review evidence is never edited or
+  retired. The only new errors in this release fire on an explicitly-passed `--predecessor`;
+  omitting the flag behaves exactly as 0.28.1 did, and manifests and run metas written before this
+  release parse and finalize unchanged.
+
+## [0.28.1] - 2026-07-27
+
+### Fixed
+
+- **`tautline-test-run/v1` counts were authorable by assertion.** Hashing the report copy proved
+  the *report* had not been edited, but nothing checked that the record's own `counts` block
+  agreed with it — so editing `counts` in the record JSON left the hash valid and the record still
+  classified `current`, surfacing fabricated pass/collected numbers. Reproduced, then fixed:
+  `classify_test_run_evidence` now re-parses the hashed copy and requires every count field to
+  match, returning `invalid` on any disagreement. Records written by `test-run` are unaffected;
+  only hand-edited ones change state. This is the exact substitution the feature exists to
+  eliminate, found inside the feature's own first release.
+- `tautline test-run --report <path>` no longer refuses when the adapter declares
+  `testEvidence.report.format` — the flag's help promised that fallback, but the code read the
+  adapter value only when the *path* also came from the adapter.
+
+## [0.28.0] - 2026-07-27
+
+### Added
+
+- **`tautline test-run` and the `tautline-test-run/v1` record (item 37, Release 1).** Every other
+  Tautline control that appears to cover tests validates a *declaration* about tests, never an
+  *execution*: `ci_test_gate` reports `has_tests=true (adapter declares a preflight/test command)`
+  — the parenthetical is the whole check — and `finalize-implementation-review` takes its verdict
+  and finding counts as self-reported CLI arguments. `test-run` runs the configured command and
+  writes a record that is a by-product of executing it: the command's real exit code, counts parsed
+  from the runner's own machine-readable report, and a digest of the non-ignored tree that was
+  tested. A record stops reading as `current` the moment the tree moves, which retires "I ran the
+  tests" as a defence. The wrapper exits with the underlying command's exit code, so a red suite
+  stays red.
+- **Optional `testEvidence.report` adapter key** `{path, format}` (`junit-xml` | `pytest-json`).
+  Absent-safe: a lane that declares nothing gets `counts.source: exit-code-only` with an explicit
+  warning rather than a claim of zeros.
+- **Report-only surfacing** at `lane-start` and `guard-check --boundary prepush`. Release 1 changes
+  no exit code in any evidence state — a fail-closed gate on upgrade would recreate the 2026-07-22
+  startup-gate lockout. Enforcement and test-reachability are versioned separately.
+
+### Changed
+
+- The "Green tests must mean working software" rule now names its machine-checkable form.
+- `AGENTS.md`, `CLAUDE.md` and the self-adapter's `commands.fullPreflight` agree that
+  `scripts/test.sh` **is** the full preflight. `validate.sh` execs it, so the previous
+  run-both instruction executed the identical suite twice for no additional coverage — a
+  contradiction that produced four wrong review rejections across two backlog items.
+
+## [0.27.1] - 2026-07-27
+
+### Fixed
+
+- RCA 2026-07-22 control 1 (a refusal must name its own supported control) was already
+  implemented but neither correctly pinned nor correctly labelled. The non-release-branch
+  refusal does name `maintainer-mode on` ahead of the narrower
+  `MINERVIT_METHODOLOGY_ALLOW_NON_MAIN=1` escape, but its regression test grepped `cli.py`'s
+  source text and asserted only that the phrase appeared *somewhere* -- so reordering the two
+  remedies, which is exactly the regression that taught two consecutive sessions to build a
+  launcher bypass, passed the suite. The pin now runs `sync-methodology` on a non-release branch
+  and asserts the **emitted** message: the supported control appears before the bypass, and the
+  env var keeps its "single intentional deviation" qualifier. Verified by swapping the order and
+  observing the new test go red while the old one stayed green.
+- The same control was credited to "control 2" in both `cli.py` and the test section header,
+  which is why it kept reading as outstanding in the backlog. Both surfaces now say control 1,
+  with a label assertion kept separate from the behavioural one.
+
+## [0.27.0] - 2026-07-26
+
+### Fixed
+
+- The plan-substance check matched four unfinished-work words anywhere on any line, so it rejected
+  a FINISHED plan over `**Placeholder scan:** clean.` -- a heading the plan-authoring self-review
+  template tells the author to write -- while reporting only "plan contains stub/TODO markers", so
+  on a long plan the remedy was derivable only by reimplementing the regex by hand. It now matches
+  marker SHAPES, exempts backticked and fenced text, and quotes the offending line and substring
+  (item 29: plan-precheck marker false positive).
+- The native-review-note check rejected every angle bracket, so a note could not quote a real
+  string containing one -- it blocked a review round whose note quoted the very placeholder that
+  change removed. It now matches unfilled-token shape, exempts quoted spans, and names the
+  offending token (item 19: review-note placeholder check).
+
+## [0.26.0] - 2026-07-26
+
+### Added
+
+- Canonical policy now requires plain language at every human-facing boundary -- delivery,
+  handoff, blocker, status, any answer to a direct question -- and a real request when the agent
+  needs something from a human: what is needed, why, the cost of not having it, the options, and a
+  recommendation. Internal vocabulary may follow the plain-language opening; it never replaces it
+  (item 33: plain-language operator boundaries, operator-raised).
+
+### Fixed
+
+- Four remaining plan-review call sites still decided on the caller-supplied `--round` label
+  rather than recorded evidence: the plan-edit guard, the finalize-time convergence remedy, frame
+  span ordering, and a same-second timestamp tie. This completes 0.22.0, which stopped the round
+  BUDGET trusting labels but left these behind (item 31).
+- The goal-kickoff contract test read the developer's live goal state, so the suite went red for
+  anyone who had run `goal-start` -- which the plan-authoring standard tells every builder to do
+  before touching code. CI never saw it, so only the person following the process paid
+  (item 30: goal state couples the test suite).
 
 ## [0.25.0] - 2026-07-26
 

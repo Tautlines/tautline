@@ -52,7 +52,7 @@ wrong layer.
 
 ## Development setup
 
-You need Python 3.10+ (zip(strict=) is 3.10-only, and CI proves the floor on 3.10 every PR)
+You need Python 3.12+ (3.12 is the declared floor, and CI proves it on every merge)
 and the pinned dev toolchain:
 
 ```bash

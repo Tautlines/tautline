@@ -47,8 +47,34 @@ def test_goal_kickoff_prompt_offers_guided_onboarding_when_unmanaged(run_cli):
     assert present_retired == []
 
 
+@pytest.fixture
+def no_ambient_goal_run():
+    """Move this worktree's live goal state aside for the duration of the test.
+
+    Item 30 (goal state couples the test suite): the assertion below pins a real contract -- an
+    un-started lane reports `no-active-goal` -- but it read the DEVELOPER's `.ai-work/GOAL_RUN.json`
+    off the repository under test. So the suite went red for anyone who had run `goal-start`, which
+    is exactly what the Plan-Authoring Standard's Task 0 tells every builder to do before touching
+    code. CI never saw it (clean checkout, no goal state), so it looked like "your change broke the
+    suite" to the one person who had followed the process.
+
+    Moved and restored rather than deleted, and restored in a finally so an assertion failure
+    cannot cost someone their in-progress goal ledger.
+    """
+    goal_run = Path(__file__).resolve().parents[1] / ".ai-work" / "GOAL_RUN.json"
+    stashed = goal_run.with_suffix(".json.test-stash")
+    moved = goal_run.exists()
+    if moved:
+        goal_run.rename(stashed)
+    try:
+        yield
+    finally:
+        if moved:
+            stashed.replace(goal_run)
+
+
 @private_repo_only
-def test_goal_kickoff_prompt_uses_methodology_repo_self_adapter(run_cli):
+def test_goal_kickoff_prompt_uses_methodology_repo_self_adapter(run_cli, no_ambient_goal_run):
     result = run_cli("goal-kickoff-prompt", "--target", ".")
 
     assert result.returncode == 0, result.stderr

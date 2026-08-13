@@ -296,7 +296,90 @@ def test_review_before_push_policy_module_stays_concise():
 
     # Cap raised 321 -> 400 to authorize the PM-surface pre-push review/CI exemption (one bullet
     # enumerating every fail-closed branch) without dropping existing review-before-push guidance.
-    assert len(words) <= 400
+    # Raised 400 -> 475 (2026-07-31, item 48, 0.36.0) for the implementation-review round ladder:
+    # target / hard cap at target+2 / self-authorizing in between / confirming rounds free, and the
+    # statement that no round decision on this surface is ever an operator escalation. Measured
+    # delta only (+75 words, module at 472). This module was at 397 of 400 -- three words of
+    # headroom -- so the addition could not be absorbed. The DETAIL deliberately lives in
+    # plugins/tautline-core/skills/review-before-push/references/, which this policy already names
+    # as the owner of the command sequence; what stays here is the rule, not the procedure.
+    # Raised 475 -> 507 (+32 words, the measured delta) for item 69 PR-B's review-entry
+    # adapter-dirt refusal (0.44.0): a recorded round whose ONLY dirty files are the generated adapters would
+    # review a tool-injected re-render instead of the work. It is one bullet because the whole rule
+    # is one sentence plus its two continuations; the detail lives in the guard's own tests.
+    # Raised 507 -> 575 (+68 words, this lane's own measured delta, re-measured at the 0.51.0 tip
+    # and carried from no predecessor) for item 73's AC-keyed routing rule. The module was at 507
+    # of 507 -- zero headroom -- so the bullet could not be absorbed. It is worth the words because
+    # the rule it replaces made routing severity-scoped while the Done gate is AC-scoped, which
+    # left an out-of-AC Critical neither blocking nor routable; the measured cost was two review
+    # rounds, one reverted module built in flight, and two severity downgrades performed solely to
+    # make routing legal. The field-level procedure stays out: it lives in the classified-findings
+    # contract doc and in the review-before-push reference, which this module already names.
+    # Raised 575 -> 644 (+69 words, this PR's own measured delta at the f9cbb69c tip) for
+    # item 75 WS1's two bullets. The module was at 575 of 575 -- zero headroom -- so they
+    # could not be absorbed.
+    # Raised 644 -> 708 (+64 words, this PR's own measured delta at the e09ff7fa tip) for
+    # item 75 WS2's execution-counting bullet.
+    assert len(words) <= 708
+
+
+AC_ROUTING_MARKERS = (
+    "not open against the item's acceptance criteria",
+    "honest severity",
+    "`ac_ref: null`",
+    "`routed_to` row",
+    "never routed, never downgraded to make routing legal",
+    "means unresolved **against the acceptance criteria**",
+)
+
+# The three severity-only routing phrases item 73 removes. Each was verified PRESENT before the
+# change (canonical-rules + policy 17, skill reference :59, and skill reference :103). Deliberately
+# NOT gating on "P2/P3/Nit findings only": that sentence lives only in the downstream product
+# REVIEW_PROTOCOL.md, never in this repo, so asserting its absence here would be trivially green
+# and would prove nothing.
+SEVERITY_ONLY_ROUTING_PHRASES = (
+    "route non-blocking findings to the backlog",
+    "Route P2/P3/Nit findings to the configured backlog adapter",
+    "routing P2/P3/Nit to the backlog",
+)
+
+
+def test_canonical_rules_key_routing_to_ac_traceability():
+    """The regenerated canonical rules carry the AC-keyed rule, not just the policy module.
+
+    Regeneration is where this can silently revert: an edit to the module that is never
+    regenerated leaves the canonical text saying the old thing.
+    """
+    text = CANONICAL.read_text(encoding="utf-8")
+    missing = [marker for marker in AC_ROUTING_MARKERS if marker not in text]
+
+    assert missing == []
+
+
+def test_severity_only_routing_phrases_are_gone():
+    roots = [ROOT / "methodology", ROOT / "plugins"]
+    offenders = []
+    for root in roots:
+        for path in root.rglob("*.md"):
+            text = path.read_text(encoding="utf-8", errors="replace")
+            for phrase in SEVERITY_ONLY_ROUTING_PHRASES:
+                if phrase in text:
+                    offenders.append(f"{path.relative_to(ROOT)}: {phrase}")
+
+    assert offenders == []
+
+
+def test_the_removed_phrases_check_is_not_vacuous():
+    """A phrase list that no longer matches anything anywhere would pass the test above forever.
+
+    Each phrase must still be a plausible thing to write, so pin that the SHAPE it replaces --
+    severity-list routing without an acceptance-criteria qualifier -- is what the wording is
+    steering away from, and that the replacement wording is actually present.
+    """
+    reference = REVIEW_BEFORE_PUSH_REFERENCE.read_text(encoding="utf-8")
+    assert "honest severity" in reference
+    assert "open against an acceptance criterion" in reference
+    assert "presumptively out-of-AC" in reference
 
 
 def test_rejected_tool_call_policy_module_stays_concise():
@@ -308,7 +391,9 @@ def test_rejected_tool_call_policy_module_stays_concise():
 def test_verified_human_instructions_policy_module_stays_concise():
     words = VERIFIED_HUMAN_INSTRUCTIONS_POLICY_MODULE.read_text(encoding="utf-8").split()
 
-    assert len(words) <= 205
+    # Raised 205 -> 267 (+62 words, this lane's own measured delta) for item 71 WS3's
+    # both-directions ground-truth rule. Exact RCA wording; not trimmable to fit.
+    assert len(words) <= 267
 
 
 def test_methodology_governance_policy_module_stays_concise():
@@ -322,13 +407,70 @@ def test_methodology_governance_policy_module_stays_concise():
 def test_goal_orchestration_policy_module_stays_concise():
     words = GOAL_ORCHESTRATION_POLICY_MODULE.read_text(encoding="utf-8").split()
 
-    assert len(words) <= 390
+    # Raised 390 -> 509 (+119 words over the previous cap; the module went 347 -> 509, this
+    # lane's own measured delta on the 112b4705 tip) for batch 2026-08-11 item B7's two
+    # statements. Raised once naming both, on the 10b-board-currency precedent.
+    #
+    #   1. The definition of done. Most of its length is irreducible: it must NAME the seven
+    #      condition ids, because a lane cannot look up a set the rules do not list, and it must
+    #      state the handoff bar in BOTH directions -- an unarmed open PR is not done, AND a
+    #      queued auto-merging one IS -- or the rule reads as a licence to sit on a merge
+    #      monitor, which is the worse of the two wastes available here.
+    #   2. The goal-delivery rule: a goal handed to a human is the sole content of the response.
+    #
+    # Both are rules a lane cannot infer from a refusal string, which is this file's standing
+    # test for whether policy words are worth their budget: the first names its legal exits, and
+    # the second describes a response SHAPE that no gate can enforce after the fact.
+    # Raised 509 -> 523 (+14 words, measured) to qualify the refusal sentence with the
+    # enforcement mode it actually depends on. The shipped default is `warn`; a canonical rule
+    # stating a flat "refuses" would be the authority document describing behavior the code
+    # does not have by default, which is exactly the mismatch review caught on the schema.
+    assert len(words) <= 523
 
 
 def test_board_currency_policy_module_stays_concise():
     words = BOARD_CURRENCY_POLICY_MODULE.read_text(encoding="utf-8").split()
 
-    assert len(words) <= 355
+    # Raised 355 -> 430 (+75 words, this lane's own measured delta at the 40b1b39a tip) for item
+    # 81's oracle-discipline clause. The module was at its cap exactly, so the clause could not be
+    # absorbed. It is worth the words because the gate it describes now REFUSES a done move under
+    # `strict`, and the three things it states -- AC-measured evidence, FAILED AC is never a
+    # deferral, and no self-verification -- are each a distinct rule a lane cannot infer from a
+    # refusal string.
+    #
+    # Raised 430 -> 748 (+318 words, measured on this branch's tip) for item 101's PR-reference
+    # contract, the stakeholder request of 2026-08-12. The module was at its cap exactly again,
+    # so none of it could be absorbed.
+    #
+    # Three statements, and the word count is where it is because each carries the thing that
+    # makes it actionable rather than merely true:
+    #
+    #   1. The four rules must distinguish a PR that COMPLETES an item from one that only
+    #      ADVANCES it, and give the title-only form for the advancing case. "Reference the item
+    #      precisely" without both shapes is a rule every lane resolves differently, and one of
+    #      those resolutions auto-closes live unfinished work on a stakeholder board.
+    #   2. The auto-close statement must name the DEFAULT-BRANCH condition. GitHub honours a PR
+    #      body keyword only when the PR's base is the default branch, so on an
+    #      integration-branch repo -- which is what this framework and its adopters run -- the
+    #      unconditional promise is false. A rule that promises a mechanism which silently does
+    #      not fire is worse than no rule, because the lane stops checking.
+    #   3. The enforcement-gap statement exists because the gate contradicts rule 3 TODAY: an
+    #      adopter can be refused for obeying the published rule. Naming the gap AND its
+    #      forbidden workaround is what stops the rule teaching lanes to satisfy the gate with a
+    #      reference to an issue the PR does not implement -- which is what this repo's own lanes
+    #      had been doing, and is the harm rule 4 names.
+    #
+    # Operational detail deliberately did NOT come here. The GitHub-honoured reference forms, the
+    # one-keyword-per-issue rewrite, the advancing-vs-completing decision procedure and the
+    # commit-message consequence all live in the `board-item-updates` skill reference, which
+    # costs neither canonical ratchet nor rendered-adapter corridor.
+    #
+    # 748 -> 790 (+42) at implementation review R1: the rule said "the item's ISSUE number in
+    # the same repo" and then gave a bare `Fixes #758` for the closing keyword, which is wrong
+    # whenever a provider-backed Project item is an issue in ANOTHER repository -- GitHub
+    # resolves a bare ref against the PR's own repo, so the contract as written could close an
+    # unrelated issue there. The qualified `owner/repo#N` form is required for that case.
+    assert len(words) <= 790
 
 
 def test_lane_coordination_policy_module_stays_concise():
@@ -343,7 +485,9 @@ def test_lane_coordination_policy_module_stays_concise():
 def test_backlog_provider_policy_module_stays_concise():
     words = BACKLOG_PROVIDER_POLICY_MODULE.read_text(encoding="utf-8").split()
 
-    assert len(words) <= 345
+    # Raised 345 -> 396 (+51 words, this lane's own measured delta) for item 71 WS2's
+    # adapter-declared board-identity rule. Exact RCA wording; not trimmable to fit.
+    assert len(words) <= 396
 
 
 def test_merge_and_ci_policy_module_stays_concise():
@@ -355,7 +499,23 @@ def test_merge_and_ci_policy_module_stays_concise():
 def test_tdd_and_behavior_specs_policy_module_stays_concise():
     words = TDD_AND_BEHAVIOR_SPECS_POLICY_MODULE.read_text(encoding="utf-8").split()
 
-    assert len(words) <= 210
+    # Raised 210 -> 228 for the machine-checkable-proof sentence appended to the "Green tests must
+    # mean working software" bullet (item 37, test-execution proof, Release 1 / W4): that rule was
+    # already correct and already loaded, and bound nothing because no control could observe
+    # compliance. The sentence names `tautline-test-run/v1` as its checkable form and says
+    # enforcement is versioned separately. Per the shared-surface discipline, this lane raises the
+    # cap by its own measured delta only.
+    # Raised 228 -> 234 (+6 words, this lane's own measured delta) for item 72 Release A: the
+    # inactive-scenario bullet now shows the machine-checkable form rather than only naming the
+    # three things it requires. Same shape as the raise above -- a rule that was already correct
+    # and already loaded, given the checkable form that lets a control observe compliance.
+    # Raised 234 -> 262 (+28 words, this lane's own measured delta, re-measured at MY tip on
+    # 2026-08-10) for item 72 Release B: `behavior-spec-status --base`. Deliberately the shortest
+    # form that carries what a lane cannot infer from the flag name -- that it REPORTS and never
+    # changes an exit code, and that `behavior-spec-delta-check` is the enforcing counterpart. A
+    # reporting line mistaken for a gate is how a real gate ends up treated as already covered.
+    # The full explanation lives in the behavior-specs skill reference, not here.
+    assert len(words) <= 262
 
 
 def test_planning_policy_module_stays_concise():
@@ -389,7 +549,14 @@ def test_lane_lifecycle_policy_module_stays_concise():
     # stays operator-only; integrity failures never start a session.
     # Raised 450 -> 460 for the PM-surface VERSION-bump-exemption sentence (a PM-surfaces-only diff
     # is not a framework change and needs no bump).
-    assert len(words) <= 460
+    # Raised 460 -> 541 (+81 words, the measured delta) for item 69's generated-adapter template
+    # stamp (0.43.0). Four things a lane meets at STARTUP and cannot infer: which surface renders
+    # implicitly (lane-start/init, not the hooks), that a newer on-disk template no-ops here but
+    # refuses on the explicit verb, that a stamp-only difference is neither drift nor a rewrite,
+    # and that detection is version-only -- without that last clause an agent hitting a
+    # same-version content difference concludes no downgrade happened, which is the misreading the
+    # incident itself began with.
+    assert len(words) <= 541
 
 
 def test_autonomy_and_status_policy_module_stays_concise():
@@ -403,7 +570,19 @@ def test_delivery_summaries_policy_module_stays_concise():
 
     # Raised 330 -> 400 for the key-with-title reference rule (item 26: bare item
     # keys like `FR-3` must be followed by their short title in human-facing output).
-    assert len(words) <= 400
+    # Raised 400 -> 490 (2026-07-26, item 33 plain-language operator boundaries,
+    # operator-raised): two obligations that could not be folded into the existing
+    # first bullet, because that one is scoped to messages reporting SHIPPED work.
+    # The new ones cover every human-facing boundary, and cover ASKING a human for
+    # something -- the case with no rule at all until now.
+    #
+    # Raised 490 -> 549 (+59 words, measured) for item 101: for provider-backed repos the merge
+    # with its closing reference IS the completion claim, replacing a hand-close. The sentence
+    # costs what it does because it has to carry TENSE, not just the rule: a queued summary is
+    # sent before the merge, and a merge to a non-default base does not close anything either, so
+    # an unqualified "cites the auto-closed issue" would have this module licensing a completion
+    # claim for a closure that has not happened -- against the module's own proof-of-done rule.
+    assert len(words) <= 549
 
 
 def test_canonical_rules_require_key_with_title_reference():
@@ -421,6 +600,29 @@ def test_canonical_rules_require_key_with_title_reference():
         "canonical-rules.md is stale; regenerate with `canonical-policy --write`"
     )
     assert "`KEY: <short title>`" in generated
+
+
+def test_canonical_rules_require_plain_language_at_human_boundaries():
+    """Item 33 (plain-language operator boundaries), operator-raised 2026-07-26.
+
+    The existing first bullet already asked for a plain-language OUTCOME, but only for
+    messages reporting shipped work -- so a status answer, a handoff, or a blocker could
+    be, and was, delivered as a wall of severity codes and verb names. And nothing at all
+    governed ASKING a human for something. Both are pinned in the source module and the
+    generated artifact so an edit or a stale regeneration cannot quietly drop them.
+    """
+    source = DELIVERY_SUMMARIES_POLICY_MODULE.read_text(encoding="utf-8")
+    generated = CANONICAL.read_text(encoding="utf-8")
+    for marker in (
+        "Every human-facing boundary",
+        "they never replace it",
+        "state plainly what you need, why, and the cost of not having it",
+    ):
+        assert marker in source, f"plain-language rule missing from the source module: {marker}"
+        assert marker in generated, (
+            f"canonical-rules.md is stale for: {marker}; "
+            "regenerate with `canonical-policy --write`"
+        )
 
 
 def test_current_status_truth_policy_module_stays_concise():

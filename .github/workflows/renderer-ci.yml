@@ -23,12 +23,31 @@ permissions:
 
 jobs:
   renderer:
-    runs-on: ubuntu-latest
+    # Local hardware, on operator instruction 2026-08-02 ("no more billed hosted runs"), superseding
+    # the earlier call to leave it hosted because there was no bill worth saving.
+    #
+    # An unset CI_RUNNER_LABEL on THIS repo now FAILS the run: there it means the local runner was
+    # lost and the job silently moved onto billed compute while still reporting green. Set
+    # CI_ALLOW_HOSTED_FALLBACK=1 to accept billed runs deliberately (passes with a warning).
+    #
+    # A FORK running its OWN CI has no repo variables, resolves to ubuntu-latest, and the assertion
+    # short-circuits -- correct. That is NOT fork-PR safety: a pull_request from a fork against this
+    # repo resolves `github.repository` and repo variables from the BASE repo and routes HERE.
+    # Containment is that this repository is PRIVATE. See the action header.
+    #
+    # Same trade as npm-audit: `npm ci` runs dependency lifecycle scripts from PR-controlled
+    # manifests. The container protects the host; jobs are not isolated from each other, and the
+    # machine is on the operator's LAN. See .github/runner/README.md.
+    runs-on: ${{ vars.CI_RUNNER_LABEL || 'ubuntu-latest' }}
     defaults:
       run:
         working-directory: plugins/tautline-ops/skills/iteration-review/renderer-kit
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: ./.github/actions/assert-runner-identity
+        with:
+          runner-label: ${{ vars.CI_RUNNER_LABEL }}
+          allow-hosted-fallback: ${{ vars.CI_ALLOW_HOSTED_FALLBACK }}
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           node-version: "20"

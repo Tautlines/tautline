@@ -288,7 +288,11 @@ def test_pypi_payload_pyproject_declares_both_console_scripts(pypi_payload) -> N
     assert 'tautline = "tautline:main"' in pyproject
     # The legacy name is load-bearing: plugin hooks and older rendered adapters invoke it.
     assert 'minervit-methodology = "tautline:main"' in pyproject
-    assert 'requires-python = ">=3.10"' in pyproject
+    # Derived, not pinned: this assertion held a `>=3.10` literal through the 3.12 floor raise,
+    # which is precisely what let the published wheel keep advertising a dropped interpreter.
+    from tautline_methodology import cli
+
+    assert f'requires-python = ">={cli.PYTHON_FLOOR}"' in pyproject
     assert 'build-backend = "hatchling.build"' in pyproject
     # Exact pin: PEP 517 isolation resolves `requires` fresh at publish time, so an
     # unpinned hatchling would let an untested major build an irreversible PyPI release.
@@ -495,3 +499,40 @@ def test_registry_package_refuses_a_symlinked_dist(cli, tmp_path, dangling) -> N
     assert "Traceback" not in proc.stderr, f"refusal must not crash: {proc.stderr}"
     assert dist_link.is_symlink(), "the refusal must not remove the operator's link"
     assert decoy_file.is_file(), "the refusal must never delete through the link"
+
+
+def test_registry_package_floor_tracks_pyproject():
+    """The published wheel's floor must equal the floor the repo declares.
+
+    Regression: at the 3.10 -> 3.12 raise, every in-repo gate moved (ruff target-version, mypy,
+    the CI matrix, the fresh-install smoke) while `registry_package_pyproject()` kept emitting
+    `requires-python = ">=3.10"` and the generated PyPI README kept saying `Requires Python
+    3.10+`. pip and pipx read the wheel, not the repo, so the release would have gone on
+    installing onto the two interpreters it had just dropped support for.
+
+    Derived from pyproject rather than pinned to a literal, so the next raise cannot re-open
+    this gap by updating one side only.
+    """
+    import re
+
+    from tautline_methodology import cli
+
+    text = (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    match = re.search(r'target-version\s*=\s*"py(\d)(\d+)"', text)
+    assert match, "pyproject must declare a ruff target-version; the floor is derived from it"
+    declared = f"{match.group(1)}.{match.group(2)}"
+
+    assert cli.PYTHON_FLOOR == declared, (
+        f"cli.PYTHON_FLOOR is {cli.PYTHON_FLOOR!r} but pyproject declares {declared!r}; "
+        "the published wheel would advertise a floor the release does not support"
+    )
+
+    generated = cli.registry_package_pyproject("0.0.0")
+    assert f'requires-python = ">={declared}"' in generated, (
+        f"the generated PyPI pyproject must require >={declared}"
+    )
+
+    readme = cli.registry_package_readme("pypi")
+    assert f"Requires Python {declared}+." in readme, (
+        f"the generated PyPI README must state the {declared} floor"
+    )

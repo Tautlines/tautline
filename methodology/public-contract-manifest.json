@@ -69,6 +69,10 @@
       "status": "stable"
     },
     {
+      "name": "definitionOfDone",
+      "status": "stable"
+    },
+    {
       "name": "deploymentNotification",
       "status": "stable"
     },
@@ -156,6 +160,10 @@
     },
     {
       "name": "localResourceLocks",
+      "status": "stable"
+    },
+    {
+      "name": "mergeGate",
       "status": "stable"
     },
     {
@@ -259,6 +267,10 @@
       "status": "stable"
     },
     {
+      "name": "testEvidence",
+      "status": "stable"
+    },
+    {
       "name": "uiEvidence",
       "status": "stable"
     },
@@ -272,6 +284,10 @@
     }
   ],
   "commands": [
+    {
+      "name": "ac-verify",
+      "status": "stable"
+    },
     {
       "name": "adapter-bootstrap-questions",
       "status": "stable"
@@ -309,6 +325,10 @@
       "status": "stable"
     },
     {
+      "name": "backlog-provider-closeout-check",
+      "status": "stable"
+    },
+    {
       "name": "backlog-provider-export",
       "status": "stable"
     },
@@ -330,6 +350,10 @@
     },
     {
       "name": "backlog-provider-update",
+      "status": "stable"
+    },
+    {
+      "name": "behavior-spec-delta-check",
       "status": "stable"
     },
     {
@@ -429,6 +453,10 @@
       "status": "stable"
     },
     {
+      "name": "done-check",
+      "status": "stable"
+    },
+    {
       "name": "dump-instrumentation-schema",
       "status": "internal"
     },
@@ -490,6 +518,10 @@
     },
     {
       "name": "goal-advance",
+      "status": "stable"
+    },
+    {
+      "name": "goal-assignment",
       "status": "stable"
     },
     {
@@ -629,6 +661,10 @@
       "status": "experimental"
     },
     {
+      "name": "merge",
+      "status": "stable"
+    },
+    {
       "name": "methodology-status",
       "status": "stable"
     },
@@ -683,6 +719,10 @@
     {
       "name": "plan-review-pending-hook",
       "status": "internal"
+    },
+    {
+      "name": "plan-substance-check",
+      "status": "stable"
     },
     {
       "name": "prepare-continuity",
@@ -858,6 +898,10 @@
     },
     {
       "name": "telemetry",
+      "status": "stable"
+    },
+    {
+      "name": "test-run",
       "status": "stable"
     },
     {
@@ -1241,6 +1285,16 @@
       "status": "stable"
     },
     {
+      "name": "github-projects-reads",
+      "path": "plugins/tautline-core/skills/github-projects-reads/SKILL.md",
+      "status": "stable"
+    },
+    {
+      "name": "goal-assignment",
+      "path": "plugins/tautline-core/skills/goal-assignment/SKILL.md",
+      "status": "stable"
+    },
+    {
       "name": "goal-orchestration",
       "path": "plugins/tautline-core/skills/goal-orchestration/SKILL.md",
       "status": "stable"
@@ -1333,5 +1387,5 @@
       "status": "stable"
     }
   ],
-  "version": "0.25.0"
+  "version": "0.75.0"
 }

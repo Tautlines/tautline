@@ -685,7 +685,9 @@ def test_pypi_copy_documents_the_real_install(cli) -> None:
     readme = cli.registry_package_files("pypi", "0.9.7")["README.md"]
     assert "pipx install tautline" in readme
     assert "pip install tautline" in readme, "the venv alternative must be documented"
-    assert "Python 3.10" in readme, "the README must state the Python floor"
+    # Derived, not pinned: a literal here kept asserting 3.10 across the 3.12 floor raise, so the
+    # gate that was supposed to prove the README states the floor proved it stated the OLD one.
+    assert f"Python {cli.PYTHON_FLOOR}" in readme, "the README must state the Python floor"
     assert "pipx upgrade tautline" in readme
     assert "pip install -U tautline" in readme
 

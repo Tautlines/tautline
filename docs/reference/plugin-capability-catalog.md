@@ -80,7 +80,7 @@ This reference preserves the detailed capability catalog for maintainers and val
 - Start planning when no work is on deck.
 - Audit for memory-sourced process.
 - Inspect the document context budget.
-- Use Graphify report/query/path/explain before broad source scans only when graph output is current; refresh with graphify . --update after every system change before commit/push.
+- Use Graphify report/query/path/explain before broad source scans only when graph output is current; refresh with graphify update . (the no-LLM rebuild) after every system change before commit/push. Semantic labeling is separate and never blocks.
 - Analyze a methodology regression RCA.
 - Publish, commit, and push a methodology RCA artifact to the dedicated RCA archive branch.
 - Submit a Tautline feature request through the framework-intake skill, dedicated feature-request intake artifact, and archive branch.

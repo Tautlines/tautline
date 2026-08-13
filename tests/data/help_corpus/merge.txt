@@ -1,0 +1,22 @@
+usage: tautline merge [-h] [--project PROJECT] [--target TARGET] [--repo REPO]
+                      [--override OVERRIDE] [--admin]
+                      ...
+
+positional arguments:
+  rest                 Optional PR number or URL (defaults to the current
+                       branch's PR), followed by flags forwarded to `gh pr
+                       merge` (e.g. --squash --delete-branch). With NO PR
+                       reference, separate the gh flags with `--`: `tautline
+                       merge -- --squash --delete-branch`. --repo/-R and
+                       --admin are refused here; give them to `tautline merge`
+                       itself.
+
+options:
+  -h, --help           show this help message and exit
+  --project PROJECT
+  --target TARGET
+  --repo REPO          owner/repo when merging a PR outside this checkout.
+  --override OVERRIDE  Break-glass reason. Records a decision-record and
+                       proceeds despite a blocking verdict.
+  --admin              Pass --admin to gh. Requires --override: routine admin
+                       merge stays forbidden.

@@ -6,6 +6,7 @@ import shlex
 
 from tautline_methodology.lane_status import (
     LANE_STATUS_FINDING_ORDER,
+    LANE_STATUS_RESOLVING_FINDINGS,
     compute_lane_status_findings,
     lane_status_remedies,
     render_lane_status_report,
@@ -45,9 +46,17 @@ def test_finding_order_is_a_tuple_and_complete():
     """C15: an UPPER_CASE list-of-str would auto-enter the policy-phrases SSOT."""
     assert isinstance(LANE_STATUS_FINDING_ORDER, tuple)
     assert set(LANE_STATUS_FINDING_ORDER) == {
-        "DETACHED", "ORPHANED", "MERGED", "STALE", "SQUATTED",
+        "CONCURRENT", "DETACHED", "ORPHANED", "MERGED", "STALE", "SQUATTED",
         "DIRTY", "UNCLAIMED", "BASELINE-MOVED", "UNVERIFIED",
     }
+    assert LANE_STATUS_FINDING_ORDER[0] == "CONCURRENT", (
+        "another session in this worktree destroys identity harder than anything below it: every "
+        "other finding describes a state the lane can reason about, this one says its own edits "
+        "may not be its own"
+    )
+    assert "CONCURRENT" not in LANE_STATUS_RESOLVING_FINDINGS, (
+        "the SQUATTED precedent -- a rerun cannot clear a live peer, and promising one loops"
+    )
 
 
 def test_clean_lane_produces_no_findings():

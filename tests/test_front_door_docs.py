@@ -23,10 +23,12 @@ RETIRED_FLOOR_TOKEN = "`match` statement"
 
 # The verified replacement rationale, mechanically established on this tree:
 # bin/tautline + src/ parse clean under ast feature_version (3, 9) — no syntax
-# forces 3.10 — while zip(strict=) (PEP 618, bin/tautline's survived-sequence
-# comparison) is a genuine 3.10-only runtime API, and every CI gate (ruff py310,
-# mypy 3.10, the test matrix, and the fresh-install smoke) proves exactly 3.10.
-SHARED_FLOOR_RATIONALE = "zip(strict=) is 3.10-only, and CI proves the floor on 3.10 every PR"
+# forces the floor — while zip(strict=) (PEP 618, bin/tautline's survived-sequence
+# comparison) is a genuine 3.10+ runtime API. The floor is therefore a support
+# PROMISE, not a dependency, which is why it could move to 3.12 by decision; every
+# CI gate (ruff py312, mypy 3.12, the test matrix, and the fresh-install smoke)
+# proves exactly 3.12.
+SHARED_FLOOR_RATIONALE = "3.12 is the declared floor, and CI proves it on every merge"
 
 
 def _quickstart_section(text: str) -> str:
@@ -40,7 +42,7 @@ def test_readme_quickstart_names_the_floor_and_cutover():
     must run the launcher cutover the tool itself demands (the unconditional
     next_step_required banner) — the docs finally agree with the tool."""
     quickstart = _quickstart_section(README.read_text(encoding="utf-8"))
-    assert "Python 3.10+" in quickstart, "the Quickstart must state the Python 3.10+ prerequisite"
+    assert "Python 3.12+" in quickstart, "the Quickstart must state the Python 3.12+ prerequisite"
     assert "git" in quickstart.lower(), "the Quickstart prerequisites must name git"
     assert "tautline install-claude-launcher --force" in quickstart, (
         "the MANDATORY launcher cutover step must be in the Quickstart, after install-cli"

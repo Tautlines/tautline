@@ -156,6 +156,229 @@ def validate_adapter_schema(data: dict, path: Path, schema_path: Path) -> None:
         )
 
 
+# --- adapter-schema version skew (backlog item 1 Release B) -------------------------------------
+#
+# THE CONTROL ID THIS MODULE EXPECTS, recorded here because `FAIL_CLOSED_CONTROLS` does not exist
+# yet and `fail-closed-remedy-composition` owns it. When that registry lands it should inherit:
+#
+#   control id: prepush.adapter-schema-skew
+#   closed path: tests/test_prepush_schema_skew.py
+#                 ::test_unprovable_unknown_key_still_refuses_under_the_hook_signal
+#   open path:   tests/test_prepush_schema_skew.py
+#                 ::test_lane_adds_a_key_with_the_old_installed_cli_resolvable
+#
+# LAYERING INVARIANT: this module is a stdlib-only leaf (json, posixpath, re, pathlib) and stays
+# one. Nothing here imports from `cli` or `core.runtime` -- so the remedy verbs below are NOT
+# cross-checked against STARTUP_REMEDIATION_ALLOWED_COMMANDS here; that check lives in the test,
+# which may import both. A reviewer reading a remedy string in a leaf module will ask; this is why.
+
+_ROOT_UNKNOWN_PROPERTY = re.compile(
+    r"^\(root\): unknown property '([^']+)' \(not allowed by the adapter schema\)$"
+)
+_SELF_AUTHORITY_MAX_DEPTH = 6
+
+
+def unknown_top_level_property_keys(errors: list[str]) -> tuple[str, ...]:
+    """The offending root keys, but ONLY when every error is a root-level unknown property.
+
+    Deliberately all-or-nothing. A nested unknown property, a type error, a missing required key --
+    any one of them disqualifies the whole list, because the downgrade this feeds is only ever
+    sound for "the installed schema does not know this top-level key yet". A list that mixes an
+    unknown key with a real validation failure is not version skew; it is a broken adapter, and
+    reporting-and-continuing on it would hide the second error behind the first.
+    """
+    if not errors:
+        return ()
+    keys: list[str] = []
+    for error in errors:
+        match = _ROOT_UNKNOWN_PROPERTY.match(error.strip())
+        if match is None:
+            return ()
+        keys.append(match.group(1))
+    return tuple(keys)
+
+
+def self_authoritative_schema_path(adapter_path: Path) -> Path | None:
+    """The schema of the framework checkout the adapter lives in, if there is one.
+
+    Walks up at most six levels looking for a directory carrying BOTH
+    ``methodology/adapter-schema.json`` and ``src/tautline_methodology/cli.py``. Both, because a
+    tree with the engine but no schema is not an authority on a schema it does not have.
+
+    No subprocess, bounded depth, and ``resolve()``-based so a symlink loop cannot spin it.
+    """
+    try:
+        current = adapter_path.resolve().parent
+    except OSError:
+        return None
+    for _ in range(_SELF_AUTHORITY_MAX_DEPTH):
+        schema = current / "methodology" / "adapter-schema.json"
+        if schema.is_file() and (current / "src" / "tautline_methodology" / "cli.py").is_file():
+            return schema
+        if current.parent == current:
+            break
+        current = current.parent
+    return None
+
+
+def _semver_tuple(value: object) -> tuple[int, ...] | None:
+    """Parse a plain dotted numeric version. Returns None for anything that is not one."""
+    if not isinstance(value, str):
+        return None
+    parts = value.strip().split(".")
+    if not parts or len(parts) > 4:
+        return None
+    numbers: list[int] = []
+    for part in parts:
+        if not part.isdigit():
+            return None
+        numbers.append(int(part))
+    return tuple(numbers)
+
+
+def adapter_schema_skew_classification(
+    data: dict,
+    path: Path,
+    *,
+    installed_schema_path: Path,
+    installed_version: str,
+) -> dict | None:
+    """Classify an unknown-top-level-key refusal as provable skew, or decline to.
+
+    Returns None unless one of the two signals below fires, and records which. The `disposition`
+    field is the whole point of the return shape: exactly one signal earns a downgrade, and the
+    canonical downgrade rule reads that field rather than re-deriving the distinction. One field,
+    one reader.
+
+    PROOF `tree-authoritative` -> disposition `downgrade`. The adapter lives inside a framework
+    checkout whose own schema is a DIFFERENT file from the installed one, and re-validating against
+    that schema is clean. This is the only sound proof, because it is the only one that consults a
+    schema which actually declares the key. The tree being pushed accepts its own adapter; the
+    installed schema is the stale party.
+
+    SIGNAL `generator-newer` -> disposition `refuse`. The adapter's `_generated.pluginVersion` is
+    strictly newer than the installed CLI. This proves the RENDERER was newer and proves NOTHING
+    about the key: "declared nowhere in the installed schema" is satisfied by a misspelling exactly
+    as it is by a legitimate new key. An earlier draft of this plan made it a downgrade proof, and
+    plan review caught that it would have excused a real typo on any machine with a stale install.
+    So it refuses -- unchanged behaviour -- and its only effect is that the refusal finally names a
+    remedy that works.
+
+    A lagging stamp is evidence of nothing either: a framework lane's `.tautline.json` is
+    regenerated by `lane-start` and routinely stamps a version older than its own tree.
+    """
+    errors = schema_validation_errors(data, adapter_schema(installed_schema_path) or {})
+    keys = unknown_top_level_property_keys(errors)
+    if not keys:
+        return None
+
+    tree_schema_path = self_authoritative_schema_path(path)
+    if tree_schema_path is not None and tree_schema_path != installed_schema_path.resolve():
+        tree_schema = adapter_schema(tree_schema_path)
+        if tree_schema is not None and not schema_validation_errors(data, tree_schema):
+            # The authority is named RELATIVE to the lane, never absolutely. A hook report is
+            # copied into CI logs and pasted into issues; `authority=/Users/<someone>/...` leaks
+            # local filesystem layout for no diagnostic gain, since the only useful fact is WHICH
+            # tree answered, and "the checkout N levels up" says that.
+            lane_dir = path.resolve().parent
+            tree_root = tree_schema_path.parent.parent
+            try:
+                relative = tree_schema_path.relative_to(lane_dir).as_posix()
+            except ValueError:
+                relative = f"the enclosing framework checkout's {tree_schema_path.name}"
+            # The reinstall command is qualified to THIS checkout, relative to the lane. The
+            # tree-authoritative proof means that checkout exists and is current -- it is what
+            # accepted the adapter -- so there is no reason to route the reinstall through PATH,
+            # where the stale install that produced this report may still win. Relative, not
+            # absolute, so a hook log copied into CI does not publish the machine's layout.
+            # posixpath.relpath, not Path.relative_to: the adapter is often in a SUBDIRECTORY of
+            # the checkout, where the CLI is above it and relative_to raises. Codex caught that the
+            # empty fallback then printed a bare `bin/tautline`, which resolves against the lane
+            # subdirectory -- a remedy pointing at a path that does not exist. relpath emits the
+            # `../` form, which is still relative (nothing absolute reaches a copied log) and
+            # actually resolves.
+            cli_relative = posixpath.relpath(
+                (tree_root / "bin" / "tautline").as_posix(), lane_dir.as_posix()
+            )
+            return {
+                "proof": "tree-authoritative",
+                "disposition": "downgrade",
+                "keys": keys,
+                "installedVersion": installed_version,
+                "authority": relative,
+                "treeCli": cli_relative,
+                "adapterFile": path.name,
+            }
+
+    generated = data.get("_generated")
+    stamped = generated.get("pluginVersion") if isinstance(generated, dict) else None
+    stamped_tuple = _semver_tuple(stamped)
+    installed_tuple = _semver_tuple(installed_version)
+    have_both = stamped_tuple is not None and installed_tuple is not None
+    if have_both and stamped_tuple > installed_tuple:
+        return {
+            "proof": "generator-newer",
+            "disposition": "refuse",
+            "keys": keys,
+            "installedVersion": installed_version,
+            "authority": f"generator {stamped}",
+        }
+    return None
+
+
+def adapter_schema_skew_report_lines(classification: dict) -> tuple[str, ...]:
+    """The report text, and it says only what is actually known and actually runnable.
+
+    TWO SHAPES, because the two dispositions know different amounts, and neither may name a command
+    that cannot run in the state that produced it. That last clause is not obvious and cost three
+    review rounds: **every verb this CLI offers loads and validates the lane adapter first.**
+    `sync_methodology` calls `lane_project`, so running it from the stale install fails with the
+    IDENTICAL schema violation instead of fixing anything. A remedy blocked by the error it exists
+    to clear is the defect this whole item was filed against.
+
+    `downgrade` (proof `tree-authoritative`): the lane's own checkout accepts this adapter, so it is
+    already current -- there is **nothing to sync**, and naming a sync here would have been both
+    useless and circular. The remedy is to rewrite the hook from that checkout and confirm against
+    it. Both commands are qualified to it, relative to the lane, so `PATH` cannot route them back to
+    the stale install and no absolute path reaches a copied log.
+
+    `refuse` (signal `generator-newer`): there is no authoritative checkout -- that is why it
+    refuses -- so no command run through this lane can clear it, and the report says so instead of
+    pretending. It names the ambiguity (this CLI cannot tell a new key from a misspelling), names
+    the one action that always works if it IS a typo, and says plainly that updating the install has
+    to happen outside this lane.
+    """
+    keys = ", ".join(classification["keys"])
+    head = (
+        f"adapter_schema_version_skew: unknown top-level key(s) {keys}; "
+        f"signal={classification['proof']} disposition={classification['disposition']} "
+        f"installed_version={classification['installedVersion']} "
+        f"authority={classification['authority']}"
+    )
+    if classification["disposition"] == "downgrade":
+        cli = classification.get("treeCli") or "bin/tautline"
+        # The adapter's OWN filename, not a hardcoded one. Legacy lanes are still supported and
+        # still use `.minervit-ai-delivery.json`; telling one of those to validate `.tautline.json`
+        # points the confirmation step at a file that is not there.
+        adapter_file = classification.get("adapterFile") or ".tautline.json"
+        return (
+            head,
+            f"adapter_schema_version_skew_remedy: {cli} install-hooks --target .",
+            f"adapter_schema_version_skew_remedy: {cli} validate-adapter --project {adapter_file}",
+        )
+    return (
+        head,
+        "adapter_schema_version_skew_hint: the installed CLI is older than the generator that "
+        "wrote this adapter. That does NOT establish the key is legitimate -- this CLI cannot "
+        "tell a new key from a misspelled one -- so what follows is offered, not promised.",
+        "adapter_schema_version_skew_hint: if the key is misspelled, fix the spelling; that always "
+        "clears this and needs no tooling.",
+        "adapter_schema_version_skew_hint: if the key is correct, this install is too old for it. "
+        "Update it from the framework checkout itself -- not through this lane, because every verb "
+        "here re-validates this adapter with the same stale schema and fails identically.",
+    )
+
+
 def render_budget_for(data: dict) -> dict:
     budget = dict(DEFAULT_RENDER_BUDGET)
     configured = data.get("renderBudget")

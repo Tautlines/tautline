@@ -91,7 +91,149 @@ def test_canonical_policy_size_ratchet(cli):
     # attempt the printed remedy, and when it cannot complete, state the unresolved drift in your
     # own output rather than handing it back. Scoped to ownership plus disclosure and explicitly
     # NOT a precondition for responding, so it cannot become a session-start block.
-    assert len(assembled.encode("utf-8")) <= 66843
+    # Raised 66843 -> 67423 (2026-07-26, item 33 plain-language operator boundaries):
+    # plain language at every human-facing boundary, and a real request when the agent
+    # needs something from a human.
+    # Raised 67423 -> 67592 (+169 bytes, the measured delta) for the machine-checkable-proof
+    # sentence in 15-tdd-and-behavior-specs.md (item 37, test-execution proof, Release 1 / W4).
+    # Raised 67592 -> 68084 (+492 bytes, the measured delta) for the implementation-review round
+    # ladder in 17-review-before-push.md (item 48, 0.36.0): target vs hard cap, self-authorization
+    # in between, confirming rounds free, and the invariant that no round decision on this surface
+    # is ever an operator escalation. That last clause is the one worth the bytes -- the refusal it
+    # replaces cost four lanes a night, and a control lanes cannot read about is half a control.
+    # Raised 68631 -> 68868 (+237 bytes, the measured delta) for item 69 PR-B's review-entry
+    # adapter-dirt refusal in 17-review-before-push.md (0.44.0). 68631 is PR-A's measured number,
+    # not a guess: this lane re-measured on its own tip rather than carrying the +784 that the
+    # combined branch produced before the split. A refusal a lane meets at REVIEW ENTRY and cannot
+    # read about in the canonical rules is a dead end by another name.
+    # Each lane raises this ratchet by its own measured delta only.
+    # Raised 68868 -> 68945 (+77 bytes, this lane's own measured delta, re-measured against the
+    # 0.46.0 tip and not carried forward from any predecessor) for item 72 Release A's canonical
+    # `@pending @owner:<goal-or-lane> @unpend:<trigger>` form in 15-tdd-and-behavior-specs.md. The
+    # rule already required owner + un-pend trigger; what it never did was SHOW the machine-
+    # checkable shape, which is the RCA's "no documented tag spec" clause -- authors discovered the
+    # format by trial against two duplicated inline string checks. The form carries a `@reason:`
+    # slot because the bullet requires owner, REASON and un-pend trigger -- a form showing two of
+    # the three would let an author follow it and still miss the written rule. 77 bytes buys it; no
+    # rendered-adapter headroom is consumed, because policy 15's behavior-spec guidance is not part
+    # of the rendered adapter surface that the six-claimant 320-byte pool covers.
+    # Raised 68945 -> 69405 (+460 bytes, this lane's own measured delta, re-measured against the
+    # 0.51.0 tip and carried forward from no predecessor) for item 73's AC-keyed routing rule in
+    # 17-review-before-push.md. The rule it replaces made routing SEVERITY-scoped while the Done
+    # gate is AC-scoped, so a Critical not open against the item's acceptance criteria was neither
+    # blocking nor routable -- and the recorded cost of that gap was two review rounds, a module
+    # built in flight and reverted, and two severity downgrades performed solely to make routing
+    # legal. A rule whose enforcement ships in the same release but whose statement a lane cannot
+    # read is half a control. No rendered-adapter headroom is consumed: the adapter's own routing
+    # line is a measured 3-byte SAVING in the same change.
+    # Raised 69405 -> 70225 (+820 bytes, this lane's own measured delta, re-measured on the
+    # REBASED tip after 0.53.0 landed and carried forward from no predecessor -- 0.53.0 spent
+    # zero canonical bytes, verified by rendering the base itself rather than by reading its
+    # PR) for item 78 Release A's no-LLM graphify gate split in 25-graphify-navigation.md.
+    # Three clauses buy it, and each closes a named clause of RCA 20260616T133743Z: the
+    # blocking refresh is the dependency-free AST rebuild and is the ONLY invocation the gate
+    # names; semantic enrichment is separate, non-blocking and backend-explicit; and -- the
+    # generalizable one -- an invocation that auto-detects its backend is never a gate command
+    # in ANY adapter, because a provider can retire the model auto-detect lands on and kill the
+    # documented gate permanently. The third bullet is the prevention-gap rule: a finding that a
+    # documented blocking gate command does not run is a source defect, never doc staleness.
+    # That reclassification is what kept this RCA open for two months with zero shipped
+    # controls, so the bytes are the control.
+    # Raised 70225 -> 70414 (+189 bytes, this lane's own measured delta, RE-MEASURED on the
+    # c86b59b1 tip after 0.53.0 and 0.54.0 both landed mid-flight -- never carried forward from
+    # the 69405 base this branch was cut against) for item 72 Release B's
+    # `behavior-spec-status --base` sentence in 15-tdd-and-behavior-specs.md. The bytes buy the
+    # part a lane cannot infer from the flag name: that it REPORTS and never changes an exit
+    # code, and that `behavior-spec-delta-check` is the enforcing counterpart. A reporting line
+    # mistaken for a gate is how a real gate ends up treated as already covered.
+    # Raised 70414 -> 70954 (+540 bytes, this lane's own measured delta, RE-MEASURED on the
+    # 40b1b39a tip after this item's own 0.56.0, 0.57.0 and 0.58.0 all landed -- never carried
+    # forward from the 68945 figure the batch packet quoted) for item 81's oracle-discipline
+    # clause in 10b-board-currency.md. The enforcement shipped across three releases; this is
+    # its statement. Three parts buy the bytes and none is inferable from the others: closure
+    # evidence is measured against the item's WRITTEN acceptance criteria and carries one
+    # PASS/FAIL row per criterion; an unmet criterion is a FAILED AC and never a deferral, which
+    # is the exact substitution the RCA recorded; and verifying the implementation against
+    # itself is forbidden, because a table built from the code cannot fail. A lane that meets
+    # the strict refusal and cannot read why is a dead end -- the failure shape this whole item
+    # exists to close.
+    # Raised 70954 -> 71418 (+464 bytes, this PR's own measured delta, RE-MEASURED on the
+    # f9cbb69c tip after 0.60.0 landed mid-flight -- 0.60.0 spent zero canonical bytes, verified
+    # by rendering the new base rather than by reading its PR) for item 75 WS1's two bullets in
+    # 17-review-before-push.md. The first states the empty-subject refusal, which is a gate that
+    # now REFUSES: a lane that meets it and cannot read why is the dead end the rule exists to
+    # close. The second is the verbatim doc-only P2-default rule both source RCAs asked for and
+    # which grep confirmed existed nowhere.
+    # Raised 71418 -> 71838 (+420 bytes, this PR's own measured delta on the e09ff7fa tip, its
+    # own sibling's merge) for item 75 WS2's execution-counting bullet in
+    # 17-review-before-push.md. It buys the part a lane cannot infer from a refusal string: the
+    # label is not the count, the budget and the ceiling compare DIFFERENT currencies, and a base
+    # change starts a fresh lineage. Six runs labelled R1 spent six rounds while every label said
+    # one, and a lane reading the old bullet had no way to know that was possible.
+    # Raised 71838 -> 72669 (+831 bytes, this lane's own measured delta on the 7896978c tip) for
+    # item 71 WS2/WS3's two bullets: the adapter-declared board identity in 10a-backlog-provider.md
+    # and the both-directions ground-truth rule in 08-verified-human-instructions.md. Both are RCA
+    # controls with exact prescribed wording, so neither can be trimmed to fit. They buy the two
+    # sentences a lane cannot infer from a refusal: that a queried project number differing from
+    # the configured one is blocking drift rather than a fallback candidate, and that operator-
+    # observed UI state beats an API result rather than losing to it. The recorded failures were
+    # an agent resolving a board by display-name resemblance and then arguing with the operator's
+    # screenshots -- neither is reachable from prose that does not exist.
+    # Raised 72669 -> 73755 (+1086 bytes, this lane's own measured delta on the 112b4705 tip)
+    # for batch 2026-08-11 item B7's TWO statements, both in 10-goal-orchestration.md. Raised
+    # ONCE naming both, deliberately: two raises in one PR is how a ratchet number gets carried
+    # forward wrong.
+    #
+    #   1. The definition of done. Its cost is mostly irreducible: it must NAME the seven
+    #      condition ids (a lane cannot look up a set the rules do not list), and it must state
+    #      the handoff bar in both directions -- that an unarmed open PR is not done, AND that a
+    #      queued auto-merging one IS, so the rule cannot be read as a licence to sit on a merge
+    #      monitor. It also states the `unknown`-never-blocks-never-zero semantics and the legal
+    #      exits, because a gate that refuses without naming its exit is one an agent routes
+    #      around.
+    #   2. The goal-delivery rule: a goal handed to a human is the sole content of the response.
+    #      This is the agent-facing half of a defect the operator found by trying to use a goal;
+    #      `--out` is the tooling half and cannot enforce the response shape by itself.
+    #
+    # HONEST ACCOUNTING: the plan estimated 550-800 for the pair and the measured delta is
+    # 1,086 -- a 36% overrun over the top of the range. Both statements were tightened once
+    # after the first measurement (1,269 -> 1,086, -183) and what remains is content, not
+    # wording. Recorded rather than absorbed silently, because an estimate quietly exceeded is
+    # how the next lane inherits a ceiling nobody can account for.
+    # Raised 73755 -> 73857 (+102, measured) to QUALIFY the refusal sentence: the shipped
+    # default is `warn`, and a canonical rule stating a flat "refuses" while the code reports
+    # would be the authority document lying about the behavior -- the same defect the schema
+    # description had, in the one place a lane is most entitled to trust.
+    # Raised 73857 -> 76395 (+2,538, measured on this branch's tip by regenerating from the
+    # modules, not estimated) for item 101's PR-reference contract: three statements in
+    # 10b-board-currency (+1,921), one cross-reference sentence in 18-merge-and-ci (+253), and
+    # one delivery-summary linkage sentence in 09 (+364).
+    #
+    # The cost is mostly irreducible because each statement has to carry the thing that makes it
+    # actionable rather than merely true:
+    #
+    #   1. The four rules must distinguish COMPLETING from ADVANCING and give the title-only
+    #      form for the advancing case, because "reference the item precisely" without the two
+    #      shapes is a rule every lane resolves differently -- and one of the resolutions
+    #      auto-closes live unfinished work on a stakeholder board.
+    #   2. The auto-close statement must name the DEFAULT-BRANCH condition. GitHub honours a
+    #      body keyword only when the PR's base is the default branch, so on an
+    #      integration-branch repo -- which is what this framework and its adopters run -- the
+    #      unconditional promise is simply false, and a rule that promises a mechanism which
+    #      silently does not fire is worse than no rule because the lane stops checking.
+    #   3. The enforcement-gap statement exists because the gate contradicts rule 3 TODAY. An
+    #      adopter can be refused for obeying the published rule, and the fabricated-reference
+    #      workaround that invites is the exact harm rule 4 names. Naming the gap plus its
+    #      forbidden workaround is what stops the rule teaching lanes to lie to the gate.
+    #
+    # Operational detail deliberately did NOT come here: the GitHub-honoured forms, the
+    # one-keyword-per-issue rewrite, the advancing-vs-completing decision procedure and the
+    # commit-message consequence all live in the `board-item-updates` skill, which costs no
+    # ratchet and no rendered-adapter corridor.
+    # 76395 -> 76666 (+271) at implementation review R1, for the cross-repo qualified-reference
+    # clause: a bare `#N` resolves against the PR's own repository, so a provider-backed item
+    # living in another repo needs `owner/repo#N` in both the title and the closing keyword.
+    assert len(assembled.encode("utf-8")) <= 76666
 
 
 def test_canonical_policy_keeps_ops_provider_detail_out_of_core_modules(cli):

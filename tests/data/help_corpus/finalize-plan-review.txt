@@ -22,6 +22,15 @@ options:
   --unresolved-critical-count UNRESOLVED_CRITICAL_COUNT
   --unresolved-p1-count UNRESOLVED_P1_COUNT
   --classified-findings-json CLASSIFIED_FINDINGS_JSON
+                        Inline JSON array of the review's classified findings.
+                        A Critical/P1-origin finding with "status": "deferred"
+                        needs "deferral_rationale" (>=12 chars) and
+                        "acceptance_criterion";
+                        "ac_ref"/"disposition"/"routed_to" are optional here
+                        and validated when present. NOTE: these verbs take
+                        INLINE JSON; finalize-implementation-review takes a
+                        path. See docs/reference/operations/cli-operations.md,
+                        Classified-Findings Contract.
   --structural-critical-evidence STRUCTURAL_CRITICAL_EVIDENCE
                         Legacy alias for --exception-note.
   --exception-note EXCEPTION_NOTE

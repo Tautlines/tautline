@@ -10,7 +10,8 @@ When changing generated adapters, update the CLI in `src/tautline_methodology/` 
 
 ```bash
 scripts/test.sh
-scripts/validate.sh
 ```
+
+`validate.sh` is a frozen 5-line alias of `test.sh` kept for legacy automation; do not extend it. Running both executes the identical suite twice for no additional coverage — `scripts/test.sh` **is** the full preflight.
 
 Do not copy full process policy into project repos by hand. Put reusable policy in `methodology/`, project-specific choices in `adapters/projects/*.json`, and tool-specific behavior in plugin skills or the renderer.

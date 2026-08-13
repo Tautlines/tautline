@@ -130,6 +130,7 @@ def test_emit_evidence_rejects_a_result_id_with_no_suffix(tmp_path):
 
 
 CI_PYTHON = ROOT / ".github" / "workflows" / "ci-python.yml"
+CI_PYTHON_FULL = ROOT / ".github" / "workflows" / "ci-python-full.yml"
 RENDERER_CI = ROOT / ".github" / "workflows" / "renderer-ci.yml"
 VALIDATE = ROOT / ".github" / "workflows" / "validate.yml"
 NPM_AUDIT = ROOT / ".github" / "workflows" / "npm-audit.yml"
@@ -139,6 +140,15 @@ SHA_PIN = re.compile(r"^[0-9a-f]{40}$")
 
 def _jobs(workflow: Path) -> dict:
     return yaml.safe_load(workflow.read_text(encoding="utf-8"))["jobs"]
+
+
+def _triggers(workflow: Path) -> dict:
+    """The workflow's `on:` block. YAML 1.1 parses a bare `on` key as the boolean True, so read
+    both spellings rather than depending on which loader quirk is in play."""
+    document = yaml.safe_load(workflow.read_text(encoding="utf-8"))
+    block = document.get("on", document.get(True))
+    assert isinstance(block, dict), f"{workflow.name} has no mapping `on:` block"
+    return block
 
 
 def _steps(workflow: Path, job: str) -> list[dict]:
@@ -182,7 +192,12 @@ def test_ci_python_legs_always_upload_their_own_outcome():
 
 
 def test_ci_python_evidence_job_reports_every_matrix_leg():
-    # The core anti-lie property: a 3.10-only failure must NOT publish all-green evidence.
+    """The core anti-lie property: a failing leg must NOT publish all-green evidence.
+
+    Derived from the matrix rather than hardcoded. It used to list ("3.10", "3.12") literally, so
+    trimming per-PR CI to one leg would have failed a workflow that still satisfies the contract,
+    while ADDING a leg nobody composed would have passed. Reading the matrix catches both.
+    """
     job = _jobs(CI_PYTHON)["evidence"]
     # `needs` must include python; the evidence job runs after the matrix legs.
     needs = job["needs"] if isinstance(job["needs"], list) else [job["needs"]]
@@ -190,26 +205,115 @@ def test_ci_python_evidence_job_reports_every_matrix_leg():
     assert "cancelled()" in job["if"]
     compose = next(s for s in job["steps"] if s.get("name") == "Compose the run's evidence")
     assert "--suite ci-python:probe" in compose["run"]
-    for leg in ("3.10", "3.12"):
+    legs = _jobs(CI_PYTHON)["python"]["strategy"]["matrix"]["python-version"]
+    assert legs, "the python job must declare at least one interpreter"
+    for leg in legs:
         assert f"legs/py-{leg}/leg-status.txt" in compose["run"]
         assert f"ci-python.py-{leg}=" in compose["run"]
 
 
-def test_ci_python_evidence_job_reports_the_fresh_install_gate():
-    # A red fresh-install-smoke (a required check) must NOT publish all-green evidence.
-    job = _jobs(CI_PYTHON)["evidence"]
+def _declared_floor() -> str:
+    """The floor as pyproject declares it, e.g. `py312` -> `3.12`.
+
+    Read rather than hardcoded: a guard that pins a literal version keeps asserting the OLD floor
+    after a raise, which is how a matrix ends up proving an interpreter nobody supports.
+    """
+    import re
+
+    text = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    match = re.search(r'target-version\s*=\s*"py(\d)(\d+)"', text)
+    assert match, "pyproject must declare a ruff target-version; the floor is derived from it"
+    return f"{match.group(1)}.{match.group(2)}"
+
+
+def test_ci_python_runs_one_leg_per_pr_and_the_daily_workflow_covers_the_rest():
+    """Per-PR CI is trimmed to one interpreter; the declared floor is not abandoned, it moves.
+
+    The pairing is the contract. Dropping a leg from per-PR CI without the daily workflow picking
+    it up is exactly the silent coverage loss this trim is not allowed to be.
+    """
+    per_pr = _jobs(CI_PYTHON)["python"]["strategy"]["matrix"]["python-version"]
+    assert per_pr == ["3.12"], "per-PR CI runs exactly one modern interpreter"
+
+    daily = _jobs(CI_PYTHON_FULL)["python"]["strategy"]["matrix"]["python-version"]
+    assert set(daily) >= set(per_pr), (
+        "the daily matrix must cover every interpreter per-PR CI dropped"
+    )
+
+    # Derived from the declared floor rather than hardcoded, so raising the floor cannot leave this
+    # guard asserting a version nothing runs. The floor moved 3.10 -> 3.12 on 2026-07-31: nothing
+    # in the tree ever required 3.10 (it rested on zip(strict=), present in 3.10+), so keeping the
+    # leg meant hand-building a second interpreter into the runner image to prove a version no
+    # adopter was asked to stay on.
+    floor = _declared_floor()
+    assert floor in set(daily), (
+        f"the daily matrix must prove the declared floor ({floor}); if the floor moves, this "
+        "follows it automatically rather than pinning a stale version"
+    )
+
+
+def test_daily_evidence_job_reports_the_fresh_install_gate():
+    """A red fresh-install-smoke must NOT publish all-green evidence.
+
+    Asserted against the DAILY workflow, which is where the packaging gate lives now. The property
+    is unchanged; only its home moved.
+    """
+    job = _jobs(CI_PYTHON_FULL)["evidence"]
     needs = job["needs"] if isinstance(job["needs"], list) else [job["needs"]]
-    assert "fresh-install-smoke" in needs, "evidence must wait for the required fresh-install gate"
+    assert "fresh-install-smoke" in needs, "evidence must wait for the fresh-install gate"
     compose = next(s for s in job["steps"] if s.get("name") == "Compose the run's evidence")
-    assert "ci-python.fresh-install-smoke=${{ needs.fresh-install-smoke.result }}" in compose["run"]
+    assert (
+        "ci-python-full.fresh-install-smoke=${{ needs.fresh-install-smoke.result }}"
+        in compose["run"]
+    )
+
+
+def test_per_pr_ci_carries_no_coverage_instrumentation():
+    """The ratchet moved to the daily matrix; per-PR CI must not quietly grow it back.
+
+    Coverage answers "has whole-repo coverage regressed", which cannot meaningfully change between
+    two pushes an hour apart, and instrumenting it cost ~40% more wall clock on every one.
+    """
+    steps = _steps(CI_PYTHON, "python")
+    for step in steps:
+        assert "--cov" not in str(step.get("run", ""))
+        assert "--cov" not in str((step.get("env") or {}).get("PYTEST_ADDOPTS", ""))
 
 
 def test_ci_python_emits_junit_on_failing_runs():
+    """The contract is that a RED run still publishes its per-test JUnit detail to `evidence/`.
+
+    Asserted as the property, not as one mechanism. It used to be pinned to a `--junitxml` flag on
+    a second full-suite coverage pass; when that pass was folded into the single run, the pin
+    would have failed on a workflow that still satisfies the contract -- and worse, the FIRST
+    pass's `PYTEST_ADDOPTS: --junitxml=evidence/...` had never worked at all, because
+    scripts/test.sh appends its own `--junitxml` last and pytest takes the last value. Pin the
+    publish step and its `always()` instead.
+    """
     steps = _steps(CI_PYTHON, "python")
-    checks = next(s for s in steps if s.get("name") == "Run python checks")
-    assert "--junitxml=evidence/pytest.junit.xml" in checks["env"]["PYTEST_ADDOPTS"]
-    coverage = next(s for s in steps if str(s.get("run", "")).startswith("pytest --cov"))
-    assert "--junitxml=evidence/pytest.junit.xml" in coverage["run"]
+    publish = next(
+        s for s in steps if "evidence/pytest.junit.xml" in str(s.get("run", ""))
+    )
+    assert publish["if"] == "always()", "a red run's JUnit report is the one that matters"
+    assert "latest-junit.xml" in str(publish["run"]), (
+        "the report must be copied from the stable path scripts/test.sh actually writes"
+    )
+
+
+def test_ci_python_runs_the_suite_exactly_once():
+    """One full-suite pass per leg.
+
+    The suite used to run TWICE per Python leg for a coverage number that is measurably identical
+    either way (29845 statements / 12907 missed / 56.75% both ways, re-proved before the second
+    pass was deleted). A reintroduced second pass is a ~2x compute regression nobody would notice
+    from a green check.
+    """
+    steps = _steps(CI_PYTHON, "python")
+    suite_runs = [s for s in steps if "scripts/test.sh" in str(s.get("run", ""))]
+    assert len(suite_runs) == 1, "the suite must run exactly once per Python leg"
+    assert not any(
+        str(s.get("run", "")).lstrip().startswith("pytest ") for s in steps
+    ), "a bare second `pytest` pass is the duplicate full-suite run this job removed"
 
 
 def test_ci_python_keeps_the_coverage_gate_blocking():
@@ -320,14 +424,42 @@ def test_npm_audit_keeps_the_critical_gate_blocking():
 
 def test_evidence_workflow_actions_are_sha_pinned():
     # Supply-chain convention: a mutable tag like `@v4` must not slip in.
-    for workflow in (CI_PYTHON, RENDERER_CI, VALIDATE, NPM_AUDIT):
+    #
+    # CI_PYTHON_FULL joined this tuple with the runner-identity assertion (item 57). It had been
+    # declared above and then left out of the only SHA-pin check in the suite -- all eight of its
+    # refs were already pinned, so the gap cost nothing yet and would have been invisible until it
+    # did.
+    for workflow in (CI_PYTHON, CI_PYTHON_FULL, RENDERER_CI, VALIDATE, NPM_AUDIT):
         for job in _jobs(workflow):
             for step in _steps(workflow, job):
                 ref = str(step.get("uses", ""))
                 if not ref:
                     continue
+                # Same-repo local actions (`./path`) carry no `@sha` and need none: they resolve
+                # inside the commit under test and move with it, so there is no mutable
+                # third-party tag to pin. The exemption is deliberately keyed on the `./` prefix
+                # and NOT on "the ref has no @" -- the latter would silently re-admit a bare
+                # `actions/checkout`, trading a supply-chain guard for a routing one.
+                if ref.startswith("./"):
+                    continue
                 action, _, pin = ref.partition("@")
                 assert SHA_PIN.match(pin), f"{action} must be pinned to a 40-char commit SHA"
+
+
+def test_sha_pin_exemption_does_not_admit_unpinned_third_party_actions():
+    """The `./` exemption must stay narrow.
+
+    Guards the exact loophole the item-57 review flagged: an exemption written as "skip refs with
+    no `@`" reads as equivalent and is not -- it would let `actions/checkout` in unpinned. This
+    asserts the discriminator is the `./` prefix by exercising both shapes directly.
+    """
+    exempt = "./.github/actions/assert-runner-identity"
+    assert exempt.startswith("./")
+
+    for unpinned in ("actions/checkout", "actions/checkout@v4", "third/party@main"):
+        assert not unpinned.startswith("./"), f"{unpinned} must not qualify for the local exemption"
+        _, _, pin = unpinned.partition("@")
+        assert not SHA_PIN.match(pin), f"{unpinned} must still fail the SHA pin"
 
 
 def test_evidence_output_dirs_are_git_ignored():
@@ -338,3 +470,74 @@ def test_evidence_output_dirs_are_git_ignored():
         / "plugins/tautline-ops/skills/iteration-review/renderer-kit/.gitignore"
     ).read_text(encoding="utf-8")
     assert "evidence/" in renderer_ignore
+
+
+# --- the daily full-matrix workflow ------------------------------------------------------------
+#
+# Per-PR `ci-python` runs one interpreter. That is only safe because this workflow runs the rest,
+# so the properties below are the ones that keep the trim from being a silent coverage loss.
+
+
+def test_full_matrix_fires_without_depending_on_the_default_branch():
+    """The load-bearing trigger is `push` to the integration branch, NOT the schedule.
+
+    GitHub runs `schedule` only from the repository's DEFAULT branch. This repo's default is
+    `main`, the stable channel, many minors behind `experimental` -- verified against this repo's
+    own npm-audit history, whose scheduled runs all report headBranch=main. A workflow declared on
+    `experimental` with only a schedule does not run AT ALL until a release promotion carries it to
+    `main`, so trimming the per-PR matrix against it would leave the 3.10 floor covered by nothing
+    while looking, from the repo, exactly like coverage.
+    """
+    triggers = _triggers(CI_PYTHON_FULL)
+    branches = (triggers.get("push") or {}).get("branches") or []
+    assert "experimental" in branches, (
+        "the full matrix must fire on merges into the integration branch; a schedule alone cannot "
+        "run from a non-default branch"
+    )
+    assert triggers.get("schedule"), (
+        "the daily schedule is still declared, for the branch-sat-untouched case"
+    )
+    assert "workflow_dispatch" in triggers, (
+        "the gate must be runnable deliberately, or it cannot be verified at all"
+    )
+    # Still off the per-PR path -- that is the whole compute win.
+    assert "pull_request" not in triggers
+
+
+def test_scheduled_full_matrix_tests_the_integration_branch_not_the_default_branch():
+    """A scheduled run is dispatched from `main`. Without an explicit ref it would test the stable
+    channel and report green about a tree nobody is developing on."""
+    checkout = next(
+        step for step in _steps(CI_PYTHON_FULL, "python")
+        if "actions/checkout" in str(step.get("uses", ""))
+    )
+    ref = str(checkout["with"]["ref"])
+    assert "schedule" in ref and "experimental" in ref, (
+        "the checkout must redirect a scheduled run at the integration branch"
+    )
+
+
+def test_daily_full_matrix_keeps_the_coverage_ratchet_blocking():
+    steps = _steps(CI_PYTHON_FULL, "python")
+    suite_runs = [
+        s for s in steps
+        if "scripts/validate.sh" in str(s.get("run", ""))
+        or "scripts/test.sh" in str(s.get("run", ""))
+    ]
+    assert len(suite_runs) == 1, "the daily job runs the suite once per leg too"
+    addopts = suite_runs[0]["env"]["PYTEST_ADDOPTS"]
+    assert "--cov=tautline_methodology" in addopts
+    assert "--cov-config=.coveragerc" in addopts
+    assert "continue-on-error: true" not in CI_PYTHON_FULL.read_text(encoding="utf-8"), (
+        "a daily gate that cannot fail the run is the FM1/FM3 anti-pattern"
+    )
+
+
+def test_daily_full_matrix_evidence_reports_every_leg():
+    """A 3.10-only failure in the daily run must not publish green evidence either."""
+    job = _jobs(CI_PYTHON_FULL)["evidence"]
+    assert "cancelled()" in job["if"]
+    compose = next(s for s in job["steps"] if s.get("name") == "Compose the run's evidence")
+    for leg in _jobs(CI_PYTHON_FULL)["python"]["strategy"]["matrix"]["python-version"]:
+        assert f"legs/py-{leg}/leg-status.txt" in compose["run"]
+        assert f"ci-python-full.py-{leg}=" in compose["run"]

@@ -297,6 +297,14 @@ def test_flagged_render_failure_still_hard_fails(tmp_path, run_cli):
     assert first.returncode == 0, first.stdout + first.stderr
     claude_md = target / "CLAUDE.md"
     assert claude_md.exists()
+    # 0.43.0 (item 69) stopped rewriting a generated Markdown file whose content is unchanged, so a
+    # second lane-start no longer WRITES this file at all -- and a write that never happens cannot
+    # fail. Change the content first, so the render genuinely has to write and the read-only mode
+    # is what stops it. Without this the test would pass for the wrong reason: no write, no error,
+    # and nothing proven about the structural path.
+    claude_md.write_text(
+        claude_md.read_text(encoding="utf-8") + "\n<!-- forces a rewrite -->\n", encoding="utf-8"
+    )
     original_mode = claude_md.stat().st_mode
     claude_md.chmod(stat.S_IRUSR)
     try:

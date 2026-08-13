@@ -334,6 +334,46 @@ def test_sync_methodology_rescues_clean_non_main_project_lane(tmp_path):
     assert _git(clone, "rev-parse", "stale-feature") == stale_head
 
 
+# --- RCA 2026-07-22 control 1: the refusal must name its own supported control ----------------
+
+
+def test_emitted_non_release_branch_refusal_names_maintainer_mode_before_the_bypass(tmp_path):
+    """Control 1, asserted on the EMITTED message rather than on `cli.py`'s source text.
+
+    The incident: the refusal named exactly one escape -- the allow-non-main env var -- and never
+    named `maintainer-mode on`, the supported control for an operator who intentionally tracks a
+    non-release branch. Two consecutive sessions read it and built a launcher bypass instead.
+
+    The pre-existing pin for this (in test_standdown_loss_and_launcher_divergence.py) grepped
+    cli.py's SOURCE and asserted only that "maintainer-mode on" appeared somewhere. That pinned
+    strings in a file, not the message a user sees, and it left the property control 1 actually
+    asks for -- the supported control appearing BEFORE the bypass -- entirely unchecked. This test
+    replaces it: run the refusal for real and assert ordering and framing on stdout/stderr.
+    """
+    _source, clone, _lane = _make_methodology_fixture(tmp_path)
+    binary = clone / "bin" / "tautline"
+    _git(clone, "switch", "-q", "-c", "stale-feature")
+
+    refused = _run_cli(binary, "sync-methodology", "--no-remote", cwd=clone)
+    assert refused.returncode == 1, refused.stdout + refused.stderr
+    emitted = refused.stdout + refused.stderr
+
+    maintainer = emitted.find("maintainer-mode on")
+    bypass = emitted.find("MINERVIT_METHODOLOGY_ALLOW_NON_MAIN")
+    assert maintainer != -1, f"refusal never names the supported control:\n{emitted}"
+    assert bypass != -1, f"refusal never names the narrow escape:\n{emitted}"
+    # The whole of control 1: the supported control leads, the bypass follows.
+    assert maintainer < bypass, (
+        "the refusal names the bypass before the supported control, which is the ordering that "
+        f"taught two sessions to build a launcher bypass:\n{emitted}"
+    )
+    # ...and the escape must still read as NARROW. Order alone is satisfiable while presenting the
+    # env var as a peer option, which is the same defect one step softer.
+    assert "single intentional deviation" in emitted, (
+        f"the env-var escape lost its narrowing qualifier:\n{emitted}"
+    )
+
+
 def test_sync_methodology_repairs_divergent_main_and_preserves_local_commit(tmp_path):
     source, clone, lane = _make_methodology_fixture(tmp_path)
     binary = clone / "bin" / "tautline"

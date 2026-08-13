@@ -444,13 +444,49 @@ def test_sync_reports_a_diverged_launcher(tmp_path):
     assert "launcher_divergence:" in sync.stdout + sync.stderr, sync.stdout + sync.stderr
 
 
-# --- Control 2a: the refusal must name its own control ---------------------------------------
+# --- Control 1: the refusal must name its own control ------------------------------------------
+#
+# Control 1, not "2a". The RCA's control 1 is "name the correct control in the refusal"; control 2
+# is "detect a lost standdown" (this file's first half). The behavioural pin for control 1 now
+# lives in test_sync_methodology_cli.py, where the sync runtime fixture is, and asserts the
+# EMITTED refusal -- ordering and framing -- rather than grepping cli.py's source. What remains
+# here is the label assertion: the mislabel is why the intake kept reading control 1 as open.
 
 
-def test_non_release_branch_refusal_names_maintainer_mode(cli, tmp_path, monkeypatch):
-    """The refusal that produced the incident named exactly one escape -- the allow-non-main
-    env var -- and never named the supported control. Two sessions in a row read it and reached
-    for a bypass. The message must name `maintainer-mode on` first."""
+def test_control_1_surfaces_are_labelled_control_1(cli):
+    """The comment in cli.py used to credit this refusal to "control 2", and this section header
+    used to read "Control 2a". Both described control 1's work, so every reader looking for
+    control 1's implementation found nothing and every reader of control 2 found an extra thing.
+
+    Behaviour is pinned by
+    test_sync_methodology_cli.py::test_emitted_non_release_branch_refusal_names_maintainer_mode_before_the_bypass;
+    this asserts only the labels, so a comment edit cannot fail a behavioural test and vice versa.
+    """
     text = Path(cli.__file__).read_text(encoding="utf-8")
-    refusal = text[text.index("refusing to sync from a non-release branch"):][:900]
-    assert "maintainer-mode on" in refusal, refusal
+    refusal_block = text[text.index("refusing to sync from a non-release branch"):][:1200]
+    assert "RCA 2026-07-22 control 1:" in refusal_block, (
+        "the non-release-branch refusal must credit control 1, the control it implements:\n"
+        + refusal_block
+    )
+    assert "control 2:" not in refusal_block, (
+        "the old 'control 2' mislabel is back:\n" + refusal_block
+    )
+
+    # BOTH surfaces, not just cli.py's. Reading only `cli.__file__` would leave this file's own
+    # header free to drift back to "Control 2a" with the test still green -- a test asserting less
+    # than it claims, which is the exact defect this whole change exists to remove. Caught in
+    # stage-2 review of the change that introduced it.
+    # Anchored on the specific header, NOT on the first "# --- Control" in the file: this file's
+    # first half is genuinely control 2 (a lost standdown), so an index-of-first match asserts
+    # against the wrong section and fails for the wrong reason.
+    #
+    # The negative check scans SECTION HEADER LINES only, never the whole file. Scanning the whole
+    # file makes this test fail on any prose that merely NAMES the old label -- including this
+    # comment -- which is the same match-what-you-discuss defect the plan-precheck fixed in 0.27.0.
+    own_source = Path(__file__).read_text(encoding="utf-8")
+    assert "# --- Control 1: the refusal must name its own control" in own_source, (
+        "this section pins control 1's label and must itself be labelled control 1"
+    )
+    headers = [line for line in own_source.splitlines() if line.startswith("# --- ")]
+    stale = [line for line in headers if "Control 2a" in line]
+    assert not stale, f"the old section mislabel is back in a header: {stale}"

@@ -565,3 +565,46 @@ def test_loader_skips_prose_source_of_truth(cli, tmp_path):
         planning_sot="GitHub issues and product docs", goal_sot=SAFE_PLAN_ROOT,
     )
     assert normalized["productDevelopment"]["surfaces"] == ["docs/product/**"]
+
+
+# --- item 37: the testEvidence key (test-execution evidence) ----------------------------------
+
+
+def test_validate_adapter_accepts_well_formed_test_evidence_block(cli):
+    """The key is optional, but a lane that declares a report must validate on first try -- the
+    schema is closed to unknown top-level keys, so the key ships with the feature, not after it."""
+    data = _example(cli)
+    data["testEvidence"] = {"report": {"path": ".ai-runs/junit.xml", "format": "junit-xml"}}
+    assert cli.schema_validation_errors(data, cli._adapter_schema()) == []
+
+
+def test_validate_adapter_rejects_malformed_test_evidence_block(cli):
+    """Every malformation must fail loudly. Failing quietly here means silently degrading to
+    exit-code-only evidence, which is the exact substitution this feature exists to prevent."""
+    schema = cli._adapter_schema()
+
+    unknown_format = _example(cli)
+    unknown_format["testEvidence"] = {"report": {"path": "j.xml", "format": "tap"}}
+    assert any("format" in e for e in cli.schema_validation_errors(unknown_format, schema))
+
+    missing_path = _example(cli)
+    missing_path["testEvidence"] = {"report": {"format": "junit-xml"}}
+    assert cli.schema_validation_errors(missing_path, schema)
+
+    # Release 2 (item 37) SHIPS testEvidence.enforcement, so this assertion is inverted from what
+    # Release 1 left here. Release 1 deliberately pinned the key as unknown -- a forward guard so
+    # an adapter could not declare enforcement that nothing read, which would have been a lane
+    # believing it had a control it did not have. That guard did its job and is now the contract.
+    for mode in ("off", "warn", "block"):
+        declared = _example(cli)
+        declared["testEvidence"] = {"enforcement": mode}
+        assert not cli.schema_validation_errors(declared, schema), (
+            f"testEvidence.enforcement={mode!r} ships in Release 2 and must validate"
+        )
+
+    bad_mode = _example(cli)
+    bad_mode["testEvidence"] = {"enforcement": "strict"}
+    assert cli.schema_validation_errors(bad_mode, schema), (
+        "an enum the enforcement layer does not implement must be refused at the schema, not "
+        "silently normalized to a weaker mode"
+    )

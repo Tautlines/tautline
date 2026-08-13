@@ -19,6 +19,7 @@ process parks itself while a sibling proves the lock is still held.
 import fcntl
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -545,7 +546,15 @@ def test_launcher_gate_skips_when_stamp_fresh(tmp_path, store):
     )
 
     assert result.returncode == 0, result.stdout + result.stderr
-    assert "methodology_update: skipped - synced 30s ago by another lane" in result.stdout
+    # The age is reported as whole seconds off the stamp's mtime, so pinning the exact
+    # second makes this a race with subprocess startup: the stamp is forged 30s old, and
+    # any spawn slower than a second reports 31s. Assert the shape, then bound the age --
+    # that still proves the CLI read OUR stamp rather than syncing afresh.
+    skipped = re.search(
+        r"methodology_update: skipped - synced (\d+)s ago by another lane", result.stdout
+    )
+    assert skipped, result.stdout
+    assert 30 <= int(skipped.group(1)) < 60, result.stdout
     assert "methodology_update: failed" not in result.stdout, "a fetch was attempted"
     # A skip still reports where the lane stands (git's short sha, from the canonical checkout).
     for line in ("methodology_commit: ", "methodology_canonical_commit: "):

@@ -151,6 +151,68 @@ def bootstrap_slot_values(text: str, label: str) -> list[str]:
     return [match.group(1).strip() for match in re.finditer(rf"^\s*{label}:\s*(.*)$", text, re.MULTILINE)]
 
 
+# --------------------------------------------------------------------------------------------
+# Generated-Markdown template stamp (item 69).
+#
+# The rendered Markdown adapters carry the template version that produced them, so a render can
+# tell whether it would be OVERWRITING a newer template with an older one -- the 2026-08-03
+# incident, where a pinned snapshot runtime silently downgraded committed CLAUDE.md/AGENTS.md.
+#
+# Two hard constraints, both load-bearing:
+#
+# 1. Line 1 is untouchable. Every runtime in the fleet classifies a generated Markdown file by
+#    reading exactly len(GENERATED_HEADER_TEMPLATE) bytes and comparing to "<!-- GENERATED -->\n".
+#    Changing that line would make every OLDER runtime treat these files as hand-written and
+#    refuse to render them at all -- a worse, irreversible, fleet-wide failure than the one being
+#    fixed. So the stamp goes on line 2.
+# 2. The stamp is identity, not content. It is normalized away on comparison (below), exactly like
+#    the JSON adapter's _generated keys, or every release would re-dirty every lane's adapter.
+# --------------------------------------------------------------------------------------------
+
+# Mirrors cli.GENERATED_HEADER_TEMPLATE without importing it: this module is a documented pure
+# leaf and cli.py imports IT. tests/test_generated_markdown_template_stamp.py pins them equal.
+GENERATED_MARKDOWN_HEADER_FIRST_LINE = "<!-- GENERATED -->"
+GENERATED_TEMPLATE_VERSION_LINE = "<!-- tautline-template-version: {version} -->\n"
+GENERATED_TEMPLATE_VERSION_RE = re.compile(
+    r"<!-- tautline-template-version: (\d+(?:\.\d+){0,3}) -->"
+)
+
+
+def generated_markdown_template_version(text: str) -> str | None:
+    """The template version stamped in the HEADER BLOCK, or None for legacy unstamped files.
+
+    Anchored to line 2 of the header block on purpose, not searched document-wide. The rendered
+    adapter is full of quoted commands and markers drawn from adapter SOURCE, and a document-wide
+    search would let body text forge a producer version -- which lands as a false downgrade
+    refusal on the lane-startup boundary, the one place this control cannot afford to be wrong.
+
+    None is the fail-open direction and it is deliberate: no stamp means no downgrade gate, which
+    is what lets today's entire unstamped fleet upgrade INTO the stamp instead of being frozen out
+    of it.
+    """
+    lines = text.split("\n", 2)
+    if len(lines) < 2 or lines[0] != GENERATED_MARKDOWN_HEADER_FIRST_LINE:
+        return None
+    match = GENERATED_TEMPLATE_VERSION_RE.fullmatch(lines[1])
+    return match.group(1) if match else None
+
+
+def markdown_stamp_equivalent_content(fresh: str, on_disk: str) -> str:
+    """The fresh render, normalized to the on-disk template stamp for comparison.
+
+    Callers byte-compare on-disk content against this: a stamp-only difference compares equal (so
+    a release bump does not re-dirty every lane), while every content difference still gates.
+    Fail-closed edges mirror adapter_stamp_equivalent_content: if either side lacks a header-block
+    stamp, the fresh bytes return unchanged, the comparison fails, and the write proceeds.
+    """
+    on_disk_version = generated_markdown_template_version(on_disk)
+    if on_disk_version is None or generated_markdown_template_version(fresh) is None:
+        return fresh
+    lines = fresh.split("\n")
+    lines[1] = GENERATED_TEMPLATE_VERSION_LINE.format(version=on_disk_version).rstrip("\n")
+    return "\n".join(lines)
+
+
 ADAPTER_PROVENANCE_STAMP_KEYS: tuple[str, ...] = ("methodologyCommit", "pluginVersion")
 
 

@@ -6,25 +6,67 @@ on:
     branches:
       - main
 
+# See the rationale in ci-python.yml: cancel superseded PR runs, never cancel a push run whose
+# output a gate consumes.
+# github.run_id for non-PR events gives each push run its own group; see the fuller note in
+# ci-python.yml on why cancel-in-progress alone does not protect a PENDING push run.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name == 'pull_request' && 'pr' || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   validate:
-    runs-on: ubuntu-latest
+    # Local hardware when CI_RUNNER_LABEL is set, ubuntu-latest otherwise so forks of the public
+    # mirror keep working -- see the fuller note in ci-python.yml and .github/runner/README.md.
+    #
+    # The fallback is no longer silent, and the two cases now differ: a FORK still falls back to
+    # hosted quietly, which is correct for it, but on THIS repo an unset CI_RUNNER_LABEL fails the
+    # run unless CI_ALLOW_HOSTED_FALLBACK=1 says the billed run was deliberate. See the
+    # assert-runner-identity step below.
+    runs-on: ${{ vars.CI_RUNNER_LABEL || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0
+      - uses: ./.github/actions/assert-runner-identity
+        with:
+          runner-label: ${{ vars.CI_RUNNER_LABEL }}
+          allow-hosted-fallback: ${{ vars.CI_ALLOW_HOSTED_FALLBACK }}
 
       - name: Set up Python
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: "3.12"
 
-      - name: Install dev toolchain
-        run: python -m pip install -r requirements-dev.txt
+      # No dev toolchain install: this job no longer runs pytest, and every gate below is either
+      # stdlib python3 or git. Installing ruff/mypy/pytest to not use them was ~1-2 minutes of
+      # every push.
 
-      - name: Validate methodology
+      # scripts/validate.sh is a frozen 5-line alias of scripts/test.sh, so running it here ran
+      # the WHOLE suite a second time on every push, in parallel with ci-python running the same
+      # suite against the same tree. Same tests, same tree, same verdict -- ~18 minutes of it.
+      #
+      # The validate-freeze whole-suite guarantee is NOT weakened: validate.sh still invokes the
+      # entire suite (never a narrowed selection), tests/test_validate_freeze.py still enforces
+      # that contract and still runs inside every ci-python suite run, and the alias itself is
+      # still exercised end-to-end by ci-python-full on every merge into the integration branch.
+      # What changed is only how often the duplicate execution happens.
+      #
+      # The gates BELOW are this job's real contribution: they are not in the pytest suite, they
+      # cost seconds, and they stay on every push.
+      # The step id stays `methodology-suite` on purpose: it is a published CommandCenter evidence
+      # key (`validate.methodology-suite`), and renaming it would break every consumer reading the
+      # historical series. What the gate CHECKS changed; what it is called must not.
+      - name: Check the frozen alias still delegates to the real gate
         id: methodology-suite
-        run: scripts/validate.sh
+        run: |
+          set -euo pipefail
+          # Fail closed if the alias ever stops delegating to the real gate: the freeze budget
+          # keeps validate.sh small, and this keeps it POINTED AT the suite. Cheap enough to run
+          # on every push; the execution itself belongs to ci-python and ci-python-full.
+          grep -q 'scripts/test.sh' scripts/validate.sh \
+            || { echo "scripts/validate.sh no longer delegates to scripts/test.sh" >&2; exit 1; }
+          echo "validate.sh delegates to the real gate OK"
 
       - name: Compile CLI
         id: compile-cli

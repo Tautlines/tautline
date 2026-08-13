@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 import pytest
@@ -299,7 +300,7 @@ def test_graphify_database_migration_and_event_contracts_remain_pinned():
         CANONICAL,
         [
             "This is a token-budget control",
-            "refresh the graph with `graphify . --update`",
+            "refresh the graph with `graphify update .`",
             "`graphify-out/` is generated local output",
             "database-migration-collision",
             "long `/goal` heartbeat",
@@ -391,4 +392,21 @@ def test_usage_accounting_skill_title_remains_publicly_discoverable():
     _assert_contains_all(
         OPS_SKILLS / "usage-accounting" / "SKILL.md",
         ["Usage Accounting"],
+    )
+
+
+def test_every_default_graphify_key_is_published_in_the_adapter_schema(cli):
+    """Defaults and the published contract must stay in lockstep, key for key.
+
+    `properties.graphify` carries no `additionalProperties: false` (unlike the root object), so
+    a new default key silently escapes `methodology/adapter-schema.json` -- the schema this repo
+    serves as its public adapter contract. That is how two required keys could ship undocumented.
+    Closing the class, not the instance: this asserts the whole key set, so the NEXT default added
+    to DEFAULT_GRAPHIFY fails here until it is published too.
+    """
+    schema = json.loads((ROOT / "methodology" / "adapter-schema.json").read_text(encoding="utf-8"))
+    published = set(schema["properties"]["graphify"]["properties"])
+    missing = sorted(set(cli.DEFAULT_GRAPHIFY) - published)
+    assert missing == [], (
+        f"DEFAULT_GRAPHIFY keys absent from the published adapter schema: {missing}"
     )

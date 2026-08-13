@@ -98,7 +98,31 @@ private_repo_only = pytest.mark.skipif(
 
 
 def _known_public_release_private_terms() -> str:
-    return "But" "cher,Fi" "nch,economics" "-engine,Economics " "Engine,AP" "D,apd" "-alpha"
+    """SYNTHETIC private terms for exercising the export CLI's plumbing.
+
+    These are deliberately fake. Codex R2 (P2) caught the previous version gating these
+    behavior tests on real, locally-configured terms: in clean CI, where nothing is
+    configured, two export-safety paths silently stopped running. A test that proves the
+    CLI accepts and threads private terms does not need the REAL denylist -- it needs
+    some terms. Auditing the real denylist is a different job, and the boundary scan owns
+    it. Real client and product names are never written into a file that ships.
+    """
+    # Assembled from fragments so the terms do not appear literally in any tracked file
+    # -- otherwise the private-term scan finds them HERE, in the file that defines them,
+    # and reports a leak that does not exist.
+    #
+    # Splitting is correct here and was wrong for real identifiers, and the difference is
+    # the point: for a real name, splitting changes nothing about disclosure because the
+    # fragments rejoin to the real value. These values are fake by construction, so there
+    # is nothing to disclose and the only property that matters is not colliding with the
+    # scan.
+    return ",".join((
+        "SYNTH" + "ETIC-CLIENT-ALPHA",
+        "SYNTH" + "ETIC-PRODUCT-BETA",
+        "Synth" + "etic Engine",
+    ))
+
+
 
 
 def test_framework_pin_defaults_to_stable_manual(cli):
@@ -2011,6 +2035,256 @@ def test_release_migration_report_0_16_0_and_ceiling_gap_guards(cli):
     assert any("display-only" in change for change in r182["behaviorChanges"])
 
 
+def test_release_migration_report_0_29_0_and_its_gap_guard(cli):
+    """item 32 (succession-chain accounting) took the 0.29.0 minor, skipping 0.28.2+.
+
+    Every minor bump leaves a patch range nobody declared, and a range that falls through
+    fabricates a report from an unrelated release. The ceiling moves with the release; the gap
+    below it must refuse.
+    """
+    for undeclared in ("0.28.2", "0.28.9", "0.29.1", "0.29.9", "0.30.3", "0.35.4"):
+        with pytest.raises(SystemExit, match="not declared for " + undeclared):
+            cli.release_migration_report_data(version=undeclared)
+
+    report = cli.release_migration_report_data(version="0.29.0", products_tested=[])
+    assert report["version"] == "0.29.0"
+    # Opt-in and print-only: a lane mid-plan-review keeps its behavior unless it passes the flag.
+    assert report["wipSafe"] is True
+    assert any(item["id"] == "install-fleet-guard-hook" for item in report["requiredMigrations"])
+    assert any(item["id"] == "grant-gh-project-scopes" for item in report["requiredMigrations"])
+    # No adapter migration is DECLARED absent rather than left undeclared: this release moves no
+    # adapter key, so the only optional migration is the lineage declaration itself.
+    assert [item["id"] for item in report["optionalMigrations"]] == [
+        "declare-plan-review-succession-lineage"
+    ]
+    assert all(isinstance(item["description"], str) for item in report["optionalMigrations"])
+    assert any("--predecessor" in change for change in report["behaviorChanges"])
+    assert any(
+        "never refused by chain accounting" in change for change in report["behaviorChanges"]
+    )
+
+
+def test_release_migration_report_0_30_0_and_its_gap_guard(cli):
+    """goal-assignment took the 0.30.0 minor, skipping 0.29.1+.
+
+    Same contract as the 0.29.0 guard above: the ceiling moves with the release, and the
+    patch range the minor skipped must refuse rather than fabricate a report from an
+    unrelated release.
+    """
+    report = cli.release_migration_report_data(version="0.30.0", products_tested=[])
+    assert report["version"] == "0.30.0"
+    # Purely additive: a lane mid-plan-review or mid-build is unaffected unless it runs the
+    # new verb, so the release is safe to auto-update into during WIP.
+    assert report["wipSafe"] is True
+    assert any(item["id"] == "install-fleet-guard-hook" for item in report["requiredMigrations"])
+    assert any(item["id"] == "grant-gh-project-scopes" for item in report["requiredMigrations"])
+    # No adapter migration is DECLARED absent rather than left undeclared: the character limit
+    # is a CLI flag default, deliberately not an adapter knob, so nothing needs regenerating.
+    assert [item["id"] for item in report["optionalMigrations"]] == [
+        "emit-goal-assignments-from-finalized-plans"
+    ]
+    assert any("goal-assignment" in change for change in report["behaviorChanges"])
+    assert any("REFUSES" in change for change in report["behaviorChanges"])
+    assert any("Nothing is silently truncated" in change for change in report["behaviorChanges"])
+
+
+def test_release_migration_report_0_30_1_is_declared_and_patch_shaped(cli):
+    """0.30.1 is the test-only repair of 0.30.0: no product code, no surface move, so the report
+    must declare zero optional migrations and no behavior change beyond the test itself."""
+    report = cli.release_migration_report_data(version="0.30.1", products_tested=[])
+    assert report["version"] == "0.30.1"
+    assert report["wipSafe"] is True
+    assert report["optionalMigrations"] == []
+    assert any("No runtime behavior changed" in change for change in report["behaviorChanges"])
+
+
+def test_release_migration_report_0_30_2_declares_the_xdist_toolchain_step(cli):
+    """0.30.2 parallelizes the behavior gate. The gate fails closed without pytest-xdist, so the
+    toolchain reinstall is a REQUIRED migration, not an optional one — a checkout that skips it
+    cannot run the gate at all."""
+    report = cli.release_migration_report_data(version="0.30.2", products_tested=[])
+    assert report["version"] == "0.30.2"
+    assert report["wipSafe"] is True
+    assert any(item["id"] == "install-pytest-xdist" for item in report["requiredMigrations"])
+    assert report["optionalMigrations"] == []
+    assert any("955s" in change for change in report["behaviorChanges"])
+    # The rollback note must be honest that parallelism surfaces pre-existing races.
+    assert any("races" in note for note in report["rollbackNotes"])
+
+
+def test_release_migration_report_0_31_0_and_its_gap_guard(cli):
+    """Backlog item 45 (fresh-checkout test mode) took the 0.31.0 minor, skipping 0.30.3+.
+
+    Same contract as every minor before it: the ceiling moves with the release, and the patch range
+    the minor skipped must refuse rather than fabricate a report from an unrelated release.
+    """
+    for undeclared in ("0.30.3", "0.30.9"):
+        with pytest.raises(SystemExit, match="not declared for " + undeclared):
+            cli.release_migration_report_data(version=undeclared)
+
+    report = cli.release_migration_report_data(version="0.31.0", products_tested=[])
+    assert report["version"] == "0.31.0"
+    # Opt-in and report-only: a lane that never declares testEvidence.freshCheckout keeps running
+    # the gate in place, so upgrading across this mid-work cannot block anyone.
+    assert report["wipSafe"] is True
+    assert [item["id"] for item in report["optionalMigrations"]] == ["opt-into-fresh-checkout"]
+    assert any("--fresh-checkout" in change for change in report["behaviorChanges"])
+    # The refusal is the load-bearing behavior; a report that omits it undersells the change.
+    assert any("REFUSES" in change for change in report["behaviorChanges"])
+
+
+def test_release_migration_report_0_31_1_declares_the_single_suite_pass(cli):
+    """0.31.1 deletes the second full-suite coverage pass. The report must carry the measured
+    equality that justified the deletion, and must be honest that the ratchet still blocks."""
+    report = cli.release_migration_report_data(version="0.31.1", products_tested=[])
+    assert report["version"] == "0.31.1"
+    assert report["wipSafe"] is True
+    assert report["optionalMigrations"] == []
+    assert any("56.75%" in change for change in report["behaviorChanges"])
+    assert any("still BLOCKS" in change for change in report["behaviorChanges"])
+
+
+def test_release_migration_report_0_31_x_gap_guard(cli):
+    """Codex R1 P2. Raising the ceiling to 0.32.0 left 0.31.2+ unguarded, so an undeclared patch
+    fell through and fabricated a report from an unrelated release."""
+    for undeclared in ("0.31.2", "0.31.9"):
+        with pytest.raises(SystemExit, match="not declared for " + undeclared):
+            cli.release_migration_report_data(version=undeclared)
+
+
+def test_release_migration_report_0_32_1_declares_the_unverifiable_note_fix(cli):
+    """The report must carry the DIRECTION of the fix: an unverifiable probe must not read as
+    'no gate exists', which is the same overclaim the probe was built to prevent."""
+    report = cli.release_migration_report_data(version="0.32.1", products_tested=[])
+    assert report["version"] == "0.32.1"
+    assert report["wipSafe"] is True
+    assert report["optionalMigrations"] == []
+    assert any("UNKNOWN" in change for change in report["behaviorChanges"])
+    assert any("in either direction" in change for change in report["behaviorChanges"])
+
+
+def test_release_migration_report_0_32_0_declares_the_ci_shape_change(cli):
+    """0.32.0 trims per-PR CI to one leg and adds the platform-required-checks probe. The report
+    must carry BOTH the where-did-3.10-go answer and the probe's report-only contract."""
+    report = cli.release_migration_report_data(version="0.32.0", products_tested=[])
+    assert report["version"] == "0.32.0"
+    assert report["wipSafe"] is True
+    assert [item["id"] for item in report["optionalMigrations"]] == [
+        "review-platform-required-checks"
+    ]
+    assert any("ci-python-full" in change for change in report["behaviorChanges"])
+    assert any("REPORT-ONLY" in change for change in report["behaviorChanges"])
+    # The pairing that keeps the trim honest must be named in the rollback notes.
+    assert any("silent coverage loss" in note for note in report["rollbackNotes"])
+
+
+def test_release_migration_report_0_33_0_declares_the_moved_gates(cli):
+    """0.33.0 moves the coverage ratchet, the packaging smoke, and validate's duplicate suite run
+    off the per-push path. The report must be honest about the cost, not just the speedup."""
+    report = cli.release_migration_report_data(version="0.33.0", products_tested=[])
+    assert report["version"] == "0.33.0"
+    assert report["wipSafe"] is True
+    assert [item["id"] for item in report["optionalMigrations"]] == [
+        "run-packaging-smoke-before-release"
+    ]
+    assert any("HONEST COST" in change for change in report["behaviorChanges"])
+    assert any("WHOLE-SUITE guarantee is" in change for change in report["behaviorChanges"])
+    # If the daily workflow is off, these gates run nowhere -- the rollback notes must say so.
+    assert any("stop running ANYWHERE" in note for note in report["rollbackNotes"])
+
+
+def test_the_patch_range_below_the_current_release_refuses(cli):
+    """Generic guard for a defect class that recurred THREE times in one delivery chain.
+
+    Every minor bump raises the top-level ceiling and, in doing so, opens a patch range between
+    the previous declared release and the new one. Raising the ceiling and adding the matching
+    gap guard are one operation; doing only the first silently fabricates a report from an
+    unrelated release for any version in the gap.
+
+    Derived from the committed reports rather than hardcoded, so it keeps working across future
+    releases instead of needing an edit each time -- which is exactly how the per-release guards
+    kept getting forgotten.
+    """
+    reports = Path(__file__).resolve().parents[1] / "docs" / "releases" / "migrations"
+    declared = sorted(
+        (tuple(int(part) for part in path.stem.split(".")) for path in reports.glob("*.json")),
+    )
+    current = tuple(int(part) for part in cli.methodology_version().split("."))
+    assert current in declared, "the current VERSION must have a committed migration report"
+
+    # Above the ceiling always refuses.
+    above = (current[0], current[1], current[2] + 1)
+    with pytest.raises(SystemExit, match="not declared for"):
+        cli.release_migration_report_data(version=".".join(str(n) for n in above))
+
+    # The patch range the current minor skipped, taken from the newest release below it.
+    prior = max(version for version in declared if version < current)
+    if prior[:2] == current[:2]:
+        return  # the current release is itself a patch; no skipped range exists
+    for patch in (prior[2] + 1, prior[2] + 5):
+        candidate = (prior[0], prior[1], patch)
+        if candidate in declared:
+            continue
+        label = ".".join(str(n) for n in candidate)
+        with pytest.raises(SystemExit, match="not declared for"):
+            cli.release_migration_report_data(version=label)
+
+
+def test_every_frozen_migration_report_still_regenerates_byte_identically(cli):
+    """A shipped migration report is BYTE-BOUND to what its generator produces.
+
+    Codex R1 P2 on 0.33.1: correcting the dispatch command retroactively inside the 0.33.0 branch
+    made `release-migration-report --version 0.33.0 --check` report the archived report as stale.
+    A fix belongs in the release that ships it, never backdated into a frozen predecessor -- an
+    operator auditing an old release must get the bytes that release actually shipped.
+    """
+    # Six pre-launch reports already drifted before this guard existed. They are named
+    # individually rather than excluded by a version cutoff, so a NEW drift fails closed
+    # anywhere -- including inside this range if someone disturbs it further. Do not add to this
+    # set to make a change pass: land the fix in the release that ships it instead.
+    known_historical_drift = {
+        "0.6.123", "0.6.124", "0.6.125", "0.6.128", "0.6.133", "0.6.143",
+    }
+    reports = Path(__file__).resolve().parents[1] / "docs" / "releases" / "migrations"
+    checked = 0
+    for path in sorted(reports.glob("*.json")):
+        if path.stem in known_historical_drift:
+            continue
+        committed = json.loads(path.read_text(encoding="utf-8"))
+        generated = cli.release_migration_report_data(
+            version=path.stem, products_tested=committed.get("productsTested", [])
+        )
+        assert committed == generated, (
+            f"{path.name} no longer regenerates byte-identically; a frozen report was edited "
+            "retroactively instead of the fix landing in the release that ships it"
+        )
+        checked += 1
+    assert checked > 200, (
+        f"only {checked} reports were checked; the guard must cover the whole archive, not a "
+        "handful that happened to survive a glob change"
+    )
+
+
+def test_every_recommended_workflow_dispatch_names_a_ref(cli):
+    """A `gh workflow run` with no --ref dispatches on the DEFAULT branch.
+
+    On this repo that is `main`, the stable channel many minors behind the integration branch, so a
+    migration that tells an operator to smoke the package would have smoked the wrong tree. The
+    CHANGELOG and the workflow comment both carried the correct form; the migration report did not,
+    which is the worst place for the wrong one to live because the other two make it look verified.
+    """
+    version = cli.methodology_version()
+    report = cli.release_migration_report_data(version=version, products_tested=[])
+    for item in report["requiredMigrations"] + report["optionalMigrations"]:
+        command = str(item.get("command", ""))
+        if "gh workflow run" not in command:
+            continue
+        assert "--ref " in command, (
+            f"migration {item['id']!r} dispatches a workflow without --ref, which runs it on the "
+            f"default branch instead of the integration branch: {command!r}"
+        )
+
+
 def test_current_release_migration_report_exists_and_is_fresh(cli):
     version = cli.methodology_version()
     path = Path(__file__).resolve().parents[1] / "docs" / "releases" / "migrations" / f"{version}.json"
@@ -3599,4 +3873,204 @@ def test_release_migration_report_0_10_4_carries_the_0_10_3_gate_forward(cli):
         item["id"] == "grant-gh-project-scopes"
         and "gh auth refresh" in item["command"]
         for item in current["requiredMigrations"]
+    )
+
+
+# Pre-launch releases whose migration report exists but whose changelog entry does not, anywhere.
+# FROZEN: this allowlist may shrink, never grow -- the test asserts both directions.
+#
+# These are not oversights that can be fixed from this repository. The archive
+# (`changelog-prelaunch-root.md`) is dated per entry, and these versions predate the public 0.7.0
+# launch, so their release dates exist only in the maintainer's private development repository.
+# Writing entries here would mean inventing dates for 21 releases, which is worse than an honest,
+# enumerated gap. The content itself IS recoverable from each `docs/releases/migrations/<v>.json`;
+# only the dates are not. Closing this needs the private history, and is tracked as backlog 58.
+KNOWN_PRELAUNCH_CHANGELOG_GAP = frozenset(
+    {
+        "0.6.123",
+        "0.6.124",
+        "0.6.125",
+        "0.6.126",
+        "0.6.128",
+        "0.6.160",
+        "0.6.161",
+        "0.6.162",
+        "0.6.163",
+        "0.6.164",
+        "0.6.165",
+        "0.6.166",
+        "0.6.167",
+        "0.6.168",
+        "0.6.169",
+        "0.6.170",
+        "0.6.171",
+        "0.6.172",
+        "0.6.173",
+        "0.6.174",
+        "0.6.175",
+    }
+)
+
+
+def test_every_shipped_release_is_recorded_in_a_changelog(cli):
+    """A migration report is proof a version SHIPPED. Every one of them must be findable by a
+    reader in exactly one of the two changelogs.
+
+    This invariant was silently false for three releases. `docs/releases/migrations/` carried
+    0.6.266, 0.6.267 and 0.6.268, but `CHANGELOG.md` starts at 0.7.0 and the pre-launch archive
+    stopped at 0.6.265 -- so three shipped releases had no reader-facing record anywhere. It went
+    unnoticed because `CHANGELOG.md`'s own boundary sentence said "through 0.6.265", which
+    accurately described the ARCHIVE's coverage and so read as intentional.
+
+    Checked against both files together rather than either alone: the split between them is a
+    presentation choice (public launch at 0.7.0), and a release moving across that boundary must
+    not be able to fall through the crack between the two.
+    """
+    root = CLI_PATH.parents[1]
+
+    # A public release export ships tests/ but deliberately does NOT ship docs/productization/
+    # (PUBLIC_RELEASE_EXPORT_EXCLUDED_PREFIXES). In an export tree the pre-launch archive is absent
+    # BY DESIGN, so this invariant becomes unverifiable there rather than violated -- and it fails
+    # twice over, which is why relaxing the is_file() assertion alone would not be enough:
+    # 0.6.266-268 are recorded ONLY in that archive, so every one of them would then be reported as
+    # a NEW gap by the coverage check below.
+    #
+    # Keyed on the export MARKER, never on "the archive file happens to be missing". In the
+    # maintainer repository a missing archive must stay a hard failure -- that is the entire point
+    # of the check, and a skip-if-absent would delete it silently.
+    if (root / cli.PUBLIC_RELEASE_EXPORT_MARKER).is_file():
+        pytest.skip(
+            "public release export tree: docs/productization/ is excluded from the export, so the "
+            "pre-launch archive is absent by design and changelog coverage cannot be judged here"
+        )
+
+    migrations_dir = root / "docs" / "releases" / "migrations"
+    shipped = sorted(
+        (path.stem for path in migrations_dir.glob("*.json")),
+        key=lambda v: tuple(int(part) for part in v.split(".")),
+    )
+    assert shipped, "no migration reports found; this test would pass vacuously"
+
+    heading = re.compile(r"^##\s*\[?v?(\d+\.\d+\.\d+)\]?", re.MULTILINE)
+    recorded = set()
+    for relative in (
+        "CHANGELOG.md",
+        "docs/productization/archive/changelog-prelaunch-root.md",
+    ):
+        path = root / relative
+        assert path.is_file(), f"expected changelog missing: {relative}"
+        recorded.update(heading.findall(path.read_text(encoding="utf-8")))
+
+    missing = {version for version in shipped if version not in recorded}
+    new_gaps = sorted(
+        missing - KNOWN_PRELAUNCH_CHANGELOG_GAP,
+        key=lambda v: tuple(int(part) for part in v.split(".")),
+    )
+    assert not new_gaps, (
+        "these versions shipped a migration report but appear in neither CHANGELOG.md nor "
+        f"docs/productization/archive/changelog-prelaunch-root.md: {new_gaps}. Every shipped "
+        "release needs a reader-facing entry in one of them. If this fired on a release you just "
+        "cut, add its CHANGELOG.md section rather than extending the allowlist below -- that "
+        "allowlist is frozen historical debt, not a place to put new releases."
+    )
+
+    closed = sorted(
+        KNOWN_PRELAUNCH_CHANGELOG_GAP - missing,
+        key=lambda v: tuple(int(part) for part in v.split(".")),
+    )
+    assert not closed, (
+        f"these versions are now documented and must be removed from "
+        f"KNOWN_PRELAUNCH_CHANGELOG_GAP: {closed}. The allowlist has to shrink as the backfill "
+        "lands, or it stops describing anything."
+    )
+
+
+# Published commits whose subject names a version they did not ship (backlog item 63).
+# FROZEN: this allowlist may shrink, never grow -- the test asserts both directions.
+#
+# These cannot be corrected. Both are published on `experimental` and on every clone, so the fix
+# is a durable record plus a guard, never a rebase. The release ARTIFACTS are all correct --
+# VERSION, CHANGELOG.md and the migration reports are monotonic across every commit that touches
+# VERSION -- only the subject lines lie, and the subject is what a human reads when bisecting or
+# drafting release notes.
+#
+# Cause is structural, not carelessness: a squash merge takes its subject from the PR TITLE, which
+# is written when the PR is opened and goes stale every time the branch is renumbered. Both PRs
+# were renumbered at least once. `tautline merge` now refuses this before the squash is taken;
+# this test is the detector for anything that reaches history by another path.
+KNOWN_RELEASE_SUBJECT_DRIFT = frozenset(
+    {
+        # titled "(0.38.0)", shipped 0.36.0 (PR #494)
+        "a7fcd3ceccc97ee6e5e958ddf0e2c510ce4e68e9",
+        # titled "(0.36.0)", shipped 0.37.0 (PR #491)
+        "0b2fe063018fe5ebebf73ee69dc379aeb33314d2",
+    }
+)
+
+
+def test_release_commit_subjects_name_the_version_they_ship(cli):
+    """IF a commit subject carries a version token, THEN it must equal VERSION at that commit.
+
+    Conditional on purpose. 327 of the 364 VERSION-touching commits carry no token at all and are
+    not defective -- mostly `chore(review):` ledgers and mid-branch bumps with no business
+    advertising a release -- so a rule requiring a token would flag 327 correct commits. Silence is
+    always legal; only a CLAIM is checked.
+
+    The token rule is imported from `merge_gate`, never re-implemented here. Two copies would let
+    this detector and the merge-time preventer disagree about what a version token is, which is
+    precisely the drift class the pair exists to close.
+
+    Coverage is deliberately narrower than the merge-time guard, and the split is stated rather
+    than implied: this walk is `-- VERSION`, so it only sees commits that CHANGE VERSION. A subject
+    claiming a version on a commit that does not touch VERSION -- a phantom-release claim -- is
+    caught by `tautline merge`, which compares against head VERSION whether or not the PR bumps it.
+    """
+    from tautline_methodology import merge_gate
+
+    root = CLI_PATH.parents[1]
+
+    # Keyed on the export MARKER, never on "git happens to be unavailable". In the maintainer
+    # repository an unreadable history must stay a hard failure -- that is the whole point of the
+    # check, and a skip-if-absent would delete the invariant while looking like a fix.
+    if (root / cli.PUBLIC_RELEASE_EXPORT_MARKER).is_file():
+        pytest.skip(
+            "public release export tree: shipped as a file tree without git history, so commit "
+            "subjects cannot be judged here"
+        )
+
+    # `--full-history` is required. Default path-history simplification drops merge commits, and a
+    # merge commit is exactly how a drifted subject arrives when the merge is taken through the
+    # GitHub UI or via `gh pr merge --merge --subject` -- the paths the merge-time guard does not
+    # see. It adds 75 commits today, none of which carry a token, so it costs nothing now and
+    # closes the class before it has an instance.
+    listing = subprocess.check_output(
+        ["git", "-C", str(root), "log", "--full-history", "--format=%H%x00%s", "--", "VERSION"],
+        text=True,
+    )
+    rows = [line.split("\0", 1) for line in listing.splitlines() if "\0" in line]
+    assert rows, "no commits touching VERSION found; this test would pass vacuously"
+
+    drifted = set()
+    for sha, subject in rows:
+        tokens = merge_gate.subject_version_tokens(subject)
+        if not tokens:
+            continue
+        shipped = subprocess.check_output(
+            ["git", "-C", str(root), "show", f"{sha}:VERSION"], text=True
+        ).strip()
+        if any(token != shipped for token in tokens):
+            drifted.add(sha)
+
+    new_drift = sorted(drifted - KNOWN_RELEASE_SUBJECT_DRIFT)
+    assert not new_drift, (
+        f"these commits name a version they did not ship: {new_drift}. A squash takes its subject "
+        "from the PR title, so fix the TITLE before merging -- once the commit is published the "
+        "subject cannot be corrected. Do not extend the allowlist below; it is frozen historical "
+        "debt, not a place to put new drift."
+    )
+
+    corrected = sorted(KNOWN_RELEASE_SUBJECT_DRIFT - drifted)
+    assert not corrected, (
+        f"these commits no longer drift and must be removed from KNOWN_RELEASE_SUBJECT_DRIFT: "
+        f"{corrected}. The allowlist has to shrink, or it stops describing anything."
     )

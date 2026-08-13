@@ -217,6 +217,12 @@ def _enabled_provider(scope_query):
         "scopeQuery": scope_query, "statusField": "Status", "linkPolicy": "links",
         "readyStatuses": ["Ready"], "activeStatuses": ["In progress"], "doneStatuses": ["Done"],
         "blockedStatuses": ["Blocked"], "authoritativeFor": ["goal-status"], "repoPlanRequired": True,
+        # Item 81's oracle-discipline gate reads the linked issue's BODY, which means a `gh issue
+        # view` subprocess on every done move. It defaults to `warn` in the product and has its own
+        # suite (tests/test_done_evidence_ac_table.py); leaving it live here would make this module
+        # -- which is about board currency -- shell out to the network per test and report an
+        # `unknown` degrade that says nothing about board currency.
+        "doneEvidence": {"acTable": "off"},
     }
 
 
@@ -591,7 +597,7 @@ def test_backlog_provider_update_done_requires_and_posts_evidence(cli, tmp_path,
     monkeypatch.setattr(cli, "resolve_goal_tracker_item", lambda data, target, ref: item)
     monkeypatch.setattr(cli, "goal_tracker_update_status", lambda data, target, item_ref, status: {"item_id": "PVTI_1", "status": status, "output": ""})
 
-    def _post(data, target, issue_number, body):
+    def _post(data, target, issue_number, body, **_ac_kwargs):
         posted["issue_number"] = issue_number
         posted["body"] = body
         return "https://github.com/o/r/issues/234#issuecomment-1"
@@ -652,7 +658,10 @@ def test_backlog_provider_update_done_updates_closed_board_backed_subtasks(cli, 
     monkeypatch.setattr(
         cli,
         "stakeholder_issue_post_comment",
-        lambda data, target, issue_number, body: posted.append((issue_number, body)) or f"https://github.com/o/r/issues/{issue_number}#issuecomment-1",
+        lambda data, target, issue_number, body, **_ac_kwargs: (
+            posted.append((issue_number, body))
+            or f"https://github.com/o/r/issues/{issue_number}#issuecomment-1"
+        ),
     )
     monkeypatch.setattr(
         cli,
@@ -841,7 +850,9 @@ def test_backlog_provider_update_done_blocks_when_board_backed_subtask_open(cli,
     monkeypatch.setattr(
         cli,
         "stakeholder_issue_post_comment",
-        lambda data, target, issue_number, body: posted.append((issue_number, body)) or "posted",
+        lambda data, target, issue_number, body, **_ac_kwargs: (
+            posted.append((issue_number, body)) or "posted"
+        ),
     )
     monkeypatch.setattr(
         cli,
@@ -896,7 +907,9 @@ def test_backlog_provider_update_done_blocks_when_native_subtask_is_not_on_board
     monkeypatch.setattr(
         cli,
         "stakeholder_issue_post_comment",
-        lambda data, target, issue_number, body: posted.append((issue_number, body)) or "posted",
+        lambda data, target, issue_number, body, **_ac_kwargs: (
+            posted.append((issue_number, body)) or "posted"
+        ),
     )
     monkeypatch.setattr(
         cli,
@@ -960,7 +973,7 @@ def test_goal_tracker_sync_done_posts_verification_evidence(cli, tmp_path, monke
     monkeypatch.setattr(cli, "resolve_goal_tracker_item", lambda data, target, ref: item)
     monkeypatch.setattr(cli, "goal_tracker_update_status", lambda data, target, item_ref, status: {"item_id": "PVTI_1", "status": status, "output": ""})
 
-    def _post(data, target, issue_number, body):
+    def _post(data, target, issue_number, body, **_ac_kwargs):
         posted["issue_number"] = issue_number
         posted["body"] = body
         return "https://github.com/o/r/issues/234#issuecomment-1"
@@ -1803,3 +1816,61 @@ def test_snapshot_store_fault_phrases_build_without_posix_only_errnos(cli):
         name for name in ("ENOSPC", "EDQUOT", "EROFS", "ESTALE", "EIO") if hasattr(_errno, name)
     }
     assert len(phrases) == len(expected)
+
+
+# --- item 71 T1.3: the truncation-drift branch PR1 shipped but never pinned ---------------------
+
+
+def test_a_truncated_board_read_is_blocking_drift(cli, tmp_path, monkeypatch):
+    """0.46.0 made the currency gate consume the VERIFIED read and deleted the page-full heuristic
+    it used to guess with, but the regression test for that branch never landed -- so the behavior
+    shipped unpinned for six releases.
+
+    A board that could not be read completely is not a board with no drift. The gate has no honest
+    answer about items it never saw, and 'no drift' is the most reassuring possible answer from the
+    least evidence.
+    """
+    monkeypatch.setattr(cli, "goal_tracker_auth_issues", lambda target: [])
+    monkeypatch.setattr(cli, "goal_tracker_status_issues", lambda data, target: [])
+    monkeypatch.setattr(cli, "goal_tracker_items", lambda data, target, limit=400: (
+        _ for _ in ()
+    ).throw(SystemExit("GitHub Project board read truncated at 400 of 402 items")))
+    monkeypatch.setattr(
+        cli, "lane_work_scope",
+        lambda data, target: {"ledger_ref": "", "outgoing_issue_numbers": [],
+                              "working_tree_refs": [], "unresolved_ledger": False},
+    )
+
+    drift, unavailable, warnings = cli.provider_board_currency_issues(
+        _enabled_data(), tmp_path, None
+    )
+
+    assert any("could not be read for board reconciliation" in d for d in drift), drift
+    assert any("402" in d for d in drift), "the drift entry must carry the underlying reason"
+
+
+def test_a_complete_escalated_read_produces_no_truncation_drift(cli, tmp_path, monkeypatch):
+    """The positive twin: a read that DID see the whole board -- 402 items, past the default 400 --
+    attests to it, and the gate stays green. Without this the test above would pass just as well
+    against a gate that blocked on every read."""
+    items = [
+        {"content": {"url": f"https://github.com/o/r/issues/{n}", "title": f"i{n}",
+                     "state": "OPEN"}}
+        for n in range(402)
+    ]
+    monkeypatch.setattr(cli, "goal_tracker_auth_issues", lambda target: [])
+    monkeypatch.setattr(cli, "goal_tracker_status_issues", lambda data, target: [])
+    monkeypatch.setattr(cli, "goal_tracker_items", lambda data, target, limit=400: items)
+    monkeypatch.setattr(cli, "goal_tracker_item_field", lambda it, f: "Done")
+    monkeypatch.setattr(cli, "board_item_fetch_state", lambda it, target: "CLOSED")
+    monkeypatch.setattr(
+        cli, "lane_work_scope",
+        lambda data, target: {"ledger_ref": "", "outgoing_issue_numbers": [],
+                              "working_tree_refs": [], "unresolved_ledger": False},
+    )
+
+    drift, unavailable, warnings = cli.provider_board_currency_issues(
+        _enabled_data(), tmp_path, None
+    )
+
+    assert not any("could not be read for board reconciliation" in d for d in drift), drift

@@ -11,7 +11,7 @@ tier decides review ceremony.
 Read `references/review-before-push-policy.md` before plan finalization,
 exemptions, native Stage 1 sweeps, Stage 2 evidence, Codex CLI finding
 retrieval, review ledgers, round budgets, final preflight, stale/wedged review
-recovery, or Critical/C1/P1/P2/P3/Nit routing.
+recovery, or review-finding routing/disposition.
 
 ## Fast Path
 
@@ -25,6 +25,8 @@ recovery, or Critical/C1/P1/P2/P3/Nit routing.
 5. For implementation review: T0 uses self-review and gates; T1 uses one
    cross-model round; T2/T3 adds native Stage 1 sweep evidence before Stage 2.
 6. Retrieve, inspect, classify, and finalize review output before push.
+   Classify each finding on two axes: `ac_ref` (the criterion it is open
+   against, or `null` when out of scope) and `disposition`.
 
 ## Non-Negotiables
 

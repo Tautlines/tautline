@@ -207,11 +207,11 @@
   },
   "graphify": {
     "allowProjectInstaller": false,
-    "buildCommand": "graphify .",
+    "buildCommand": "graphify update .",
     "enabled": true,
     "explainCommand": "graphify explain",
     "freshnessEnforcement": "strict-if-present",
-    "freshnessRule": "After every code, docs, schema, route, test, architecture, or other system change, run `graphify . --update` before commit/push and before relying on existing Graphify output; stale graphs are blocking drift.",
+    "freshnessRule": "After every code, docs, schema, route, test, architecture, or other system change, run `graphify update .` (the no-LLM AST refresh; no API key, backend, or external-model dependency) before commit/push and before relying on existing Graphify output; stale graphs are blocking drift. LLM-backed graphify invocations are never the blocking gate.",
     "gitIgnoreOutput": true,
     "graphPath": "graphify-out/graph.json",
     "installCommand": "python3 -m pip install --user graphifyy",
@@ -222,8 +222,10 @@
     "queryCommand": "graphify query",
     "reportPath": "graphify-out/GRAPH_REPORT.md",
     "rule": "When enabled and graphify-out/GRAPH_REPORT.md or graphify-out/graph.json exists, use Graphify report/query/path/explain for codebase orientation before broad grep/rg to reduce token-heavy scans; use rg for exact lexical searches or when Graphify is absent. Stale Graphify output must be refreshed before use.",
+    "semanticCommand": "GRAPHIFY_CLAUDE_CLI_MODEL=haiku graphify label . --backend=claude-cli",
+    "semanticRule": "Semantic enrichment (community labels, GRAPH_REPORT) is a separate NON-blocking step: run the semantic command with its explicit backend only when enrichment is wanted; its failure never blocks commit or push.",
     "setupCommand": "graphify install",
-    "updateCommand": "graphify . --update"
+    "updateCommand": "graphify update ."
   },
   "iterationReview": {
     "boundary": {

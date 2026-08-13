@@ -101,3 +101,121 @@ def normalize_planning_authoring_standard(data: dict) -> dict:
             "off, observe, advise, or block"
         )
     return cfg
+
+
+PLAN_CONTENT_PREGATE_ENFORCEMENT_CHOICES = ("off", "warn", "block")
+DEFAULT_PLAN_CONTENT_PREGATE = {"enforcement": "warn"}
+
+
+def normalize_planning_content_pregate(data: dict) -> dict:
+    """Read-side normalizer for `planning.contentPregate`, shaped like its sibling above.
+
+    Defaults to `warn`, not `block`, and that is a BINDING decision rather than timidity. The
+    framework's own item-34 lineage says a plan legitimately grows, so auto-refusing a
+    section-shaped gap at round zero would refuse plans that were about to be fine. Every
+    enforcement surface this program has shipped landed warn-first with a deliberate, separately
+    released flip -- templateCoverage, goLiveReadiness, the METH-FU precedent -- and this one
+    follows them. The successor that flips the default is one enum change plus one inverted test,
+    and it is gated on the shipped template having had a release for fleets to converge on.
+
+    Pattern B: never written back, so an absent knob stays absent and no adapter needs
+    regeneration.
+    """
+    planning = data.get("planning")
+    if planning is not None and not isinstance(planning, dict):
+        raise SystemExit("Project adapter planning must be an object")
+    raw = (planning or {}).get("contentPregate")
+    if raw is not None and not isinstance(raw, dict):
+        raise SystemExit("Project adapter planning.contentPregate must be an object")
+    cfg = {**DEFAULT_PLAN_CONTENT_PREGATE, **(raw or {})}
+    if cfg["enforcement"] not in PLAN_CONTENT_PREGATE_ENFORCEMENT_CHOICES:
+        raise SystemExit(
+            "Project adapter planning.contentPregate.enforcement must be off, warn, or block"
+        )
+    return cfg
+
+
+def partition_pregate_errors(issues: list[str]) -> tuple[list[str], list[str]]:
+    """Split content issues into `(refusable, advisory)`.
+
+    Length and marker heuristics stay ADVISORY even under `block`: they are proxies for quality,
+    and a proxy that refuses is a proxy that gets gamed. Section-shaped gaps -- a plan with no
+    assumptions, no dependencies, no acceptance criteria, no completion definition -- are the ones
+    a reviewer cannot work around and a author can fix for free before any round is spent.
+    """
+    # WHITELIST THE REFUSABLE, do not blacklist the advisory. Blacklisting phrases means every
+    # heuristic string nobody thought to list defaults to BLOCKING -- and that is exactly what
+    # happened: `validate_plan_substance` emits "plan is too short to be decision-complete", which
+    # matched none of the advisory phrases and so refused a plan whose sections were all present,
+    # contradicting the rule this function exists to implement. Codex R2 P2. Defaulting to advisory
+    # means a new heuristic is quiet until someone deliberately makes it refusable.
+    refusable_markers = ("missing substantive sections",)
+    refusable, advisory = [], []
+    for issue in issues:
+        text = str(issue)
+        (refusable if any(m in text.lower() for m in refusable_markers) else advisory).append(text)
+    return refusable, advisory
+
+
+PLAN_TEMPLATE_COVERAGE_ENFORCEMENT_CHOICES = ("off", "report")
+DEFAULT_PLAN_TEMPLATE_COVERAGE = {"enforcement": "report"}
+
+
+def normalize_planning_template_coverage(data: dict) -> dict:
+    """Read-side normalizer for `planning.templateCoverage`.
+
+    REPORT-ONLY by construction: the enum has no blocking value at all, so there is no way to
+    configure this into a refusal. A template is a starting point, and a lane that deleted a
+    section it does not need has not done anything wrong -- the report exists so the TEMPLATE can
+    be measured against the contract, not so lanes can be policed for editing it.
+    """
+    planning = data.get("planning")
+    if planning is not None and not isinstance(planning, dict):
+        raise SystemExit("Project adapter planning must be an object")
+    raw = (planning or {}).get("templateCoverage")
+    if raw is not None and not isinstance(raw, dict):
+        raise SystemExit("Project adapter planning.templateCoverage must be an object")
+    cfg = {**DEFAULT_PLAN_TEMPLATE_COVERAGE, **(raw or {})}
+    if cfg["enforcement"] not in PLAN_TEMPLATE_COVERAGE_ENFORCEMENT_CHOICES:
+        raise SystemExit(
+            "Project adapter planning.templateCoverage.enforcement must be off or report"
+        )
+    return cfg
+
+
+# A plan this large in a single unbroken scope section is usually several plans wearing one name.
+# Measured, not guessed: the shipped corpus in docs/superpowers/plans/ sits below these, and the
+# items that actually fractured mid-build (57, 62, 75) sat above them.
+PLAN_SCOPE_ADVISORY_MIN_LINES = 700
+PLAN_SCOPE_ADVISORY_MIN_TASKS = 24
+PLAN_SCOPE_ADVISORY_MIN_WORKSTREAMS = 5
+
+
+def plan_scope_advisory(plan_text: str) -> list[str]:
+    """A HINT that a plan may be too big to review in one budget. Never blocking, anywhere, ever.
+
+    THREE CONJUNCTS, not one. Any single measure fires constantly on legitimate plans -- a long
+    plan may be thorough, many tasks may be mechanical, many workstreams may be genuinely
+    parallel. It is the COMBINATION that has predicted a fracture, and requiring all three is what
+    keeps this quiet on the compliant plans it must not nag.
+
+    Deliberately advisory forever: sizing is a judgement, and a gate that refuses on a judgement
+    it cannot justify teaches lanes to game the measure rather than to split the work. The value
+    is the sentence, not an exit code.
+    """
+    lines = plan_text.splitlines()
+    if len(lines) < PLAN_SCOPE_ADVISORY_MIN_LINES:
+        return []
+    tasks = sum(1 for line in lines if re.match(r"\s*[-*]\s+T\d", line) or "model-tier:" in line)
+    if tasks < PLAN_SCOPE_ADVISORY_MIN_TASKS:
+        return []
+    workstreams = len(re.findall(r"(?mi)^#+\s*WS\d|^\s*[-*]\s*WS\d\b", plan_text))
+    if workstreams < PLAN_SCOPE_ADVISORY_MIN_WORKSTREAMS:
+        return []
+    return [
+        f"this plan is {len(lines)} lines with {tasks} tagged tasks across {workstreams} "
+        "workstreams -- all three together, which has predicted a mid-build fracture before. "
+        "Consider splitting it into source-of-truth plans that can each be reviewed in one "
+        "budget. ADVISORY ONLY: nothing here refuses, and a plan that is genuinely this large "
+        "is allowed to be."
+    ]

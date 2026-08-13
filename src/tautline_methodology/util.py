@@ -393,3 +393,16 @@ def env_value_with_user_config_fallback(name: str, config_env: Path, secrets_env
         or user_config_env_value(name, config_env).strip()
         or user_config_env_value(name, secrets_env).strip()
     )
+
+
+def child_env(**overrides: str) -> dict[str, str]:
+    """A copy of the process environment with `overrides` applied, for a subprocess.
+
+    Lives here rather than in each caller so modules that need a child env do not have to name the
+    process environment themselves. A module that names it without also reading through
+    `resolve_env` is precisely the shape the env-reads guard exists to flag -- it is one edit away
+    from an unaliased settings read nobody notices.
+    """
+    env = dict(os.environ)
+    env.update(overrides)
+    return env

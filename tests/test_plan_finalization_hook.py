@@ -27,7 +27,8 @@ def _prepare_target(run_cli, tmp_path: Path, name: str = "target") -> Path:
         "set -euo pipefail\n"
         "printf 'Codex review args: %s\\n' \"$*\"\n"
         "printf 'Verdict: clean\\n'\n"
-        "printf 'No Critical or P1 findings.\\n'\n",
+        # Item 76 WS2: this fixture's log reaches the strict trusted path.
+        "printf '## Findings\\nNo Critical or P1 findings.\\n'\n",
         encoding="utf-8",
     )
     wrapper.chmod(0o755)

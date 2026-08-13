@@ -10,26 +10,26 @@
 # --- end template ---
 
 # Repo-wide default owner.
-*                                                       @jason-minervit
+*                                                       @tautlines/maintainers
 
 # --- Trust boundary: executable launcher (RCE surface) ---
 # The CLI that the auto-update path re-execs and that every hook invokes.
-/bin/                                                   @jason-minervit
+/bin/                                                   @tautlines/maintainers
 
 # --- Trust boundary: agent hooks (what runs in-session) ---
 # Hook manifests wire commands into the runtime tool lifecycle.
-/plugins/tautline-core/hooks/        @jason-minervit
+/plugins/tautline-core/hooks/        @tautlines/maintainers
 
 # --- Trust boundary: CI/CD (runs with repo secrets + write tokens) ---
-/.github/workflows/                                     @jason-minervit
+/.github/workflows/                                     @tautlines/maintainers
 
 # --- Trust boundary: dependency lockfiles (supply chain) ---
-**/*.lock                                               @jason-minervit
-**/package-lock.json                                    @jason-minervit
+**/*.lock                                               @tautlines/maintainers
+**/package-lock.json                                    @tautlines/maintainers
 
 # --- Trust boundary: privilege-granting allowlist ---
 # Exempts listed adapters from a bootstrap-evidence requirement.
-/adapters/projects/.bootstrap-legacy-allowlist.json     @jason-minervit
+/adapters/projects/.bootstrap-legacy-allowlist.json     @tautlines/maintainers
 
 # --- Trust boundary: canonical policy + adapter schema (the rules engine) ---
-/methodology/                                           @jason-minervit
+/methodology/                                           @tautlines/maintainers

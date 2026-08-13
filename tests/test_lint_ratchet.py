@@ -15,7 +15,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 # branch brought in one verbatim 0.17.5 rollback-note line (already accepted on experimental);
 # it must not be reflowed or the 0.17.5 migration report would desync from the base branch.
 E501_BASELINE = 6443
-LINT_PATHS = ("bin/tautline", "src", "tests")
+LINT_PATHS = ("bin/tautline", "src", "tests", "tools")
 
 # A measured count of 0 across the whole repo would mean ruff silently linted
 # nothing (e.g. every path in LINT_PATHS went missing) rather than that the

@@ -17,7 +17,7 @@ import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 HOOKS_JSON = REPO_ROOT / "plugins" / "tautline-core" / "hooks" / "hooks.json"
-CI_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "ci-python.yml"
+CI_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "ci-python-full.yml"
 EXAMPLE_ADAPTER = REPO_ROOT / "adapters" / "projects" / "example-saas.json"
 
 EXPECTED_COMMAND = (

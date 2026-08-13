@@ -1,5 +1,5 @@
-usage: tautline codex-plan-review [-h] [--target TARGET] [--plan PLAN]
-                                  [--base BASE] [--title TITLE]
+usage: tautline codex-plan-review [-h] [--standalone] [--target TARGET]
+                                  [--plan PLAN] [--base BASE] [--title TITLE]
                                   ...
 
 positional arguments:
@@ -7,6 +7,9 @@ positional arguments:
 
 options:
   -h, --help       show this help message and exit
+  --standalone     Run an unrecorded advisory review on purpose. Without it,
+                   direct invocation outside run-plan-review is refused,
+                   because this wrapper writes no evidence.
   --target TARGET
   --plan PLAN
   --base BASE

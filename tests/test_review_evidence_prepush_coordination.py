@@ -494,6 +494,10 @@ def test_guard_check_prepush_passes_via_coordination_allowance(cli, monkeypatch,
     monkeypatch.setattr(cli, "lane_project", lambda args: (data, None, repo))
     monkeypatch.setattr(cli, "backlog_provider_board_check", lambda args: 0)
     monkeypatch.setattr(cli, "ci_health_check", lambda args: 0)
+    # item 37 R2: this file tests the COORDINATION allowance, not test evidence. The lane
+    # has no test-run record, so the block-by-default evidence gate would refuse it for a
+    # reason unrelated to what is under test -- stubbed exactly like the two checks above.
+    monkeypatch.setattr(cli, "test_evidence_enforcement_check", lambda args: 0)
 
     import argparse
 
@@ -522,6 +526,10 @@ def test_guard_check_prepush_still_gates_smuggle(cli, monkeypatch, tmp_path, cap
     monkeypatch.setattr(cli, "lane_project", lambda args: (data, None, repo))
     monkeypatch.setattr(cli, "backlog_provider_board_check", lambda args: 0)
     monkeypatch.setattr(cli, "ci_health_check", lambda args: 0)
+    # item 37 R2: this file tests the COORDINATION allowance, not test evidence. The lane
+    # has no test-run record, so the block-by-default evidence gate would refuse it for a
+    # reason unrelated to what is under test -- stubbed exactly like the two checks above.
+    monkeypatch.setattr(cli, "test_evidence_enforcement_check", lambda args: 0)
 
     import argparse
 

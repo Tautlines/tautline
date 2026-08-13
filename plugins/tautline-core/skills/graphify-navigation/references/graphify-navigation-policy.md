@@ -38,7 +38,8 @@ When Graphify is enabled and either `graphify-out/GRAPH_REPORT.md` or
 
 ## Freshness
 
-- After every code, docs, schema, route, test, architecture, or other system change, run `graphify . --update` before relying on existing Graphify output, committing, or pushing.
+- After every code, docs, schema, route, test, architecture, or other system change, run `graphify update .` before relying on existing Graphify output, committing, or pushing. This is the no-LLM AST refresh: no API key, no backend, no external model.
+- Semantic enrichment (community labels, `GRAPH_REPORT` prose) is a separate NON-blocking step: `GRAPHIFY_CLAUDE_CLI_MODEL=haiku graphify label . --backend=claude-cli`, run only when enrichment is wanted. Its failure never blocks commit or push, and a Graphify invocation that auto-detects its backend is never a gate command.
 - If Graphify output exists and any tracked or unignored project file is newer
   than the latest Graphify artifact, the graph is stale. Stale graph output is blocking drift and must not be used for decisions.
 - If update fails, treat existing graph output as invalid stale evidence and
@@ -49,7 +50,9 @@ When Graphify is enabled and either `graphify-out/GRAPH_REPORT.md` or
 `graphify-status --target . --strict` and
 `methodology-status --fail-on-drift` are the status surfaces that report stale
 or tracked generated output. The next action for stale output is to run
-`graphify . --update` before commit, push, or Graphify-backed decisions.
+the adapter's configured update command (default `graphify update .`) before
+commit, push, or Graphify-backed decisions. Those surfaces print the CONFIGURED
+command, so a project override and the gate can never disagree.
 
 Freshness is a decision gate, not a ceremonial command. If a source, docs,
 schema, route, test, config, generated adapter, or architecture file changed
@@ -66,8 +69,10 @@ architecture, or feature-map claims.
 
 - Install through the methodology CLI when asked:
   `tautline graphify-install --target .`.
-- Build manually when needed: `graphify .`.
-- Update after changes: `graphify . --update`.
+- Build manually when needed: `graphify update .` (it cold-builds from nothing).
+- Update after changes: `graphify update .`.
+- Label communities when semantic enrichment is wanted (never a gate):
+  `GRAPHIFY_CLAUDE_CLI_MODEL=haiku graphify label . --backend=claude-cli`.
 - Do not run `graphify claude install`, `graphify codex install`, or other
   assistant project installers unless the adapter explicitly allows Graphify to
   manage assistant files and the human asked for that exact installer.

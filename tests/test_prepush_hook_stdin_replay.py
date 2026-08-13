@@ -136,6 +136,11 @@ def _write_adapter(adapter_root: Path) -> Path:
     data["graphify"] = {"enabled": False}
     data["latestCode"] = {"enabled": False}
     data["ciTestGate"] = {"enabled": False}
+    # item 37 R2: this fixture exercises the pre-push STDIN handoff through the production hook
+    # path, and the lane has never run a suite. Test-evidence enforcement defaults to block, so
+    # leaving it on would refuse this push for a reason unrelated to what is under test -- exactly
+    # as ciTestGate above is disabled for the same reason.
+    data["testEvidence"] = {**(data.get("testEvidence") or {}), "enforcement": "off"}
     data["backlogProvider"] = {"enabled": False}
     data["stakeholderQuestions"] = {"enabled": False}
     data["milestoneUpdate"] = {"enabled": False}

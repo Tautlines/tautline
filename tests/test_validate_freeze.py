@@ -16,6 +16,8 @@ Any future validation behavior belongs in pytest, not in this wrapper.
 """
 
 import re
+import subprocess
+import sys
 from pathlib import Path
 
 # Recorded at the wrapper line count with NO slack: any growth fails the gate.
@@ -110,3 +112,30 @@ def test_validate_and_pytest_gates_stay_paired():
     assert "branch protection must require the Python behavior gate" in contributing
     assert "`ci-python` workflow matrix" in contributing
     assert "frozen 5-line alias" in contributing
+
+
+def test_xdist_preflight_probe_matches_the_pytest_actually_in_use():
+    """The gate's own preflight must not fail closed on a healthy toolchain.
+
+    The probe reads `pytest --help` and refuses to run if xdist looks absent. Python
+    3.13 changed argparse to print a short/long option pair once rather than per-alias,
+    so the pinned xdist renders `-n numprocesses, --numprocesses numprocesses` on 3.12
+    but `-n, --numprocesses numprocesses` on 3.13+. A probe keyed to the short-option
+    spelling passed CI's 3.12 leg while telling every 3.13+ developer to install a
+    toolchain they already had. Assert against the interpreter running the suite.
+    """
+    probe = re.search(r'^\s*\*"([^"]+)"\*\)\s*;;', TEST_SH.read_text(encoding="utf-8"), re.M)
+    assert probe, "could not find the xdist preflight probe pattern in scripts/test.sh"
+
+    help_text = subprocess.run(
+        [sys.executable, "-m", "pytest", "--help"],
+        capture_output=True,
+        text=True,
+        check=False,
+    ).stdout
+    assert "numprocesses" in help_text, "pytest-xdist is genuinely missing; cannot judge the probe"
+    assert probe.group(1) in help_text, (
+        f"scripts/test.sh probes for {probe.group(1)!r}, which does not appear in "
+        f"`pytest --help` on Python {sys.version_info.major}.{sys.version_info.minor}. "
+        "The gate would refuse to run despite a healthy toolchain."
+    )

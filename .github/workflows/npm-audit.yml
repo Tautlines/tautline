@@ -15,12 +15,35 @@ permissions:
 
 jobs:
   audit:
-    runs-on: ubuntu-latest
+    # Local hardware, on operator instruction 2026-08-02 ("no more billed hosted runs"). This
+    # supersedes the earlier call to leave it hosted on the grounds that it was cheap enough not to
+    # bother -- the instruction is categorical, not a cost threshold.
+    #
+    # An unset CI_RUNNER_LABEL on THIS repo now FAILS the run: there it means the local runner was
+    # lost and the job quietly moved onto billed compute while still reporting green. To take billed
+    # runs deliberately, set CI_ALLOW_HOSTED_FALLBACK=1 as well; that passes with a warning.
+    #
+    # A FORK that runs its OWN CI has no repo variables, so it resolves to ubuntu-latest and the
+    # assertion short-circuits -- correct, since hosted is the only compute it has. Do NOT read that
+    # as fork-PR safety: a pull_request opened FROM a fork AGAINST this repo resolves
+    # `github.repository` and the repo variables from the BASE repo, so it routes HERE, to the
+    # self-hosted runner, and runs `npm ci` from a PR-controlled manifest. What contains that is
+    # this repository being PRIVATE, not anything in the routing. See the action header.
+    #
+    # The trade this accepts: `npm ci` below executes dependency lifecycle scripts, and the
+    # dependabot PRs that trigger this workflow are exactly the ones introducing newly published
+    # versions. The container protects the HOST, but jobs are not isolated from each other and the
+    # machine sits on the operator's LAN. Recorded as a decision, not an oversight.
+    runs-on: ${{ vars.CI_RUNNER_LABEL || 'ubuntu-latest' }}
     defaults:
       run:
         working-directory: plugins/tautline-ops/skills/iteration-review/renderer-kit
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: ./.github/actions/assert-runner-identity
+        with:
+          runner-label: ${{ vars.CI_RUNNER_LABEL }}
+          allow-hosted-fallback: ${{ vars.CI_ALLOW_HOSTED_FALLBACK }}
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           node-version: "20"

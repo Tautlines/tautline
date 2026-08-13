@@ -1380,7 +1380,7 @@ def test_graphify_navigation_skill_is_concise_entrypoint():
         GRAPHIFY_NAVIGATION_REFERENCE,
         required=(
             "Graphify report/query/path/explain",
-            "graphify . --update",
+            "graphify update .",
             "Do not commit generated graph output",
         ),
     )
@@ -1401,7 +1401,14 @@ def test_graphify_navigation_reference_retains_detailed_policy():
     assert "before broad `rg`/grep scans" in text
     assert "Do not paste large graph output into chat" in text
     assert "After every code, docs, schema, route, test, architecture, or other system change" in text
-    assert "run `graphify . --update` before relying on existing Graphify output, committing, or pushing" in normalized
+    assert (
+        "run `graphify update .` before relying on existing Graphify output, committing, or pushing"
+    ) in normalized
+    # The split is the point: the blocking gate names the no-LLM refresh, and the
+    # backend-explicit semantic step is documented as never blocking.
+    assert "no API key, no backend, no external model" in normalized
+    assert "graphify label . --backend=claude-cli" in normalized
+    assert "auto-detects its backend is never a gate command" in normalized
     assert "tracked or unignored project file is newer than the latest Graphify artifact" in normalized
     assert "Stale graph output is blocking drift" in text
     assert "fall back to narrow `rg`/file reads" in text
@@ -2039,7 +2046,7 @@ def test_migrated_prose_policy_validate_pins_are_preserved():
             GRAPHIFY_NAVIGATION_REFERENCE,
             [
                 "Use `graphify query`, `graphify path`, or `graphify explain`",
-                "graphify . --update",
+                "graphify update .",
                 "Do not run `graphify claude install`, `graphify codex install`",
                 "graphify-out/` is generated local output",
             ],

@@ -72,9 +72,18 @@ def _prepare_target(tmp_path: Path) -> tuple[Path, Path, Path]:
     return target, adapter, goal_dir
 
 
-def _write_goal(goal_dir: Path, name: str, body: str) -> Path:
+def _write_goal(goal_dir: Path, name: str, body: str, *, age_seconds: float = 0.0) -> Path:
+    """Write a goal plan, optionally back-dated so recency ordering is stated rather than raced.
+
+    Two plans written back to back share an mtime on any machine fast enough to finish both
+    inside one kernel timer tick (98 of 100 tries on the self-hosted runner), so a fixture that
+    means "this plan is the newer one" has to say so.
+    """
     path = goal_dir / name
     path.write_text(body.strip() + "\n", encoding="utf-8")
+    if age_seconds:
+        stamp = path.stat().st_mtime - age_seconds
+        os.utime(path, (stamp, stamp))
     return path
 
 
@@ -193,7 +202,10 @@ def test_goal_lifecycle_requires_proof_markers_and_reports_boundary_condition(tm
     _write_goal(
         goal_dir,
         "test-goal-orchestration.md",
-        """
+        # Older on purpose: the assertions below turn on `next-customer-goal.md` being the more
+        # recent plan, which same-tick writes cannot establish.
+        age_seconds=60,
+        body="""
 # Test Goal Orchestration
 
 ## Desired Outcome
@@ -426,6 +438,39 @@ Give operators a clearer next customer-facing capability to build after the curr
     assert "next_goal_claude_prompt: /goal Make goal `next-customer-goal` execution-ready and complete it" in kickoff.stdout
 
 
+def test_same_mtime_goal_plans_are_ordered_by_name_not_by_directory_luck(tmp_path):
+    """Plans that share a timestamp must still order deterministically, ascending by name.
+
+    Ties are the normal case, not the exotic one: a fresh clone stamps every plan with the single
+    checkout time, and two plans written back to back share a tick. The old ordering sorted
+    `(mtime, name)` in reverse, so those ties resolved reverse-alphabetically and the last name in
+    the directory read as "the most recent plan" -- which is how the fixture below used to hand
+    `zz-...` back as the next goal on a fast machine.
+    """
+    target, _adapter, goal_dir = _prepare_target(tmp_path)
+    body = """
+# {title}
+
+## Desired Outcome
+Ordering fixture for tied plan timestamps.
+
+## Milestones
+- [ ] Only milestone
+
+## Completion Criteria
+- Done.
+"""
+    first = _write_goal(goal_dir, "aa-first-plan.md", body.format(title="Aa First Plan"))
+    last = _write_goal(goal_dir, "zz-last-plan.md", body.format(title="Zz Last Plan"))
+    shared = first.stat().st_mtime
+    for path in (first, last):
+        os.utime(path, (shared, shared))
+
+    status = _run(tmp_path, "methodology-status", "--target", str(target), "--no-remote")
+    assert "next_goal_name: Aa First Plan" in status.stdout
+    assert "next_goal_name: Zz Last Plan" not in status.stdout
+
+
 def test_goal_condition_omits_boundary_clause_without_operator_dependency(tmp_path):
     target, _adapter, goal_dir = _prepare_target(tmp_path)
     _write_goal(
@@ -539,3 +584,104 @@ Validate true blocker goal output.
     )
     assert "next_action_type: true_blocker" in blocked.stdout
     assert "True blocker on milestone 1: credential unavailable" in blocked.stdout
+
+
+def _start_single_milestone_goal(tmp_path: Path, name: str, title: str) -> Path:
+    target, _adapter, goal_dir = _prepare_target(tmp_path)
+    _write_goal(
+        goal_dir,
+        name,
+        f"""
+# {title}
+
+## Desired Outcome
+Validate the milestone acVerification evidence channel.
+
+## Milestones
+- [ ] {title} milestone
+
+## Completion Criteria
+- The AC verification channel behaves as specified.
+""",
+    )
+    _run(tmp_path, "goal-start", "--target", str(target), "--goal", f"docs/product/goals/{name}")
+    return target
+
+
+def _set_ac_verification(target: Path, value: str) -> None:
+    run_path = target / ".ai-work" / "GOAL_RUN.json"
+    run = json.loads(run_path.read_text(encoding="utf-8"))
+    run["milestones"][0]["acVerification"] = value
+    run_path.write_text(json.dumps(run, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def test_an_empty_ac_verification_file_does_not_satisfy_the_completion_guard(tmp_path):
+    """Codex R2 P2(a): the guard weighs the RESOLVED text, not the key's truthiness.
+
+    Resolving the same value twice and getting two answers is what makes this dangerous: the key
+    would satisfy the guard, composition would contribute nothing, and the command could publish
+    the required UI-proof comment before refusing for missing verification evidence -- mutating on
+    a refused move, which the whole seam exists to prevent.
+    """
+    target = _start_single_milestone_goal(tmp_path, "test-empty-ac.md", "Empty AC")
+    (target / "ac.md").write_text("   \n\n", encoding="utf-8")
+    _set_ac_verification(target, "ac.md")
+
+    refused = _run(
+        tmp_path,
+        "goal-advance",
+        "--target",
+        str(target),
+        "--event",
+        "milestone-complete",
+        check=False,
+    )
+
+    assert refused.returncode != 0
+    assert "--detail or --milestone-run is required for milestone-complete" in refused.stderr
+    assert "acVerification is set but resolves to no text" in refused.stderr
+
+
+def test_a_non_empty_ac_verification_file_satisfies_the_completion_guard(tmp_path):
+    """The other half of the same pin: with real text and NO command-line flag, the guard opens.
+
+    This is the whole point of the channel -- without this the feature does not exist.
+    """
+    target = _start_single_milestone_goal(tmp_path, "test-ac-guard.md", "AC Guard")
+    (target / "ac.md").write_text(
+        "| criterion | verdict |\n| --- | --- |\n| the one thing | PASS |\n", encoding="utf-8"
+    )
+    _set_ac_verification(target, "ac.md")
+    _write_milestone_marker(target, "AC Guard milestone", "ac-guard-milestone")
+
+    completed = _run(
+        tmp_path, "goal-advance", "--target", str(target), "--event", "milestone-complete"
+    )
+
+    assert completed.returncode == 0
+    run = json.loads((target / ".ai-work" / "GOAL_RUN.json").read_text(encoding="utf-8"))
+    assert run["milestones"][0]["status"] == "complete"
+
+
+def test_a_broken_ac_verification_path_still_lets_a_milestone_be_blocked(tmp_path):
+    """Codex R2 P2(b): resolved for milestone-complete only.
+
+    milestone-blocked and -deferred never use AC verification, and a stale or out-of-tree path must
+    not be able to block the very transitions a lane uses to report that something is wrong -- that
+    would make a bad ledger value unrecoverable without hand-editing the ledger.
+    """
+    target = _start_single_milestone_goal(tmp_path, "test-broken-ac.md", "Broken AC")
+    _set_ac_verification(target, "../escapes-the-checkout.md")
+
+    blocked = _run(
+        tmp_path,
+        "goal-advance",
+        "--target",
+        str(target),
+        "--event",
+        "milestone-blocked",
+        "--reason",
+        "credential unavailable",
+    )
+
+    assert "next_action_type: true_blocker" in blocked.stdout

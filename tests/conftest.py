@@ -124,7 +124,12 @@ def _no_operator_session_env(monkeypatch):
 def run_cli(tmp_path):
     """Black-box runner with a hermetic HOME, mirroring validate.sh's isolation."""
 
-    def _run(*args, stdin=None):
+    def _run(*args, stdin=None, cwd=None):
+        # `cwd` matters for any adapter whose paths are project-relative: the event log is one, so
+        # a caller that leaves it unset has the CLI resolve `.ai-work/events/...` against the
+        # REPOSITORY, where every test and every earlier local run appends to one shared file.
+        # Passing the lane makes that log per-test, which is the only way an assertion about it can
+        # be about the command under test rather than about ambient state.
         home = tmp_path / "home"
         home.mkdir(exist_ok=True)
         env = {"PATH": os.environ["PATH"], "HOME": str(home)}
@@ -132,6 +137,7 @@ def run_cli(tmp_path):
             [sys.executable, str(CLI_PATH), *args],
             input=stdin,
             env=env,
+            cwd=str(cwd) if cwd else None,
             text=True,
             capture_output=True,
             timeout=60,  # a CLI hang/regression should fail the test, not stall CI

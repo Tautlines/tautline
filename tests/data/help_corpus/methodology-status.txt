@@ -1,6 +1,6 @@
 usage: tautline methodology-status [-h] [--project PROJECT] [--target TARGET]
                                    [--no-remote] [--fail-on-drift] [--strict]
-                                   [--enter-remediation-on-debt]
+                                   [--posture] [--enter-remediation-on-debt]
 
 options:
   -h, --help            show this help message and exit
@@ -16,6 +16,11 @@ options:
   --strict              Escalate every debt gate to exit 1 as well; --strict
                         never returns 2, including combined with --fail-on-
                         drift.
+  --posture             Print one 'control_posture_warn:' line per quality
+                        control that is not enforcing (off, warn, empty or
+                        unreachable), with the reason. The one-line
+                        'control_posture:' summary prints either way.
+                        Diagnostic: posture never changes the exit code.
   --enter-remediation-on-debt
                         (internal) Passed by the generated launcher. On a
                         debt-only --fail-on-drift outcome, atomically persist

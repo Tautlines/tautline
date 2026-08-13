@@ -26,6 +26,54 @@
     "$id": {
       "type": "string"
     },
+    "definitionOfDone": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The definition of done: the named condition set enforced at the goal-completion transition and reported at the session Stop boundary. Read-side only: never materialized into a rendered lane adapter, so an absent key stays absent and upgrades drift nothing (the `autonomy` precedent). Conditions: scope_complete, tests_written, tests_green, review_clean, evidence_bound, pr_handed_off, board_updated. Enforcement defaults to `warn` for the first release; `block` is supported and tested. `pr_handed_off` passes when the PR is out of the lane's hands -- merged, auto-merge armed, or in the merge queue -- and NEVER requires waiting for a queued PR to land.",
+      "properties": {
+        "enforcement": {
+          "type": "string",
+          "enum": [
+            "off",
+            "warn",
+            "block"
+          ],
+          "description": "Posture at the goal-completion transition. Default: warn -- the conditions are evaluated and reported, and a failing one does not refuse the transition. Set block to make a failing condition refuse; `done-check` exits 1 on a fail regardless of this setting, so a hook or CI job can enforce without changing it."
+        },
+        "conditions": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Per-condition enable/disable. The known ids are enumerated and additional keys are REFUSED, so `validate-adapter` rejects a typo like `tests_grean` at validation time rather than leaving it to be discovered whenever a done-related command next runs.",
+          "properties": {
+            "scope_complete": {
+              "type": "boolean"
+            },
+            "tests_written": {
+              "type": "boolean"
+            },
+            "tests_green": {
+              "type": "boolean"
+            },
+            "review_clean": {
+              "type": "boolean"
+            },
+            "evidence_bound": {
+              "type": "boolean"
+            },
+            "pr_handed_off": {
+              "type": "boolean"
+            },
+            "board_updated": {
+              "type": "boolean"
+            }
+          }
+        },
+        "integrationBranch": {
+          "type": "string",
+          "description": "The branch a PR must target to count as handed off. Defaults to laneStatus.integrationBranch, which itself falls back to latestCode.base. Never hardcoded to `main`."
+        }
+      }
+    },
     "schemaVersion": {
       "type": "string",
       "description": "Adapter contract version this adapter targets (semver). Optional; current contract is 1.x.",
@@ -347,6 +395,31 @@
               ]
             }
           }
+        },
+        "contentPregate": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enforcement": {
+              "enum": [
+                "off",
+                "warn",
+                "block"
+              ]
+            }
+          }
+        },
+        "templateCoverage": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enforcement": {
+              "enum": [
+                "off",
+                "report"
+              ]
+            }
+          }
         }
       }
     },
@@ -384,6 +457,33 @@
           "minimum": 1,
           "description": "Lease time-to-live when a claim does not pass --ttl-minutes. Default 240. Capped at 525600 (one year): larger values overflow datetime arithmetic in the liveness check, which would abort the whole conflict scan and stop enforcing every other live lease.",
           "maximum": 525600
+        },
+        "occupancy": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "mode": {
+              "enum": [
+                "refuse",
+                "auto-worktree",
+                "observe"
+              ]
+            },
+            "primaryCheckout": {
+              "enum": [
+                "report",
+                "refuse"
+              ]
+            },
+            "ttlMinutes": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 525600
+            }
+          }
         }
       }
     },
@@ -550,6 +650,10 @@
             "minLength": 1
           }
         },
+        "allowRepoOnlyGoals": {
+          "type": "boolean",
+          "description": "Allow a goal with no GitHub Project Source item to proceed repo-only instead of refusing. Off by default; the sanctioned path for work that legitimately has no board item."
+        },
         "repoPlanRequired": {
           "type": "boolean"
         },
@@ -632,6 +736,10 @@
         "milestoneField": {
           "type": "string"
         },
+        "planRepo": {
+          "type": "string",
+          "description": "Checkout holding this lane's plans when they live outside it; empty means lane-only. Its directory BASENAME is the plan-reference root token (tautline-backlog:ready/x/plan.md), resolved dynamically so no spelling is blessed. This is the one adapter path deliberately permitted to resolve OUTSIDE the project root: adapter paths are otherwise contained under it, which would refuse a sibling checkout before root resolution ran. The allowance is scoped to this key alone and is never a general escape. Independent of enabled, so a lane may keep plans externally while its board provider is off. Basename lane is refused as reserved."
+        },
         "readyStatuses": {
           "type": "array",
           "items": {
@@ -666,6 +774,10 @@
             "type": "string",
             "minLength": 1
           }
+        },
+        "allowRepoOnlyGoals": {
+          "type": "boolean",
+          "description": "Allow a goal with no GitHub Project Source item to proceed repo-only instead of refusing. Off by default; the sanctioned path for work that legitimately has no board item."
         },
         "repoPlanRequired": {
           "type": "boolean"
@@ -709,6 +821,22 @@
             "provider-item"
           ],
           "description": "The unit of completion for provider-backed work. `goal` preserves the legacy goal-ledger closeout model; `provider-item` makes the external issue/work item the completion object while repo plans and milestones decompose execution."
+        },
+        "doneEvidence": {
+          "type": "object",
+          "description": "Oracle discipline at closure: what the verification evidence posted with a done move must contain.",
+          "properties": {
+            "acTable": {
+              "type": "string",
+              "enum": [
+                "off",
+                "warn",
+                "strict"
+              ],
+              "description": "When the linked issue carries written acceptance criteria, require the done evidence to contain a line-by-line AC pass/fail table with one PASS/FAIL row matched to each criterion; a FAIL row refuses the move (an unmet criterion is a FAILED AC, never a deferral). `warn` (default) prints the finding and proceeds, `strict` refuses before any board mutation, `off` skips the check and its issue-body read. An unreadable issue body reports an explicit `unknown` state rather than passing silently."
+            }
+          },
+          "additionalProperties": false
         },
         "epicField": {
           "type": "string"
@@ -1897,6 +2025,14 @@
         "rule": {
           "type": "string",
           "minLength": 1
+        },
+        "semanticCommand": {
+          "type": "string",
+          "minLength": 1
+        },
+        "semanticRule": {
+          "type": "string",
+          "minLength": 1
         }
       }
     },
@@ -2337,6 +2473,83 @@
           "minimum": 1
         }
       }
+    },
+    "testEvidence": {
+      "type": "object",
+      "description": "Test-execution evidence (tautline-test-run/v1). Declares where the test runner writes its machine-readable report so `tautline test-run` can record real counts instead of exit-code-only evidence. Omitting it is valid: the record then carries counts.source=exit-code-only and says so, rather than claiming zeros.",
+      "properties": {
+        "report": {
+          "type": "object",
+          "description": "The stable path the runner writes its report to (e.g. a --junitxml target). `test-run` copies it beside each record and hashes the copy, so a later run overwriting this path cannot invalidate an older record.",
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "format": {
+              "type": "string",
+              "enum": [
+                "junit-xml",
+                "pytest-json"
+              ]
+            }
+          },
+          "required": [
+            "path",
+            "format"
+          ],
+          "additionalProperties": false
+        },
+        "freshCheckout": {
+          "type": "object",
+          "description": "Whether `tautline test-run` reproduces CI's checkout state by default: the gate runs in a throwaway checkout holding only what git can see, so gitignored runtime state cannot make a test pass locally and fail on every fresh clone. Omitting it keeps runs in place.",
+          "properties": {
+            "default": {
+              "type": "boolean",
+              "description": "Default mode for `test-run` in this lane. `--fresh-checkout` / `--no-fresh-checkout` override it per run."
+            },
+            "carryPaths": {
+              "type": "array",
+              "description": "Gitignored dependency directories installed out-of-tree by CI (e.g. .venv, node_modules) that are symlinked into the fresh checkout so the configured gate can start. Relative to the project root; tracked paths are refused.",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "enforcement": {
+          "type": "string",
+          "enum": [
+            "off",
+            "warn",
+            "block"
+          ],
+          "description": "How the prepush gate and finalize-implementation-review treat the tautline-test-run/v1 record. block (the default) refuses a push or a push-eligible review verdict unless the newest record is present, trustworthy, current to the tree being shipped, green, and proves tests actually executed; warn reports the same finding and changes no exit code; off is silent. A classifier internal error (unavailable) always fails OPEN, in every mode. Every block refusal prints its remedy."
+        }
+      },
+      "additionalProperties": false
+    },
+    "mergeGate": {
+      "type": "object",
+      "description": "Client-side merge gate: `tautline merge` verifies the PR's live check rollup before merging. Exists because branch protection and rulesets are paid features for private repositories, so the most common adopter configuration cannot have a required status check at all and CI gates nothing. Omitting the key leaves the gate advisory.",
+      "properties": {
+        "enforcement": {
+          "type": "string",
+          "description": "off = no check; advise = warn on a red PR but merge; block = refuse, with `--override <reason>` as the recorded break-glass.",
+          "enum": [
+            "off",
+            "advise",
+            "block"
+          ]
+        },
+        "blockOnPending": {
+          "type": "boolean",
+          "description": "Treat a check that has not reported yet as blocking. Defaults true: merging while checks are still running is how a red commit lands on a repo without platform enforcement."
+        }
+      },
+      "additionalProperties": false
     },
     "ciTestGate": {
       "type": "object",

@@ -4,7 +4,7 @@ usage: tautline codex-run [-h] [--project PROJECT] [--target TARGET]
                           [--risk-tier {T0,T1,T2,T3}]
                           [--review-round REVIEW_ROUND] [--allow-extra-rounds]
                           [--extra-round-reason EXTRA_ROUND_REASON]
-                          [--scope-strict]
+                          [--scope-strict] [--allow-adapter-dirt]
                           ...
 
 positional arguments:
@@ -37,3 +37,6 @@ options:
                         class when using --allow-extra-rounds.
   --scope-strict        Require the review base to be the configured remote
                         base...HEAD (reject stale local bases).
+  --allow-adapter-dirt  Review a round whose only dirty files are the
+                        generated adapters. Use it when the generated adapters
+                        ARE the subject; without it such a round is refused.

@@ -1,0 +1,468 @@
+{
+  "behaviorChanges": [
+    "GOAL COMPLETION CAN NOW REFUSE. `goal-advance --event goal-complete` evaluates a named condition set and refuses while any enabled condition FAILS. The refusal runs at the same pre-flight seam as the closure gate and BEFORE it, so a refused done move mutates nothing on any board. Legal exits are satisfying the condition, disabling it under `definitionOfDone.conditions`, or `tautline blocker-declare`. A lane whose facts cannot be read is NOT blocked: an unreadable condition reports `unknown`, loudly and distinctly, and never as `0`.",
+    "THE BAR IS HANDOFF, NOT MERGE, and it never asks a lane to wait. `pr_handed_off` passes when the PR is out of the lane's hands -- merged, auto-merge armed, or in the merge queue -- and targeting the integration branch. An open PR with no merge mechanism armed fails, because completion still depends on the lane. A queued auto-merging PR is Done=shipped, exactly as the framework already renders: a bar that made watching the queue rational would trade stopping at 95% for the worse waste the `watch-until-merged` detector exists to catch. The integration branch is adapter-resolved from `definitionOfDone.integrationBranch`, falling back to `laneStatus.integrationBranch` -- never hardcoded to `main`.",
+    "EVERY COMPOSED GOAL NOW STATES THE BAR IT WILL BE JUDGED BY. The completion clause `compose_goal_assignment` writes is built from the project's EFFECTIVE enabled condition set rather than a fixed sentence, so it cannot drift from what `done-check` enforces, and a project with `pr_handed_off` disabled is not handed a goal demanding a PR. The old clause ended \"the PR is queued to merge\" -- the framework's own goal-writer authorizing the stop being complained about. Composed goals also state that the human is away for the duration, and `goal_assignment_shape_issues` now refuses a completion clause that names no handoff condition.",
+    "A GOAL IS AN ARTIFACT, AND ITS LENGTH IS CHECKED WHERE IT IS SPENT. `goal-assignment --out <path>` writes the goal's exact bytes to a file and prints the copy command, so the handoff can bypass every renderer. The length check now enforces a 3,600-character AUTHORING ceiling below the 4,000 delivered cap and names both numbers in its refusal: a compliant 3,659-character goal was measured with only 5.17 spaces per line of headroom, so a six-space renderer indent delivered an over-limit goal that had passed validation. Composition emits a flat left margin.",
+    "THE STOP BOUNDARY NO LONGER GOES SILENT WHEN A SESSION DECLARES ITS OWN GOAL DONE. `response_guard_hook` returned early whenever no goal was ACTIVE, so an agent that marked its goal complete at 95% and stopped was unguarded by construction. It now evaluates the done bar for a goal this session completed and WARNS -- through the advisory channel, never a block decision, per the wave-3 warn-only posture -- naming the failing conditions and the next action, never telling the agent to consult a human. A fresh `blocker-declare` record releases it. Exit codes are unchanged."
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "publish-pending-session-journals",
+      "removeAfter": "1.0.0",
+      "replacement": "publish-instrumentation-record",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "publish-session-journal",
+      "removeAfter": "1.0.0",
+      "replacement": "publish-instrumentation-record",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    },
+    {
+      "name": "rules-audit",
+      "path": "plugins/tautline-core/skills/rules-audit/SKILL.md",
+      "removeAfter": "1.0.0",
+      "replacement": "framework-intake",
+      "section": "skills",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_CLAUDE_AUTOCOMPACT_PCT",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_CLAUDE_AUTOCOMPACT_PCT",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_CLAUDE_AUTOCOMPACT_REQUIRED",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_CLAUDE_AUTOCOMPACT_REQUIRED",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_GITHUB_CACHE_DIR",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_GITHUB_CACHE_DIR",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_GITHUB_CACHE_READ_MODE",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_GITHUB_CACHE_READ_MODE",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_GITHUB_CACHE_TTL_SECONDS",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_GITHUB_CACHE_TTL_SECONDS",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_GITHUB_COALESCE",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_GITHUB_COALESCE",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_GITHUB_GRAPHQL_LOW_WATERMARK",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_GITHUB_GRAPHQL_LOW_WATERMARK",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_GITHUB_LOCK_STALE_SECONDS",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_GITHUB_LOCK_STALE_SECONDS",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_GITHUB_LOCK_TIMEOUT_SECONDS",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_GITHUB_LOCK_TIMEOUT_SECONDS",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_GITHUB_RATE_GUARD",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_GITHUB_RATE_GUARD",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_GITHUB_RETRY_MAX_SECONDS",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_GITHUB_RETRY_MAX_SECONDS",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_GITHUB_RETRY_MIN_SECONDS",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_GITHUB_RETRY_MIN_SECONDS",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_GITHUB_SERIALIZE",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_GITHUB_SERIALIZE",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_GITHUB_SHARED_SNAPSHOT_SECONDS",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_GITHUB_SHARED_SNAPSHOT_SECONDS",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_GITHUB_TELEMETRY_DIR",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_GITHUB_TELEMETRY_DIR",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_LANE_EPICS",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_LANE_EPICS",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_METHODOLOGY_ADAPTER_ROOT",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_METHODOLOGY_ADAPTER_ROOT",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_METHODOLOGY_ALLOW_FANOUT",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_METHODOLOGY_ALLOW_FANOUT",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_METHODOLOGY_ALLOW_NON_MAIN",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_METHODOLOGY_ALLOW_NON_MAIN",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_METHODOLOGY_AVAILABLE_VERSION",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_METHODOLOGY_AVAILABLE_VERSION",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_METHODOLOGY_CANONICAL_REPO",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_METHODOLOGY_CANONICAL_REPO",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_METHODOLOGY_CLI",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_METHODOLOGY_CLI",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_METHODOLOGY_DISABLE_AUTO_RESCUE",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_METHODOLOGY_DISABLE_AUTO_RESCUE",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_METHODOLOGY_DISABLE_SNAPSHOT_EXEC",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_METHODOLOGY_DISABLE_SNAPSHOT_EXEC",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_METHODOLOGY_RELEASE_GOOGLE_CHAT_WEBHOOK",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_METHODOLOGY_RELEASE_GOOGLE_CHAT_WEBHOOK",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_METHODOLOGY_REPO",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_METHODOLOGY_REPO",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_METHODOLOGY_RESCUE_STATE_DIR",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_METHODOLOGY_RESCUE_STATE_DIR",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_METHODOLOGY_SNAPSHOT_KEEP",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_METHODOLOGY_SNAPSHOT_KEEP",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_METHODOLOGY_SNAPSHOT_PIN_TTL_HOURS",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_METHODOLOGY_SNAPSHOT_PIN_TTL_HOURS",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_METHODOLOGY_SNAPSHOT_STORE",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_METHODOLOGY_SNAPSHOT_STORE",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_METHODOLOGY_SYNC_FRESHNESS_MINUTES",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_METHODOLOGY_SYNC_FRESHNESS_MINUTES",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_METHODOLOGY_TELEMETRY",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_METHODOLOGY_TELEMETRY",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_METHODOLOGY_TELEMETRY_PATH",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_METHODOLOGY_TELEMETRY_PATH",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_METHODOLOGY_UPDATE_PINS",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_METHODOLOGY_UPDATE_PINS",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_METHODOLOGY_UPDATE_POLICY",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_METHODOLOGY_UPDATE_POLICY",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_METHODOLOGY_UPDATE_PROBE",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_METHODOLOGY_UPDATE_PROBE",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_METHODOLOGY_UPDATE_SIGNERS",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_METHODOLOGY_UPDATE_SIGNERS",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_NO_REPAIR_SESSION",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_NO_REPAIR_SESSION",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_PREPUSH_RECORDS_FILE",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_PREPUSH_RECORDS_FILE",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_PUBLIC_RELEASE_PRIVATE_TERMS",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_PUBLIC_RELEASE_PRIVATE_TERMS",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_REAL_CODEX",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_REAL_CODEX",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_RENDERER_KIT_STATE_DIR",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_RENDERER_KIT_STATE_DIR",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_SHOW_GOAL_PROMPT",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_SHOW_GOAL_PROMPT",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "minervit-methodology",
+      "removeAfter": "1.0.0",
+      "replacement": "tautline",
+      "section": "cli",
+      "status": "deprecated"
+    },
+    {
+      "name": ".minervit-ai-delivery.json",
+      "removeAfter": "1.0.0",
+      "replacement": ".tautline.json",
+      "section": "markers",
+      "status": "deprecated"
+    },
+    {
+      "name": ".minervit/adapter.json",
+      "removeAfter": "1.0.0",
+      "replacement": ".tautline/adapter.json",
+      "section": "markers",
+      "status": "deprecated"
+    },
+    {
+      "name": "~/.config/minervit/methodology.env",
+      "removeAfter": "1.0.0",
+      "replacement": "~/.config/tautline/tautline.env",
+      "section": "markers",
+      "status": "deprecated"
+    },
+    {
+      "name": "minervit/minervit-ai-delivery-methodology",
+      "removeAfter": "1.0.0",
+      "replacement": "tautlines/tautline-dev",
+      "section": "slug",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [
+    {
+      "detail": "`tautline done-check --target .` prints every condition's verdict. A project that finishes work without a PR (a docs lane, a spike) should disable `pr_handed_off` under `definitionOfDone.conditions`; `board_updated` is already off unless a backlog provider is enabled. Optional because the defaults are safe -- a condition whose facts cannot be read reports `unknown` and never blocks -- but a project that leaves an inapplicable condition enabled will see it FAIL at goal completion rather than skip.",
+      "id": "review-the-done-conditions-for-this-project",
+      "summary": "Check which done conditions apply, and disable the ones that do not"
+    },
+    {
+      "detail": "The Stop-boundary arm fires only for a goal THIS session completed, correlated by the new `completedBySession` stamp that `goal-advance --event goal-complete` writes from `--session-id` or `$CLAUDE_CODE_SESSION_ID`. A completion with no stamp reports one honest `unknown` line rather than guessing, so nothing breaks without this -- what is lost is the warning on the exact pattern it was built for.",
+      "id": "stamp-the-completing-session",
+      "summary": "Pass --session-id when completing a goal, or export CLAUDE_CODE_SESSION_ID"
+    }
+  ],
+  "productsTested": [],
+  "requiredMigrations": [
+    {
+      "command": "tautline sync-methodology --target .",
+      "description": "Run this FIRST. The hook's CLI path is baked by whichever install runs install-hooks, so reinstalling from an install that predates 0.49.0 rewrites the hook with the old resolver and reports success.",
+      "id": "sync-the-install-before-reinstalling-hooks",
+      "surface": "framework-install"
+    },
+    {
+      "command": "<methodology_repo>/bin/tautline install-hooks --target .",
+      "description": "Then rewrite the hook FROM THE UPDATED CHECKOUT. The command is path-qualified on purpose: an unqualified `tautline` resolves from PATH, which may be the stale install this migration exists to route around, and run there it rewrites the hook with the OLD resolver and reports success. An adopter lane with no framework checkout uses `tautline install-hooks --target .`, which is safe there because the step above already updated the install that `tautline` resolves to. `lane-start` performs the same rewrite.",
+      "id": "reinstall-hooks-for-the-resolver-order",
+      "surface": "git-hooks"
+    },
+    {
+      "command": "tautline backlog-provider-board-check --target .",
+      "description": "A board larger than the 5000-item read ceiling now REFUSES rather than silently returning a partial page. On 'board read truncated at N of M', narrow backlogProvider.scopeQuery so the read fits. Boards under the ceiling need no action.",
+      "id": "narrow-scope-query-if-a-board-read-refuses",
+      "surface": "board-provider"
+    },
+    {
+      "command": "python3 --version",
+      "description": "Carried forward from 0.36.0: the declared Python floor is 3.12.",
+      "id": "python-312-floor",
+      "surface": "runtime"
+    },
+    {
+      "command": "tautline test-run --target .",
+      "description": "Carried forward from 0.38.0: testEvidence.enforcement defaults to `block`, and a lane with no tautline-test-run/v1 record classifies `missing`.",
+      "id": "record-a-test-run",
+      "surface": "test-evidence"
+    },
+    {
+      "command": "tautline install-hooks --target .",
+      "description": "methodology-status --fail-on-drift requires the fleet-guard-hook PreToolUse entry. Carried forward from 0.17.0; lane-start also repairs it.",
+      "id": "install-fleet-guard-hook",
+      "surface": "claude-hooks"
+    },
+    {
+      "command": "gh auth refresh --hostname github.com -s read:project -s project",
+      "description": "Carried forward from 0.10.3 for lanes updating across it: grant the gh token the GitHub Projects scopes the fail-closed board gates need.",
+      "id": "grant-gh-project-scopes",
+      "surface": "board-provider-auth"
+    }
+  ],
+  "rollbackNotes": [
+    "Repinning below 0.69.0 removes the goal-completion refusal and the Stop-boundary advisory. No state migration in either direction: `definitionOfDone` is normalized read-side and never written, so an absent key stays absent, and the two new GOAL_RUN.json fields (`completedAt`, `completedBySession`) are additive and ignored by older code.",
+    "WIP-safe: a lane mid-flight sees the new conditions only at its next `goal-complete`, and every condition it cannot evaluate reports `unknown` rather than blocking."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.69.0",
+  "wipSafe": true
+}

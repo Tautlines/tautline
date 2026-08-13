@@ -142,7 +142,7 @@ def _prepare_plan_review_target(tmp_path: Path) -> tuple[Path, Path, Path, dict]
     template = target / TEMPLATE_REL
     template.parent.mkdir(parents=True, exist_ok=True)
     template.write_text("# Validation Template\n", encoding="utf-8")
-    _write_review_script(target, "printf 'Codex review args: %s\\n' \"$*\"\nprintf 'Verdict: clean\\n'\nprintf 'No Critical or P1 findings.\\n'\n")
+    _write_review_script(target, "printf 'Codex review args: %s\\n' \"$*\"\nprintf '## Findings\\n'\nprintf 'Verdict: clean\\n'\nprintf 'No Critical or P1 findings.\\n'\n")
     _write_plan(target)
     adapter, adapter_data = _write_plan_review_adapter(adapter_root)
     return home, adapter_root, target, adapter_data, adapter
@@ -284,6 +284,11 @@ def _write_implementation_review_adapter(adapter_root: Path) -> tuple[Path, dict
         **data.get("observabilityEvents", {}),
         "stateDir": "$HOME/.local/state/tautline-test/implementation-review-events",
     }
+    # item 37 R2: this fixture exercises implementation-review EVENT TAGGING, and its lane has
+    # never run a suite. Test-evidence enforcement defaults to block and now gates a push-eligible
+    # finalize, so leaving it on would refuse these finalizes for a reason unrelated to the events
+    # under test.
+    data["testEvidence"] = {**(data.get("testEvidence") or {}), "enforcement": "off"}
     data["graphify"] = {"enabled": False}
     data["ciTestGate"] = {"enabled": False}
     data["latestCode"] = {"enabled": False}
@@ -399,6 +404,26 @@ def _prepare_implementation_review_target(tmp_path: Path, cli) -> tuple[Path, Pa
 def test_implementation_review_finalized_event_carries_clean_verdict_and_zero_counts(tmp_path, cli):
     home, adapter_root, target, adapter_data, adapter, state, manifest_path = _prepare_implementation_review_target(tmp_path, cli)
 
+    # 0.52.0: `clean-with-deferrals` records deferrals, so it now requires the findings file with
+    # at least one finding. This fixture deferred nothing and passed no flag, which is exactly the
+    # producer hole that release closed -- so it records what it means: one out-of-AC P2, routed at
+    # honest severity. The event assertions below are unchanged.
+    findings_path = target / "classified-findings.json"
+    findings_path.write_text(
+        json.dumps(
+            [
+                {
+                    "id": "F1",
+                    "severity": "p2",
+                    "summary": "naming nit outside this item's acceptance criteria",
+                    "ac_ref": None,
+                    "disposition": "routed",
+                    "routed_to": "ROW-1",
+                }
+            ]
+        ),
+        encoding="utf-8",
+    )
     _run_cli(
         "finalize-implementation-review",
         "--project",
@@ -415,6 +440,8 @@ def test_implementation_review_finalized_event_carries_clean_verdict_and_zero_co
         "0",
         "--unresolved-p1-count",
         "0",
+        "--classified-findings-json",
+        str(findings_path),
         home=home,
         adapter_root=adapter_root,
     )

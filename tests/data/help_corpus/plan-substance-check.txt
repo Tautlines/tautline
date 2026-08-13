@@ -1,0 +1,9 @@
+usage: tautline plan-substance-check [-h] [--target TARGET] [--plan PLAN]
+                                     [--list]
+
+options:
+  -h, --help       show this help message and exit
+  --target TARGET
+  --plan PLAN
+  --list           List the requirements without reading a plan (adapter-
+                   free).

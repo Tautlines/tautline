@@ -161,7 +161,10 @@ def test_lane_start_writer_preserves_a_stamp_only_difference(cli, tmp_path):
     os.utime(lane_json, (SENTINEL_MTIME, SENTINEL_MTIME))
     before = lane_json.read_bytes()
 
-    written, _skipped = cli.write_generated_files(data, EXAMPLE_ADAPTER, target)
+    # Item 69 added a third return list (downgraded) and a keyword-only trigger.
+    written, _skipped, _downgraded = cli.write_generated_files(
+        data, EXAMPLE_ADAPTER, target, trigger="test"
+    )
 
     assert lane_json.read_bytes() == before
     assert lane_json.stat().st_mtime == SENTINEL_MTIME
@@ -175,7 +178,10 @@ def test_first_render_stamps_current_identity(cli, tmp_path):
     target.mkdir()
     data = cli.load_project(EXAMPLE_ADAPTER)
 
-    written, _skipped = cli.write_generated_files(data, EXAMPLE_ADAPTER, target)
+    # Item 69 added a third return list (downgraded) and a keyword-only trigger.
+    written, _skipped, _downgraded = cli.write_generated_files(
+        data, EXAMPLE_ADAPTER, target, trigger="test"
+    )
 
     lane_json = target / cli.LANE_ADAPTER_FILE
     assert lane_json in written

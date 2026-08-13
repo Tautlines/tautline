@@ -100,8 +100,28 @@ def _lane(tmp_path: Path, run_cli, mutate=None) -> Path:
     return target
 
 
-def _status(run_cli, target: Path, *flags: str) -> subprocess.CompletedProcess[str]:
-    return run_cli("methodology-status", "--target", str(target), "--no-remote", *flags)
+def _status(run_cli, target: Path, *flags: str, cwd: Path | None = None) -> subprocess.CompletedProcess[str]:
+    return run_cli("methodology-status", "--target", str(target), "--no-remote", *flags, cwd=cwd)
+
+
+def _existing_event_lines(target: Path, run_cli) -> list[str]:
+    """The event-log lines that exist BEFORE the command under test runs.
+
+    Asked of the CLI rather than assembled from a path this test builds itself: `event-log-path`
+    is the same resolution the writer uses, so a future change of location cannot leave this
+    reading a file nothing writes to and silently seeing every run as having appended nothing.
+    """
+    resolved = run_cli("event-log-path", "--target", str(target), cwd=target)
+    if resolved.returncode != 0:
+        return []
+    for line in resolved.stdout.splitlines():
+        if line.startswith("event_jsonl:"):
+            path = target / Path(line.split(": ", 1)[1])
+            try:
+                return path.read_text(encoding="utf-8").strip().splitlines()
+            except OSError:
+                return []
+    return []
 
 
 def _break_hooks(run_cli, tmp_path: Path) -> None:
@@ -289,18 +309,45 @@ def test_strict_failures_also_print_truthful_summary_line(tmp_path, run_cli):
 def test_event_refs_carry_classification_and_gates_on_failure(tmp_path, run_cli):
     target = _lane(tmp_path, run_cli)
     _break_hooks(run_cli, tmp_path)
-    result = _status(run_cli, target, "--fail-on-drift")
+    # This adapter's event log is a PROJECT-RELATIVE path, so where the command runs from decides
+    # which file it appends to. Run from the repository -- the default -- every test in every
+    # xdist worker and every local run before this one shares a single log: it already held dozens
+    # of `methodology_status_failed` events carrying these exact refs, so selecting one by name
+    # would let this pin pass while the command under test wrote nothing at all, and a concurrent
+    # worker appending mid-read would make it flake on someone else's event.
+    #
+    # Both go away by running in the lane, where the log belongs to this test alone. The
+    # before/after boundary stays as the second line of defence: it is what makes the assertion
+    # about THIS invocation even if the log location changes again (backlog item 46).
+    before = _existing_event_lines(target, run_cli)
+    result = _status(run_cli, target, "--fail-on-drift", cwd=target)
     assert result.returncode == 2, result.stdout + result.stderr
 
     events_dir = None
     for line in result.stdout.splitlines():
         if line.startswith("event_log_jsonl:"):
-            events_dir = Path(line.split(": ", 1)[1])
+            # Project-relative, and the command ran in the lane -- so it resolves against the lane,
+            # not against wherever pytest happens to have been started.
+            events_dir = target / Path(line.split(": ", 1)[1])
             break
     assert events_dir is not None, result.stdout
+    # Select the event BY NAME, never by position. `lines[-1]` assumed nothing appends after the
+    # command under test -- an assumption about ambient state, not about this command, and one that
+    # parallel execution falsifies: the pin was observed reading `methodology_status_passed`
+    # instead. Now that the merge gate blocks on red checks, a flake like this stops a merge rather
+    # than merely annoying someone (backlog item 46).
     lines = events_dir.read_text(encoding="utf-8").strip().splitlines()
-    payload = json.loads(lines[-1])
-    assert payload["event"] == "methodology_status_failed"
+    appended = lines[len(before):]
+    failures = [
+        payload
+        for payload in (json.loads(line) for line in appended)
+        if payload.get("event") == "methodology_status_failed"
+    ]
+    assert failures, (
+        "no methodology_status_failed event was written by THIS run; "
+        f"saw {[json.loads(line).get('event') for line in appended]}"
+    )
+    payload = failures[-1]
     assert payload["refs"]["classification"] == "debt"
     assert payload["refs"]["gates"] == "hook"
 

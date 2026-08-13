@@ -25,6 +25,7 @@ import json
 import re
 import subprocess
 import sys
+from functools import lru_cache
 from importlib import import_module
 from pathlib import Path
 
@@ -415,13 +416,37 @@ def _module_file(module_path: str) -> Path:
     return SRC_ROOT / (module_path.replace(".", "/") + ".py")
 
 
+@lru_cache(maxsize=None)
+def _source(path: Path) -> str:
+    """Cached file read. The CLI engine is 2.6MB and several parametrized suites below want it
+    once per PARAMETER; without the cache that is hundreds of re-reads."""
+    return path.read_text(encoding="utf-8")
+
+
+@lru_cache(maxsize=None)
+def _defined_names(path: Path) -> frozenset[str]:
+    """Every def/class name ANYWHERE in ``path``, nested definitions included.
+
+    Cached because the alias pin below is parametrized over ~300 moved names and each case used to
+    re-parse the whole 2.6MB CLI engine -- ~300 full AST parses at ~0.75s each, which made this
+    file 431.8s, over a fifth of the entire suite's measured test time. The parse is identical for
+    every parameter, so it belongs outside the parameter loop.
+    """
+    return frozenset(
+        node.name
+        for node in ast.walk(ast.parse(_source(path)))
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))
+    )
+
+
+@lru_cache(maxsize=None)
 def _top_level_defs(path: Path) -> dict[str, str]:
     """name -> 'def'|'class' for every top-level FunctionDef/ClassDef in ``path``.
 
     Only ``tree.body`` (the module scope) is inspected, so a nested helper -- including the
     shim's fallback ``main`` inside its ModuleNotFoundError handler -- is not a top-level def.
     """
-    tree = ast.parse(path.read_text(encoding="utf-8"))
+    tree = ast.parse(_source(path))
     out: dict[str, str] = {}
     for node in tree.body:
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
@@ -442,15 +467,11 @@ def test_moved_name_is_alias_not_def_in_cli_engine(name):
     eager alias ASSIGNMENT in the CLI engine module (cli.py) -- never a def/class there -- which
     is what keeps ``cli.<name>`` reach and every ``set_defaults(func=...)`` reference resolving.
     (bin/tautline is a shim and holds neither the def nor the alias -- pinned separately below.)"""
-    source = CLI_ENGINE_PATH.read_text(encoding="utf-8")
-    tree = ast.parse(source)
-    for node in ast.walk(tree):
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
-            assert node.name != name, (
-                f"{name} is DEFINED in cli.py; a moved name must be an eager alias "
-                "ASSIGNMENT, not a def/class definition"
-            )
-    assert re.search(rf"(?m)^{re.escape(name)} = ", source), (
+    assert name not in _defined_names(CLI_ENGINE_PATH), (
+        f"{name} is DEFINED in cli.py; a moved name must be an eager alias "
+        "ASSIGNMENT, not a def/class definition"
+    )
+    assert re.search(rf"(?m)^{re.escape(name)} = ", _source(CLI_ENGINE_PATH)), (
         f"{name} eager alias assignment is missing from cli.py"
     )
 
@@ -871,7 +892,7 @@ def test_bin_is_thin_shim():
     (the fallback ``main`` lives inside the ModuleNotFoundError handler, not the module body), it
     imports ``main`` from the package engine, and it keeps the ``__main__`` guard. Small by line
     count so engine code cannot silently creep back in."""
-    source = CLI_PATH.read_text(encoding="utf-8")
+    source = _source(CLI_PATH)
     bin_defs = _top_level_defs(CLI_PATH)
     assert bin_defs == {}, (
         f"bin/tautline still holds top-level defs/classes {sorted(bin_defs)}; it must be a shim "

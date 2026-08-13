@@ -378,7 +378,7 @@ def test_operating_manual_documents_goal_context_and_archive_workflows():
         "Historical evidence only. Not current process, scope, or execution authority. Start from <index path>.",
         "tautline graphify-status --target <lane_path>",
         "tautline graphify-install --target <lane_path>",
-        "graphify . --update",
+        "graphify update .",
         "`graphify-out/` is generated local output",
     ]
     _assert_contains_all(text, required_phrases)
@@ -464,7 +464,12 @@ def test_operating_manual_documents_implementation_review_evidence():
         "T2/T3 review additionally requires Stage 1 native review on the exact current assembled diff",
         "Finalization also writes a tracked implementation-review ledger under `<planningArtifacts.sourceOfTruth>/.impl-reviews/`",
         "Project `review.codexWrapper` scripts should review the committed outgoing diff from the adapter/base branch to `HEAD`",
-        "defaulting to zero Codex rounds for T0, one round for T1, and two rounds for T2/T3",
+        # Item 48 / Codex R2 P2: this pinned the PRE-0.36.0 budgets, so it was actively holding
+        # the operations reference at values the CLI no longer ships. The marker now pins the
+        # shipped shape AND the property that made the old numbers dangerous to document -- that
+        # the budget is a target, not a ceiling.
+        "defaulting to zero Codex rounds for T0, two for T1, three for T2, and four for T3",
+        "The budget is a **target, not a ceiling**",
         "generated/derived artifact freshness",
         "Do not restore T2/T3 code-review loops that hand a changed assembled diff back to Codex/Stage 2 before native/Superpowers review",
     ]

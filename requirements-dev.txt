@@ -7,6 +7,11 @@ ruff==0.15.21
 # pytest-cov powers the informational coverage step (arch-validate-tests-5);
 # verified green against bin/minervit-methodology (~23% via --cov=minervit_methodology) on 2026-06-20.
 pytest-cov==7.1.0
+# pytest-xdist parallelizes the behavior gate across cores. scripts/test.sh passes `-n auto`, and
+# the gate FAILS CLOSED if this is missing rather than silently running serial. Measured on a
+# 28-core machine: 955s -> ~110s wall for the same 4277 tests, with a byte-equivalent junit report
+# (verified 2026-07-29), so `tautline test-run` records the same counts either way.
+pytest-xdist==3.8.0
 # Dev-only: scripts/generate-social-preview.py renders the launch social-preview PNG.
 # Not a CLI runtime dependency (the CLI stays stdlib-only).
 pillow==12.3.0

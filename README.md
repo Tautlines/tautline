@@ -33,7 +33,7 @@ pre-push hook, your CI.
 
 ## Quickstart
 
-You need Python 3.10+ and git. Clone the repository, then install the CLI from the checkout:
+You need Python 3.12+ and git. Clone the repository, then install the CLI from the checkout:
 
 ```bash
 git clone https://github.com/tautlines/tautline

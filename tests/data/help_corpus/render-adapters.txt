@@ -1,6 +1,7 @@
 usage: tautline render-adapters [-h] --project PROJECT --target TARGET
                                 [--write] [--check] [--json-only]
                                 [--omit-domain OMIT_DOMAIN]
+                                [--allow-template-downgrade]
 
 options:
   -h, --help            show this help message and exit
@@ -14,3 +15,8 @@ options:
                         Compatibility render: omit one adapter domain from the
                         generated output. Accepts only laneStatus, for
                         downgrading a lane below 0.21.0.
+  --allow-template-downgrade
+                        Write even when the on-disk generated files were
+                        produced by a NEWER template than this runtime.
+                        Deliberate downgrade: use it when repinning a lane
+                        backwards on purpose, not to silence a stale pin.

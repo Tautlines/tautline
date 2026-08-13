@@ -338,6 +338,18 @@ tautline behavior-spec-status --target .
 
 This status checks adapter-declared `.feature` files, inactive tags such as `@pending`, and adapter-declared acceptance harnesses. Customer-facing behavior is not covered when scenarios are inactive or the harness drives the wrong application package. Inactive scenarios require owner, reason, and un-pend trigger within the adapter policy; "pending because no harness exists" is a P1 coverage gap until the harness executes the changed app.
 
+## Proving Tests Ran
+
+Every other test-related control validates a *declaration* about tests: `ciTestGate` checks that the adapter **declares** a preflight command, and `finalize-implementation-review` takes its verdict as a self-reported argument. `tautline test-run` closes that gap by producing evidence that is a by-product of executing something rather than a claim about having executed it.
+
+```bash
+tautline test-run --target .
+```
+
+It runs the adapter's `commands.fullPreflight` (or `--command`), streams output live, and writes a `tautline-test-run/v1` record under `.ai-runs/test-runs/` carrying the command's real exit code, machine-parsed counts from the runner's own report (declare it with the optional `testEvidence.report` adapter key; without one the record honestly says `counts.source: exit-code-only` rather than claiming zeros), and a digest of the non-ignored tree that was tested. The wrapper exits with the underlying command's exit code, so a red suite stays red. Readers classify the newest record as `current`, `stale`, `red`, `invalid`, `missing`, or `unavailable` — a record stops being `current` the moment the tree moves, which is what retires "I ran the tests" as a defence.
+
+**Release 1 is report-only.** The state is printed at `lane-start` and at `guard-check --boundary prepush` and changes no exit code anywhere; boundary enforcement of the record, and test-reachability checking, are versioned separately.
+
 ## Document Context Budget
 
 Projects can keep durable Markdown artifacts without loading all of them into every AI session. The budget rule is: read configured indexes first, load only named current artifacts, and treat archived/historical docs as evidence only.
@@ -460,11 +472,18 @@ tautline graphify-install --target .
 Build or refresh from the project root:
 
 ```bash
-graphify .
-graphify . --update
+graphify update .
 ```
 
-After every code, docs, schema, route, test, architecture, or other system change, refresh with `graphify . --update` before relying on the graph, committing, or pushing. If the refresh fails, treat existing graph output as invalid stale evidence and fall back to narrow `rg`/file reads only until the graph is rebuilt.
+After every code, docs, schema, route, test, architecture, or other system change, refresh with `graphify update .` before relying on the graph, committing, or pushing. That command is the no-LLM AST rebuild: it needs no API key, no backend, and no external model, it cold-builds when no graph output exists yet, and it is the only Graphify invocation the blocking freshness gate names. If the refresh fails, treat existing graph output as invalid stale evidence and fall back to narrow `rg`/file reads only until the graph is rebuilt.
+
+Semantic enrichment — community labels and `GRAPH_REPORT` prose — is a separate NON-blocking step with an explicitly named backend:
+
+```bash
+GRAPHIFY_CLAUDE_CLI_MODEL=haiku graphify label . --backend=claude-cli
+```
+
+Run it only when enrichment is wanted; its failure never blocks commit or push. A Graphify invocation that auto-detects its backend is never a gate command.
 
 Do not run Graphify assistant installers such as `graphify claude install` or `graphify codex install` unless the adapter explicitly allows assistant-file ownership and the human asks for that exact installer. Tautline owns generated `CLAUDE.md` and `AGENTS.md`.
 

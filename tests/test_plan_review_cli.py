@@ -104,7 +104,9 @@ def _init_target(target: Path) -> None:
         target,
         "printf 'Codex review args: %s\\n' \"$*\"\n"
         "printf 'Verdict: clean\\n'\n"
-        "printf 'No Critical or P1 findings.\\n'\n",
+        # Item 76 WS2: the reviewer contract. A log with no `## Findings` heading is a
+        # reviewer-FORMAT error on the trusted path, so the default fixture emits it.
+        "printf '## Findings\\nNo Critical or P1 findings.\\n'\n",
     )
 
 
@@ -725,7 +727,9 @@ def test_run_plan_review_enforces_counts_round_caps_and_log_classification(tmp_p
         target,
         "printf 'Codex review args: %s\\n' \"$*\"\n"
         "printf 'Verdict: clean\\n'\n"
-        "printf 'Critical: fabricated blocker for validation.\\n'\n",
+        # Carries the heading so the log reaches the SEVERITY scan: this fixture is about the
+        # false-clean detector, not about the reviewer-format contract (item 76 WS2).
+        "printf '## Findings\\nCritical: fabricated blocker for validation.\\n'\n",
     )
     critical_log = _run_cli(
         "run-plan-review",
@@ -957,6 +961,11 @@ def test_builtin_codex_plan_review_accepts_reviewer_flags_before_plan(tmp_path):
         "FAKE_CODEX_ARGS_FILE": str(tmp_path / "fake-codex-plan-direct.args"),
     }
 
+    # Item 77 WS2: codex-plan-review now refuses a DIRECT launch, because a run this way
+    # records no evidence and can never be finalized. These two tests bind the wrapper's
+    # argument handling on purpose, so they declare the handshake the launcher would set.
+    env["MINERVIT_PLAN_REVIEW_LAUNCHER"] = "run-plan-review"
+
     result = _run_cli(
         "codex-plan-review",
         "--target",
@@ -1006,6 +1015,11 @@ def test_builtin_codex_plan_review_uses_non_conflicting_plan_fence(tmp_path):
         "PATH": f"{fake_bin}:{os.environ['PATH']}",
         "FAKE_CODEX_ARGS_FILE": str(tmp_path / "fake-codex-plan-fenced.args"),
     }
+
+    # Item 77 WS2: codex-plan-review now refuses a DIRECT launch, because a run this way
+    # records no evidence and can never be finalized. These two tests bind the wrapper's
+    # argument handling on purpose, so they declare the handshake the launcher would set.
+    env["MINERVIT_PLAN_REVIEW_LAUNCHER"] = "run-plan-review"
 
     result = _run_cli(
         "codex-plan-review",
@@ -1205,3 +1219,69 @@ def test_precheck_sha_stale_at_cap_prints_successor_next_action(cli, tmp_path):
     assert len(next_action) == 1
     assert "create a successor source-of-truth plan" in next_action[0]
     assert "run-plan-review" not in next_action[0]
+
+
+def test_prompt_echo_clean_round_finalizes_end_to_end(tmp_path):
+    """The 2026-07-03 incident, pinned at the CLI boundary: the codex CLI echoes its
+    prompt (which names the severities) into the captured log, and a genuinely clean
+    round must still finalize at 0/0 and pass precheck.
+
+    A PIN of shipped mechanism, not TDD -- it is expected green at branch cut. The RCA's
+    proposed control 3 ("finalize --verdict clean against a prompt-echoing log, assert
+    success") was never written against the actual finalize path, so the scoped scan and
+    frame sentinels that fixed the incident had no end-to-end witness.
+
+    It also doubles as the handshake-transparency proof once the launcher handshake lands
+    (packet W1.3, S5.3): the wrapper here IS `tautline codex-plan-review`, spawned BY
+    `run-plan-review`, which is what sets the handshake env. If a later change makes the
+    builtin wrapper refuse when driven this way, this test is what says so.
+
+    Framing discipline: the fake codex prints RAW reviewer text. `run-plan-review` owns the
+    frame sentinels; an e2e fixture must never hand-emit them.
+    """
+    home, adapter_root, target, adapter = _prepare_target(
+        tmp_path,
+        wrapper=f"{sys.executable} {CLI_PATH} codex-plan-review --target . --base origin/experimental",
+    )
+    fake_bin = tmp_path / "fake-codex-bin"
+    fake_bin.mkdir()
+    fake_codex = fake_bin / "codex"
+    fake_codex.write_text(
+        "#!/usr/bin/env bash\n"
+        "set -euo pipefail\n"
+        # Echo the full invocation -- including the prompt argument that carries the
+        # severity vocabulary -- into stdout, exactly as codex v0.136.0+ does.
+        'printf \'%s\\n\' "$*"\n'
+        "printf '## Findings\\nNo Critical or P1 findings.\\n'\n",
+        encoding="utf-8",
+    )
+    fake_codex.chmod(0o755)
+    env = {"PATH": f"{fake_bin}:{os.environ['PATH']}"}
+    run = _run_cli(
+        "run-plan-review", "--project", str(adapter), "--target", str(target),
+        "--plan", PLAN_REL.as_posix(), "--round", "R1PromptEcho", "--model", "codex-test",
+        home=home, adapter_root=adapter_root, env=env,
+    )
+    assert run.returncode == 0, run.stdout + run.stderr
+    log_path = _stdout_path(run.stdout, "plan_review_run_log")
+    log_text = log_path.read_text(encoding="utf-8")
+    # Non-vacuity guard: the captured log REALLY contains the echoed prompt's severity
+    # wording, from codex_plan_review_command's template. If that wording drifts, this
+    # fails loudly instead of the test silently proving nothing -- then re-pin it.
+    assert "(Critical, P1, P2, P3, Nit)" in log_text
+    assert "Start your response with exactly `## Findings`" in log_text
+    finalize = _run_cli(
+        "finalize-plan-review", "--project", str(adapter), "--target", str(target),
+        "--plan", PLAN_REL.as_posix(), "--log", str(log_path),
+        "--round", "R1PromptEcho", "--model", "codex-test",
+        "--verdict", "clean", "--unresolved-critical-count", "0",
+        "--unresolved-p1-count", "0",
+        home=home, adapter_root=adapter_root,
+    )
+    assert finalize.returncode == 0, finalize.stdout + finalize.stderr
+    assert "verdict=clean" in finalize.stdout
+    precheck = _run_cli(
+        "plan-finalization-precheck", "--project", str(adapter), "--target", str(target),
+        "--plan", PLAN_REL.as_posix(), home=home, adapter_root=adapter_root,
+    )
+    assert precheck.returncode == 0, precheck.stdout + precheck.stderr

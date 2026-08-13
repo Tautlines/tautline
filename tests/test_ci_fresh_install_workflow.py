@@ -1,12 +1,18 @@
 """Shape tests for the CI fresh-install smoke job (real-PyPI-package plan, Task 5).
 
-The smoke job is the standing acceptance test for `pipx install tautline`: on every
-PR it builds the real wheel FROM the tree under review, installs it into a clean
-venv on Python 3.10 (the declared floor, proven here rather than asserted in a
-comment), and runs the front door an adopter actually runs -- both console-script
-names, the adopter flow, and the lane-hook surface -- in a scratch project under a
-scratch HOME. These tests pin the job's SHAPE so a future edit cannot quietly hollow
-out the gate; the behavioral proof is the job's own green run on each PR.
+The smoke job is the standing acceptance test for `pipx install tautline`: it builds the real
+wheel FROM the tree under test, installs it into a clean venv on Python 3.12 (the declared floor,
+proven here rather than asserted in a comment), and runs the front door an adopter actually runs
+-- both console-script names, the adopter flow, and the lane-hook surface -- in a scratch project
+under a scratch HOME. These tests pin the job's SHAPE so a future edit cannot quietly hollow out
+the gate; the behavioral proof is the job's own green run.
+
+It lives in the DAILY `ci-python-full` workflow, not in per-PR `ci-python`. The honest cost of
+that move: a packaging break is caught within a day rather than at the PR that caused it, so the
+blast radius is every PR merged in between. It is only ~1 minute of compute either way, so the
+move is about keeping a release-shaped gate off the per-change path, not about wall clock. The
+mitigation is that the workflow is `workflow_dispatch`-able -- run it before a release and before
+merging anything that touches pyproject.toml, the registry-package tree, or the hook payloads.
 
 Parsed as YAML rather than regexed as a whole file (same posture as
 tests/test_release_tail_workflows.py) so a restructure cannot quietly drop an
@@ -18,11 +24,12 @@ from pathlib import Path
 import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-CI_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "ci-python.yml"
+CI_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "ci-python-full.yml"
 
-# The job id doubles as the required-status-check name on the PR base branch
-# (Task 5.4 binds the gating configuration to this exact string), so it is pinned
-# here as a constant: renaming the job silently unbinds the required check.
+# The job id doubles as the required-status-check name a base branch would bind, so it is pinned
+# here as a constant: renaming the job silently unbinds the check wherever one is configured.
+# Since the job moved to a scheduled workflow it can no longer BE a per-PR required check at all
+# -- which costs nothing today, because the tier below makes required checks impossible anyway.
 #
 # Task 5.4 verification record (2026-07-15): every read-only gating surface on the
 # private dev repo -- branches/experimental/protection, .../protection/
@@ -30,8 +37,8 @@ CI_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "ci-python.yml"
 # HTTP 403 "Upgrade to GitHub Pro or make this repository public to enable this
 # feature", so required-check membership CANNOT be configured or verified on this
 # repo tier. Until the repo is public (or Pro), the honest gating state is:
-# ci-python.yml runs on every PR and this suite pins the job as unskippable, but
-# GitHub does not enforce the check as required. The operator must add
+# the workflow runs on its schedule and this suite pins the job as unskippable, but
+# GitHub does not enforce any check as required. The operator must add
 # "fresh-install-smoke" to the base branch's required checks (Settings > Branches
 # or a ruleset) the moment the tier allows it, and re-run the gh api verification.
 SMOKE_JOB_ID = "fresh-install-smoke"
@@ -80,7 +87,7 @@ def workflow_triggers(workflow: dict) -> dict:
 def smoke_job() -> dict:
     workflow = load_workflow(CI_WORKFLOW)
     assert SMOKE_JOB_ID in workflow["jobs"], (
-        f"ci-python.yml must carry the {SMOKE_JOB_ID} job: it is the standing "
+        f"{CI_WORKFLOW.name} must carry the {SMOKE_JOB_ID} job: it is the standing "
         "acceptance test for the real PyPI package"
     )
     return workflow["jobs"][SMOKE_JOB_ID]
@@ -95,9 +102,9 @@ def smoke_run_text() -> str:
 
 
 def test_smoke_job_exists_and_runs_on_python_310() -> None:
-    """The 3.10 floor is PROVEN on every PR, not narrated in a comment.
+    """The 3.12 floor is PROVEN on every PR, not narrated in a comment.
 
-    The job must pin exactly '3.10' (a quoted string: unquoted YAML 3.10 parses as
+    The job must pin exactly '3.12' (a quoted string: unquoted YAML 3.12 parses as
     the float 3.1) and must not ride the test matrix -- a floor proven only on
     whichever matrix leg happens to run is not a proven floor.
     """
@@ -111,8 +118,8 @@ def test_smoke_job_exists_and_runs_on_python_310() -> None:
         step for step in job.get("steps", []) if str(step.get("uses", "")).startswith("actions/setup-python@")
     ]
     assert len(setup_steps) == 1, "exactly one setup-python step must pin the floor"
-    assert setup_steps[0]["with"]["python-version"] == "3.10", (
-        "the smoke must run on the declared 3.10 floor (quoted, so YAML cannot "
+    assert setup_steps[0]["with"]["python-version"] == "3.12", (
+        "the smoke must run on the declared 3.12 floor (quoted, so YAML cannot "
         "collapse it to the float 3.1)"
     )
 
@@ -217,6 +224,20 @@ def test_smoke_job_exercises_the_lane_hook_surface() -> None:
         assert git_hook in text, f"the git branch-liveness {git_hook} hook must be asserted"
 
 
+def test_scheduled_smoke_builds_the_integration_branch_not_the_default_branch() -> None:
+    """Codex R1 P2. A scheduled run starts on the DEFAULT branch, so a checkout without a ref
+    would build and install `main` -- the stable channel -- and report green about a tree nobody
+    develops on. Easy to miss when a job MOVES into a workflow whose other job already had the
+    override, which is exactly how it was missed."""
+    checkout = next(
+        step for step in smoke_steps() if "actions/checkout" in str(step.get("uses", ""))
+    )
+    ref = str((checkout.get("with") or {}).get("ref", ""))
+    assert "schedule" in ref and "experimental" in ref, (
+        "the packaging smoke must redirect a scheduled run at the integration branch"
+    )
+
+
 def test_smoke_job_is_not_soft_gated() -> None:
     """A green-but-skippable job is not a gate (half of PP-R1-P1-2).
 
@@ -227,7 +248,10 @@ def test_smoke_job_is_not_soft_gated() -> None:
     """
     workflow = load_workflow(CI_WORKFLOW)
     triggers = workflow_triggers(workflow)
-    assert "pull_request" in triggers, "ci-python.yml is the blocking PR gate"
+    # Scheduled, not per-PR -- but it must still actually fire, and be runnable on demand before a
+    # release. A gate nothing triggers is not a gate.
+    assert "schedule" in triggers, "the smoke gate must run on a schedule"
+    assert "workflow_dispatch" in triggers, "the smoke gate must be runnable before a release"
     job = smoke_job()
     assert not job.get("continue-on-error"), "continue-on-error would defang the gate"
     assert "if" not in job, "a job-level if: could skip the gate on pull requests"

@@ -6,21 +6,77 @@ on:
     branches:
       - main
 
+# Supersede-and-cancel. A second push to the same PR makes the first run's verdict irrelevant the
+# instant it lands, but GitHub bills the superseded run all the way to completion anyway -- at an
+# ~18-minute suite and a push-amend development cadence, that duplicate spend was the single
+# largest line in this repo's Actions bill.
+#
+# `cancel-in-progress` is deliberately scoped to pull_request and NOT to push. A push to a
+# protected branch composes the `evidence` artifact that downstream gates consume, so cancelling
+# one would destroy a verdict rather than a redundant copy of a verdict; PR runs have no such
+# consumer and are pure duplicate signal.
+# The group KEY, not just cancel-in-progress, is what protects push runs. `cancel-in-progress: false`
+# spares a RUNNING run but not a PENDING one: a third run entering a group still cancels the queued
+# second, so two quick pushes to a protected branch would silently drop the middle run's `evidence`
+# artifact that downstream gates consume. Mixing github.run_id into the key for non-PR events gives
+# every push run a group of its own, where there is nothing to supersede it.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name == 'pull_request' && 'pr' || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 permissions:
   contents: read
 
 jobs:
+  # ONE Python leg per PR. The declared floor is NOT abandoned -- it moves to the daily
+  # `ci-python-full` schedule, which runs the whole supported matrix (see that workflow, and
+  # tests/test_evidence_artifacts.py, which fails closed if the daily job stops covering every
+  # version this job dropped). Per-PR CI exists to tell you fast whether your change is broken;
+  # a second interpreter re-running the identical suite answers that question twice.
+  #
+  # The job id and its matrix leg name together form the check name a base branch would bind as a
+  # required status check (`python (3.12)`), so renaming either silently unbinds that gate wherever
+  # one is configured.
   python:
-    runs-on: ubuntu-latest
+    # Local hardware when this repo provides it, billed GitHub-hosted otherwise. GitHub does not
+    # meter Actions minutes for runners it does not own, and this workflow was 73% of this repo's
+    # Actions bill; it is also ~11x faster locally (101s vs 18m45s, the hosted runner being 2 cores).
+    #
+    # Selected through a repo VARIABLE rather than a hardcoded label, because this file ships in the
+    # public release export. A hardcoded `self-hosted` would leave every fork of the public mirror
+    # queueing forever against a runner it does not have, with no signal that anything is wrong.
+    # Unset -> ubuntu-latest, so outside forks keep working untouched; set to a runner label (this
+    # repo uses `tautline`) -> the local runner. See .github/runner/README.md, which also covers
+    # what happens when the local runner is offline (jobs queue; nothing merges, because a job that
+    # never ran cannot report green).
+    #
+    # ci-python-full reads the same variable as of the 3.12 floor raise -- dropping the 3.10 leg
+    # removed the second-interpreter problem that kept it hosted. Deliberately NOT applied to the
+    # publish workflows: a release must not depend on a local machine being awake.
+    #
+    # THE FALLBACK IS NO LONGER SILENT, and the two cases it serves now diverge. A FORK still falls
+    # back to ubuntu-latest quietly -- correct, since hosted is the only thing a fork has. On THIS
+    # repo an unset CI_RUNNER_LABEL now FAILS the run, because there it means the local runner was
+    # lost and every gate quietly moved onto billed compute while still reporting green. To take
+    # billed runs deliberately (the machine is away), set CI_ALLOW_HOSTED_FALLBACK=1 as well; that
+    # passes with a warning. See the assert-runner-identity step below and .github/runner/README.md.
+    runs-on: ${{ vars.CI_RUNNER_LABEL || 'ubuntu-latest' }}
     strategy:
       fail-fast: false
       matrix:
-        # Exercise the declared 3.10 floor (match statements) and a modern version.
-        python-version: ["3.10", "3.12"]
+        # A single modern version. Kept as a matrix, not flattened to a bare job, so the check name
+        # and the per-leg evidence artifact keep their existing shape and the daily workflow can
+        # stay a superset rather than a fork.
+        python-version: ["3.12"]
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0
+
+      - uses: ./.github/actions/assert-runner-identity
+        with:
+          runner-label: ${{ vars.CI_RUNNER_LABEL }}
+          allow-hosted-fallback: ${{ vars.CI_ALLOW_HOSTED_FALLBACK }}
 
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
@@ -31,17 +87,27 @@ jobs:
       - name: Install dev toolchain
         run: pip install -r requirements-dev.txt
 
+      # ONE full-suite pass, and no coverage instrumentation. Coverage is a RATCHET, not a
+      # per-change signal: it answers "has whole-repo coverage regressed", a question whose answer
+      # cannot meaningfully change between two pushes an hour apart, and measuring it costs ~40%
+      # more wall clock on every one of them. The blocking ratchet moved to the daily
+      # `ci-python-full` matrix, where it still fails the run below the .coveragerc floor.
+      # Per-change exercise of NEW lines is a different gate entirely (the diff-coverage check),
+      # and that one is unaffected. Guard against re-defanging: tests/test_coverage_gate_enforced.py.
       - name: Run python checks
-        env:
-          PYTEST_ADDOPTS: --junitxml=evidence/pytest.junit.xml
         run: scripts/test.sh
 
-      # Coverage no-regression gate (arch-validate-tests-5; quality rec #7 Part 1): BLOCKS
-      # the build when coverage falls below [report] fail_under in .coveragerc. The ratchet
-      # floor lives in .coveragerc; raise it as coverage improves, never lower it to pass a
-      # regression. Guard against re-defanging: tests/test_coverage_gate_enforced.py.
-      - name: Coverage (ratchet floor, blocking)
-        run: pytest --cov=tautline_methodology --cov-config=.coveragerc --cov-report=term-missing --junitxml=evidence/pytest.junit.xml
+      # scripts/test.sh appends its own --junitxml LAST and pytest takes the last value, so the
+      # suite's report only ever lands at .ai-runs/test-runs/latest-junit.xml. Copy it rather than
+      # trying to redirect it: that stable path is what `tautline test-run` hashes. `if: always()`
+      # because a RED run's report is the one that matters, and `|| true` for a run that died
+      # before pytest (a ruff or mypy failure), where no report exists and the leg's verdict is
+      # carried by leg-status.txt.
+      - name: Publish the suite's JUnit report as evidence
+        if: always()
+        run: |
+          mkdir -p evidence
+          cp .ai-runs/test-runs/latest-junit.xml evidence/pytest.junit.xml || true
 
       # This leg's own verdict, recorded even when it died before pytest (a ruff or mypy
       # failure). `job.status` is success | failure | cancelled -- exactly the vocabulary the
@@ -60,25 +126,25 @@ jobs:
           name: evidence-py-${{ matrix.python-version }}
           path: evidence/
 
-  # CommandCenter evidence aggregation: compose the run's single `evidence` artifact from
-  # every ci-python job. The canonical matrix leg supplies the per-test JUnit detail (one set
-  # of `classname.name` ids, so counts are not doubled); the probe suite carries BOTH matrix
-  # legs' verdicts AND the fresh-install-smoke gate's result, so a 3.10-only failure OR a
-  # fresh-install failure shows as a `fail` result instead of vanishing behind green evidence.
-  # `needs` spans all reporting jobs so a red required check can never publish green evidence.
-  # Pins shape: tests/test_evidence_artifacts.py.
+  # CommandCenter evidence aggregation: compose the run's single `evidence` artifact from every
+  # ci-python job. `needs` spans all reporting jobs so a red job can never publish green evidence.
+  #
+  # Only the 3.12 leg is composed here because only the 3.12 leg runs per PR, and there is no
+  # fresh-install result because that gate runs daily now. Neither verdict is silently dropped --
+  # both moved to `ci-python-full`, which composes its own evidence for the whole matrix plus the
+  # packaging gate. Pins shape: tests/test_evidence_artifacts.py.
   evidence:
-    runs-on: ubuntu-latest
-    needs: [python, fresh-install-smoke]
+    runs-on: ${{ vars.CI_RUNNER_LABEL || 'ubuntu-latest' }}
+    needs: [python]
     # Runs on success AND failure (the whole point), but not on a cancelled run, where the
     # legs may never have uploaded and the downloads below would have nothing to fetch.
     if: ${{ !cancelled() }}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+      - uses: ./.github/actions/assert-runner-identity
         with:
-          name: evidence-py-3.10
-          path: legs/py-3.10
+          runner-label: ${{ vars.CI_RUNNER_LABEL }}
+          allow-hosted-fallback: ${{ vars.CI_ALLOW_HOSTED_FALLBACK }}
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: evidence-py-3.12
@@ -93,196 +159,10 @@ jobs:
           python3 .github/scripts/emit_evidence.py \
             --out evidence/evidence.json \
             --suite ci-python:probe \
-            --result "ci-python.py-3.10=$(cat legs/py-3.10/leg-status.txt)" \
-            --result "ci-python.py-3.12=$(cat legs/py-3.12/leg-status.txt)" \
-            --result "ci-python.fresh-install-smoke=${{ needs.fresh-install-smoke.result }}"
+            --result "ci-python.py-3.12=$(cat legs/py-3.12/leg-status.txt)"
 
       - name: Upload evidence artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: evidence
           path: evidence/
-
-  # Fresh-install smoke (real-PyPI-package plan, Task 5): the standing acceptance test
-  # for `pipx install tautline`. Every PR builds the real wheel FROM the tree under
-  # review (registry-package -> python -m build, so the sdist->wheel data-fidelity
-  # path stays on the tested artifact), installs it into a clean venv on Python 3.10
-  # (the declared floor, PROVEN here on every PR), and runs the front door an adopter
-  # runs: both console-script names, the adopter flow, and the lane-hook surface, in
-  # a scratch project under a scratch HOME. Shape pinned by
-  # tests/test_ci_fresh_install_workflow.py; no continue-on-error and no `if:`
-  # anywhere in this job -- a green-but-skippable job is not a gate (PP-R1-P1-2).
-  # The job id is the required-status-check name the base branch binds; renaming it
-  # silently unbinds the gate.
-  fresh-install-smoke:
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-
-      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
-        with:
-          # Quoted: unquoted YAML 3.10 parses as the float 3.1.
-          python-version: "3.10"
-
-      # --channel experimental: dev-tree smoke wheels are never claimed stable; the
-      # channel rides into the wheel's .snapshot-meta.json. The publish rail
-      # (publish-pypi.yml) is the only place --channel stable is stamped.
-      - name: Build the real PyPI package tree from this PR's HEAD
-        run: |
-          python3 bin/tautline registry-package --registry pypi \
-            --version "$(tr -d '[:space:]' < VERSION)" --channel experimental \
-            --destination "$RUNNER_TEMP/pkg" --write
-
-      # Default sdist+wheel output on purpose: python -m build builds the wheel FROM
-      # the sdist, so a file dropped from the sdist config vanishes from the wheel --
-      # exactly the trap this job exists to catch.
-      - name: Build the sdist and wheel with python -m build
-        run: |
-          python3 -m pip install build
-          python3 -m build --outdir "$RUNNER_TEMP/dist" "$RUNNER_TEMP/pkg"
-
-      - name: Install the built wheel into a clean venv
-        run: |
-          python3 -m venv "$RUNNER_TEMP/venv"
-          "$RUNNER_TEMP/venv/bin/pip" install "$RUNNER_TEMP"/dist/*.whl
-
-      # HOME is a scratch dir from here on: the front door must work on a machine
-      # that has never seen a Tautline checkout or config.
-      - name: Smoke both console scripts from the installed wheel
-        run: |
-          set -euo pipefail
-          export HOME="$RUNNER_TEMP/home"
-          mkdir -p "$HOME"
-          export PATH="$RUNNER_TEMP/venv/bin:$PATH"
-          tautline version
-          minervit-methodology version
-
-      - name: Run the adopter flow and the lane-hook surface in a scratch project
-        run: |
-          set -euo pipefail
-          export HOME="$RUNNER_TEMP/home"
-          mkdir -p "$HOME"
-          export PATH="$RUNNER_TEMP/venv/bin:$PATH"
-
-          # A local bare origin whose path parses as an owner/repo slug keeps the
-          # flow offline-deterministic: fetch works, and the adapter repo check
-          # sees smoke-org/fresh-install-smoke.
-          remote="$RUNNER_TEMP/remotes/smoke-org/fresh-install-smoke.git"
-          mkdir -p "$(dirname "$remote")"
-          git init -q --bare -b main "$remote"
-
-          scratch="$RUNNER_TEMP/scratch/fresh-install-smoke"
-          mkdir -p "$scratch"
-          cd "$scratch"
-          git init -q -b main
-          git config user.email "smoke@example.invalid"
-          git config user.name "Fresh Install Smoke"
-          git remote add origin "$remote"
-          echo "# fresh-install-smoke" > README.md
-          git add README.md
-          git commit -qm "scratch: seed the smoke project"
-          git push -q origin main
-
-          tautline init-project-adapter --target . \
-            --project-name "Fresh Install Smoke" --repo smoke-org/fresh-install-smoke
-
-          # The adopter answers the bootstrap before rendering (render-adapters
-          # fail-closes on any remaining BOOTSTRAP REQUIRED placeholder); the smoke
-          # answers every placeholder with scripted, truthful smoke-lane values and
-          # records the repo-evident facts it just created.
-          mkdir -p .ai-work
-          printf 'CI fresh-install smoke scratch project.\n' > .ai-work/bootstrap-evidence.txt
-          printf 'Seeded README committed to the local bare origin.\n' \
-            > .ai-work/bootstrap-evidence-2.txt
-          python3 - <<'PATCH'
-          import json
-          from pathlib import Path
-
-          ANSWER = "Smoke lane: scripted CI fresh-install scratch project."
-
-          def answer_placeholders(value):
-              if isinstance(value, str) and "BOOTSTRAP REQUIRED" in value:
-                  return ANSWER
-              if isinstance(value, dict):
-                  return {key: answer_placeholders(inner) for key, inner in value.items()}
-              if isinstance(value, list):
-                  return [answer_placeholders(inner) for inner in value]
-              return value
-
-          adapter = Path(".tautline/adapter.json")
-          data = json.loads(adapter.read_text(encoding="utf-8"))
-          data = answer_placeholders(data)
-          data["commands"] = {
-              key: ("echo smoke-ok" if isinstance(value, str) and value == ANSWER else value)
-              for key, value in data["commands"].items()
-          }
-          data["bootstrapEvidence"] = {
-              "project": "Fresh Install Smoke",
-              "status": "repo-evident",
-              "summary": (
-                  "CI fresh-install smoke: scripted scratch project; the evidence "
-                  "file is written by the smoke job itself."
-              ),
-              "repoEvidence": [
-                  {
-                      "path": ".ai-work/bootstrap-evidence.txt",
-                      "fact": "Scratch project seeded by the fresh-install smoke job.",
-                  },
-                  {
-                      "path": ".ai-work/bootstrap-evidence-2.txt",
-                      "fact": "README committed and pushed to the local bare origin.",
-                  },
-              ],
-          }
-          adapter.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
-          PATCH
-
-          tautline render-adapters --project .tautline/adapter.json --target . --write
-
-          tautline methodology-status --target . --no-remote | tee "$RUNNER_TEMP/status.log"
-          grep -Fx "adapter_drift: clean" "$RUNNER_TEMP/status.log"
-
-          # The lane-hook surface: the README quickstart's own lane verb.
-          tautline lane-start --target .
-
-          # Hooks LAND: all ten Claude hooks reference the wheel's console script...
-          settings="$HOME/.claude/settings.json"
-          for hook in plan-finalization-hook branch-liveness-hook response-guard-hook \
-              tool-rejection-hook background-command-hook latest-code-hook \
-              context-rotation-heartbeat-hook plan-review-pending-hook \
-              fleet-guard-hook; do
-            grep -F "tautline $hook" "$settings" > /dev/null \
-              || { echo "missing Claude hook: $hook in $settings" >&2; exit 1; }
-          done
-          # ...including the SessionStart standing-directive hook, whose command is a
-          # fail-open shell wrapper, not a bare `tautline <verb>`, so assert its exact
-          # autonomy-directive invocation lands (a packaged lane-start omitting it goes red).
-          grep -F "autonomy-directive --hook" "$settings" > /dev/null \
-            || { echo "missing Claude SessionStart directive hook in $settings" >&2; exit 1; }
-          # ...and the git branch-liveness hooks landed in the scratch repo.
-          for git_hook in pre-commit pre-push; do
-            test -x ".git/hooks/$git_hook"
-            grep -q "MINERVIT-BRANCH-LIVENESS-HOOK" ".git/hooks/$git_hook"
-          done
-
-          # Hooks EXECUTE from the installed wheel: run one exactly as installed.
-          echo '{}' | tautline tool-rejection-hook
-
-      # File canaries inside the INSTALLED tree, not the build directory: hatchling
-      # only ships what its config includes, pip only installs what the wheel
-      # carries. Each canary is a distinct historical way the payload vanished
-      # (dotfile, data dir, plugin hook payload -- PP-R1-P2-1).
-      - name: Verify the embedded runtime files in site-packages
-        run: |
-          set -euo pipefail
-          pkg_root="$("$RUNNER_TEMP/venv/bin/python" -c \
-            'import os, tautline; print(os.path.dirname(os.path.abspath(tautline.__file__)))')"
-          for canary in .snapshot-meta.json VERSION methodology/canonical-rules.md \
-              plugins/tautline-core/hooks/hooks.json; do
-            test -f "$pkg_root/_dist/$canary" \
-              || { echo "missing embedded canary: $canary" >&2; exit 1; }
-          done
-          test -d "$pkg_root/_dist/docs/releases/migrations"
-          ls "$pkg_root/_dist/docs/releases/migrations"/*.json > /dev/null
-          grep -q '"installKind": "package"' "$pkg_root/_dist/.snapshot-meta.json"

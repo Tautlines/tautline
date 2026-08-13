@@ -1,0 +1,100 @@
+# Fail loudly when a job meant for the local runner lands on billed GitHub compute.
+#
+# `runs-on: ${{ vars.CI_RUNNER_LABEL || 'ubuntu-latest' }}` fails OPEN and SILENT: clear the repo
+# variable and every gate keeps reporting green, on hosted compute, at hosted prices -- the exact
+# regression the self-hosted move existed to end. This action makes that loud without breaking the
+# two behaviours that legitimately depend on the fallback: public forks (which have no repo
+# variables) and the documented runner-down escape hatch.
+#
+# It asserts at RUN time, not config time. The question is never "is the variable set?" but "did
+# this job land where this repo intended, and if not, did a human say that was OK?"
+#
+# WHAT IT CANNOT SEE: an offline, deregistered, or typoed self-hosted label. GitHub does not fall
+# back to ubuntu-latest in that case -- the job sits QUEUED, so no step runs and no runtime check
+# can report it. That is its own loud signal (nothing merges), and it is why the "label set but
+# landed hosted" branch below is scoped to labels that genuinely resolve to hosted compute.
+#
+# THIS IS A ROUTING GUARD, NOT A TRUST BOUNDARY -- do not read the canonical-repo check below as
+# fork containment. On a `pull_request` event `github.repository` is the BASE repository, so a PR
+# opened FROM a fork AGAINST this repo reports the canonical slug, passes the short-circuit, and
+# routes to the self-hosted runner like any other PR. Nothing here was designed to stop that.
+#
+# What actually contains it is that `Tautlines/tautline-dev` is PRIVATE, so only someone who already
+# has access can open a PR at all. That is a precondition of the repository, not a property of this
+# action, and it equally protects `validate` and `ci-python`, which already run PR-controlled Python
+# on the same runner. IF THIS REPO IS EVER MADE PUBLIC, every `pull_request`-triggered self-hosted
+# job needs an explicit fork guard (e.g. requiring
+# `github.event.pull_request.head.repo.full_name == github.repository`) BEFORE that flip, not after.
+#
+# One composite action rather than eight copies of a bash block: copies drift, and the drifted one
+# is the one nobody reads.
+name: Assert runner identity
+description: Fail loudly when a job intended for the local runner lands on GitHub-hosted compute.
+
+inputs:
+  canonical-repo:
+    description: The repository whose jobs are expected to run locally. Others are forks; hosted is correct there.
+    default: Tautlines/tautline-dev
+  runner-label:
+    description: The caller's `vars.CI_RUNNER_LABEL`. Passed in rather than read from `vars` here; empty means the hosted fallback was taken.
+    default: ""
+  allow-hosted-fallback:
+    description: The caller's `vars.CI_ALLOW_HOSTED_FALLBACK`. `1` accepts a billed hosted run deliberately.
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    # Both repo variables arrive as INPUTS from the caller. Reading `vars.*` here instead would be
+    # at best ambiguously supported in composite context, and the failure mode is not subtle: if it
+    # resolved empty, EXPECTED_LABEL would be empty on every run, every canonical job would take
+    # the "unset" branch, and all six gates would go red claiming a silent fallback while the
+    # variable was set correctly the whole time.
+    - shell: bash
+      env:
+        EXPECTED_LABEL: ${{ inputs.runner-label }}
+        ALLOW_HOSTED: ${{ inputs.allow-hosted-fallback }}
+        CANONICAL: ${{ inputs.canonical-repo }}
+        THIS_REPO: ${{ github.repository }}
+      run: |
+        set -euo pipefail
+
+        # Case-INSENSITIVE compare. GitHub repository slugs are case-insensitive: this repo's own
+        # git remote is `tautlines/tautline-dev` while the canonical slug GitHub emits is
+        # `Tautlines/tautline-dev`. An exact `!=` would read the canonical repo as a fork, exit 0,
+        # and leave the silent fallback fully intact -- the guard bypassing itself, which is the
+        # precise failure class this action exists to catch.
+        if [ "$(printf '%s' "$THIS_REPO" | tr '[:upper:]' '[:lower:]')" \
+             != "$(printf '%s' "$CANONICAL" | tr '[:upper:]' '[:lower:]')" ]; then
+          echo "runner-identity: $THIS_REPO is not $CANONICAL (fork or mirror); hosted CI is expected here."
+          exit 0
+        fi
+
+        # UNSET is decided from CONFIG alone. With no label, `runs-on` resolved to 'ubuntu-latest'
+        # by construction, so RUNNER_ENVIRONMENT is deliberately NOT consulted here -- depending on
+        # a runner-supplied variable would fail OPEN on any runner that does not set it, for the
+        # one case this whole change exists to catch.
+        if [ -z "${EXPECTED_LABEL:-}" ]; then
+          if [ "${ALLOW_HOSTED:-}" = "1" ]; then
+            echo "::warning title=Running on billed GitHub compute::CI_RUNNER_LABEL is unset and CI_ALLOW_HOSTED_FALLBACK=1, so this job ran on GitHub-hosted compute by explicit choice. Unset CI_ALLOW_HOSTED_FALLBACK once the local runner is back."
+            exit 0
+          fi
+          echo "::error title=Silent fallback to billed GitHub compute::CI_RUNNER_LABEL is unset, so this job fell back to GitHub-hosted compute -- the exact silent regression this assertion exists to catch. Either restore the variable (gh variable set CI_RUNNER_LABEL --repo $CANONICAL --body tautline) or, if the local runner is intentionally down, set CI_ALLOW_HOSTED_FALLBACK=1 to accept billed runs deliberately."
+          exit 1
+        fi
+
+        # Label set: the only observable failure is landing on hosted compute anyway.
+        if [ "${RUNNER_ENVIRONMENT:-}" = "github-hosted" ]; then
+          # The hatch is honoured HERE TOO, so the error below can name a recovery that actually
+          # works. Reading it only on the unset path made this branch's advice a dead end: the
+          # operator sets the variable, and this branch never reads it.
+          if [ "${ALLOW_HOSTED:-}" = "1" ]; then
+            echo "::warning title=Running on billed GitHub compute::CI_RUNNER_LABEL is '$EXPECTED_LABEL' but this job ran on GitHub-hosted compute, accepted deliberately because CI_ALLOW_HOSTED_FALLBACK=1. Unset CI_ALLOW_HOSTED_FALLBACK once the local runner is back."
+            exit 0
+          fi
+          echo "::error title=CI ran on the wrong machine::CI_RUNNER_LABEL is set to '$EXPECTED_LABEL', but this job still ran on GitHub-hosted compute, so that label resolves to hosted compute rather than the local runner. (An OFFLINE local runner does not reach this check -- the job queues instead.) Point CI_RUNNER_LABEL at the local runner's label (.github/runner/runner.sh status), or set CI_ALLOW_HOSTED_FALLBACK=1 to accept billed runs deliberately."
+          exit 1
+        fi
+
+        echo "runner-identity: ${RUNNER_ENVIRONMENT:-non-hosted}, label '$EXPECTED_LABEL' -- as intended."
+        exit 0

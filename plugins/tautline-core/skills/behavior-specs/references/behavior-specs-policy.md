@@ -109,6 +109,36 @@ Run `tautline behavior-spec-status --target .` before plan
 finalization, merge, delivery summaries, or claiming customer-facing behavior is
 covered.
 
+Add `--base <ref>` to that run to see what the branch itself changed. It prints
+two counts:
+
+- `behavior_specs_added_inactive: <N> (vs <ref>)` — every scenario newly
+  inactive since the merge base with `<ref>`, annotated or not, because a fully
+  annotated `@pending` is still growth.
+- `behavior_specs_added_issues: <N> (vs <ref>)`, plus one
+  `behavior_specs_added_issue:` line citing the canonical form, for each
+  scenario the branch left without the owner and un-pend-trigger annotations.
+
+Those are **different sets, not nested.** Stripping the metadata off a scenario
+that already existed reports `0` added and `1` issue: the branch introduced debt
+without introducing a scenario. Note the check verifies owner and un-pend
+trigger; the `@reason:` field is required by policy and carried in the canonical
+form, but no automated check reads it.
+
+`--base` compares two committed trees, so an uncommitted edit never moves the
+answer. When it cannot see — a blank or unresolvable ref, no common ancestor, an
+unreadable feature file, a `behaviorSpecs.paths` scope that selects nothing, or
+an unexpected failure — **both counts report `unknown`, never `0`,** with a
+`behavior_specs_added_warning:` line naming the reason. A check that could not
+look must never print what a clean branch prints. Where the adapter sets
+`pendingRequiresOwnerAndTrigger: false`, the issue half reports `disabled by
+adapter` and the growth count still reports.
+
+`--base` is **reporting only: it never changes the exit code**, including when
+it fails. The enforcement counterpart at the boundary that creates the debt is
+`tautline behavior-spec-delta-check`, which refuses the metadata-less scenarios
+a staged change introduces and lets pre-existing debt through.
+
 Executable behavior specs must run against the application package that is
 actually being changed. If a harness launches a demo app, preview shell, mock
 page, or different package while the implementation changes another app package,

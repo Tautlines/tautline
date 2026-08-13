@@ -71,9 +71,45 @@ def _renderer_kit_dependency_pin(path: str) -> bool:
     )
 
 
+# The public release export refuses to ship anything under docs/superpowers/ -- see
+# PUBLIC_RELEASE_EXPORT_EXCLUDED_PREFIXES. Plans, specs, and the tracked implementation-review
+# ledgers are internal working artifacts that no adopter ever receives, and a diff that ships
+# NOTHING cannot owe a release.
+#
+# Charging one produced a gate-vs-gate deadlock, observed live on PR #449: review-evidence-check
+# REFUSES the push until the tracked .impl-reviews/ ledger is committed, and this contract then
+# counted that same commit as a framework change requiring a full version bump. One gate demanded
+# the file; the other charged a release for it, and the only exits were burning a version number
+# on a planning document or a --no-verify break-glass. Same shape as the test-evidence/ledger
+# deadlock 0.38.0 fixed, in a different pair of gates.
+#
+# The rationale is PINNED, not asserted: test_superpowers_docs_are_export_excluded reads the real
+# export constant, so if these files ever start shipping, the exemption fails loudly and must be
+# re-argued rather than silently covering public surface.
+#
+# NOT a contradiction of HARD_EXCLUDED_ROOTS, which also lists docs/superpowers. That set answers
+# a DIFFERENT question -- "may a declared adapter glob classify this as a product-management
+# surface?" -- and exists so a broad `docs/**` glob cannot launder framework code through the
+# whole-diff PM exemption. It never claimed these paths must owe a release.
+# `release_change_pm_surface_exempt` says so directly: the PM rule is OR'd ADDITIVELY beside these
+# per-path rules, never a replacement for them. docs/backlog is the precedent and carries all
+# three properties at once -- export-excluded, hard-excluded from the PM classifier, and already
+# partly bump-exempt via _evidence_only. This rule has the same shape.
+#
+# The root is deliberately the whole tree, runbooks included, rather than plans|specs: the
+# property being relied on is "the export refuses this prefix", which holds for every child. A
+# narrower literal would drift from the constant it claims to track.
+_UNSHIPPED_INTERNAL_DOC_ROOT = "docs/superpowers/"
+
+
+def _unshipped_internal_doc(path: str) -> bool:
+    return path.startswith(_UNSHIPPED_INTERNAL_DOC_ROOT)
+
+
 def _version_bump_exempt(path: str) -> bool:
     return (
         _evidence_only(path)
+        or _unshipped_internal_doc(path)
         or _project_adapter_config_only(path)
         or _renderer_kit_dependency_pin(path)
     )
@@ -123,6 +159,18 @@ def _release_contract_base_ref() -> str | None:
         ("docs/backlog/session-journals/2026-07-04.md", True),
         ("docs/backlog/methodology-regressions/rca.md", True),
         ("docs/backlog/methodology-backlog.md", False),
+        # Internal working artifacts the public export never ships: a plan, its spec, and the
+        # tracked implementation-review ledger review-evidence-check demands before a push.
+        ("docs/superpowers/plans/2026-07-22-painless-launch-default.md", True),
+        ("docs/superpowers/specs/2026-07-22-painless-launch-default-design.md", True),
+        ("docs/superpowers/plans/.impl-reviews/docs-painless-launch-default.json", True),
+        # Guard rails: the exemption is exactly the export-excluded root, nothing adjacent.
+        # docs/product/ and docs/releases/ both SHIP, so they keep owing a bump here -- a
+        # PM-surfaces-only diff is exempted separately, as a whole-diff rule, by
+        # release_change_pm_surface_exempt.
+        ("docs/product/positioning.md", False),
+        ("docs/releases/migrations/0.38.1.json", False),
+        ("docs/superpowers-extra/plan.md", False),
         # Renderer-kit dependency pins (Dependabot npm bumps): manifest + lockfile
         # both travel in a bot PR, so both are exempt inside a renderer-kit dir.
         ("plugins/tautline-ops/skills/iteration-review/renderer-kit/package-lock.json", True),
@@ -140,6 +188,28 @@ def _release_contract_base_ref() -> str | None:
 )
 def test_version_bump_exemption_classification(path: str, expected: bool):
     assert _version_bump_exempt(path) is expected
+
+
+def test_superpowers_docs_are_export_excluded(cli):
+    """The docs/superpowers/ exemption rests ENTIRELY on those files never reaching an adopter.
+
+    Keyed to the real export constant rather than a copy of it: if the public export ever starts
+    shipping plans, specs, or review ledgers, this fails and the exemption has to be re-argued --
+    instead of silently growing into a hole over consumer-visible surface.
+    """
+    assert _UNSHIPPED_INTERNAL_DOC_ROOT in cli.PUBLIC_RELEASE_EXPORT_EXCLUDED_PREFIXES
+
+
+def test_planning_artifact_plus_framework_change_still_requires_bump():
+    """Per-path, like every other rule here: a plan riding along with real code still owes a
+    release. The deadlock this exemption breaks is a docs-ONLY push, not a discount on shipped
+    behavior that happens to carry a plan update."""
+    changed = {
+        "docs/superpowers/plans/2026-07-22-painless-launch-default.md",
+        "src/tautline_methodology/cli.py",
+    }
+    framework_changes = sorted(p for p in changed if p and not _version_bump_exempt(p))
+    assert framework_changes == ["src/tautline_methodology/cli.py"]
 
 
 def test_lockfile_plus_framework_change_still_requires_bump():
@@ -216,6 +286,38 @@ def test_python_ci_fetches_base_ref_for_release_change_contract():
     assert "fetch-depth: 0" in workflow
 
 
+# Item 48 / no-dead-ends. This gate is RIGHT and its message used to be a dead end: it listed the
+# changed files and named no way to satisfy it. That is not a theoretical complaint -- every
+# dependabot PR touching `.github/workflows/*.yml` lands here (PR #413, `actions/checkout` 4->7),
+# because a bot cannot bump `VERSION`, and so it is red on arrival, permanently. A gate with no
+# compliant path is how a team learns to ignore red.
+#
+# The exemption is deliberately NOT widened to workflow paths: `ci-python.yml` ships inside the
+# public release export, so a pinned-action change in it is consumer-visible and genuinely is a
+# release. The gate stays; the message now names the maintainer commit that clears it.
+_VERSION_BUMP_REMEDY = """How to satisfy this gate (any one of these; no operator decision is needed):
+
+1. Bump the release. Pick the next version, then, from the repo root:
+     printf '%s\\n' 0.0.0 > VERSION            # substitute the real next version
+     # add the matching section at the top of CHANGELOG.md
+     tautline release-migration-report --version "$(cat VERSION)" --write
+   Then stage all three explicitly -- the migration report is a NEW file, so `git commit -a`
+   would silently leave it untracked and the release checks would stay red:
+     git add VERSION CHANGELOG.md "docs/releases/migrations/$(cat VERSION).json"
+     git commit -m 'chore(release): bump VERSION'
+
+2. If this is a DEPENDABOT (or other bot) PR, the bot cannot do step 1 and must not be expected to.
+   A maintainer pushes one commit onto the bot's branch carrying exactly the step-1 artifacts:
+     gh pr checkout <number>
+     # apply step 1 above, including the explicit `git add`, then
+     git push
+
+3. If the diff really is not consumer-visible, make it exempt at the source rather than here:
+   add the path to `_version_bump_exempt`, or keep the diff to PM surfaces only (see
+   `release_change_pm_surface_exempt`). Do NOT exempt `.github/workflows/*.yml` wholesale --
+   those files ship in the public release export."""
+
+
 def test_framework_changes_require_version_bump_when_base_ref_is_available(cli):
     base = _release_contract_base_ref()
     if base is None:
@@ -232,6 +334,8 @@ def test_framework_changes_require_version_bump_when_base_ref_is_available(cli):
     assert not framework_changes or version_changed or pm_surface_exempt, (
         "framework changes require VERSION bump; changed files:\n"
         + "\n".join(f"- {path}" for path in framework_changes)
+        + "\n\n"
+        + _VERSION_BUMP_REMEDY
     )
 
 

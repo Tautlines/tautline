@@ -30,14 +30,18 @@ def _func(tree: ast.Module, name: str) -> ast.FunctionDef:
     raise AssertionError(f"no def {name}()")
 
 
-def _add_parser_linenos(scope: ast.AST) -> list[int]:
+def _add_parser_calls(scope: ast.AST) -> list[ast.Call]:
     return [
-        node.lineno
+        node
         for node in ast.walk(scope)
         if isinstance(node, ast.Call)
         and isinstance(node.func, ast.Attribute)
         and node.func.attr == "add_parser"
     ]
+
+
+def _add_parser_linenos(scope: ast.AST) -> list[int]:
+    return [node.lineno for node in _add_parser_calls(scope)]
 
 
 def _segment_defs(tree: ast.Module) -> list[ast.FunctionDef]:
@@ -67,23 +71,23 @@ def test_no_inline_add_parser_remains_in_main():
 
 
 def test_every_add_parser_lives_in_a_segment_registrar():
+    """Every `add_parser` call sits inside a `_register_<family>_<n>` segment.
+
+    Computed in ONE pass. The previous shape re-walked the whole module AST for every
+    `add_parser` call, and re-walked each enclosing candidate again to test membership -- roughly
+    cubic in a 52k-line file, and 35s of the suite's wall clock on its own, which on an xdist
+    worker is a floor nobody else can help lower. Collecting the calls that live inside segments
+    first makes it linear; the assertion is identical, nesting included, because `ast.walk` on a
+    segment reaches nested definitions too.
+    """
     tree = _tree()
-    segment_names = {d.name for d in _segment_defs(tree)}
-    for node in ast.walk(tree):
-        if not (
-            isinstance(node, ast.Call)
-            and isinstance(node.func, ast.Attribute)
-            and node.func.attr == "add_parser"
-        ):
-            continue
-        enclosing = None
-        for func in ast.walk(tree):
-            if isinstance(func, ast.FunctionDef) and any(
-                child is node for child in ast.walk(func)
-            ):
-                if func.name in segment_names:
-                    enclosing = func.name
-        assert enclosing is not None, f"add_parser at line {node.lineno} outside a segment"
+    inside_segments = {
+        id(call) for seg in _segment_defs(tree) for call in _add_parser_calls(seg)
+    }
+    for node in _add_parser_calls(tree):
+        assert id(node) in inside_segments, (
+            f"add_parser at line {node.lineno} outside a segment"
+        )
 
 
 def test_main_calls_match_defined_segments_in_order():
