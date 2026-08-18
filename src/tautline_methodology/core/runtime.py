@@ -479,6 +479,156 @@ def load_adapter_json(path: Path) -> dict:
 # plan attests per surface. Sorted for a deterministic migration report. The four
 # EXEMPT_DIRECT_READS process-private handoff envs and MINERVIT_METHODOLOGY_MAINTAINER_MODE (a
 # config-file read, TAUTLINE_-first, not a resolve_env chokepoint) are deliberately absent.
+# A sunset env NAME added later must not retroactively rewrite frozen migration reports: the
+# surface list is not version-scoped, so registering one would change every report from 0.15.0
+# onward and break their byte-identity guard. Names introduced after the sunset surface itself are
+# recorded here with their first release, and BOTH the report builder and its test read this map --
+# a magic version literal in two places is how the two drift.
+SUNSET_ENV_NAMES_INTRODUCED_AT: dict[str, str] = {
+    "MINERVIT_METHODOLOGY_OPERATOR_CHANNEL": "0.79.0",
+}
+
+# Escape-hatch env vars and the functions meant to read them (item 70 WS3; RCA 2026-07-22
+# trust-pin, rule 1b). Each of these stands a whole subsystem down, so an UNDECLARED reader is a
+# second off switch nobody reviewed -- the shape by which 23 tests once quietly stood themselves
+# down.
+#
+# Reader sets are MEASURED, never hand-listed, and re-derived on every run by
+# tests/test_escape_hatch_reader_sets.py over POLICED_SOURCES. An undeclared reader is a red test by
+# design; so is a declaration that no longer resolves, which is how a relocation gets caught.
+#
+# Keyed by MODULE-QUALIFIED name because a bare function name does not survive the byte-slice
+# relocation the carve campaign performs, and does not say which module to import to check.
+#
+# A tuple of tuples, not an UPPER_CASE list-of-str: that shape is auto-collected into the
+# policy-phrases SSOT, and these are symbols, not policy prose.
+#
+# Two entries are worth reading before trusting the others. `MAINTAINER_MODE` is read only from the
+# installed config env FILE (never the live environment, so a stale shell export cannot arm a
+# checkout) and its reader is `maintainer_mode_config_value` -- NOT the `maintainer_mode_configured`
+# predicate above it, which is a different function that calls it. `DISABLE_SNAPSHOT_EXEC` is read
+# through `_managed_config_value(CONST)`, where the key is that helper's parameter. A scan for
+# `resolve_env("<name>")` call sites finds ZERO readers for both, and reports success while finding
+# them: the walk resolves parameterised accessors and computed names for exactly that reason.
+# The SHELL side is in here too, and it is the half a Python-only walk cannot see. `install_cli` and
+# `claude_launcher_content` emit shell that reads these hatches directly -- `TL_UPDATE_POLICY=
+# "${TAUTLINE_METHODOLOGY_UPDATE_POLICY:-}"` and fourteen more like it -- as string literals that an
+# AST walk reads as opaque text. Codex R1 caught their absence: a new hatch read added to the
+# generated launcher would not have failed this test, which is the exact blindness the registry
+# exists to remove.
+ESCAPE_HATCH_READERS: tuple[tuple[str, tuple[str, ...]], ...] = (
+    (
+        "GITHUB_COALESCE",
+        ("tautline_methodology.ghutil:github_operation_lock",),
+    ),
+    (
+        "GITHUB_RATE_GUARD",
+        ("tautline_methodology.cli:github_budget_allows_graphql",),
+    ),
+    (
+        "GITHUB_SERIALIZE",
+        (
+            "tautline_methodology.cli:github_command_lock",
+            "tautline_methodology.ghutil:github_command_lock",
+        ),
+    ),
+    (
+        "METHODOLOGY_CLI",
+        ("tautline_methodology.cli:claude_launcher_content",),
+    ),
+    (
+        "METHODOLOGY_EXEC_ROOT",
+        (
+            "tautline_methodology.cli:claude_launcher_content",
+            "tautline_methodology.cli:install_cli",
+            "tautline_methodology.cli:session_snapshot_exec_root",
+        ),
+    ),
+    (
+        "WORK_PROFILE_SKIP_DEV_GATES",
+        ("tautline_methodology.cli:git_branch_liveness_hook_content",),
+    ),
+    (
+        "METHODOLOGY_ALLOW_FANOUT",
+        ("tautline_methodology.cli:background_run",),
+    ),
+    (
+        "METHODOLOGY_ALLOW_MAIN_COMMIT",
+        ("tautline_methodology.cli:methodology_release_main_pre_commit_hook",),
+    ),
+    (
+        "METHODOLOGY_ALLOW_NON_MAIN",
+        (
+            "tautline_methodology.cli:framework_checkout_reconciliation",
+            "tautline_methodology.cli:update_methodology_repo",
+        ),
+    ),
+    (
+        "METHODOLOGY_AVAILABLE_VERSION",
+        (
+            "tautline_methodology.cli:framework_available_version",
+            "tautline_methodology.cli:framework_update_probe",
+        ),
+    ),
+    (
+        "METHODOLOGY_DISABLE_AUTO_RESCUE",
+        (
+            "tautline_methodology.cli:claude_launcher_content",
+            "tautline_methodology.cli:should_auto_rescue_methodology_for_project_startup",
+        ),
+    ),
+    (
+        "METHODOLOGY_DISABLE_SNAPSHOT_EXEC",
+        (
+            "tautline_methodology.cli:claude_launcher_content",
+            "tautline_methodology.cli:install_cli",
+            "tautline_methodology.cli:methodology_snapshot_exec_disabled",
+        ),
+    ),
+    (
+        "METHODOLOGY_EXEC_OVERRIDE",
+        ("tautline_methodology.cli:install_cli",),
+    ),
+    (
+        "METHODOLOGY_MAINTAINER_MODE",
+        (
+            "tautline_methodology.cli:claude_launcher_content",
+            "tautline_methodology.cli:maintainer_mode_config_value",
+        ),
+    ),
+    (
+        "NO_REPAIR_SESSION",
+        ("tautline_methodology.cli:claude_launcher_content",),
+    ),
+    (
+        "METHODOLOGY_OPERATOR_CHANNEL",
+        ("tautline_methodology.cli:framework_checkout_standdown_reason",),
+    ),
+    (
+        "METHODOLOGY_UPDATE_PINS",
+        (
+            "tautline_methodology.cli:_methodology_update_pins",
+            "tautline_methodology.cli:repin_methodology_update",
+        ),
+    ),
+    (
+        "METHODOLOGY_UPDATE_POLICY",
+        (
+            "tautline_methodology.cli:claude_launcher_content",
+            "tautline_methodology.cli:effective_methodology_update_policy",
+            "tautline_methodology.cli:methodology_update_policy",
+        ),
+    ),
+    (
+        "METHODOLOGY_UPDATE_PROBE",
+        ("tautline_methodology.cli:_update_probe_enabled",),
+    ),
+    (
+        "METHODOLOGY_UPDATE_SIGNERS",
+        ("tautline_methodology.cli:verify_upstream_trust",),
+    ),
+)
+
 SUNSET_WARNED_ENV_NAMES = (
     "MINERVIT_CLAUDE_AUTOCOMPACT_PCT",
     "MINERVIT_CLAUDE_AUTOCOMPACT_REQUIRED",
@@ -503,6 +653,11 @@ SUNSET_WARNED_ENV_NAMES = (
     "MINERVIT_METHODOLOGY_CANONICAL_REPO",
     "MINERVIT_METHODOLOGY_CLI",
     "MINERVIT_METHODOLOGY_DISABLE_AUTO_RESCUE",
+    # Item 70 WS1: the operator launcher's dedicated channel declaration. Registered alongside its
+    # siblings so the MINERVIT_ spelling warns and the TAUTLINE_ spelling is the supported one --
+    # a new managed env name that skips this list is invisible to the sunset surface and quietly
+    # outlives the rebrand. See SUNSET_ENV_NAMES_INTRODUCED_AT for why it is version-scoped.
+    "MINERVIT_METHODOLOGY_OPERATOR_CHANNEL",
     "MINERVIT_METHODOLOGY_DISABLE_SNAPSHOT_EXEC",
     "MINERVIT_METHODOLOGY_RELEASE_GOOGLE_CHAT_WEBHOOK",
     "MINERVIT_METHODOLOGY_REPO",
@@ -947,6 +1102,29 @@ INSTRUMENTATION_FINALIZE_VERDICT_PRODUCERS: tuple[tuple[str, str, str], ...] = (
 )
 
 INSTRUMENTATION_FINALIZE_CLEAN_VERDICTS = frozenset({"clean", "clean-with-deferrals"})
+# Codex R1 P2 on the release-valve diff. `capped-with-open-findings` is a THIRD terminal verdict on
+# the plan-review finalize, and the reducer above drops any verdict it does not recognise. Left
+# unmapped, every capped outcome -- the one the round-economy work exists to make visible --
+# vanishes from instrumentation entirely, which is the reporting half of the defect the item is
+# fixing.
+#
+# Mapped to the BLOCKED code, not the clean one, and no new enum value is introduced (so no
+# vocabulary re-approval): the finalize exits 0 and the lane is released, but the record it leaves
+# carries unresolved Critical/P1. Counting that as clean would make the aggregate say plan review
+# converged when what actually happened is that it ran out of budget.
+INSTRUMENTATION_FINALIZE_BLOCKED_VERDICTS = frozenset({"blocked"})
+# PLAN REVIEW ONLY (Codex round 5 P2). `capped-with-open-findings` is derived by the plan-review
+# finalize and cannot be produced by an implementation-review one, but the reducer applies a single
+# verdict set to BOTH producers -- so putting it in the shared set made a malformed or hostile
+# `implementation_review_finalized` carrying that string count as `implementation_review_blocked`
+# instead of being dropped. The reducer's stated contract is that an unrecognised verdict is
+# dropped and never guessed; a verdict recognised for the wrong producer is a guess.
+INSTRUMENTATION_PLAN_REVIEW_BLOCKED_VERDICTS = (
+    INSTRUMENTATION_FINALIZE_BLOCKED_VERDICTS | frozenset({"capped-with-open-findings"})
+)
+INSTRUMENTATION_FINALIZE_BLOCKED_VERDICTS_BY_PRODUCER: dict[str, frozenset[str]] = {
+    "plan_review_finalized": INSTRUMENTATION_PLAN_REVIEW_BLOCKED_VERDICTS,
+}
 
 def instrumentation_render_timestamp(moment: datetime) -> str:
     """Render an aware datetime in the exact `+00:00`-suffixed UTC form
@@ -1302,24 +1480,170 @@ def text_without_code_spans(text: str) -> str:
     return _plan_text_without_quoted_spans(text)
 
 
+_FENCE_OPEN_RE = re.compile(r"^(`{3,}|~{3,})")
+_FENCE_CLOSE_RE = re.compile(r"^(`{3,}|~{3,})[ \t]*$")
+# Up to three spaces of indentation, then any blockquote/list markers, then up to three more. FOUR
+# spaces is an indented code block, not a fence opener -- treating it as one opens a fence that
+# never closes and blanks every reference after it, which reads as a body that binds nothing.
+_BLOCK_PREFIX_RE = re.compile(r"^ {0,3}(?:> ?)*(?: {0,3})")
+
+
+def _backtick_fence_info_is_valid(content: str, run: int) -> bool:
+    """GFM forbids a backtick in a BACKTICK fence's info string.
+
+    So a line reading ```` ``` `foo` ``` ```` is an inline code span, not a fence opener. Treating
+    it as one leaves the fence open and blanks every following line -- hiding a later live closing
+    reference (reported as missing) or, through this helper's other consumer, a real TODO.
+    Tilde fences have no such restriction.
+    """
+    return "`" not in content[run:]
+
+
+def _fence_line_content(line: str) -> str:
+    """`line` with its Markdown container prefix removed, or "" when it cannot open a fence."""
+    if re.match(r"^ {4,}\S", line):
+        return ""
+    return _BLOCK_PREFIX_RE.sub("", line, count=1).rstrip("\n").rstrip()
+
+
 def _plan_text_without_quoted_spans(text: str) -> str:
     """`text` with fenced blocks and inline-code spans blanked to spaces.
 
     Blanked, not deleted, so every offset and line number still lines up with the original -- the
     refusal has to quote the real line number back to the author.
+
+    ONE STATEFUL PASS, not independent regexes, because GitHub Markdown is stateful here and the
+    independent-regex version got three things wrong (item 101 T-A):
+
+    * `~~~` fences were not code at all, so a body DEMONSTRATING a bad `Resolves #1, #2` inside one
+      was refused for quoting it.
+    * Delimiter runs were fixed-length. A fence closes on a run of AT LEAST its opening length, so
+      a four-backtick fence may legitimately contain a literal triple-backtick run; an exact-length
+      matcher ends the fence early and exposes the rest. An inline SPAN is the opposite -- it needs
+      an EXACTLY equal run -- so a two-backtick opener followed only by three backticks is ordinary
+      text to GitHub, and blanking it there would hide a real closing reference from the gate.
+      Two different rules, and using either one for both leaks in one direction or the other.
+    * Runs inside a fence could pair with runs outside it, blanking a real reference across the
+      boundary. An unclosed fence is code through end of input, which the old version also missed.
     """
     out = list(text)
 
-    def blank(match: re.Match) -> None:
-        for index in range(match.start(), match.end()):
+    def blank(start: int, end: int) -> None:
+        for index in range(start, end):
             if out[index] != "\n":
                 out[index] = " "
 
-    for match in re.finditer(r"```.*?```", text, re.DOTALL):
-        blank(match)
-    for match in re.finditer(r"`[^`\n]*`", text):
-        blank(match)
+    # Fences are LINE structures, resolved line by line; spans are character structures, scanned
+    # afterwards over the ALREADY-BLANKED buffer. Reading `out` rather than `text` is what keeps a
+    # backtick inside a fence from pairing with one outside it: by the time the span pass runs,
+    # fence content is spaces and has no delimiters left to pair with. Scanning the original text
+    # here silently blanks a real closing reference that happens to sit after a fence containing an
+    # odd backtick -- and a body whose only reference was blanked reads as binding nothing.
+    fence_char = ""
+    fence_length = 0
+    position = 0
+    for line in text.splitlines(keepends=True):
+        start, end = position, position + len(line)
+        position = end
+        stripped = _fence_line_content(line)
+        if not fence_char:
+            match = _FENCE_OPEN_RE.match(stripped)
+            if match and (
+                match.group(1)[0] != "`"
+                or _backtick_fence_info_is_valid(stripped, len(match.group(1)))
+            ):
+                fence_char = match.group(1)[0]
+                fence_length = len(match.group(1))
+                blank(start, end)
+            continue
+        blank(start, end)
+        close = _FENCE_CLOSE_RE.match(stripped)
+        # A run of at LEAST the opening length, of the SAME character, closes it.
+        if close and close.group(1)[0] == fence_char and len(close.group(1)) >= fence_length:
+            fence_char = ""
+            fence_length = 0
+    # An unclosed fence runs to end of input and is already blanked above.
+
+    _blank_inline_spans(out, len(text), blank)
     return "".join(out)
+
+
+def _is_escaped(out: list, index: int) -> bool:
+    """True when the character at `index` is preceded by an ODD number of backslashes.
+
+    GFM renders such a backtick literally, so it cannot OPEN a span. It can still CLOSE one,
+    because escapes are not processed inside a code span -- this predicate is for openers only.
+    Treating an escaped backtick as an opener
+    over-blanks: a live `Resolves #1, #2` between an escaped backtick and a later real run
+    disappears, the malformed comma list is never reported, and the gate passes on a body GitHub
+    will only partly close.
+    """
+    backslashes = 0
+    cursor = index - 1
+    while cursor >= 0 and out[cursor] == "\\":
+        backslashes += 1
+        cursor -= 1
+    return backslashes % 2 == 1
+
+
+def _blank_line_follows(out: list, start: int, end: int) -> bool:
+    """True when the line beginning at `start` is empty or whitespace-only."""
+    cursor = start
+    while cursor < end and out[cursor] != "\n":
+        if not out[cursor].isspace():
+            return False
+        cursor += 1
+    return True
+
+
+def _blank_inline_spans(out: list, end: int, blank) -> None:
+    """Blank inline code spans in `out`, whose fence content is already blanked.
+
+    A span opens on a run of N backticks and closes on a run of EXACTLY N -- GitHub's rule, and the
+    reason this cannot share the fence matcher. An opener with no equal-length closer is literal
+    text, so it is left alone rather than swallowing everything after it.
+
+    Reads `out`, never the original text: fence content has been blanked to spaces by now, so a
+    delimiter inside a fence cannot pair with one outside it.
+    """
+    def run_end_at(position: int) -> int:
+        cursor = position
+        while cursor < end and out[cursor] == "`":
+            cursor += 1
+        return cursor
+
+    index = 0
+    while index < end:
+        if out[index] != "`" or _is_escaped(out, index):
+            index += 1
+            continue
+        open_end = run_end_at(index)
+        run = open_end - index
+        cursor = open_end
+        resume = open_end
+        while cursor < end:
+            # The closer search crosses line endings -- a GFM code span may contain them -- but
+            # STOPS at a blank line, because a span lives inside ONE inline block. Scanning past a
+            # paragraph boundary lets two unrelated stray backticks in separate paragraphs pair up
+            # and blank everything between them, which can hide a live closing reference (or, since
+            # this helper is shared, a live TODO) and make the gate pass on a body that binds
+            # nothing.
+            if out[cursor] == "\n" and _blank_line_follows(out, cursor + 1, end):
+                break
+            # NO escape check here, deliberately: GFM does not process backslash escapes INSIDE a
+            # code span, so a backslash-backtick closes the span rather than being literal. An
+            # earlier round applied the opener rule here too, which skipped the real closer, paired
+            # the opener with a later unmatched run, and blanked the live text between them.
+            if out[cursor] != "`":
+                cursor += 1
+                continue
+            close_end = run_end_at(cursor)
+            if close_end - cursor == run:
+                blank(index, close_end)
+                resume = close_end
+                break
+            cursor = close_end
+        index = resume
 
 def _plan_line_is_placeholder_only(line: str) -> bool:
     """True when a line's whole VALUE is the word placeholder/stub, list marker and label aside.
@@ -1548,6 +1872,97 @@ def classified_findings_have_resolved_blocker_evidence(findings: list[dict]) -> 
         if severity in {"critical", "c1", "p0", "p1", "important", "high"} and status in plan_review_resolved_statuses():
             return True
     return False
+
+
+# The severity words a reviewer uses and the classes they mean. `p0` reads as Critical and `high`
+# reads as P1 in `finding_counts` and `BLOCKER_SEVERITIES` alike; the log scan must agree with them
+# or a reviewer's chosen wording decides whether a blocker is visible.
+BLOCKER_CLASS_ALIASES = {
+    "critical": "critical",
+    "c1": "critical",
+    "p0": "critical",
+    "p1": "p1",
+    "high": "p1",
+    # Codex R4: `important` collapses into the P1 class, because `finding_counts` already treats
+    # important/high/p1 as one. Mapping it to a class of its own meant a reviewer writing
+    # "Important" and a classification recording "p1" described the same finding and failed
+    # coverage -- refusing an honest finalization over a synonym.
+    "important": "p1",
+}
+
+
+def blocker_class_of(severity: str) -> str | None:
+    return BLOCKER_CLASS_ALIASES.get(str(severity or "").strip().lower())
+
+
+def classified_findings_cover_blocker_classes(
+    findings: list[dict], observed_classes: set[str]
+) -> bool:
+    """Does the classification ACCOUNT FOR every blocker class the review log shows?
+
+    `classified_findings_all_blockers_resolved` only ever inspects findings the classification file
+    SUPPLIED. So a log carrying three Criticals alongside a JSON carrying one routed Important
+    returns "all resolved" -- one routed finding masking blockers that were simply left out. That is
+    the same divergence this cluster exists to close, one level up.
+
+    Class-level, not count-level, deliberately: the log formats carry no per-finding identity to
+    count against, so exact reconciliation stays the documented residual and its successor's
+    trigger. Class coverage needs nothing the log does not already state, and is strictly stronger
+    than checking the supplied list alone.
+    """
+    wanted = {
+        mapped
+        for raw in observed_classes
+        if (mapped := blocker_class_of(raw)) is not None
+    }
+    if not wanted:
+        return True
+    recorded = {
+        mapped
+        for item in findings
+        if (mapped := blocker_class_of(item.get("severity", item.get("priority", "")))) is not None
+    }
+    return wanted <= recorded
+
+
+def classified_findings_all_blockers_resolved(findings: list[dict]) -> bool:
+    """True iff the list carries at least one blocker finding and EVERY one of them is disposed of.
+
+    The shipped any-one helper above returns True as soon as a SINGLE blocker carries a resolving
+    status, and that one True suppresses every suspicious severity line in the log. On the plan
+    review path that is fine. On the implementation path this item creates -- where routing an
+    out-of-AC finding is a routine, honest, everyday act -- it would let one legitimately-routed
+    Important mask three unclassified Criticals in the same log, which is precisely the divergence
+    class the incident is about. So the implementation path gets ALL-blockers semantics instead of
+    reusing the any-one helper, and the any-one helper is left byte-for-byte alone because three
+    plan-review call sites depend on its exact behavior.
+
+    An empty or blocker-free findings list is NOT evidence. Suspicious severity lines in the log
+    with no recorded blocker findings at all ARE the divergence being detected -- treating that as
+    "nothing to reconcile" would make the check vacuous exactly when it matters most.
+
+    `disposition` is a separate axis from `status`: a finding may be disposed of by carrying a
+    resolving status, or `fixed`/`refuted`, or `routed` WITH a non-empty `routed_to` -- a routed
+    finding that names no destination has been dropped, not routed.
+    """
+    blockers = [
+        item
+        for item in findings
+        if str(item.get("severity", item.get("priority", ""))).lower() in BLOCKER_SEVERITIES
+    ]
+    if not blockers:
+        return False
+    resolved_statuses = plan_review_resolved_statuses()
+    for item in blockers:
+        if str(item.get("status", "")).lower() in resolved_statuses:
+            continue
+        disposition = str(item.get("disposition", "")).lower()
+        if disposition in {"fixed", "refuted"}:
+            continue
+        if disposition == "routed" and str(item.get("routed_to", "")).strip():
+            continue
+        return False
+    return True
 
 FINDING_DISPOSITIONS = ("fixed", "routed", "refuted")
 # Tuple/frozenset on purpose: an UPPER_CASE list-of-str auto-enters the policy-phrase SSOT
@@ -3165,6 +3580,46 @@ def settings_plan_review_pending_hook_installed(settings: dict) -> bool:
     hooks = settings.get("hooks", {}).get("PreToolUse", [])
     return any("plan-review-pending-hook" in json.dumps(item) for item in hooks)
 
+# Item 82 / RCA 20260701T115759Z. AskUserQuestion blocks the turn waiting for the human, so the
+# Stop hook may never fire on a forbidden continue-vs-stop menu -- this PreToolUse matcher is the
+# only seam that sees it before the operator does.
+QUESTION_GUARD_HOOK_MATCHER = "AskUserQuestion"
+
+# Every command this writer has ever installed under the AskUserQuestion matcher. A lane that moved
+# between custom commands, or back to the default, must have its OLD registration replaced rather
+# than joined -- and "ours" cannot be recognized by the verb name alone, because a custom command
+# need not contain it.
+QUESTION_GUARD_INSTALLED_COMMANDS_KEY = "tautlineQuestionGuardCommands"
+
+def question_guard_hook_commands(settings: dict) -> set[str]:
+    recorded = settings.get(QUESTION_GUARD_INSTALLED_COMMANDS_KEY)
+    commands = {str(item) for item in recorded} if isinstance(recorded, list) else set()
+    # The default is always ours, so a settings file written before this record existed still has
+    # its default registration recognized and replaced.
+    commands.add("tautline question-guard-hook")
+    return commands
+
+def settings_question_guard_hook_installed(settings: dict, command: str | None = None) -> bool:
+    """Is the AskUserQuestion guard already installed?
+
+    MATCHER-AWARE, and command-aware when a command is supplied -- unlike most sibling predicates,
+    which search only for their literal default command string. Codex R1 P2: with a substring-only
+    check, `install-hooks --question-guard-command <custom>` never recognized its own prior install,
+    so every run appended another AskUserQuestion entry and the host ran the hook N times. The
+    matcher is the durable identity of the entry; the command is what the caller asked for.
+    """
+    for entry in settings.get("hooks", {}).get("PreToolUse", []):
+        if not isinstance(entry, dict) or entry.get("matcher") != QUESTION_GUARD_HOOK_MATCHER:
+            continue
+        if command is None:
+            return True
+        if any(
+            isinstance(hook, dict) and hook.get("command") == command
+            for hook in entry.get("hooks", []) or []
+        ):
+            return True
+    return False
+
 FLEET_GUARD_HOOK_MATCHER = "Edit|Write|MultiEdit|NotebookEdit"
 
 def settings_fleet_guard_hook_installed(settings: dict) -> bool:
@@ -3574,6 +4029,52 @@ def write_claude_plan_review_pending_hook(settings_path: Path, command: str) -> 
     write_claude_settings(settings_path, settings)
     return settings_path, already_present
 
+def write_claude_question_guard_hook(settings_path: Path, command: str) -> tuple[Path, bool]:
+    settings_path = settings_path.expanduser()
+    settings = load_claude_settings(settings_path)
+    settings.setdefault("hooks", {})
+    settings["hooks"].setdefault("PreToolUse", [])
+    already_present = settings_question_guard_hook_installed(settings, command)
+    if not already_present:
+        # Codex R3 P2: REPLACE a stale Tautline registration rather than appending beside it.
+        # lane-start installs the default command; an operator later asking for a custom one (or the
+        # reverse) previously left BOTH registered, so Claude ran two guards on every question and
+        # the command that was explicitly replaced kept logging and deciding. Only Tautline's own
+        # entries are rewritten -- a foreign AskUserQuestion hook belonging to another tool is left
+        # exactly where it is.
+        # Two Codex R3 findings pulling in opposite directions -- prune ENOUGH, and no more.
+        #
+        # Recognize any command previously installed HERE, not merely one containing the literal
+        # verb name: a lane that moved from /opt/custom-a to /opt/custom-b kept both, and so did one
+        # that went from a custom command back to the default. The recorded set is the honest
+        # identity of "ours".
+        #
+        # And prune only the OWNED nested hook: dropping the whole matcher entry silently
+        # uninstalled an unrelated sibling command that happened to share it.
+        previously_ours = question_guard_hook_commands(settings) | {command}
+        rewritten: list[dict] = []
+        for entry in settings["hooks"]["PreToolUse"]:
+            if not isinstance(entry, dict) or entry.get("matcher") != QUESTION_GUARD_HOOK_MATCHER:
+                rewritten.append(entry)
+                continue
+            siblings = [
+                hook
+                for hook in entry.get("hooks", []) or []
+                if not (isinstance(hook, dict) and hook.get("command") in previously_ours)
+            ]
+            if siblings:
+                rewritten.append({**entry, "hooks": siblings})
+        rewritten.append(
+            {
+                "matcher": QUESTION_GUARD_HOOK_MATCHER,
+                "hooks": [{"type": "command", "command": command}],
+            }
+        )
+        settings["hooks"]["PreToolUse"] = rewritten
+        settings[QUESTION_GUARD_INSTALLED_COMMANDS_KEY] = sorted(previously_ours)
+    write_claude_settings(settings_path, settings)
+    return settings_path, already_present
+
 def write_claude_fleet_guard_hook(settings_path: Path, command: str) -> tuple[Path, bool]:
     settings_path = settings_path.expanduser()
     settings = load_claude_settings(settings_path)
@@ -3755,6 +4256,12 @@ def print_latest_code_baseline(data: dict, target: Path, baseline: dict, state: 
 
 STARTUP_REMEDIATION_MARKER_SCHEMA = "tautline-startup-remediation/v1"
 
+# Item 83 PR2. The receipt `monitor-status` writes to record that a run's terminal summary was
+# actually READ. The Stop-boundary yield gate clears on it, so it is a shipped contract and not a
+# scratch file: version it, or a later shape change makes every existing receipt read as unread and
+# every lane with a finished run unable to end a turn.
+MONITOR_READ_RECEIPT_SCHEMA = "tautline-monitor-read-receipt/v1"
+
 # 0.8.9 startup remediation (docs/reference/startup-remediation.md): the central dispatch guard's
 # ALLOWED/BLOCKED partition of the real argparse command registry (see
 # registered_subcommand_names()). Every registered subcommand must be classified into EXACTLY one
@@ -3802,6 +4309,13 @@ STARTUP_REMEDIATION_ALLOWED_COMMANDS: tuple[str, ...] = (
     # decisions-report: a read-only view over the machine-local decision ledger (no writes, no
     # code-safety impact); reading decisions during startup remediation is desirable, never blocked.
     "decisions-report",
+    # secret-status is read-only across all three layers and prints WHERE a value is reachable
+    # from, never the value. It takes the GLOBAL route rather than a recovery-map entry because it
+    # is named in the remediation text of several different debt gates (webhook-dependent chat,
+    # release-update, and deployment-notification sites), and because a remediating lane is
+    # exactly the lane most likely to be missing a lane-env value: blocking the probe would leave
+    # it with the misdiagnosis -- "the secret is missing" -- that the probe exists to correct.
+    "secret-status",
     "blocker-declare",
     "blocker-clear",
     "blocker-status",
@@ -3845,6 +4359,15 @@ STARTUP_REMEDIATION_ALLOWED_COMMANDS: tuple[str, ...] = (
     "plan-review-pending-hook",
     "branch-liveness-hook",
     "response-guard-hook",
+    # Item 82: a PreToolUse hook the host invokes, exactly like its siblings above -- it must be
+    # runnable while a startup remediation is outstanding or the guard is absent precisely when a
+    # lane is in a degraded state.
+    "question-guard-hook",
+    # Read-only in its default mode. Its MUTATING mode (--write-baseline) is gated below, in
+    # STARTUP_REMEDIATION_WRITE_FLAG_GATED_COMMANDS -- Codex R2 P2: allowlisting the verb
+    # unconditionally also allowlisted the flag that rewrites a committed source artifact, which is
+    # exactly what a startup remediation must hold still.
+    "stop-guard-aggregate",
     "tool-rejection-hook",
     "background-command-hook",
     "latest-code-hook",
@@ -4044,7 +4567,21 @@ STARTUP_REMEDIATION_BLOCKED_COMMANDS: tuple[str, ...] = (
 
 # canonical-policy/dump-* are flag-aware (V14R1-P2-2): read/check modes stay ALLOWED, --write is
 # treated as BLOCKED (recovery-map rules still apply if a future gate ever needs one).
-STARTUP_REMEDIATION_WRITE_FLAG_GATED_COMMANDS: tuple[str, ...] = ("canonical-policy", "dump-policy-phrases", "dump-instrumentation-schema")
+STARTUP_REMEDIATION_WRITE_FLAG_GATED_COMMANDS: tuple[str, ...] = (
+    "canonical-policy",
+    "dump-policy-phrases",
+    "dump-instrumentation-schema",
+    "stop-guard-aggregate",
+)
+
+# The flag whose presence turns each gated command into a MUTATING one. Every entry above writes a
+# committed source artifact, but they do not all spell the flag `--write`: `stop-guard-aggregate`
+# re-stamps the aggregate baseline under `--write-baseline`. Keying the gate on a hardcoded "write"
+# attribute silently allowlisted that flag (Codex R2 P2) -- a startup remediation must hold every
+# such artifact still, not just the ones that happen to share a flag name.
+STARTUP_REMEDIATION_WRITE_FLAG_ATTRIBUTES: dict[str, str] = {
+    "stop-guard-aggregate": "write_baseline",
+}
 
 def _startup_remediation_marker_data(marker_path: Path) -> dict:
     """Best-effort parse; a missing/corrupted marker (truncated JSON, non-UTF-8 bytes, non-dict)

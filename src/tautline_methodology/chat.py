@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import hashlib
 import json
-import os
 import re
 import sys
 from html import escape
 from pathlib import Path
+
+from .util import resolve_env
 from typing import Callable
 
 
@@ -26,14 +27,55 @@ def google_chat_content_from_args(args, *, command: str, label: str) -> str:
     return str(args.summary)
 
 
-def google_chat_webhook_url(label: str, webhook_env: str, *, dry_run: bool, environ=None) -> str:
-    if environ is None:
-        environ = os.environ
-    webhook_url = environ.get(webhook_env, "").strip()
+
+def webhook_env_value(webhook_env: str, environ) -> str:
+    """Read a webhook secret under EITHER rebrand spelling, THROUGH the resolver.
+
+    `secret-status` probes both, so it can report `process-env` and exit 0 for a value exported
+    under the sibling name -- and this consumer, reading the exact key only, would then refuse
+    again. An agent following the remedy would loop forever on a probe that says the value is
+    right there. The instruction and the consumer have to agree about what "reachable" means.
+
+    Every read goes through `resolve_env` rather than `environ.get`, because
+    `test_no_shipped_source_bypasses_the_resolver` forbids the direct form for exactly the failure
+    being fixed here -- a read that misses a managed alias. `resolve_env` resolves
+    MINERVIT_ -> TAUTLINE_ and not the reverse, so a TAUTLINE_-spelled name is asked a second time
+    under its MINERVIT_ sibling, which the resolver then handles in both directions.
+    """
+    value = resolve_env(webhook_env, environ=environ).strip()
+    if value:
+        return value
+    if webhook_env.startswith("TAUTLINE_"):
+        sibling = "MINERVIT_" + webhook_env[len("TAUTLINE_"):]
+        return resolve_env(sibling, environ=environ).strip()
+    return ""
+
+
+def google_chat_webhook_url(
+    label: str, webhook_env: str, *, dry_run: bool, environ=None, value: str | None = None
+) -> str:
+    # `environ` is passed through as-is, INCLUDING None: `resolve_env` reads the process
+    # environment itself in that case. Defaulting it here left this module naming the environment
+    # while doing no read the resolver guard could see -- which is how that guard went vacuous
+    # once before, so it now refuses the shape outright.
+    #
+    # (The guard's scan is textual, so the module must not NAME the environment even in a comment.
+    # Filed as a false-positive class rather than worked around silently.)
+    # `value` is the caller's ALREADY-RESOLVED secret, and callers in the CLI pass what
+    # `webhook_env_reachable_value` found -- which reads the installed config env and the operator
+    # secrets file as well as the process environment. Without it, strict STATUS (which does read
+    # those files) passed while the publisher it advertises refused, on the same lane, in the same
+    # second. A status check that green-lights a command that immediately refuses is worse than no
+    # status check.
+    webhook_url = value.strip() if value else webhook_env_value(webhook_env, environ)
     if not webhook_url and dry_run:
         webhook_url = "https://example.invalid/google-chat-webhook"
     if not webhook_url:
-        raise SystemExit(f"{label} Google Chat webhook env var is missing: {webhook_env}")
+        raise SystemExit(
+            f"{label} Google Chat webhook env var is missing: {webhook_env}. "
+            f"Check the persisted secrets store with `tautline secret-status --name {webhook_env}` "
+            "and re-run through the lane env before treating this as a blocker."
+        )
     if not webhook_url.startswith("https://"):
         raise SystemExit(f"{label} Google Chat webhook env var must contain an https URL: {webhook_env}")
     return webhook_url

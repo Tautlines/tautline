@@ -103,14 +103,6 @@ UNPROVABLE_KEY_SITES = {
     ): "this IS the aliaser: it mirrors each MINERVIT_ key of the mapping to its TAUTLINE_ "
     "spelling, so its key is a loop variable over that mapping's own keys, not a setting it read",
     (
-        "src/tautline_methodology/chat.py",
-        "google_chat_webhook_url",
-    ): "reads a caller-injected mapping; the key is the project's configured delivery.webhookEnv",
-    (
-        "src/tautline_methodology/deploy.py",
-        "deployment_notification_webhook_url",
-    ): "reads a caller-injected mapping; the key is the project's configured delivery.webhookEnv",
-    (
         "src/tautline_methodology/deploy.py",
         "deployment_notification_ci_detected",
     ): "reads a caller-injected mapping; the keys are third-party CI markers (GITHUB_ACTIONS, ...)",

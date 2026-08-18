@@ -796,3 +796,282 @@ def test_fix3_genuine_no_percent_continue_passes(cli):
         "boundary now."
     )
     assert cli.response_has_unprovenanced_context_stop(body) is False
+
+
+# --- Item 82: stop-guard evasion shapes ---------------------------------------------------------
+# Three shapes that survived in an encoding the guard did not read (RCAs 20260616T005348Z,
+# 20260616T132017Z, 20260701T115759Z). The policy prose for all three already existed; what did not
+# exist was the enforcement.
+
+
+def test_announce_and_stop_blocks(cli):
+    assert cli.response_has_announce_and_stop(
+        "I'm proceeding now on the test overhaul and I'll bring you a concrete plan."
+    ) is True
+
+
+def test_prior_work_evidence_before_announce_blocks(cli):
+    """The incident shape, and the regression pin for the finding that nearly sank the detector.
+
+    RCA 20260616T005348Z is a delivery summary of COMPLETED prior work followed by an unexecuted
+    announcement -- and such summaries are full of forward-motion markers. A whole-response marker
+    scan therefore goes silent on the exact class the detector exists to catch. Evidence of PRIOR
+    work is not evidence of motion toward the ANNOUNCED action.
+    """
+    body = (
+        "Committed abc123 and pushed the branch; wrote `tests/test_x.py` for the two asks you "
+        "named. I'm proceeding now on the test overhaul and I'll bring you a concrete plan."
+    )
+    assert cli.response_has_announce_and_stop(body) is True
+
+
+def test_next_ill_promise_blocks(cli):
+    body = "That closes the three asks. Next, I'll draft the migration report."
+    assert cli.response_has_announce_and_stop(body) is True
+
+
+def test_announce_followed_by_evidence_allows(cli):
+    assert cli.response_has_announce_and_stop(
+        "I'm proceeding now -- wrote `tests/test_x.py`, committed abc123."
+    ) is False
+
+
+def test_evidence_before_and_after_announce_allows(cli):
+    body = "Committed abc123. I'm proceeding now on the overhaul -- wrote `tests/test_overhaul.py`."
+    assert cli.response_has_announce_and_stop(body) is False
+
+
+def test_negated_announce_allows(cli):
+    body = (
+        "I'm not proceeding until the gate clears, because the release webhook secret is absent "
+        "from this host and cannot be minted by an agent."
+    )
+    assert cli.response_has_announce_and_stop(body) is False
+
+
+def test_standing_authorization_reask_blocks(cli):
+    assert cli.response_asks_standing_authorization(
+        "The queue is clean apart from #276. Clear #276 or authorize a scoped break-glass push "
+        "-- your call."
+    ) is True
+
+
+def test_first_time_blocker_question_allows(cli):
+    """The absence shape must pass: nothing standing exists to act under."""
+    body = (
+        "Break-glass conditions are not documented for this repo, so there is nothing recorded to "
+        "act under. One blocker question: may I proceed once you record one?"
+    )
+    assert cli.response_asks_standing_authorization(body) is False
+
+
+def test_breakglass_narrative_without_ask_allows(cli):
+    body = "Merged #276 with a documented break-glass push; the reason is recorded in the PR body."
+    assert cli.response_asks_standing_authorization(body) is False
+
+
+def test_self_contradicting_question_predicate(cli):
+    question = "How do you want to proceed?"
+    assert cli.response_has_self_contradicting_question(
+        "The trivial-fix exemption is the defensible safe default here.", question
+    ) is True
+    assert cli.response_has_self_contradicting_question(
+        "No safe default exists -- every path changes approved scope.", question
+    ) is False
+    # An empty question is not a question: the predicate must not fire on prose alone.
+    empty_question = cli.response_has_self_contradicting_question("The safe default is here.", "")
+    assert empty_question is False
+
+
+def test_self_contradiction_markers_are_loose_by_construction(cli):
+    """Pinning WHY this predicate is advisory everywhere, so a successor does not promote it.
+
+    An ordinary technical recommendation next to a genuine credential question satisfies it.
+    """
+    assert cli.response_has_self_contradicting_question(
+        "I recommend Redis for the cache.", "Which production credential set should I use?"
+    ) is True
+
+
+def test_continue_vs_stop_menu_detection(cli):
+    assert cli.question_is_continue_vs_stop_menu(
+        "How do you want to proceed?\nResume next session\nKeep grinding on 537.1 now\n"
+        "Merge #552 first"
+    ) is True
+    # A single-object true-blocker question is the shape that must survive.
+    blocker = cli.question_is_continue_vs_stop_menu("Which production credential set do I use?")
+    assert blocker is False
+    assert cli.question_is_continue_vs_stop_menu("") is False
+
+
+def test_ask_user_question_payload_visible_at_stop(cli):
+    """The bypass itself: the menu lived under input/questions/options, which was never walked."""
+    record = {
+        "type": "tool_use",
+        "name": "AskUserQuestion",
+        "input": {
+            "questions": [
+                {
+                    "question": "How do you want to proceed?",
+                    "options": [{"label": "Keep grinding now"}, {"label": "Resume next session"}],
+                }
+            ]
+        },
+    }
+    flattened = cli.flatten_hook_text([record])
+    assert "How do you want to proceed?" in flattened
+    assert "Resume next session" in flattened
+
+
+def test_write_tool_content_not_flattened(cli):
+    """The extension is targeted, never generic.
+
+    A generic `input` key would pour every Write tool's entire file body into every Stop-guard scan,
+    because "content" is already in the walked key list.
+    """
+    record = {
+        "type": "tool_use",
+        "name": "Write",
+        "input": {"file_path": "a.py", "content": "say 'keep going' and I'll pick this up later"},
+    }
+    assert "keep going" not in cli.flatten_hook_text([record])
+
+
+def test_high_precision_tier_blocks_by_default(cli):
+    """Without this tier a new Stop-seam phrase check is telemetry-only in every deployed lane.
+
+    Plain phrase checks default to advisory and no shipped adapter overrides them.
+    """
+    assert cli.response_guard_effective_check_mode(
+        "stop.some_bounded_check", "phrase", "advisory", "blocking", high_precision=True
+    ) == "blocking"
+
+
+def test_high_precision_tier_is_demotable_per_adapter(cli):
+    assert cli.response_guard_effective_check_mode(
+        "stop.some_bounded_check", "phrase", "advisory", "advisory", high_precision=True
+    ) == "advisory"
+
+
+def test_standard_phrase_tier_is_unchanged(cli):
+    mode = cli.response_guard_effective_check_mode
+    assert mode("stop.anything", "phrase", "advisory", "blocking") == "advisory"
+    assert mode("stop.anything", "phrase", "blocking", "advisory") == "blocking"
+    assert mode("stop.anything", "phrase", "off", "blocking") == "off"
+
+
+def test_wave3_chain_checks_are_warn_only_until_the_chain_completes(cli):
+    """DECISION 4 / close-out decision D2, enforced in code rather than promised in prose.
+
+    Four plans add blocking conditions to one Stop boundary. Every one ships warn-only until the
+    fourth lands and the aggregate is re-measured a final time.
+    """
+    for check_id in cli.WAVE3_STOP_CHAIN_WARN_ONLY_CHECKS:
+        assert cli.response_guard_effective_check_mode(
+            check_id, "phrase", "blocking", "blocking", high_precision=True
+        ) == "advisory"
+        # Advisory, never "off": a silenced check is indistinguishable from a clean one, and the
+        # aggregate harness needs the event.
+        assert cli.response_guard_effective_check_mode(
+            check_id, "phrase", "off", "off", high_precision=True
+        ) == "off"
+
+
+def test_the_chain_switch_is_the_only_thing_holding_the_checks_back(cli):
+    """Non-vacuity floor on the warn-only clamp itself.
+
+    If the checks were inert for some OTHER reason, flipping the switch would change nothing and
+    this whole posture would be theatre. Overriding it must produce a block.
+    """
+    for check_id in cli.WAVE3_STOP_CHAIN_WARN_ONLY_CHECKS:
+        assert cli.response_guard_effective_check_mode(
+            check_id,
+            "phrase",
+            "blocking",
+            "blocking",
+            high_precision=True,
+            wave3_chain_blocking=True,
+        ) == "blocking"
+
+
+def test_announce_and_stop_does_not_block_while_the_chain_is_incomplete(cli):
+    body = "I'm proceeding now on the test overhaul and I'll bring you a concrete plan."
+    shipped = cli.response_guard_errors(
+        body, phrase_checks="blocking", high_precision_phrase_checks="blocking"
+    )
+    assert shipped == []
+    fired = cli.response_guard_errors(
+        body,
+        phrase_checks="blocking",
+        high_precision_phrase_checks="blocking",
+        wave3_chain_blocking=True,
+    )
+    assert any("announce-and-stop" in error for error in fired)
+
+
+def test_a_quoted_announcement_does_not_replace_the_real_one(cli):
+    """Codex R2 P2. Detection and location must use the SAME quote-stripped string.
+
+    An earlier version detected on the policy scan but located the last match on the monitor scan,
+    which keeps blockquotes -- so a quoted announcement became the final match and the tail after it
+    held no evidence. The check fired on a turn that had done the work. Quoting a guard refusal or a
+    peer's message is routine here, and the wave-3 switch would have made that a blocked stop.
+    """
+    body = "I'm proceeding now. I wrote the plan.\n> Next I'll run tests."
+    assert cli.response_has_announce_and_stop(body) is False
+
+
+def test_a_direction_menu_needs_both_a_continue_and_a_stop_option(cli):
+    """Codex R2 P1. Counting distinct direction WORDS was wrong in both directions at once."""
+    payload = {
+        "questions": [
+            {
+                "question": "Pick one",
+                "options": [{"label": "Continue now"}, {"label": "Continue later"}],
+            }
+        ]
+    }
+    # Was MISSED: both options yield the single token `continue`.
+    assert cli.question_payload_is_direction_menu(payload) is True
+
+    credentials = {
+        "questions": [
+            {
+                "question": "Which credential set?",
+                "options": [
+                    {"label": "proceed with staging"},
+                    {"label": "continue with production"},
+                ],
+            }
+        ]
+    }
+    # Was BLOCKED: two distinct tokens, but both options CONTINUE -- it is a domain choice.
+    assert cli.question_payload_is_direction_menu(credentials) is False
+
+
+def test_the_payload_predicate_keeps_option_boundaries(cli):
+    """The flattened text loses exactly the structure the rule depends on."""
+    payload = {
+        "questions": [
+            {
+                "question": "Which credential set?",
+                "options": [
+                    {"label": "proceed with staging"},
+                    {"label": "continue with production"},
+                ],
+            }
+        ]
+    }
+    assert cli.question_payload_option_texts(payload) == [
+        "proceed with staging",
+        "continue with production",
+    ]
+
+
+def test_a_lone_direction_option_under_proceed_phrasing_is_still_a_menu(cli):
+    payload = {
+        "questions": [
+            {"question": "How do you want to proceed?", "options": [{"label": "keep going"}]}
+        ]
+    }
+    assert cli.question_payload_is_direction_menu(payload) is True

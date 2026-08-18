@@ -240,7 +240,7 @@ def test_flagged_hook_writes_warn_and_exit_0(tmp_path, run_cli):
     # first (the plan-edit guard hook joined the set in 0.10.5; the SessionStart
     # standing-directive hook joined in 0.13.0; the SessionStart lane-status hook
     # joined in 0.21.0).
-    assert result.stdout.count("lane_start_warn: hook") == 11, result.stdout
+    assert result.stdout.count("lane_start_warn: hook") == 12, result.stdout
 
 
 def test_flagged_autocompact_write_warns_and_exits_0(tmp_path, run_cli):
@@ -282,7 +282,7 @@ def test_flagged_malformed_claude_settings_warns_and_exits_0(tmp_path, run_cli):
     _corrupt_claude_settings_home(tmp_path)
     result = _start(run_cli, target, adapter, "--defer-debt-preflights")
     assert result.returncode == 0, result.stdout + result.stderr
-    assert result.stdout.count("lane_start_warn: hook") == 11, result.stdout
+    assert result.stdout.count("lane_start_warn: hook") == 12, result.stdout
     assert "lane_start_warn: autocompact - " in result.stdout
 
 

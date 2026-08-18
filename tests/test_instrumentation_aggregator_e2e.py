@@ -160,6 +160,45 @@ def test_e2e_real_finalize_verdict_via_log_event_ref(cli, tmp_path, monkeypatch)
     assert codes == {"plan_review_clean"}
 
 
+def test_e2e_a_capped_plan_review_verdict_reduces_to_blocked_not_dropped(
+    cli, tmp_path, monkeypatch
+):
+    """The release valve's telemetry wiring, exercised through the REDUCER rather than asserted on
+    the constant.
+
+    `test_a_capped_verdict_reaches_instrumentation_instead_of_being_dropped` asserts only that
+    `capped-with-open-findings` is a member of `INSTRUMENTATION_FINALIZE_BLOCKED_VERDICTS`. That
+    membership survives reverting the call site from `verdict in
+    INSTRUMENTATION_FINALIZE_BLOCKED_VERDICTS` back to `verdict == "blocked"`, which is the edit
+    that would actually make every capped outcome vanish from telemetry -- the reducer drops
+    verdicts it does not recognise. This feeds a real capped finalize event through the real
+    aggregator, so the wiring itself is what is measured.
+    """
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    target = _prepare_target(tmp_path)
+    _log_event(
+        tmp_path,
+        target,
+        "plan_review_finalized",
+        refs=[f"verdict={cli.PLAN_REVIEW_CAPPED_VERDICT}"],
+    )
+    jsonl = _jsonl_path(tmp_path, target)
+
+    record = cli.instrumentation_record_from_events(
+        lane_id=cli.instrumentation_lane_id(target),
+        remote_max=0,
+        jsonl_path=jsonl,
+        retained_rotations=5,
+        plugin_version="0.9.0",
+    )
+    assert record is not None
+    assert cli.instrumentation_record_errors(record) == []
+    codes = {e["code"] for e in record["events"]}
+    # BLOCKED, and specifically not clean: the finalize exits 0, but counting a capped outcome as
+    # clean would make the aggregate say plan review converged when it ran out of budget.
+    assert codes == {"plan_review_blocked"}
+
+
 def test_e2e_two_worktrees_same_basename_lane_discrimination(cli, tmp_path, monkeypatch):
     """T2's exact collision scenario: two worktrees sharing a directory basename write into the SAME
     physical jsonl file (same repo_slug), but the aggregator must only ever count the requested

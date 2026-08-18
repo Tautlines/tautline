@@ -7,6 +7,7 @@ TDD transcript. Builds on T1 (127c515: failure classification / three-way exit c
 """
 
 import inspect
+import argparse
 import json
 import re
 import stat
@@ -234,6 +235,11 @@ def test_recovery_action_coverage_global_or_recovery_map(cli):
         "remediation": (cli.print_remediation_status,),
         "planning": (cli.planning_path_issues,),
         "context": (cli.print_document_context_status,),
+        # Item 70 WS1: the reconciliation IS the source -- it enumerates every resolution inline,
+        # which is what this coverage test exists to hold it to.
+        "framework_checkout": (cli.framework_checkout_reconciliation,),
+        # Item 74 PR-C: the check itself enumerates the remedy (adapter edit + re-render).
+        "go_live": (cli.go_live_posture_issues,),
     }
     debt_gate_display_names = {
         cli.METHODOLOGY_STATUS_GATE_DISPLAY_NAMES[name] for name in cli.METHODOLOGY_STATUS_DEBT_GATES
@@ -251,6 +257,11 @@ def test_recovery_action_coverage_global_or_recovery_map(cli):
             if token not in registered:
                 continue  # not a command reference at all (e.g. an adapter key or flag name)
             if token in allowed or token in recovery:
+                continue
+            if token in cli.STARTUP_REMEDIATION_OPERATOR_OWNED_COMMANDS:
+                # Naming an operator-owned action is a HANDOFF, not a dead end -- the operator can
+                # run it. The exemption is self-limiting: the test below asserts every entry is a
+                # BLOCKED command, so it cannot hide a missing recovery for an agent-runnable one.
                 continue
             failures.append(f"gate={gate} command={token} (not globally ALLOWED and not in its recovery map)")
     assert not failures, "\n".join(failures)
@@ -280,8 +291,33 @@ def test_goal_advance_and_milestone_advance_have_no_recovery_map_entry(cli):
 
 def test_write_flag_gated_commands_are_allowed_and_gated(cli):
     gated = set(cli.STARTUP_REMEDIATION_WRITE_FLAG_GATED_COMMANDS)
-    assert gated == {"canonical-policy", "dump-policy-phrases", "dump-instrumentation-schema"}
+    assert gated == {
+        "canonical-policy",
+        "dump-policy-phrases",
+        "dump-instrumentation-schema",
+        "stop-guard-aggregate",
+    }
     assert gated <= set(cli.STARTUP_REMEDIATION_ALLOWED_COMMANDS)
+
+
+def test_every_write_flag_gated_command_names_the_flag_that_actually_mutates_it(cli):
+    """The gate must key on the flag each command really uses, not on a shared name.
+
+    Every command above writes a committed source artifact, but they do not all spell the flag
+    `--write`: `stop-guard-aggregate` re-stamps the aggregate baseline under `--write-baseline`.
+    Keying on a hardcoded `write` attribute silently allowlisted that rewrite during a remediation
+    whose entire job is to hold such artifacts still.
+    """
+    for command in cli.STARTUP_REMEDIATION_WRITE_FLAG_GATED_COMMANDS:
+        attribute = cli.STARTUP_REMEDIATION_WRITE_FLAG_ATTRIBUTES.get(command, "write")
+        namespace = argparse.Namespace(**{attribute: True}, target=None)
+        assert getattr(namespace, attribute) is True, command
+    # And the override map may not name a command that is not gated at all.
+    assert set(cli.STARTUP_REMEDIATION_WRITE_FLAG_ATTRIBUTES) <= gated_commands(cli)
+
+
+def gated_commands(cli) -> set:
+    return set(cli.STARTUP_REMEDIATION_WRITE_FLAG_GATED_COMMANDS)
 
 
 # --- full lifecycle: fail -> marker -> refusal -> fix -> clean -> gone -> works -----------------
@@ -760,3 +796,18 @@ def test_startup_remediation_entered_and_cleared_events(tmp_path, run_cli):
     assert clean.returncode == 0, clean.stdout + clean.stderr
     cleared_events = [json.loads(line)["event"] for line in events_dir.read_text(encoding="utf-8").strip().splitlines()]
     assert "startup_remediation_cleared" in cleared_events
+
+
+def test_operator_owned_exemptions_are_actually_blocked_commands(cli):
+    """The exemption above can only cover commands the contract already reserves to the operator.
+
+    Otherwise it degrades into "any command I forgot to add a recovery for", which is exactly the
+    dead-end class the coverage test exists to catch.
+    """
+    blocked = set(cli.STARTUP_REMEDIATION_BLOCKED_COMMANDS)
+    for command in cli.STARTUP_REMEDIATION_OPERATOR_OWNED_COMMANDS:
+        assert command in blocked, command
+    # ...and it must not overlap the globally-allowed set, or the exemption is meaningless.
+    assert not set(cli.STARTUP_REMEDIATION_OPERATOR_OWNED_COMMANDS) & set(
+        cli.STARTUP_REMEDIATION_ALLOWED_COMMANDS
+    )

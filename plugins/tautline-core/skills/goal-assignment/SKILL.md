@@ -32,8 +32,8 @@ the 3,600-character authoring one, not the 4,000 delivered cap.
   `--check <file|->`; it exits 1 over the limit and names the overage.
 - The goal is an **index into the plan, not a copy of it**: plan path, scope, completion
   condition, proof command. Detail lives in the plan.
-- `goal_assignment_milestones:` reporting `N omitted to fit` is expected on a large
-  plan and is not a failure — say so plainly rather than re-running to force them in.
+- Omissions on `goal_assignment_milestones:`/`_acceptance_criteria:` are expected, not
+  failures; a `0 of 0` naming a heading means that section could not be read.
 - `--char-limit` belongs to a non-Claude host; never raise it to fit an over-long goal.
   `--allow-unfinalized` is a wording dry run only; do not assign that goal.
 - The completion clause states the project's **effective** done conditions, including

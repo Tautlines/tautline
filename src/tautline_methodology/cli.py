@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+import copy
 import difflib
 import errno
 import fnmatch
@@ -394,6 +395,25 @@ def plan_authoring_module():
 
         _PLAN_AUTHORING_MODULE = plan_authoring
     return _PLAN_AUTHORING_MODULE
+
+
+_PLAN_ROUND_RECORD_MODULE = None
+
+
+def plan_round_record_module():
+    global _PLAN_ROUND_RECORD_MODULE
+    if _PLAN_ROUND_RECORD_MODULE is None:
+        try:
+            from tautline_methodology import plan_round_record
+        except ModuleNotFoundError as exc:
+            raise SystemExit(
+                "plan-round-record helpers require the framework checkout's "
+                "src/tautline_methodology package; run this command from a full checkout "
+                "instead of a standalone copy of bin/tautline"
+            ) from exc
+
+        _PLAN_ROUND_RECORD_MODULE = plan_round_record
+    return _PLAN_ROUND_RECORD_MODULE
 
 
 # Mirrors goal_assignment.GOAL_ASSIGNMENT_CHAR_LIMIT so the parser can render the default in
@@ -3519,6 +3539,38 @@ DEFAULT_FLAKY_QUARANTINE = {
     "scanPath": "",
 }
 DEFAULT_HEALTH_CONTRACT = {"enforcement": "off"}
+
+DEFAULT_GO_LIVE_READINESS = {"profile": "off", "enforcement": "warn", "declines": []}
+
+# Tuples, not lists: config vocabulary deliberately excluded from the policy-phrase SSOT
+# (test_policy_phrases_ssot collects UPPER_CASE list-of-str constants).
+#
+# One row per POLICY GATE named in methodology/policy/16a-go-live-readiness.md, mapped to the
+# control keys `control_posture_rows` emits. A test pins that the policy text and this table name
+# the same gates, because a gate that exists in prose and not in the table is a control nobody
+# enforces, and one in the table and not in prose is a refusal nobody can read about.
+GO_LIVE_GATES: tuple[tuple[str, tuple[str, ...]], ...] = (
+    ("customer-outcome health contract", ("healthContract",)),
+    ("detection baseline + branch protection", ("readiness",)),
+    ("required-runtime-secret registry", ("runtimeConfig.requiredSecrets",)),
+    ("CI test gate", ("ciTestGate",)),
+    ("critical-journey ratchet + flaky quarantine", ("criticalJourneys", "flakyQuarantine")),
+    ("open-remediation obligation ledger", ("remediation",)),
+)
+GO_LIVE_CONTROLS: tuple[str, ...] = tuple(
+    control for _label, controls in GO_LIVE_GATES for control in controls
+)
+GO_LIVE_PROFILE_DECLINE_KEY = "goLiveReadiness.profile"
+
+# The accepted scalar vocabularies, kept beside the defaults so the check and the schema cannot
+# drift. Tuples, not UPPER_CASE lists of str, to stay out of the policy-phrase SSOT collector.
+GO_LIVE_PROFILES: tuple[str, ...] = ("off", "live-tenant")
+GO_LIVE_ENFORCEMENTS: tuple[str, ...] = ("warn", "block")
+
+# A decline must SAY something. Twelve characters is short enough not to be a hurdle and long
+# enough that "n/a" and "later" do not pass -- a decline nobody wrote a reason for is an
+# undeclared gap wearing a declaration's clothes.
+GO_LIVE_DECLINE_MIN_REASON = 12
 DEFAULT_SIDE_EFFECT_PROOF = {"enforcement": "off"}
 DEFAULT_REMEDIATION = {"enforcement": "off", "ledgerPath": "docs/quality/remediation-obligations.json"}
 DEFAULT_RED_GREEN = {"enforcement": "off"}
@@ -3686,7 +3738,10 @@ PLAN_REVIEW_CLASSIFIER_VERSION = "plan-review-classifier/v2"
 # release onward" -- a capability marker, not an epoch.
 PLAN_REVIEW_VERDICT_SCAN_CONTRACT = "findings-section/v1"
 PLAN_REVIEW_ALLOWED_VERDICTS = {"clean", "clean-with-deferrals"}
-PLAN_REVIEW_ALL_VERDICTS = sorted([*PLAN_REVIEW_ALLOWED_VERDICTS, "blocked"])
+# A plain str, deliberately: the policy-phrases SSOT collects UPPER_CASE list-of-str constants, and
+# this is the one verdict spelling the capped validator has to compare against by identity.
+PLAN_REVIEW_BLOCKED_VERDICT = "blocked"
+PLAN_REVIEW_ALL_VERDICTS = sorted([*PLAN_REVIEW_ALLOWED_VERDICTS, PLAN_REVIEW_BLOCKED_VERDICT])
 PLAN_REVIEW_TRUSTED_RECORDERS = {
     "tautline run-plan-review",
     "tautline finalize-plan-review",
@@ -3709,6 +3764,53 @@ PLAN_REVIEW_DECOMPOSE_IF_STALLED_ROUND = 3
 # evidence, which plan-finalization-precheck rejects -- the split is mandatory.
 PLAN_REVIEW_TARGET_ROUNDS = 2
 PLAN_REVIEW_HARD_CAP_ROUNDS = 4
+# THE RELEASE VALVE (2026-08-14 plan-review round economy, decision D2).
+#
+# The comment above describes the ladder as it stood, and its last clause -- "the split is
+# mandatory" -- was the whole defect. The cap counts reviewer invocations per plan FILE, and the
+# remedy it prescribed was a successor plan, which is a new file, which is a fresh budget. Measured
+# consequence in this very lane: 2026-07-10-startup-remediation-mode-plan ran v1 -> v14, sixteen
+# recorded rounds under fourteen fresh budgets, for a net gain of five plan lines. A second chain
+# spent 22 legal rounds across six plans and every ledger read six fresh starts.
+#
+# So at the cap the finalize no longer refuses. It SUCCEEDS with this derived verdict, and every
+# unresolved Critical/P1 is recorded at honest severity with `status: carried` and carried into the
+# implementation-review focus list as BINDING. The cap now binds planning and never binds progress:
+# its exit points at code instead of at more prose, which is the direct lesson of the 2026-07-14
+# plan-review deadlock (a gate that could refuse every exit).
+#
+# DERIVED, never asserted. This verdict is deliberately absent from the argparse `--verdict`
+# choices: a lane at the cap records what the reviewer actually said (`blocked`), and the GATE
+# decides that the budget is spent. A verdict a lane could type would be a bypass with a friendly
+# name.
+#
+# `carried` is deliberately NOT in `plan_review_resolved_statuses()`, so a carried Critical still
+# counts as unresolved everywhere counts are derived. Carrying is a change of MEDIUM -- from prose
+# to code -- never a downgrade.
+PLAN_REVIEW_CAPPED_VERDICT = "capped-with-open-findings"
+# The valve's DISCLOSED precondition (item 86 WS1, shipped weakened by explicit decision): a
+# capped manifest's carried list is the caller's classification of the bound round's log. Nothing
+# on this tip can prove every counted invocation was classified -- that takes a durable per-round
+# record, owned by the round-accounting workstream -- so the record says so instead of implying
+# otherwise. A reader that needs proven completeness must treat this token as "not proven".
+PLAN_REVIEW_CARRIED_FINDINGS_BASIS = "caller-asserted"
+# The UPGRADE the disclosure above promised (item 108 WS5, decision DF). The durable per-round
+# record now exists, so the valve can PROVE what it could only assert: when every round the
+# authoritative lineage resolver counts is an OBSERVED invocation carrying a persisted
+# `round-classification` record, the capped manifest says `round-record-verified` instead.
+# Observed and persisted are both load-bearing: an imported round the CLI never watched cannot be
+# certified by re-importing it, and a classification whose write failed certifies nothing at all.
+# Spelled for the artifact that proves it -- a reader must be able to tell WHICH record backs the
+# claim, and `record-verified` would not say. Downgrade-safe: a reader that does not know this
+# token still sees a token that is not `caller-asserted`, and the only rule anyone applies to that
+# one is "not proven".
+PLAN_REVIEW_CARRIED_FINDINGS_BASIS_VERIFIED = "round-record-verified"
+# How many unverified rounds -- or floor reasons -- the disclosure NAMES before it summarises the
+# rest. A gap a lane cannot read is a gap it cannot close, and an unbounded list on a deep lineage
+# is the same thing by a different route.
+PLAN_REVIEW_BASIS_GAPS_NAMED = 6
+PLAN_REVIEW_CARRIED_STATUS = "carried"
+PLAN_REVIEW_CARRY_TARGET = "implementation-review-focus"
 PLAN_REVIEW_INFLIGHT_SCHEMA = "minervit-plan-review-inflight-v1"
 # Cross-host fallback only; same-host liveness is pid-based. Generous on purpose: a false
 # "live" costs one refusal carrying a tail command, a false "stale" re-creates the
@@ -4123,6 +4225,7 @@ protected_markdown_message = _core_runtime_mod.protected_markdown_message
 RENDER_OMITTABLE_DOMAINS = _core_runtime_mod.RENDER_OMITTABLE_DOMAINS
 load_adapter_json = _core_runtime_mod.load_adapter_json
 SUNSET_WARNED_ENV_NAMES = _core_runtime_mod.SUNSET_WARNED_ENV_NAMES
+SUNSET_ENV_NAMES_INTRODUCED_AT = _core_runtime_mod.SUNSET_ENV_NAMES_INTRODUCED_AT
 gh_api = _core_runtime_mod.gh_api
 gh_api_opt = _core_runtime_mod.gh_api_opt
 branch_protection_issues = _core_runtime_mod.branch_protection_issues
@@ -4155,6 +4258,13 @@ INSTRUMENTATION_FINALIZE_VERDICT_PRODUCERS = (
     _core_runtime_mod.INSTRUMENTATION_FINALIZE_VERDICT_PRODUCERS
 )
 INSTRUMENTATION_FINALIZE_CLEAN_VERDICTS = _core_runtime_mod.INSTRUMENTATION_FINALIZE_CLEAN_VERDICTS
+INSTRUMENTATION_FINALIZE_BLOCKED_VERDICTS = _core_runtime_mod.INSTRUMENTATION_FINALIZE_BLOCKED_VERDICTS
+INSTRUMENTATION_PLAN_REVIEW_BLOCKED_VERDICTS = (
+    _core_runtime_mod.INSTRUMENTATION_PLAN_REVIEW_BLOCKED_VERDICTS
+)
+INSTRUMENTATION_FINALIZE_BLOCKED_VERDICTS_BY_PRODUCER = (
+    _core_runtime_mod.INSTRUMENTATION_FINALIZE_BLOCKED_VERDICTS_BY_PRODUCER
+)
 instrumentation_render_timestamp = _core_runtime_mod.instrumentation_render_timestamp
 INSTRUMENTATION_ARCHIVE_BRANCH = _core_runtime_mod.INSTRUMENTATION_ARCHIVE_BRANCH
 INSTRUMENTATION_ARCHIVE_PATH_PATTERN = _core_runtime_mod.INSTRUMENTATION_ARCHIVE_PATH_PATTERN
@@ -4220,6 +4330,13 @@ plan_review_resolved_statuses = _core_runtime_mod.plan_review_resolved_statuses
 classified_findings_have_resolved_blocker_evidence = (
     _core_runtime_mod.classified_findings_have_resolved_blocker_evidence
 )
+classified_findings_all_blockers_resolved = (
+    _core_runtime_mod.classified_findings_all_blockers_resolved
+)
+classified_findings_cover_blocker_classes = (
+    _core_runtime_mod.classified_findings_cover_blocker_classes
+)
+blocker_class_of = _core_runtime_mod.blocker_class_of
 CLASSIFIED_FINDINGS_CONTRACT_DOC = _core_runtime_mod.CLASSIFIED_FINDINGS_CONTRACT_DOC
 finding_text_field = _core_runtime_mod.finding_text_field
 classified_finding_substance_errors = _core_runtime_mod.classified_finding_substance_errors
@@ -4377,6 +4494,11 @@ write_claude_context_rotation_heartbeat_hook = (
     _core_runtime_mod.write_claude_context_rotation_heartbeat_hook
 )
 write_claude_plan_review_pending_hook = _core_runtime_mod.write_claude_plan_review_pending_hook
+settings_question_guard_hook_installed = _core_runtime_mod.settings_question_guard_hook_installed
+question_guard_hook_commands = _core_runtime_mod.question_guard_hook_commands
+QUESTION_GUARD_INSTALLED_COMMANDS_KEY = _core_runtime_mod.QUESTION_GUARD_INSTALLED_COMMANDS_KEY
+write_claude_question_guard_hook = _core_runtime_mod.write_claude_question_guard_hook
+QUESTION_GUARD_HOOK_MATCHER = _core_runtime_mod.QUESTION_GUARD_HOOK_MATCHER
 write_claude_fleet_guard_hook = _core_runtime_mod.write_claude_fleet_guard_hook
 write_claude_session_start_directive_hook = (
     _core_runtime_mod.write_claude_session_start_directive_hook
@@ -4392,6 +4514,9 @@ STARTUP_REMEDIATION_ALLOWED_COMMANDS = _core_runtime_mod.STARTUP_REMEDIATION_ALL
 STARTUP_REMEDIATION_BLOCKED_COMMANDS = _core_runtime_mod.STARTUP_REMEDIATION_BLOCKED_COMMANDS
 STARTUP_REMEDIATION_WRITE_FLAG_GATED_COMMANDS = (
     _core_runtime_mod.STARTUP_REMEDIATION_WRITE_FLAG_GATED_COMMANDS
+)
+STARTUP_REMEDIATION_WRITE_FLAG_ATTRIBUTES = (
+    _core_runtime_mod.STARTUP_REMEDIATION_WRITE_FLAG_ATTRIBUTES
 )
 _startup_remediation_marker_data = _core_runtime_mod._startup_remediation_marker_data
 _startup_remediation_marker_gates = _core_runtime_mod._startup_remediation_marker_gates
@@ -4559,6 +4684,7 @@ load_ui_evidence_manifest = _core_runtime_mod.load_ui_evidence_manifest
 _print_provider_diff = _core_runtime_mod._print_provider_diff
 stakeholder_issue_number = _core_runtime_mod.stakeholder_issue_number
 MILESTONE_RUN_SCHEMA = _core_runtime_mod.MILESTONE_RUN_SCHEMA
+MONITOR_READ_RECEIPT_SCHEMA = _core_runtime_mod.MONITOR_READ_RECEIPT_SCHEMA
 selected_milestone_item = _core_runtime_mod.selected_milestone_item
 NARRATIVE_JOURNAL_PUBLISH_REFUSAL = _core_runtime_mod.NARRATIVE_JOURNAL_PUBLISH_REFUSAL
 rca_next_action_is_concrete = _core_runtime_mod.rca_next_action_is_concrete
@@ -8137,10 +8263,11 @@ def render_adapter(data: dict, agent: str, project_arg: str) -> str:
         + "- Risk tiers: T0 docs/config nits use near-zero ceremony; T1 uses brief inline/packet planning; T2/T3 require full plan review plus explicit/standing approval before implementation.\n"
         + "- Named next work creates motion: start/update the source-of-truth plan unless a true blocker exists.\n"
         + "- Plans must be substantive and use the project template; state benefit + wall-clock estimate before implementation.\n"
-        + "- T2/T3: run `plan-finalization-precheck --target . --plan <source-of-truth-plan>` and plan review R1/R2 when required.\n"
+        + "- T2/T3: decompose oversized scope before R1; run `plan-finalization-precheck --target "
+        + ". --plan <source-of-truth-plan>` and plan review R1/R2 when required.\n"
         + "- Review target is 2 rounds; rounds 3-4 self-authorize with `--exception-note` "
-        + "(never ask the operator); past round 4 refusal is unconditional -- split into smaller "
-        + "plans unless the bound evidence is clean and current.\n"
+        + "(never ask the operator); past round 4 carry Critical/P1 into the build -- never a "
+        + "successor plan.\n"
         + "- Evidence is tracked `.plan-reviews/`; do not hand-edit manifests, disable hooks, skip ExitPlanMode checks, or ask for bypass.\n"
         + "- Detailed policy: canonical `Planning`, `risk-tier-autonomy`, `review-before-push`.\n\n"
         + "## Planning Artifacts And Backlog Source Of Truth\n\n"
@@ -8183,8 +8310,8 @@ def render_adapter(data: dict, agent: str, project_arg: str) -> str:
         + "## Local Gates\n\n"
         + f"- Before commit: `tautline lane-run --target . -- {commands['fastPreflight']}`.\n"
         + f"- Before push: `tautline lane-run --target . -- {commands['testEnvironment']}` then `tautline lane-run --target . -- {commands['fullPreflight']}`.\n"
-        + "- Pre-merge gates are required before push/queue. During final preflight on a frozen PR tip, plan next work or poll; do not edit the proving diff.\n"
-        + "- If preflight fails, repair the PR; if it passes, push/queue before next implementation.\n"
+        + "- Pre-merge gates are required before push/queue. During final preflight on a frozen PR tip, plan, poll, or start the next item in a SEPARATE worktree; never edit the proving diff.\n"
+        + "- If preflight fails, repair the PR; if it passes, push/queue it.\n"
         + "- Do not substitute GitHub Actions for local preflight or as a feedback loop.\n\n"
         + ui_evidence_text
         + "## Review Before Push\n\n"
@@ -8999,7 +9126,43 @@ def _sunset_deprecated_surfaces() -> list[dict]:
     return surfaces
 
 
+_RELEASE_MIGRATION_REPORT_CACHE: dict[tuple, dict] = {}
+
+
 def release_migration_report_data(
+    version: str | None = None,
+    wip_safe: bool = False,
+    products_tested: list[str] | None = None,
+) -> dict:
+    """Memoizing front door for the release-report ladder.
+
+    EVERY release block derives its predecessor's report, and each one asked for it TWICE (once
+    for `wipSafe`, once for `requiredMigrations`). Two recursive calls per level makes the ladder
+    cost 2**depth: MEASURED on this tree at 0.99.0 31.8s, 0.100.0 64.0s, 0.101.0 127.4s -- an
+    exact doubling per release, extrapolating to ~68 minutes for a single 0.106.0 derivation.
+    Seven releases landed in one day multiplied it by 128 and turned `scripts/test.sh` and CI's
+    `ci-python-full` into apparent hangs (the latter measured at 5h20m against 1h02m on a quiet
+    box, which was misread as machine contention).
+
+    The report is a pure function of its arguments, so it is cached. Callers still receive their
+    OWN dict -- the cache stores and returns deep copies -- so any caller that mutates the result
+    (several build on it) behaves exactly as before. This is the fix backlog item 114 recorded as
+    a P2 "reuse the predecessor report"; at seven stacked releases it is not an efficiency nit.
+    """
+    cache_key = (
+        version or methodology_version(),
+        bool(wip_safe),
+        tuple(products_tested or ()),
+    )
+    cached = _RELEASE_MIGRATION_REPORT_CACHE.get(cache_key)
+    if cached is not None:
+        return copy.deepcopy(cached)
+    result = _release_migration_report_data_uncached(version, wip_safe, products_tested)
+    _RELEASE_MIGRATION_REPORT_CACHE[cache_key] = copy.deepcopy(result)
+    return result
+
+
+def _release_migration_report_data_uncached(
     version: str | None = None,
     wip_safe: bool = False,
     products_tested: list[str] | None = None,
@@ -9063,13 +9226,228 @@ def release_migration_report_data(
         # (never a single family-level entry) so the removal plan can attest each one. Appended
         # deterministically after the manifest-derived surfaces; each carries removeAfter 1.0.0.
         deprecated_surfaces.extend(_sunset_deprecated_surfaces())
-    if parsed_version > version_tuple("0.75.0"):
+    # A sunset env name added later must not retroactively rewrite frozen reports: the surface list
+    # is not version-scoped, so registering one would change every report from 0.15.0 onward and
+    # break their byte-identity guard. A fix belongs in the release that ships it, never backdated
+    # into a frozen predecessor. Same idiom as the 0.9.0 and 0.6.244 scopings above, but driven by
+    # a MAP so the builder and its test cannot drift on a version literal.
+    late_names = {
+        name
+        for name, introduced in SUNSET_ENV_NAMES_INTRODUCED_AT.items()
+        if parsed_version < version_tuple(introduced)
+    }
+    if late_names:
+        deprecated_surfaces = [
+            item for item in deprecated_surfaces if item.get("name") not in late_names
+        ]
+    if parsed_version > version_tuple("0.111.0"):
+        raise SystemExit(
+            f"release migration report data is not declared for {version}; "
+            "add a release-specific branch before cutting the release"
+        )
+    if version_tuple("0.110.0") < parsed_version < version_tuple("0.111.0"):
+        # The 0.111.0 bump is the release boundary the frozen-tip preflight-latency rule never
+        # got: the rule merged inside 0.110.0's span with no version of its own. It skips the
+        # 0.110.1+ patch range. An undeclared version must refuse, never fall through to a
+        # generic report. Raising the ceiling and adding this gap guard are ONE operation, and
+        # the ceiling REPLACES its predecessor rather than stacking beside it.
+        raise SystemExit(
+            f"release migration report data is not declared for {version}; "
+            "add a release-specific branch before cutting the release"
+        )
+    if version_tuple("0.109.0") < parsed_version < version_tuple("0.110.0"):
+        # The 0.110.0 minor bump (per-test tmp reclaim, the schema-cache byte comparison) skips
+        # the 0.109.1+ patch range. Raising the ceiling and adding this gap guard are ONE
+        # operation, and the ceiling REPLACES its predecessor.
+        raise SystemExit(
+            f"release migration report data is not declared for {version}; "
+            "add a release-specific branch before cutting the release"
+        )
+    if version_tuple("0.108.0") < parsed_version < version_tuple("0.109.0"):
+        # The 0.109.0 minor bump (the imported-log mtime race in the round-record suite) skips
+        # the 0.108.1+ patch range. Raising the ceiling and adding this gap guard are ONE
+        # operation, and the ceiling REPLACES its predecessor.
+        raise SystemExit(
+            f"release migration report data is not declared for {version}; "
+            "add a release-specific branch before cutting the release"
+        )
+    if version_tuple("0.107.0") < parsed_version < version_tuple("0.108.0"):
+        # The 0.108.0 minor bump (item 108 WS5: the valve's verified carried-list basis) skips
+        # the 0.107.1+ patch range. Raising the ceiling and adding this gap guard are ONE
+        # operation, and the ceiling REPLACES its predecessor.
+        raise SystemExit(
+            f"release migration report data is not declared for {version}; "
+            "add a release-specific branch before cutting the release"
+        )
+    if version_tuple("0.106.0") < parsed_version < version_tuple("0.107.0"):
+        # The 0.107.0 minor bump (item 108 WS3: one lineage resolver) skips the 0.106.1+ patch
+        # range. An undeclared version must refuse, never fall through to a generic report.
+        # Raising the ceiling and adding this gap guard are ONE operation.
+        raise SystemExit(
+            f"release migration report data is not declared for {version}; "
+            "add a release-specific branch before cutting the release"
+        )
+    if version_tuple("0.105.0") < parsed_version < version_tuple("0.106.0"):
+        # The 0.106.0 patch-class bump ships the release-ladder memo and a rotting-test fix; it
+        # skips the 0.105.1+ range. An undeclared version must refuse, never fall through.
+        # Raising the ceiling and adding this gap guard are ONE operation.
+        raise SystemExit(
+            f"release migration report data is not declared for {version}; "
+            "add a release-specific branch before cutting the release"
+        )
+    if version_tuple("0.104.0") < parsed_version < version_tuple("0.105.0"):
+        # The 0.105.0 minor bump (item 108 WS2: the budget reader consumes the durable record)
+        # skips the 0.104.1+ patch range. An undeclared version must refuse, never fall through
+        # to a generic report. Raising the ceiling and adding this gap guard are ONE operation,
+        # and the ceiling REPLACES its predecessor rather than stacking beside it.
+        raise SystemExit(
+            f"release migration report data is not declared for {version}; "
+            "add a release-specific branch before cutting the release"
+        )
+    if version_tuple("0.103.0") < parsed_version < version_tuple("0.104.0"):
+        # The 0.104.0 minor bump (item 108 WS1: the durable per-round plan-review record, write
+        # path) skips the 0.103.1+ patch range. An undeclared version must refuse, never fall
+        # through to a generic report. Raising the ceiling and adding this gap guard are ONE
+        # operation, and the ceiling REPLACES its predecessor rather than stacking beside it.
+        raise SystemExit(
+            f"release migration report data is not declared for {version}; "
+            "add a release-specific branch before cutting the release"
+        )
+    if version_tuple("0.102.0") < parsed_version < version_tuple("0.103.0"):
+        # The 0.103.0 minor bump (item 107 WS4 PR B: the goal-prompt precheck wiring) skips the
+        # 0.102.1+ patch range. An undeclared version must refuse, never fall through to a
+        # generic report. Raising the ceiling and adding this gap guard are ONE operation, and
+        # the ceiling REPLACES its predecessor rather than stacking beside it.
+        raise SystemExit(
+            f"release migration report data is not declared for {version}; "
+            "add a release-specific branch before cutting the release"
+        )
+    if version_tuple("0.101.0") < parsed_version < version_tuple("0.102.0"):
+        # The 0.102.0 minor bump (item 106 WS2-B: the parallel directive in composed goals)
+        # skips the 0.101.1+ patch range. An undeclared version must refuse, never fall through
+        # to a generic report. Raising the ceiling and adding this gap guard are ONE operation,
+        # and the ceiling REPLACES its predecessor rather than stacking beside it.
+        raise SystemExit(
+            f"release migration report data is not declared for {version}; "
+            "add a release-specific branch before cutting the release"
+        )
+    if version_tuple("0.100.0") < parsed_version < version_tuple("0.101.0"):
+        # The 0.101.0 minor bump (item 107 WS4 PR A: the goal-prompt artifact matching logic)
+        # skips the 0.100.1+ patch range. An undeclared version must refuse, never fall through
+        # to a generic report. Raising the ceiling and adding this gap guard are ONE operation,
+        # and the ceiling REPLACES its predecessor rather than stacking beside it.
+        raise SystemExit(
+            f"release migration report data is not declared for {version}; "
+            "add a release-specific branch before cutting the release"
+        )
+    if version_tuple("0.99.0") < parsed_version < version_tuple("0.100.0"):
+        # The 0.100.0 minor bump (item 86 WS1: the plan-review release valve, fourth derivation,
+        # chained from the merged 0.99.0) skips the 0.99.1+ patch range. An undeclared version
+        # must refuse, never fall through to a generic report -- a loud refusal beats a wrong
+        # report that looks right. Raising the ceiling and adding this gap guard are ONE
+        # operation, and the ceiling REPLACES its predecessor rather than stacking beside it.
+        raise SystemExit(
+            f"release migration report data is not declared for {version}; "
+            "add a release-specific branch before cutting the release"
+        )
+    if version_tuple("0.95.0") < parsed_version < version_tuple("0.99.0"):
+        # The 0.99.0 minor bump (item 106 WS4: plan-review cap messages point at the build rather
+        # than a successor plan, plus lineage-round reporting) skips the 0.95.1-0.98.x range --
+        # this lane's own 0.91.0 fell below the merged tip when 0.95.0 (#555, item 106 WS2-A)
+        # landed and was re-cut here. 0.96.0-0.98.0 are sibling lanes running concurrently,
+        # never merged onto this tree. Raising the ceiling and widening this gap guard are ONE
+        # operation, and the ceiling REPLACES its predecessor rather than stacking beside it.
+        raise SystemExit(
+            f"release migration report data is not declared for {version}; "
+            "add a release-specific branch before cutting the release"
+        )
+    if version_tuple("0.86.0") < parsed_version < version_tuple("0.95.0"):
+        # The 0.95.0 minor bump (item 106 WS2-A: the acceptance-criteria extractor) skips the
+        # 0.86.1-0.94.x range: 0.87.0 through 0.94.0 are held by lanes running concurrently, and
+        # this branch re-derived its number from the version registry after 0.86.0 merged.
+        # Raising the ceiling and adding this gap guard are ONE operation, and the ceiling
+        # REPLACES its predecessor rather than stacking beside it.
+        raise SystemExit(
+            f"release migration report data is not declared for {version}; "
+            "add a release-specific branch before cutting the release"
+        )
+    if version_tuple("0.83.0") < parsed_version < version_tuple("0.86.0"):
+        # The 0.86.0 minor bump (item 83 PR2: two new Stop-boundary state gates, warn-only) skips the
+        # 0.83.1-0.85.x range: 0.84.0 and 0.85.0 are held by another program running concurrently,
+        # and this branch derived its number at cut time from VERSION plus what was visible then. Raising the ceiling and adding this gap guard are ONE operation, and
+        # the ceiling REPLACES its predecessor rather than stacking beside it.
+        raise SystemExit(
+            f"release migration report data is not declared for {version}; "
+            "add a release-specific branch before cutting the release"
+        )
+    if version_tuple("0.82.0") < parsed_version < version_tuple("0.83.0"):
+        # The 0.83.0 minor bump (item 85 PR1: a new probe verb and a canonical rule) skips the
+        # 0.82.1+ patch range. Raising the ceiling and adding this gap guard are ONE operation, and
+        # the ceiling REPLACES its predecessor rather than stacking beside it.
+        raise SystemExit(
+            f"release migration report data is not declared for {version}; "
+            "add a release-specific branch before cutting the release"
+        )
+    if version_tuple("0.81.0") < parsed_version < version_tuple("0.82.0"):
+        # The 0.82.0 minor bump (item 83 PR1: background-run completion truth plus four monitor
+        # lifecycle rules) skips the 0.81.1+ patch range. Raising the ceiling and adding this gap
+        # guard are ONE operation.
+        raise SystemExit(
+            f"release migration report data is not declared for {version}; "
+            "add a release-specific branch before cutting the release"
+        )
+    if version_tuple("0.80.0") < parsed_version < version_tuple("0.81.0"):
+        # The 0.81.0 minor bump (item 70 WS3: a declared escape-hatch reader registry and the test
+        # that re-derives it) skips the 0.80.1+ patch range. Raising the ceiling and adding this
+        # gap guard are ONE operation.
+        raise SystemExit(
+            f"release migration report data is not declared for {version}; "
+            "add a release-specific branch before cutting the release"
+        )
+    if version_tuple("0.79.0") < parsed_version < version_tuple("0.80.0"):
+        # The 0.80.0 minor bump (item 74 PR-C: a new adapter key, a canonical policy section and an
+        # opt-in-gated drift condition) skips the 0.79.1+ patch range. Raising the ceiling and
+        # adding this gap guard are ONE operation.
+        raise SystemExit(
+            f"release migration report data is not declared for {version}; "
+            "add a release-specific branch before cutting the release"
+        )
+    if version_tuple("0.78.0") < parsed_version < version_tuple("0.79.0"):
+        # The 0.79.0 minor bump (item 70 WS1: a new startup gate) skips the 0.78.1+ patch range.
+        # Raising the ceiling and adding this gap guard are ONE operation.
+        raise SystemExit(
+            f"release migration report data is not declared for {version}; "
+            "add a release-specific branch before cutting the release"
+        )
+    if version_tuple("0.77.0") < parsed_version < version_tuple("0.78.0"):
+        # The 0.78.0 minor bump (item 73 WS2: a new report line on a push-boundary verb) skips the
+        # 0.77.1+ patch range. Raising the ceiling above and adding this gap guard are ONE
+        # operation: doing only the first silently fabricates a report from an unrelated release for
+        # any version in the gap, the defect that recurred three times in one delivery chain.
+        raise SystemExit(
+            f"release migration report data is not declared for {version}; "
+            "add a release-specific branch before cutting the release"
+        )
+    if version_tuple("0.76.0") < parsed_version < version_tuple("0.77.0"):
+        # The 0.77.0 minor bump (item 82: a new public verb, a new installed PreToolUse hook, and
+        # two new adapter keys) skips the 0.76.1+ patch range. Raising the ceiling above and adding
+        # this gap guard are ONE operation -- doing only the first silently fabricates a report from
+        # an unrelated release for any version in the gap, which is the defect that recurred three
+        # times in one delivery chain.
         raise SystemExit(
             f"release migration report data is not declared for {version}; "
             "add a release-specific branch before cutting the release"
         )
     if version_tuple("0.67.0") < parsed_version < version_tuple("0.68.0"):
         # The 0.68.0 minor bump (occupancy lane-start gate) skips the 0.67.1+ patch range.
+        raise SystemExit(
+            f"release migration report data is not declared for {version}; "
+            "add a release-specific branch before cutting the release"
+        )
+    if version_tuple("0.75.0") < parsed_version < version_tuple("0.76.0"):
+        # The 0.76.0 minor bump (item 101 PR-2a) skips the 0.75.1+ patch range. Raising the
+        # ceiling above and adding this guard are ONE operation: doing only the first fabricates a
+        # report from an unrelated release for any version in the gap.
         raise SystemExit(
             f"release migration report data is not declared for {version}; "
             "add a release-specific branch before cutting the release"
@@ -9540,7 +9918,1261 @@ def release_migration_report_data(
             f"release migration report data is not declared for {version}; "
             "add a release-specific branch before cutting the release"
         )
-    if parsed_version == version_tuple("0.14.0"):
+    if parsed_version == version_tuple("0.111.0"):
+        # The release boundary the frozen-tip preflight-latency rule never got: it merged inside
+        # 0.110.0's span with no version of its own (see CHANGELOG 0.111.0). No code path, adapter
+        # schema, generated adapter, or CLI surface changed -- the diff is a canonical rule's
+        # wording, the merge-and-ci policy module, and the same sentence in cli.py's rendered copy.
+        #
+        # The rule now permits spending frozen-tip preflight latency on the NEXT item, provided that
+        # work happens in a SEPARATE worktree. What it protected was isolation, not idleness; the
+        # isolation requirement is now explicit rather than implied by a blanket prohibition.
+        # Background-work supervision is untouched and still applies to the running gate.
+        #
+        # behaviorChanges is NOT empty here, unlike its two predecessors: those were test-suite
+        # hygiene, whereas this release's entire substance is a rule adopters' agents follow.
+        #
+        # DERIVED from 0.110.0, the merged predecessor, through a single call -- so the ten-id
+        # requiredMigrations chain is carried forward rather than dropped to the generic fallback.
+        predecessor = release_migration_report_data("0.110.0")
+        wip_safe = bool(predecessor.get("wipSafe", False))
+        required_migrations = predecessor["requiredMigrations"]
+        carried_ids = tuple(entry["id"] for entry in required_migrations)
+        if len(carried_ids) != 10:
+            raise SystemExit(
+                "0.111.0 carries 0.110.0's requiredMigrations forward and expected the ten-id "
+                f"chain; got {carried_ids!r}. Re-derive by set difference and update this "
+                "assertion in the same change."
+            )
+        optional_migrations = []
+        behavior_changes = [
+            "Frozen-tip preflight latency may be spent implementing the NEXT item, provided that "
+            "work happens in a separate worktree; the previous wording allowed only planning and "
+            "polling, which left a lane supervising a long pre-push gate with no permitted work.",
+            "The isolation requirement is now stated explicitly in the rule rather than implied by "
+            "a blanket prohibition on next-item work.",
+            "Background-work supervision is unchanged: starting parallel work is not licence to "
+            "stop supervising the running gate.",
+        ]
+        rollback_notes = [
+            "No adopter action on rollback. Rolling back restores the stricter wording, under "
+            "which a lane waiting on a frozen-tip preflight may only plan or poll -- correct but "
+            "idle-producing. No code path, adapter schema, or generated adapter is involved, so "
+            "nothing needs re-rendering in either direction.",
+        ]
+    elif parsed_version == version_tuple("0.110.0"):
+        # Test-harness hygiene plus one internal cache fix; no adapter schema, generated adapter,
+        # or CLI surface changed.
+        #
+        # The suite now reclaims each tmp tree as soon as its test passes, because pytest's own
+        # numbered-dir cleanup is an exit-time callback and honours a stale lock for three days --
+        # so interrupted runs leaked ~GB each and took $TMPDIR to 17 GB. Sealed trees defeated the
+        # reclaim silently (shutil.rmtree cannot unlink under a 0o555 dir and says nothing), so the
+        # harness restores the owner write bits first, and ONLY for trees pytest is about to delete:
+        # a failing test keeps its modes, because in a permission failure the modes are the evidence.
+        #
+        # The one product change is internal: adapter_schema's memo compared paths and never
+        # invalidated, so a long-lived reader served a stale schema forever and cached the fail-open
+        # empty result just as permanently. It now compares the bytes it parsed. Adopter-visible
+        # behaviour is strictly more correct -- a rewritten schema is picked up instead of ignored --
+        # and no output format or exit code changed.
+        #
+        # DERIVED from 0.109.0, the merged predecessor, through a single call.
+        predecessor = release_migration_report_data("0.109.0")
+        wip_safe = bool(predecessor.get("wipSafe", False))
+        required_migrations = predecessor["requiredMigrations"]
+        carried_ids = tuple(entry["id"] for entry in required_migrations)
+        if len(carried_ids) != 10:
+            raise SystemExit(
+                "0.110.0 carries 0.109.0's requiredMigrations forward and expected the ten-id "
+                f"chain; got {carried_ids!r}. Re-derive by set difference and update this "
+                "assertion in the same change."
+            )
+        optional_migrations = []
+        behavior_changes = []
+        rollback_notes = [
+            "No adopter action on rollback. The tmp-reclaim change is test-suite setup only. "
+            "Rolling back the schema-cache change restores the previous path-keyed memo, which "
+            "means a long-running process that sees an adapter schema rewritten under it will "
+            "again serve the schema it first read; short CLI invocations are unaffected.",
+        ]
+    elif parsed_version == version_tuple("0.109.0"):
+        # Test-suite hygiene only: no adopter-visible behaviour changed. The round-record suite's
+        # digestless-floor import pinned its own log ordering with a bare `touch()`, which raced
+        # the plan rewrite that `write_plan_review_manifest` performs as its last act (the
+        # Cross-Model Review Evidence upsert). The measured margin was 27ms, and CI lost it.
+        #
+        # DERIVED from 0.108.0, the merged predecessor, through a single call.
+        predecessor = release_migration_report_data("0.108.0")
+        wip_safe = bool(predecessor.get("wipSafe", False))
+        required_migrations = predecessor["requiredMigrations"]
+        carried_ids = tuple(entry["id"] for entry in required_migrations)
+        if len(carried_ids) != 10:
+            raise SystemExit(
+                "0.109.0 carries 0.108.0's requiredMigrations forward and expected the ten-id "
+                f"chain; got {carried_ids!r}. Re-derive by set difference and update this "
+                "assertion in the same change."
+            )
+        optional_migrations = []
+        behavior_changes = []
+        rollback_notes = [
+            "No adopter action on rollback. This release changed test-suite setup only; no CLI "
+            "behaviour, adapter schema, or generated adapter changed.",
+        ]
+    elif parsed_version == version_tuple("0.108.0"):
+        # Item 108 WS5: the release valve upgrades carried_findings_basis from caller-asserted
+        # to a verified token when every round the AUTHORITATIVE resolver counts carries a
+        # round-classification record; otherwise it keeps caller-asserted and NAMES the
+        # unclassified rounds. Pre-record, imported and unknown-spend members can never verify.
+        #
+        # DERIVED from 0.107.0, the merged predecessor, through a single call.
+        predecessor = release_migration_report_data("0.107.0")
+        wip_safe = bool(predecessor.get("wipSafe", False))
+        required_migrations = predecessor["requiredMigrations"]
+        carried_ids = tuple(entry["id"] for entry in required_migrations)
+        if len(carried_ids) != 10:
+            raise SystemExit(
+                "0.108.0 carries 0.107.0's requiredMigrations forward and expected the ten-id "
+                f"chain; got {carried_ids!r}. Re-derive by set difference and update this "
+                "assertion in the same change."
+            )
+        optional_migrations = []
+        behavior_changes = [
+            "A capped plan-review manifest now records a VERIFIED carried-findings basis when "
+            "every round the authoritative lineage resolver counts carries a "
+            "round-classification record, and the finalize prints what was verified. When it "
+            "cannot, the basis stays caller-asserted and the disclosure NAMES the rounds that "
+            "lack classification, so a lane can act on the gap. Pre-record history, imported "
+            "classifications, and members whose spend is unknown or whose walk truncated are "
+            "printed as floors and can never satisfy the upgrade.",
+            "The verified token is only written when the justifying classification record is "
+            "actually on disk: the record is appended BEFORE the basis is derived, and a failed "
+            "append forces caller-asserted and names the failed write rather than claiming a "
+            "proof that does not exist.",
+        ]
+        rollback_notes = [
+            "No adopter action on rollback. A rolled-back CLI reads the verified token as an "
+            "unrecognized basis value and treats the record as caller-asserted, which is the "
+            "pre-release behaviour. No adapter schema or generated adapter changed.",
+        ]
+    elif parsed_version == version_tuple("0.107.0"):
+        # Item 108 WS3: ONE lineage resolver feeds every consumer -- declared edges always
+        # admitted, -vN name-shape by enumeration of existing entries, shared work items, and a
+        # loud truncation floor instead of a silent fresh budget.
+        #
+        # DERIVED from 0.106.0, the merged predecessor. Single predecessor call by design.
+        predecessor = release_migration_report_data("0.106.0")
+        wip_safe = bool(predecessor.get("wipSafe", False))
+        required_migrations = predecessor["requiredMigrations"]
+        carried_ids = tuple(entry["id"] for entry in required_migrations)
+        if len(carried_ids) != 10:
+            raise SystemExit(
+                "0.107.0 carries 0.106.0's requiredMigrations forward and expected the ten-id "
+                f"chain; got {carried_ids!r}. Re-derive by set difference and update this "
+                "assertion in the same change."
+            )
+        optional_migrations = []
+        behavior_changes = [
+            "Plan-review lineage is resolved ONCE, for every consumer: an explicitly declared "
+            "predecessor always binds (union with inference, never overridden by it); -vN "
+            "name-shape inference enumerates existing manifests, records and metas instead of "
+            "generating candidate names, so admin-v34 finds admin-v1 and a date-like suffix "
+            "neither hangs nor allocates; shared work-item references bind; and a depth-capped "
+            "or cyclic walk prints a truncation marker and labels its result a floor -- never a "
+            "silent standalone plan on a fresh budget.",
+            "The advisory chain display and the authoritative budget read the same resolver "
+            "output, so one launch can no longer record two different lineages.",
+        ]
+        rollback_notes = [
+            "No adopter action on rollback. Resolution is read-side; records, manifests and "
+            "metas are unchanged on disk, and no adapter schema or generated adapter changed.",
+        ]
+    elif parsed_version == version_tuple("0.106.0"):
+        # Ladder memo + rotting-lease-test fix. No behaviour change for adopters: the report
+        # content is byte-identical, only its derivation cost changed (2**depth -> memoized).
+        predecessor = release_migration_report_data("0.105.0")
+        wip_safe = bool(predecessor.get("wipSafe", False))
+        required_migrations = predecessor["requiredMigrations"]
+        carried_ids = tuple(entry["id"] for entry in required_migrations)
+        if len(carried_ids) != 10:
+            raise SystemExit(
+                "0.106.0 carries 0.105.0's requiredMigrations forward and expected the ten-id "
+                f"chain; got {carried_ids!r}. Re-derive by set difference and update this "
+                "assertion in the same change."
+            )
+        optional_migrations = []
+        behavior_changes = [
+            "Deriving a release migration report is memoized. Every release block asked its "
+            "predecessor for a report twice, so the ladder cost 2**depth and a single "
+            "derivation had grown to tens of minutes, which made the repository test gate and "
+            "CI appear to hang. Reports are byte-identical; only the cost changed.",
+        ]
+        rollback_notes = [
+            "No adopter action on rollback. The memo is an internal cache that returns deep "
+            "copies; report content, adapter schema and generated adapters are unchanged.",
+        ]
+    elif parsed_version == version_tuple("0.105.0"):
+        # Item 108 WS2. MINOR: every plan-review BUDGET decision now reads through the durable
+        # per-round record -- round launch, the runtime cap, the release valve's spend, and
+        # precheck's capped re-derivation. Member spend is additive across the cutover
+        # (baseline floor raised by corrections, plus charged invocation records of both
+        # sources), never a max() that lets pre-record history absorb new records. The
+        # manifest's lane-local copy is display plus the no-baseline floor only.
+        #
+        # DERIVED from 0.104.0, the merged predecessor, never asserted: deriving past a merged
+        # release silently drops its migrations for anyone upgrading straight through.
+        wip_safe = bool(release_migration_report_data("0.104.0").get("wipSafe", False))
+        required_migrations = release_migration_report_data("0.104.0")["requiredMigrations"]
+        carried_ids = tuple(entry["id"] for entry in required_migrations)
+        if len(carried_ids) != 10:
+            raise SystemExit(
+                "0.105.0 carries 0.104.0's requiredMigrations forward and expected the ten-id "
+                f"chain; got {carried_ids!r}. Re-derive by set difference and update this "
+                "assertion in the same change."
+            )
+        optional_migrations = []
+        behavior_changes = [
+            "Plan-review lineage spend now survives fresh worktrees and out-of-order "
+            "finalization: every budget decision reads the committed round records (baseline "
+            "floor raised-only by corrections, plus charged reviewer invocations, run or "
+            "imported), deduped against lane metas on the log digest, with a surfaced "
+            "write-path-bug warning for an unrecorded post-cutover meta instead of a silent "
+            "count. A fresh worktree's finalize can no longer walk the durable count down.",
+            "A member with no baseline record reads at the pre-record floor (manifest ladder "
+            "vs lane metas) exactly as before this program -- additivity begins at the first "
+            "record write, so pre-record history is never double-counted.",
+        ]
+        rollback_notes = [
+            "No adopter action on rollback. Records remain valid on disk; a rolled-back CLI "
+            "simply returns to the manifest-based floor arithmetic. No adapter schema or "
+            "generated adapter changed.",
+        ]
+    elif parsed_version == version_tuple("0.104.0"):
+        # Item 108 WS1. MINOR: every plan-review reviewer invocation now appends a committed,
+        # append-only round record (baseline / reviewer-invocation / round-classification /
+        # correction) under the plans root. DUAL-WRITE ONLY in this release: no budget reader
+        # consumes the record yet (that is PR2), so no gate changes its verdict; the correction
+        # writer ships behind `record-plan-review --correct`.
+        #
+        # DERIVED from 0.103.0, the merged predecessor, never asserted: deriving past a merged
+        # release silently drops its migrations for anyone upgrading straight through.
+        wip_safe = bool(release_migration_report_data("0.103.0").get("wipSafe", False))
+        required_migrations = release_migration_report_data("0.103.0")["requiredMigrations"]
+        carried_ids = tuple(entry["id"] for entry in required_migrations)
+        if len(carried_ids) != 10:
+            raise SystemExit(
+                "0.104.0 carries 0.103.0's requiredMigrations forward and expected the ten-id "
+                f"chain; got {carried_ids!r}. Re-derive by set difference and update this "
+                "assertion in the same change."
+            )
+        optional_migrations = []
+        behavior_changes = [
+            "Every plan-review reviewer invocation appends one committed round record under "
+            "the plans root (.plan-reviews/rounds/<identity>/): a one-time baseline capturing "
+            "pre-record history with its enumerated digest set as the durable cutover marker, "
+            "a reviewer-invocation record for every run including failures (charged iff the "
+            "wrapper exited 0; source run or imported), an appended classification at bind "
+            "time, and raise-only corrections via record-plan-review --correct. Dual-write "
+            "only: nothing reads the record for budget decisions in this release.",
+            "No recovery guidance anywhere prescribes overwriting a record or the manifest as "
+            "a recovery step -- a repository-wide grep guard pins the correction-record "
+            "wording.",
+        ]
+        rollback_notes = [
+            "No adopter action on rollback. Records are additive files nothing consumes yet; "
+            "existing manifests, run metas and budgets are byte-identical, and no adapter "
+            "schema or generated adapter changed.",
+        ]
+    elif parsed_version == version_tuple("0.103.0"):
+        # Item 107 WS4 PR B. MINOR: a build-ready plan must ship its goal-prompt artifact,
+        # enforced through `plan-finalization-precheck` at all four knob levels
+        # (block/advise/observe/off), the standalone verb, the ExitPlanMode hook, and
+        # goal-status readiness -- deliberately NOT through goal-assignment's own gate, which
+        # would deadlock the tool that creates the artifact. Carries the ExitPlanMode deadlock
+        # fix from the decomposed 0.89.0 lineage.
+        #
+        # DERIVED from 0.102.0, the merged predecessor, never asserted: deriving past a merged
+        # release silently drops its migrations for anyone upgrading straight through.
+        wip_safe = bool(release_migration_report_data("0.102.0").get("wipSafe", False))
+        required_migrations = release_migration_report_data("0.102.0")["requiredMigrations"]
+        carried_ids = tuple(entry["id"] for entry in required_migrations)
+        if len(carried_ids) != 10:
+            raise SystemExit(
+                "0.103.0 carries 0.102.0's requiredMigrations forward and expected the ten-id "
+                f"chain; got {carried_ids!r}. Re-derive by set difference and update this "
+                "assertion in the same change."
+            )
+        optional_migrations = []
+        behavior_changes = [
+            "`plan-finalization-precheck` now requires a build-ready plan to ship its "
+            "goal-prompt artifact, at every enforcement level: block refuses with a "
+            "goal-assignment-specific remedy, advise warns on the pass path, observe/off stay "
+            "silent -- and the same check reaches the standalone verb, the ExitPlanMode hook "
+            "and goal-status readiness. The artifact binds through the composer's own "
+            "clause-parsing matching logic (0.101.0), so a sibling plan's goal can never "
+            "satisfy this plan's requirement.",
+            "goal-assignment's own gate deliberately does NOT require the artifact it is being "
+            "used to create -- the deadlock found and fixed in the decomposed 0.89.0 lineage's "
+            "final confirming round.",
+        ]
+        rollback_notes = [
+            "No adopter action on rollback. The requirement is enforced at precheck time only; "
+            "already-finalized plans and existing manifests are unaffected, and the adapter "
+            "schema change is a knob-description clarification with byte-identical rendered "
+            "adapters.",
+        ]
+    elif parsed_version == version_tuple("0.102.0"):
+        # Item 106 WS2-B. MINOR: every goal composed by `goal-assignment` now carries the
+        # parallel directive in its tail (batch dispatch, per-task worktrees, model-tier
+        # routing). Composition-only; no gate changes its verdict, no adapter key moves, and
+        # the generated adapter is byte-identical.
+        #
+        # DERIVED from 0.101.0, the merged predecessor, never asserted: deriving past a merged
+        # release silently drops its migrations for anyone upgrading straight through.
+        wip_safe = bool(release_migration_report_data("0.101.0").get("wipSafe", False))
+        required_migrations = release_migration_report_data("0.101.0")["requiredMigrations"]
+        carried_ids = tuple(entry["id"] for entry in required_migrations)
+        if len(carried_ids) != 10:
+            raise SystemExit(
+                "0.102.0 carries 0.101.0's requiredMigrations forward and expected the ten-id "
+                f"chain; got {carried_ids!r}. Re-derive by set difference and update this "
+                "assertion in the same change."
+            )
+        optional_migrations = []
+        behavior_changes = [
+            "Every goal composed by `tautline goal-assignment` now carries the parallel "
+            "directive: dispatch independent tasks to concurrent subagents in a single batch, "
+            "give each its own worktree when they would otherwise touch the same files, and "
+            "route each by its `model-tier` tag. The directive lives in the composed tail, so "
+            "every budget site that measures the tail counts it automatically and the 4000-char "
+            "cap check cannot lie.",
+        ]
+        rollback_notes = [
+            "No adopter action on rollback. Already-authored goal files are unaffected, no "
+            "adapter schema or generated adapter changed, and the checker's verdicts are "
+            "unchanged.",
+        ]
+    elif parsed_version == version_tuple("0.101.0"):
+        # Item 107 WS4 PR A. MINOR: plan_authoring.py gains the clause-parsing matching logic
+        # that decides whether a candidate goal file is bound to a given plan (the exact
+        # backtick-delimited `from the finalized plan` capture). Composition/matching only —
+        # no gate changes its verdict in this release; the enforcement wiring is PR B.
+        #
+        # DERIVED from 0.100.0, the merged predecessor, never asserted: deriving past a merged
+        # release silently drops its migrations for anyone upgrading straight through.
+        wip_safe = bool(release_migration_report_data("0.100.0").get("wipSafe", False))
+        required_migrations = release_migration_report_data("0.100.0")["requiredMigrations"]
+        carried_ids = tuple(entry["id"] for entry in required_migrations)
+        if len(carried_ids) != 10:
+            raise SystemExit(
+                "0.101.0 carries 0.100.0's requiredMigrations forward and expected the ten-id "
+                f"chain; got {carried_ids!r}. Re-derive by set difference and update this "
+                "assertion in the same change."
+            )
+        optional_migrations = []
+        behavior_changes = [
+            "`plan_authoring` gains the matching logic for a build-ready plan's goal-prompt "
+            "artifact: a candidate goal file binds to a plan only through the composer's own "
+            "`from the finalized plan` clause, captured backtick-delimited and compared exactly "
+            "-- mentioning a plan elsewhere in the text no longer binds, and punctuation in a "
+            "filename no longer falsely collides. Includes the target-wide `.ai-work/goal.txt` "
+            "fallback matched against the full plan reference. No enforcement gate consumes "
+            "this logic yet; the precheck wiring ships separately.",
+        ]
+        rollback_notes = [
+            "No adopter action on rollback. The matching helpers are not consumed by any "
+            "enforcement gate in this release, no adapter schema or generated adapter changed, "
+            "and no manifest format moved.",
+        ]
+    elif parsed_version == version_tuple("0.100.0"):
+        # Item 86 WS1 (plan-review round economy, decision D2). MINOR: `finalize-plan-review`
+        # CHANGES ITS VERDICT at the round cap -- from a refusal to a successful
+        # `capped-with-open-findings` finalize.
+        #
+        # RE-CUT onto 0.99.0, the FOURTH derivation. Cut at 0.84.0, re-cut to 0.87.0 when item
+        # 83 PR2 merged as #554, to 0.97.0 when #555 merged mid-round, and to 0.100.0 when the
+        # branch was re-cut onto the parked program's real remote tip (#556, 0.99.0). It derives
+        # from 0.99.0, the release that ACTUALLY landed: a boundary must be the chain
+        # head of its predecessor, and deriving past 0.99.0 would silently drop that release's
+        # migrations for an adopter upgrading straight to this one.
+        wip_safe = bool(release_migration_report_data("0.99.0").get("wipSafe", False))
+        required_migrations = release_migration_report_data("0.99.0")["requiredMigrations"]
+        carried_ids = tuple(entry["id"] for entry in required_migrations)
+        expected_ids = (
+            "sync-the-install-before-reinstalling-hooks",
+            "reinstall-hooks-for-the-resolver-order",
+            "narrow-scope-query-if-a-board-read-refuses",
+            "python-312-floor",
+            "record-a-test-run",
+            "install-fleet-guard-hook",
+            "grant-gh-project-scopes",
+            "install-question-guard-hook",
+            "reinstall-the-operator-launcher-for-its-channel-signal",
+            "reconcile-a-contradicting-framework-checkout",
+        )
+        if carried_ids != expected_ids:
+            raise SystemExit(
+                "0.100.0 carries 0.99.0's requiredMigrations forward; the predecessor list "
+                f"changed ({carried_ids!r} != {expected_ids!r}). Re-derive by set difference and "
+                "update this assertion in the same change."
+            )
+        optional_migrations = []
+        behavior_changes = [
+            "`finalize-plan-review` no longer refuses at the round cap. A round at the hard cap "
+            "carrying unresolved Critical/P1 now EXITS 0 with the derived verdict "
+            "`capped-with-open-findings`, and every unresolved blocker is recorded at its honest "
+            "severity as `status: carried`. The refusal it replaces prescribed decomposing the "
+            "plan into successor plans -- and a successor plan is a new file path, which is a "
+            "fresh round budget, which is why the cap never bounded anything.",
+            "A carried Critical/P1 is recorded as BINDING and REPORTED at every downstream gate: "
+            "`plan-finalization-precheck`, `review-evidence-check` and "
+            "`finalize-implementation-review` each print the outstanding focus items. Nothing "
+            "refuses on them in this release -- enforcement needs a durable plan-to-implementation "
+            "lineage to decide which implementation review owes a given plan's findings, and that "
+            "does not exist yet, so this records the obligation rather than shipping a gate an "
+            "unstaged edit could bypass.",
+            "`plan-finalization-precheck` accepts a `capped-with-open-findings` manifest with "
+            "non-zero unresolved counts, provided every unresolved blocker in it is stamped "
+            "carried and binding. Accepting at finalize and refusing here would have moved the "
+            "2026-07-14 plan-review deadlock one gate downstream rather than removing it.",
+            "A capped record DISCLOSES what its carried list rests on: the manifest gains "
+            "`carried_findings_basis: caller-asserted` (capped records only; every other "
+            "manifest is byte-identical) and the finalize prints a matching "
+            "`plan_review_capped_disclosure:` line. The valve counts successful reviewer "
+            "invocations and carries the caller's classification of the bound round's log; it "
+            "cannot prove earlier counted rounds were classified -- that takes a durable "
+            "per-round record, which is the round-accounting workstream's artifact -- so the "
+            "record says so instead of implying completeness it cannot verify.",
+        ]
+        rollback_notes = [
+            "No adopter action on rollback. A manifest written by this release carries the new "
+            "verdict, and a rolled-back CLI treats it as an unrecognized verdict -- the "
+            "pre-release behavior for that plan, which is the refusal this release removed. No "
+            "adapter schema, generated adapter, or hook contract changed.",
+        ]
+    elif parsed_version == version_tuple("0.95.0"):
+        # Item 106 WS2-A. MINOR: a composed goal now states the plan's own acceptance criteria.
+        # Composition-only; no gate changes its verdict, no adapter key moves, and the generated
+        # adapter is byte-identical. The parallel directive ships separately in WS2-B.
+        #
+        # DERIVED from 0.86.0, the merged predecessor, never asserted: deriving past a merged
+        # release silently drops its migrations for anyone upgrading straight through.
+        wip_safe = bool(release_migration_report_data("0.86.0").get("wipSafe", False))
+        required_migrations = release_migration_report_data("0.86.0")["requiredMigrations"]
+        carried_ids = tuple(entry["id"] for entry in required_migrations)
+        if not carried_ids:
+            raise SystemExit(
+                "0.95.0 carries 0.86.0's requiredMigrations forward and found none; re-derive "
+                "by set difference and update this assertion in the same change."
+            )
+        optional_migrations = []
+        behavior_changes = [
+            "A goal composed by `tautline goal-assignment --plan <plan>` now states that plan's "
+            "OWN acceptance criteria in the `Done when:` clause, read from the plan's Acceptance "
+            "criteria section (or its Completion definition when there is no acceptance section). "
+            "The adapter's definition of done is RETAINED behind them as the handoff floor, so no "
+            "goal states a weaker bar than before -- it states a more specific one.",
+            "Criteria are elastic content: they are shortened, then summarised with a count, and "
+            "never silently dropped. A plan naming no acceptance criteria composes exactly as it "
+            "did before, with the generic bar alone.",
+        ]
+        rollback_notes = [
+            "No adopter action on rollback. The change is confined to goal composition; already "
+            "authored goal files are unaffected, no adapter schema or generated adapter changed, "
+            "and the checker's verdicts are unchanged.",
+        ]
+    elif parsed_version == version_tuple("0.86.0"):
+        # Item 83 PR2. MINOR: two new Stop-boundary state gates, both WARN-ONLY, plus a read
+        # receipt written by `monitor-status`. No existing gate changes its pass/fail verdict.
+        #
+        # DERIVED from the predecessor, never asserted: safety composes DOWN, so this release
+        # carries 0.83.0's chain whatever its own change is worth.
+        wip_safe = bool(release_migration_report_data("0.83.0").get("wipSafe", False))
+        required_migrations = release_migration_report_data("0.83.0")["requiredMigrations"]
+        carried_ids = tuple(entry["id"] for entry in required_migrations)
+        expected_ids = (
+            "sync-the-install-before-reinstalling-hooks",
+            "reinstall-hooks-for-the-resolver-order",
+            "narrow-scope-query-if-a-board-read-refuses",
+            "python-312-floor",
+            "record-a-test-run",
+            "install-fleet-guard-hook",
+            "grant-gh-project-scopes",
+            "install-question-guard-hook",
+            "reinstall-the-operator-launcher-for-its-channel-signal",
+            "reconcile-a-contradicting-framework-checkout",
+        )
+        if carried_ids != expected_ids:
+            raise SystemExit(
+                "0.86.0 carries 0.83.0's requiredMigrations forward; the predecessor list changed "
+                f"({carried_ids!r} != {expected_ids!r}). Re-derive by set difference and update "
+                "this assertion in the same change."
+            )
+        optional_migrations = []
+        behavior_changes = [
+            "The Claude Stop hook gains two STATE gates that evaluate with no live goal required: "
+            "one refuses a turn that ends on a live detached background run or on a finished run "
+            "whose terminal summary is unread, and one refuses a turn that ends with pending work "
+            "on record. Both ship WARN-ONLY -- they emit an advisory and never block -- until the "
+            "fourth PR of the wave-3 stop chain lands and flips the posture once, on evidence.",
+            "`tautline monitor-status` now writes a read receipt beside the log "
+            "(`<log>.read.json`), on every path that prints a status including a failed or stale "
+            "one. That receipt is what clears the unread-run gate; nothing else does. It records "
+            "WHICH completion it observed, so relaunching under the same log name cannot be "
+            "cleared by the previous run's receipt.",
+            "`stop_hook_active` no longer stands the whole Stop guard down on the first retry. The "
+            "state gates survive two consecutive retries and then fail open with a logged event; "
+            "the counter resets on any non-retry evaluation. The harness's infinite-loop "
+            "protection is preserved -- what is removed is the block-once-then-anything-goes hole.",
+            "A linked git worktree inherits its main worktree's pending-work state. A checkout that "
+            "declares itself a subagent worktree (`.ai-work/WORKTREE_ROLE.json` with "
+            "`\"role\": \"subagent\"`) is exempt from INHERITED arming only; a background run it "
+            "launched itself still counts.",
+        ]
+        rollback_notes = [
+            "No adopter action on rollback. Both gates are warn-only, the receipt is an additive "
+            "file beside an existing log, and no adapter schema or generated adapter changed.",
+        ]
+    elif parsed_version == version_tuple("0.99.0"):
+        # Item 106 WS4. MINOR: the plan-review finalize hard-cap/round-3-stall messages no longer
+        # prescribe decomposition as the cap exit (a successor plan is a new file path, and a new
+        # file path is a fresh round budget -- the exact loop this item closes); the remedy now
+        # says to carry findings into the implementation-review focus list by hand and proceed to
+        # the build. An automatic `capped-with-open-findings` finalize is a separate PR (item 106
+        # WS1); this message text is deliberately still true once that lands.
+        # `milestone-advance --event pr-merged` also gains a
+        # printed cumulative-lineage-rounds line, reusing the existing plan_review_round/clean/
+        # blocked telemetry codes -- no schema change, no gate changes its pass/fail verdict.
+        #
+        # DERIVED from the predecessor, never asserted: this release's own change is additive
+        # (message text + a printed report line), but it CARRIES 0.95.0's migrations (0.86.0's
+        # chain, unchanged -- 0.95.0 is additive too), and safety composes down. Re-cut from
+        # 0.91.0 (which fell below the merged tip when 0.95.0/#555 landed) to 0.99.0, derived from
+        # 0.95.0 -- the real chain head this release actually sits on top of after merging (not
+        # rebasing) origin/experimental.
+        wip_safe = bool(release_migration_report_data("0.95.0").get("wipSafe", False))
+        required_migrations = release_migration_report_data("0.95.0")["requiredMigrations"]
+        carried_ids = tuple(entry["id"] for entry in required_migrations)
+        expected_ids = (
+            "sync-the-install-before-reinstalling-hooks",
+            "reinstall-hooks-for-the-resolver-order",
+            "narrow-scope-query-if-a-board-read-refuses",
+            "python-312-floor",
+            "record-a-test-run",
+            "install-fleet-guard-hook",
+            "grant-gh-project-scopes",
+            "install-question-guard-hook",
+            "reinstall-the-operator-launcher-for-its-channel-signal",
+            "reconcile-a-contradicting-framework-checkout",
+        )
+        if carried_ids != expected_ids:
+            raise SystemExit(
+                "0.99.0 carries 0.95.0's requiredMigrations forward; the predecessor list changed "
+                f"({carried_ids!r} != {expected_ids!r}). Re-derive by set difference and update "
+                "this assertion in the same change."
+            )
+        optional_migrations = []
+        behavior_changes = [
+            "Plan-review finalize no longer names decomposition as the hard-cap/round-3-stall "
+            "exit ON THE SEQUENTIAL PATH. The remedy now says to carry every unresolved "
+            "Critical/P1 into the implementation-review focus list by hand and proceed to the "
+            "build -- never a successor plan (which drew a fresh round budget and was the "
+            "mechanism behind the measured 16-round/14-file runaway this item closes). Mirrored "
+            "in the generated adapter's `## Autonomy And Planning` guidance; a grep guard pins "
+            "the removal. Verified end to end: driving one plan through R1-R4 naturally, this is "
+            "the only cap-state message a lane reads. Scoped, not closed: plan_review_hard_cap_"
+            "refusal (the round-LAUNCH refusal, a different function) still names a split, "
+            "reachable only as a backstop when three conditions hold at once -- per-file hard "
+            "cap, unresolved blockers, no bound capped-eligible evidence -- which requires an "
+            "agent to have already disregarded the build-carry remedy above. Its wording is "
+            "pinned to methodology/canonical-rules.md's Planning section by a named test, and "
+            "that paragraph is item 106 WS1's wholesale-rewrite seam; closing this residual is "
+            "deferred to avoid a collision with that in-flight release-valve PR. Also scoped: "
+            "'proceed to the build' is not yet mechanically enabled end to end for a Claude Code "
+            "lane -- ExitPlanMode's plan_finalization_hook reruns plan_finalization_precheck_"
+            "errors, which only accepts clean/clean-with-deferrals, so it still blocks on the "
+            "blocked manifest this path writes. Making the capped exit pass that gate is exactly "
+            "WS1's capped-with-open-findings verdict (D2).",
+            "`milestone-advance --event pr-merged` now prints "
+            "`plan_review_lineage_rounds_at_merge:` with the merged PR's plan's cumulative "
+            "succession-chain review-round spend (honesty-marked exact/floor), reusing the "
+            "existing plan_review_round/plan_review_clean/plan_review_blocked v1 telemetry "
+            "vocabulary. No enum change; advisory reporting only, never blocking. The line is "
+            "omitted (not printed empty) when the merged item never passed through pr-queued and "
+            "carries no --pr either.",
+        ]
+        rollback_notes = [
+            "No adopter action on rollback. The changed strings are refusal/advisory message text "
+            "only -- no exit code, schema, or gate verdict changed -- and the new merge-time "
+            "report line is additive and best-effort (a lane with no resolvable source plan on "
+            "the milestone ledger, or no known PR, simply prints nothing extra).",
+        ]
+    elif parsed_version == version_tuple("0.83.0"):
+        # Item 85 PR1. MINOR: a new `secret-status` verb, a remedy appended to seven existing error
+        # strings, and a canonical rule. No existing gate changes its pass/fail verdict.
+        #
+        # DERIVED from the predecessor, never asserted: this release's own change is additive, but
+        # it CARRIES 0.82.0's migrations, and safety composes down.
+        wip_safe = bool(release_migration_report_data("0.82.0").get("wipSafe", False))
+        required_migrations = release_migration_report_data("0.82.0")["requiredMigrations"]
+        carried_ids = tuple(entry["id"] for entry in required_migrations)
+        expected_ids = (
+            "sync-the-install-before-reinstalling-hooks",
+            "reinstall-hooks-for-the-resolver-order",
+            "narrow-scope-query-if-a-board-read-refuses",
+            "python-312-floor",
+            "record-a-test-run",
+            "install-fleet-guard-hook",
+            "grant-gh-project-scopes",
+            "install-question-guard-hook",
+            "reinstall-the-operator-launcher-for-its-channel-signal",
+            "reconcile-a-contradicting-framework-checkout",
+        )
+        if carried_ids != expected_ids:
+            raise SystemExit(
+                "0.83.0 carries 0.82.0's requiredMigrations forward; the predecessor list changed "
+                f"({carried_ids!r} != {expected_ids!r}). Re-derive by set difference and update "
+                "this assertion in the same change."
+            )
+        optional_migrations = []
+        behavior_changes = [
+            "`tautline secret-status --name <VAR>` reports WHERE a named secret is reachable from "
+            "-- process env, installed config env, or the operator secrets file -- and never what "
+            "it is. Exit 0 means reachable; exit 1 means absent from all three, which is the only "
+            "answer that justifies an operator escalation; exit 2 means a layer EXISTS but could "
+            "not be read, so absence was never established and escalating on it would be acting "
+            "on a measurement nothing took.",
+            "Every missing-webhook refusal now names that probe. The refusals previously said the "
+            "secret was missing and sent the lane straight to a human, when the usual cause is a "
+            "value that IS persisted and merely unreachable from this process -- a session started "
+            "outside the lane env, or a value written under the MINERVIT_ spelling while the "
+            "resolver prefers its TAUTLINE_ alias.",
+            "Canonical policy 03 and 23 state the rule: a missing MINERVIT_/TAUTLINE_/webhook "
+            "secret is not a true blocker until `secret-status` has been run and the command "
+            "retried through the lane environment.",
+        ]
+        rollback_notes = [
+            "No adopter action on rollback. The verb is additive, the remedy is appended text on "
+            "strings that already failed, and no adapter schema or generated adapter changed.",
+        ]
+    elif parsed_version == version_tuple("0.82.0"):
+        # Item 83 PR1. MINOR: `background-run` gains a reaper that records a real exitCode and
+        # finishedAt, the monitor line stops recommending `tail -F`, and policy 20 gains four
+        # monitor-lifecycle rules.
+        #
+        # DERIVED from the predecessor, never asserted. This release's own change is safe -- a run
+        # that finishes now says so -- but it CARRIES 0.81.0's ten migrations, and 0.81.0 is
+        # wipSafe:false because it in turn carries 0.79.0's checkout-reconciliation migration that
+        # can newly make startup exit 2. A lane jumping across that reads ONLY this report.
+        wip_safe = bool(release_migration_report_data("0.81.0").get("wipSafe", False))
+        required_migrations = release_migration_report_data("0.81.0")["requiredMigrations"]
+        carried_ids = tuple(entry["id"] for entry in required_migrations)
+        expected_ids = (
+            "sync-the-install-before-reinstalling-hooks",
+            "reinstall-hooks-for-the-resolver-order",
+            "narrow-scope-query-if-a-board-read-refuses",
+            "python-312-floor",
+            "record-a-test-run",
+            "install-fleet-guard-hook",
+            "grant-gh-project-scopes",
+            "install-question-guard-hook",
+            "reinstall-the-operator-launcher-for-its-channel-signal",
+            "reconcile-a-contradicting-framework-checkout",
+        )
+        if carried_ids != expected_ids:
+            raise SystemExit(
+                "0.82.0 carries 0.81.0's requiredMigrations forward; the predecessor list "
+                f"changed ({carried_ids!r} != {expected_ids!r}). Re-derive by set difference "
+                "and update this assertion in the same change."
+            )
+        optional_migrations = []
+        behavior_changes = [
+            "`background-run` now records completion. A detached reaper owns the command and "
+            "waits on it, writing a real `exitCode` and `finishedAt` and appending an anchored "
+            "`[tautline] finished:` line to the log. Nothing in the tree called `wait()` before, "
+            "so a monitor could only infer from a dead pid -- and \"the pid is gone\" and \"the "
+            "pid never started\" are the same observation, which is why a stalled run read exactly "
+            "like a finished one.",
+            "The printed `monitor:` line no longer recommends `tail -F`. That form never exits, so "
+            "it cannot report completion: a lane following it watches a stream that goes quiet "
+            "whether the work finished or wedged. It now names `tautline monitor-status`, which "
+            "reads the receipts the reaper writes.",
+            "A log written outside the lane's CONFIGURED runsDir now says so, because the turn-end "
+            "yield gate scans that directory and an advisory wrong in the reassuring direction is "
+            "worse than none.",
+        ]
+        rollback_notes = [
+            "No adopter action on rollback. The reaper writes two extra fields into a metadata "
+            "file an older build simply ignores, and the anchored finished line is appended to a "
+            "log nothing parses positionally.",
+        ]
+    elif parsed_version == version_tuple("0.81.0"):
+        # Item 70 WS3. MINOR, and WIP-SAFE: this release adds a REGISTRY AND A TEST, not a gate.
+        # `ESCAPE_HATCH_READERS` plus tests/test_escape_hatch_reader_sets.py change what the suite
+        # refuses, not what any lane's runtime does -- no startup surface, no exit code, and no
+        # adapter key moves. A lane that upgrades straight into this sees no new obligation, which
+        # is why nothing is appended to requiredMigrations.
+        # DERIVED from the predecessor, not asserted -- and this branch got it wrong first time.
+        # This release's OWN change is WIP-safe (a registry and a test; nothing runs at runtime),
+        # but it carries 0.80.0's ten migrations forward, and 0.80.0 is wipSafe:false because it in
+        # turn carries 0.79.0's checkout-reconciliation migration, which can newly make startup exit
+        # 2. A lane jumping across 0.79.0 reads ONLY this report, so a hard-coded True advertises
+        # those same ten migrations as safe for exactly the population the flag exists to protect.
+        # Safety classification composes DOWN, never up -- which the 0.80.0 branch below already
+        # says in those words. The lesson was written in this file and I reproduced the defect
+        # anyway; deriving it makes that impossible rather than remembered (Codex R2).
+        wip_safe = bool(release_migration_report_data("0.80.0").get("wipSafe", False))
+        required_migrations = release_migration_report_data("0.80.0")["requiredMigrations"]
+        carried_ids = tuple(entry["id"] for entry in required_migrations)
+        expected_ids = (
+            "sync-the-install-before-reinstalling-hooks",
+            "reinstall-hooks-for-the-resolver-order",
+            "narrow-scope-query-if-a-board-read-refuses",
+            "python-312-floor",
+            "record-a-test-run",
+            "install-fleet-guard-hook",
+            "grant-gh-project-scopes",
+            "install-question-guard-hook",
+            "reinstall-the-operator-launcher-for-its-channel-signal",
+            "reconcile-a-contradicting-framework-checkout",
+        )
+        if carried_ids != expected_ids:
+            raise SystemExit(
+                "0.81.0 carries 0.80.0's requiredMigrations forward; the predecessor list "
+                f"changed ({carried_ids!r} != {expected_ids!r}). Re-derive by set difference "
+                "and update this assertion in the same change."
+            )
+        # A chain HEAD owns every variable the report reads. An earlier version of this branch set
+        # only wip_safe and required_migrations and sat OUTSIDE the chain as a standalone `if`, so
+        # execution fell through to the `elif version >= 0.6.125` catch-all far below and every
+        # value was overwritten -- the report generated cleanly with ONE required migration instead
+        # of the ten carried from 0.80.0. It would have silently dropped ten migrations for anyone
+        # upgrading straight into this release, which is the same defect the 0.80.0 comment below
+        # records being caught twice. Nothing failed; the numbers were simply wrong.
+        optional_migrations = []
+        behavior_changes = [
+            "Escape-hatch env vars are declared with their reader set in ESCAPE_HATCH_READERS, and "
+            "tests/test_escape_hatch_reader_sets.py re-derives that set from source on every run. "
+            "This changes what the SUITE refuses, not what any lane's runtime does: no startup "
+            "surface, no exit code, and no adapter key moves. A contributor who adds a read of a "
+            "subsystem-disabling variable without declaring it now gets a red test.",
+        ]
+        rollback_notes = [
+            "No adopter action on rollback: this release adds a registry constant and a test. "
+            "Nothing reads ESCAPE_HATCH_READERS at runtime, no adapter schema changed, and no "
+            "generated adapter text moved, so an older build ignores it entirely.",
+        ]
+    elif parsed_version == version_tuple("0.80.0"):
+        # Item 74 PR-C / policy 16a. MINOR: a new adapter key, a new canonical policy section, and
+        # a new opt-in-gated drift condition.
+        #
+        # WIP-SAFE, and the reason is the enforcement boundary rather than the diff size: a lane
+        # that has NOT set `goLiveReadiness.profile: live-tenant` gets at most one warn line, which
+        # never enters any failure list at any flag combination, including --strict and
+        # --fail-on-drift. Exactly one adapter in this repo carries a milestone-close target, and
+        # it gains that warn line and no exit-code change -- measured with the plan's inventory
+        # command BEFORE the wiring was written.
+        # DERIVED from the predecessor, not asserted. This release's own change is WIP-safe -- an
+        # un-opted lane gets one advisory line -- but it CARRIES 0.79.0's migrations forward,
+        # because a jump upgrade consumes only the newest report. 0.79.0 is wipSafe:false: its
+        # checkout-contradiction migration can newly make startup exit 2. Advertising a direct
+        # upgrade across it as WIP-safe would be false for exactly the population that skips 0.79.0
+        # and therefore reads only this report (Codex R1 P2). Safety classification composes down,
+        # never up.
+        predecessor_wip_safe = bool(
+            release_migration_report_data("0.79.0").get("wipSafe", False)
+        )
+        wip_safe = predecessor_wip_safe
+        # Derived from 0.79.0, this batch's immediate predecessor, NOT 0.78.0 (Codex R1 P1). The
+        # update flow does not aggregate intermediate reports -- a lane jumping releases reads only
+        # the newest list -- so deriving from 0.78.0 would silently drop 0.79.0's two required
+        # migrations for anyone upgrading straight to this release.
+        required_migrations = release_migration_report_data("0.79.0")["requiredMigrations"]
+        carried_ids = tuple(entry["id"] for entry in required_migrations)
+        expected_ids = (
+            "sync-the-install-before-reinstalling-hooks",
+            "reinstall-hooks-for-the-resolver-order",
+            "narrow-scope-query-if-a-board-read-refuses",
+            "python-312-floor",
+            "record-a-test-run",
+            "install-fleet-guard-hook",
+            "grant-gh-project-scopes",
+            "install-question-guard-hook",
+            "reinstall-the-operator-launcher-for-its-channel-signal",
+            "reconcile-a-contradicting-framework-checkout",
+        )
+        if carried_ids != expected_ids:
+            raise SystemExit(
+                "0.80.0 carries 0.79.0's requiredMigrations forward; the predecessor list changed "
+                f"({carried_ids!r} != {expected_ids!r}). Re-derive by set difference and update "
+                "this assertion in the same change."
+            )
+        optional_migrations = [
+            {
+                "id": "adopt-the-go-live-readiness-profile",
+                "surface": "adapter",
+                "command": "tautline render-adapters --project <adapter.json> --target . --write",
+                "description": (
+                    "If this lane serves a customer surface, declare it: set "
+                    "`goLiveReadiness.profile: live-tenant` in the SOURCE adapter and re-render. "
+                    "Doing so holds the lane to the six go-live gates in policy 16a. Each must "
+                    "reach its own satisfying state, and that state is NOT uniform: some controls "
+                    "take `enforcement: block`, while others are satisfied by populating what they "
+                    "measure -- declared critical journeys, quarantine bounds and a scan path, "
+                    "alarm sources and required checks. Adding an `enforcement` key to a control "
+                    "that has none makes the adapter SCHEMA-INVALID, so read the per-control line "
+                    "`methodology-status` prints: it names the specific state each unsatisfied "
+                    "control needs. A control you do not intend to enforce takes a "
+                    "`goLiveReadiness.declines` entry naming it with a reason instead. Until you "
+                    "adopt the profile you get one advisory line and no exit-code change."
+                ),
+            }
+        ]
+        behavior_changes = [
+            "New adapter key `goLiveReadiness` and canonical policy section 16a. A lane that "
+            "declares `profile: live-tenant` is held to six gates -- customer-outcome health "
+            "contract, detection baseline + branch protection, required-runtime-secret registry, "
+            "CI test gate, critical-journey ratchet + flaky quarantine, and open-remediation "
+            "obligation ledger -- each of which must reach ITS OWN satisfying state, or carry a "
+            "recorded decline naming the control and a reason. The state is not uniform: some "
+            "controls take `enforcement: block`, others are satisfied by populating what they "
+            "measure, and adding an `enforcement` key to a control that has none makes the adapter "
+            "schema-invalid.",
+            "THE ENFORCEMENT BOUNDARY IS THE DESIGN, and it is chosen against a measured "
+            "constraint. `methodology-status --fail-on-drift` is the mandated lane-start command "
+            "rendered into every generated adapter, and one shipped adapter already carries a "
+            "milestone-close deployment target. A drift failure keyed on that condition would have "
+            "redded every live-surface lane at session start on upgrade with no migration -- the "
+            "adapter-removal 0.6.115 class, where a control shipped faster than lanes could adopt "
+            "it and had to be reverted. So a lane that has NOT opted in gets at most one "
+            "`go_live_posture_warn:` line, which never enters any failure list at any flag "
+            "combination, and that is pinned by test.",
+            "The forcing function is a shipped switch rather than silence: "
+            "`goLiveReadiness.enforcement` (enum warn|block, DEFAULT warn) makes the un-opted "
+            "live-surface case drift when a lane sets it to `block`. The mechanism ships now and "
+            "the default stays `warn`; flipping it is a separate, separately-released change.",
+            "A DECLINE IS A DECLARATION, NOT A LOOPHOLE: it names the control and states a reason "
+            "of at least twelve characters, so `n/a` does not pass. A control that is off with no "
+            "decline is an undeclared gap, and the refusal NAMES it and carries the posture row's "
+            "own detail -- because `criticalJourneys` is an array with no enforcement field and "
+            "`readiness` stays unreachable until its paths exist, so 'set enforcement block' alone "
+            "would be a dead end for exactly the controls an adopter most needs to fix.",
+            "TWO CONTROLS GOT STRICTER, and a lane reading its own posture will see it. "
+            "`runtimeConfig.requiredSecrets` no longer reports `block` when secrets are registered "
+            "but neither `bootAssertionCommand` nor `secretParityCommand` is set: a registry "
+            "nothing checks records an intention, not a check, so it now reports `empty`. And a "
+            "`goLiveReadiness` block carrying an unknown key is refused by name rather than merged "
+            "over the defaults, because a misspelled key used to read as un-opted while the lane "
+            "that wrote it believed it was covered. Neither changes any failure list for a lane "
+            "that has not opted in.",
+            "NOT COVERED, stated so no adopter believes otherwise: nothing verifies a declined "
+            "control was declined for a good reason, and no `DEFAULT_*` enforcement value flips.",
+        ]
+        rollback_notes = [
+            "ROLLBACK REQUIRES ONE STEP FOR ADOPTERS, and skipping it wedges the lane. The "
+            "pre-0.80.0 adapter schema sets root `additionalProperties: false`, so an older build "
+            "does NOT ignore an unknown `goLiveReadiness` key -- it REJECTS the adapter and lane "
+            "startup fails. A lane that adopted the profile must remove the key from the SOURCE "
+            "adapter and re-render (`tautline render-adapters --project <adapter.json> --target . "
+            "--write`) BEFORE repinning below 0.80.0. A lane that never adopted it carries no key "
+            "and rolls back with no action.",
+            "WIP-safe forward for any lane that has not adopted the profile, because the un-opted "
+            "case is advisory-only at every flag combination.",
+        ]
+    elif parsed_version == version_tuple("0.79.0"):
+        # Item 70 WS1 / RCA 2026-07-22 control 5. MINOR: a new gate on two startup surfaces.
+        #
+        # NOT WIP-SAFE for one specific population, and naming it precisely matters more than the
+        # label: a machine whose framework checkout sits on ANOTHER CHANNEL's release branch --
+        # channel `stable` with the checkout on `experimental`, or the reverse -- now sees
+        # `framework_checkout_reconciliation: required` and `methodology-status --fail-on-drift`
+        # exits 2 (remediation) instead of printing a warning and exiting 0. That is the control
+        # working, not a regression, but it IS a behaviour change for that machine and every exit
+        # is enumerated in the line itself.
+        #
+        # Every OTHER non-release branch -- feature branches, detached HEAD -- is `advisory` and
+        # exits 0, which is deliberate and load-bearing: an any-non-release-branch rule would have
+        # made every framework session on any feature branch exit-2 debt whose only durable escape
+        # is a machine-wide maintainer-mode standdown.
+        wip_safe = False
+        required_migrations = release_migration_report_data("0.78.0")["requiredMigrations"]
+        carried_ids = tuple(entry["id"] for entry in required_migrations)
+        expected_ids = (
+            "sync-the-install-before-reinstalling-hooks",
+            "reinstall-hooks-for-the-resolver-order",
+            "narrow-scope-query-if-a-board-read-refuses",
+            "python-312-floor",
+            "record-a-test-run",
+            "install-fleet-guard-hook",
+            "grant-gh-project-scopes",
+            "install-question-guard-hook",
+        )
+        if carried_ids != expected_ids:
+            raise SystemExit(
+                "0.79.0 carries 0.78.0's requiredMigrations forward; the predecessor list changed "
+                f"({carried_ids!r} != {expected_ids!r}). Re-derive by set difference and update "
+                "this assertion in the same change."
+            )
+        required_migrations = list(required_migrations) + [
+            {
+                "id": "reinstall-the-operator-launcher-for-its-channel-signal",
+                "surface": "launcher",
+                "command": (
+                    "tautline install-claude-launcher --name <your-launcher-name> "
+                    "--operator-channel <channel> --runtime <checkout>"
+                ),
+                "description": (
+                    "ONLY for machines that run an operator launcher created with "
+                    "`--operator-channel`. That launcher now exports a DEDICATED "
+                    "`*_METHODOLOGY_OPERATOR_CHANNEL` signal, and the new checkout reconciliation "
+                    "stands down for it. Until the launcher is regenerated the session does not "
+                    "carry that export, so a session whose checkout sits on another channel's "
+                    "release branch will see `framework_checkout_reconciliation: required` and "
+                    "`methodology-status --fail-on-drift` will exit 2. Regenerate the launcher, or "
+                    "use the one-shot `--allow-non-main` / MINERVIT_METHODOLOGY_ALLOW_NON_MAIN=1 "
+                    "deviation in the meantime. PASS THE LAUNCHER'S OWN `--name`, and keep the "
+                    "`--bin-dir`/`--runtime` you originally used: the default name is the reserved "
+                    "managed-launcher name and the operator install refuses it, so a bare re-run "
+                    "exits before writing and the old launcher never gains the signal. "
+                    "The generic auto-rescue opt-out is deliberately NOT "
+                    "accepted as checkout ownership -- it is a safety setting any managed session "
+                    "may hold, and honouring it would bypass the very contradiction this release "
+                    "exists to catch."
+                ),
+            },
+            {
+                "id": "reconcile-a-contradicting-framework-checkout",
+                "surface": "framework-checkout",
+                "command": "tautline methodology-status --target . --fail-on-drift",
+                "description": (
+                    "If your framework checkout sits on ANOTHER channel's release branch (channel "
+                    "`stable` with the checkout on `experimental`, or the reverse), resolve it "
+                    "rather than carrying the warning: arm maintainer mode if this machine "
+                    "develops the framework (`tautline maintainer-mode on`), check out the "
+                    "channel's release branch and re-sync, or repoint the channel with "
+                    "`tautline set-framework-channel <channel> --target .`. A one-shot deviation "
+                    "is MINERVIT_METHODOLOGY_ALLOW_NON_MAIN=1. Feature branches and detached HEAD "
+                    "are advisory and need no action."
+                ),
+            }
+        ]
+        optional_migrations = []
+        behavior_changes = [
+            "`lane-start` and `methodology-status` now print "
+            "`framework_checkout_reconciliation: <state> - <line>` and, when the state is "
+            "`required`, `methodology-status --fail-on-drift` exits 2 as agent-fixable DEBT rather "
+            "than printing a warning and exiting 0. RCA 2026-07-22 control 5: the incident "
+            "persisted for weeks precisely because a channel/branch contradiction was reported as "
+            "a bare warning and carried forward.",
+            "THE ARMING CONDITION IS NARROW, and the narrowing is the design rather than caution. "
+            "`required` fires ONLY on a CONTRADICTION -- the checkout sits on another channel's "
+            "release branch -- where all three enumerated resolutions are real. Every other "
+            "non-release branch (feature branch, detached HEAD) is `advisory` and exits 0. An "
+            "any-non-release-branch rule was written first and rejected against measurement: this "
+            "framework's own repo carries no pin, so the channel resolves to `stable`/`main` while "
+            "every lane lives on `experimental` and feature branches, which would have made every "
+            "framework session exit-2 debt. Two of that rule's three exits are impossible for a "
+            "feature branch, leaving a machine-wide maintainer-mode standdown as the only durable "
+            "escape -- and a fail-closed control whose cheapest exit is a global gate standdown "
+            "teaches the bypass this cluster exists to delete.",
+            "The check is evaluated OUTSIDE the `no pending update` branch that the previous "
+            "warning lived in. The 2026-07-22 incident state HAD a pending update -- that is what "
+            "made the sync refuse the non-release branch in the first place -- so a check "
+            "evaluated only when no update is pending would have gone silent in exactly the "
+            "situation it exists for.",
+            "TWO BEHAVIOUR FLIPS, both deliberate and both pinned by test, because the previous "
+            "warning hardcoded `main` as the expected branch instead of resolving it from the "
+            "channel. Channel `experimental` with the checkout on `main` is a genuine "
+            "contradiction and was SILENT before; it is now `required`. Channel `experimental` "
+            "with the checkout on `experimental` is correct and WARNED before; it is now silent.",
+            "`methodology_checkout_hygiene_warning` keeps only its dirty-checkout condition, under "
+            "its existing `framework_checkout_warning:` prefix. The two conditions have different "
+            "owners and different remedies, and a moved check nobody re-homes is how a control "
+            "goes quiet.",
+        ]
+        rollback_notes = [
+            "Repinning below 0.79.0 restores the previous bare warning and its hardcoded `main` "
+            "expectation. No state migration in either direction: no adapter key, no new record, "
+            "and no file an older version reads.",
+            "NOT WIP-safe for a machine in the contradiction state: it exits 2 under "
+            "`--fail-on-drift` after this release and did not before. The fix is to take one of "
+            "the enumerated resolutions, all of which the line prints and all of which are "
+            "reachable from inside a remediation session; repinning is not required.",
+        ]
+    elif parsed_version == version_tuple("0.78.0"):
+        # Item 73 WS2, the log cross-check remainder carried out of #520's decomposition at the
+        # absolute round cap. MINOR: a new public helper family and a new report line on a
+        # push-boundary verb.
+        #
+        # WIP-SAFE. The cross-check is REPORT-ONLY: it prints a possible divergence and never
+        # refuses, so no in-flight branch that could finalize before this release is refused after
+        # it. An earlier draft of this entry said NOT WIP-safe, which was true of the enforcing
+        # version this item started as and false of the one it ships.
+        wip_safe = True
+        # Derived from 0.77.0, this batch's declared sibling, NOT 0.76.0. 0.77.0 adds
+        # `install-question-guard-hook`; deriving from 0.76.0 would drop it, and because the update
+        # flow does not aggregate intermediate reports -- a lane jumping releases reads only the
+        # newest list -- an adopter upgrading straight to 0.78.0 would never be told to install
+        # that hook, silently and permanently.
+        required_migrations = release_migration_report_data("0.77.0")["requiredMigrations"]
+        carried_ids = tuple(entry["id"] for entry in required_migrations)
+        expected_ids = (
+            "sync-the-install-before-reinstalling-hooks",
+            "reinstall-hooks-for-the-resolver-order",
+            "narrow-scope-query-if-a-board-read-refuses",
+            "python-312-floor",
+            "record-a-test-run",
+            "install-fleet-guard-hook",
+            "grant-gh-project-scopes",
+            "install-question-guard-hook",
+        )
+        if carried_ids != expected_ids:
+            raise SystemExit(
+                "0.78.0 carries 0.77.0's requiredMigrations forward; the predecessor list changed "
+                f"({carried_ids!r} != {expected_ids!r}). Re-derive by set difference and update "
+                "this assertion in the same change."
+            )
+        optional_migrations = []
+        behavior_changes = [
+            "REPORT-ONLY, and stated first because it bounds everything below: "
+            "`finalize-implementation-review` now reconciles the recorded unresolved counts "
+            "against "
+            "the review log the manifest pins and PRINTS any divergence it finds. It does not "
+            "refuse, so the RCA mechanism becomes VISIBLE where it was invisible, and enforcement "
+            "is not claimed. The reason is measured: `review_log_verdict_errors` was built for a "
+            "structured `## Findings` section, where a line mentioning Critical IS a finding, and "
+            "this path feeds it FREE-FORM reviewer prose, where it is not -- \"The critical retry "
+            "path is covered by tests.\" and \"This preserves an important invariant.\" both read "
+            "as "
+            "blocker evidence. Four review rounds each found another ordinary English sentence "
+            "that "
+            "would refuse an honest review, and a gate that refuses honest reviews teaches lanes "
+            "to "
+            "record dishonest verdicts.",
+            "The incident this addresses: a round whose log carried 3 Critical and 22 Important "
+            "findings was finalized at 0 unresolved Critical / 0 unresolved P1, and nothing on the "
+            "implementation path read the log to notice. The detector is not new -- it has caught "
+            "exactly this on the PLAN-review path, in both real log formats, hardened over several "
+            "rounds. It was simply never wired into this consumer.",
+            "The cross-check reads the REVIEWER'S ANSWER, not the raw log. An implementation "
+            "review "
+            "log is the whole `codex review` CLI transcript and carries no `## Findings` heading, "
+            "because that heading is a contract of the plan-review wrapper's prompt. Measured on a "
+            "real 751,076-byte log: the findings section is 0 characters and the raw fallback is "
+            "all 751,076. The scope is the codex final-response marker when present, else a "
+            "`## Findings` section; when neither can be located the check is skipped and says so "
+            "on "
+            "stderr rather than refusing.",
+            "New helper family for the successor that will enforce this: "
+            "`classified_findings_all_blockers_resolved` (every recorded blocker disposed of, not "
+            "merely one -- the shipped any-one helper is left byte-for-byte alone so the three "
+            "plan-review call sites are unaffected) and "
+            "`classified_findings_cover_blocker_classes` "
+            "(the classification must account for every blocker CLASS the log shows, closing the "
+            "case where blockers are omitted from the record entirely rather than left "
+            "unresolved).",
+            "RESIDUAL 1: exact count reconciliation between log and classification is impossible "
+            "here -- the log formats carry no per-finding identity to count against. That needs "
+            "the "
+            "reviewer-side structured findings contract, which is also what enforcement waits on.",
+            "RESIDUAL 2: this scan recognizes Critical/C1/P1/Important, while `finding_counts` and "
+            "`BLOCKER_SEVERITIES` also classify `P0` as Critical and `High` as P1, so a blocker "
+            "reported only as `[P0]` or `High` is invisible to it. A widened alias set was written "
+            "for that gap and REMOVED, because under a bare-word match ordinary reviewer prose -- "
+            "\"the tests provide high confidence\" -- reads as a P1 finding. Matching `High` "
+            "safely "
+            "needs severity POSITIONS rather than word presence, and positive and negative "
+            "detection must move together; both residuals are filed.",
+        ]
+        rollback_notes = [
+            "Repinning below 0.78.0 removes the report line and the helper family. No state "
+            "migration in either direction: no adapter key, no new record, and no file an older "
+            "version reads.",
+            "WIP-safe in both directions, because the cross-check never refuses: a branch whose "
+            "recorded counts disagree with its review log finalizes identically before and after "
+            "this release, and only the printed output differs.",
+        ]
+    elif parsed_version == version_tuple("0.77.0"):
+        # Item 82, wave 3 position 1 of the RCA remediation program. MINOR: a new public verb
+        # (`stop-guard-aggregate`), a new installed PreToolUse hook, and two new adapter keys.
+        #
+        # WIP-SAFE, and the reason is the whole shape of this release: every new Stop-boundary
+        # check ships WARN-ONLY behind `WAVE3_STOP_CHAIN_BLOCKING_ENABLED`, so no in-flight lane
+        # gains a Stop refusal it was not already meeting. The one seam that DOES deny is the
+        # AskUserQuestion PreToolUse guard, and what it denies -- a continue-vs-stop direction menu
+        # raised while a goal is unmet -- is already forbidden by canonical rule and has been since
+        # long before this release. A lane that meets it was violating the rule silently.
+        wip_safe = True
+        required_migrations = release_migration_report_data("0.76.0")["requiredMigrations"]
+        carried_ids = tuple(entry["id"] for entry in required_migrations)
+        expected_ids = (
+            "sync-the-install-before-reinstalling-hooks",
+            "reinstall-hooks-for-the-resolver-order",
+            "narrow-scope-query-if-a-board-read-refuses",
+            "python-312-floor",
+            "record-a-test-run",
+            "install-fleet-guard-hook",
+            "grant-gh-project-scopes",
+        )
+        if carried_ids != expected_ids:
+            raise SystemExit(
+                "0.77.0 carries 0.76.0's requiredMigrations forward; the predecessor list changed "
+                f"({carried_ids!r} != {expected_ids!r}). Re-derive by set difference and update "
+                "this assertion in the same change."
+            )
+        required_migrations = list(required_migrations) + [
+            {
+                "id": "install-question-guard-hook",
+                "surface": "claude-hooks",
+                "command": "tautline install-hooks",
+                "description": (
+                    "Reinstall hooks so the AskUserQuestion PreToolUse guard is registered: "
+                    "`tautline install-hooks` (settings-managed lanes) or the next `tautline "
+                    "lane-start`, which installs it automatically. Plugin installs pick it up from "
+                    "the refreshed plugin manifest. Until a lane does this the guard is absent, "
+                    "not "
+                    "advisory -- an uninstalled hook reports nothing at all."
+                ),
+            }
+        ]
+        optional_migrations = []
+        behavior_changes = [
+            "A new PreToolUse hook on `AskUserQuestion` evaluates a question payload for the "
+            "continue-vs-stop / pick-path menu shape and LOGS what it finds. It ships ADVISORY and "
+            "denies nothing by default: `responseGuard.questionGuard` defaults to `advisory`, and "
+            "setting it to `blocking` opts a lane into the denial. THE MENU CONTROL FOR RCA "
+            "20260701T115759Z IS THEREFORE NOT CLOSED BY THIS RELEASE, and is not claimed to be -- "
+            "three consecutive review rounds each found a fresh FALSE POSITIVE in the classifier, "
+            "ending with a genuine operator-owned approval question (`May I run the destructive "
+            "migration?` / `Proceed with migration` / `Hold off for approval`) being denied, which "
+            "can deadlock exactly the work whose only legal next step IS requesting approval. A "
+            "default-deny classifier with that record is the worse of the two risks, so the shape "
+            "is measured instead and the promotion is its own item. What IS closed here is the "
+            "visibility half: the Stop guard reads text "
+            "and an AskUserQuestion menu is payload-shaped, so the exact menu the free-text "
+            "detector was built to catch was invisible to every guard -- and because that tool "
+            "blocks the turn waiting for the human, the Stop hook may never fire at all. The "
+            "PreToolUse seam is the only one that sees the shape before the operator does. "
+            "Carve-outs, all pinned by tests: no adapter root (guided onboarding's sanctioned "
+            "use), no active goal, an explicit user stop, product-dev mode, and any single-object "
+            "true-blocker question (credential, scope, approval condition). Demote with "
+            "`responseGuard.questionGuard: \"advisory\"`.",
+            "Blocking inputs at that seam are the QUESTION PAYLOAD ONLY. The prior assistant turn "
+            "supplies advisory context and never the block, because lanes in this ecosystem "
+            "routinely quote guard output verbatim and must not be denied their next legitimate "
+            "question for doing so.",
+            "New adapter key `responseGuard.highPrecisionPhraseChecks`, default `blocking`, "
+            "introducing a high-precision phrase tier. Plain phrase checks default to advisory and "
+            "no shipped adapter overrides them, so a new Stop-seam phrase check registered in the "
+            "standard tier is telemetry-only in every real lane -- a control that reads healthy "
+            "because nothing ever lets it act. Admission is narrow by rule: only a check whose "
+            "false-positive surface is structurally bounded, with independent carve-outs each "
+            "pinned by a negative test, may enter it.",
+            "Two new Stop-boundary checks ship WARN-ONLY and block nothing in this release: "
+            "`stop.announce_and_stop` (a final turn asserting an in-progress or next action with "
+            "no evidence after the announcement) and `stop.standing_authorization_reask` "
+            "(re-asking break-glass or admin-merge authorization that a source-of-truth artifact "
+            "already grants). They log guard events so the shape is visible and measurable. This "
+            "is the program's DECISION 4 posture: four plans add blocking conditions to ONE Stop "
+            "boundary, and every one stays warn-only until the fourth lands and the aggregate "
+            "false-positive rate is re-measured a final time. The switch is the single constant "
+            "`WAVE3_STOP_CHAIN_BLOCKING_ENABLED`.",
+            "New verb `tautline stop-guard-aggregate` measures the AGGREGATE stop-blocking rate "
+            "over a frozen corpus at maximum enforcement and compares it with the committed "
+            "baseline at `methodology/stop-guard/aggregate-baseline.json`. The ceiling is +2 "
+            "percentage points across the whole four-PR chain. The corpus digest is pinned into "
+            "the baseline on purpose: without it a lane whose detector started firing on "
+            "legitimate turns could come back under the ceiling by deleting those entries with "
+            "every gate still green.",
+            "RESIDUAL, stated rather than claimed closed: `stop.announce_and_stop` cannot verify "
+            "that evidence appearing after an announcement corresponds to the ANNOUNCED object, so "
+            "a stale marker appended after it still passes. Correlating them needs tool-call "
+            "provenance the Stop hook does not have. A deliberate false-negative floor, chosen "
+            "over false positives. Separately, the break-glass re-ask closure is RENEGOTIATED to "
+            "advisory rather than fail-closed: the predicate cannot see whether a standing "
+            "approval exists, so blocking it would deny a legitimate first-time break-glass "
+            "blocker question.",
+        ]
+        rollback_notes = [
+            "Repinning below 0.77.0 removes the AskUserQuestion denial and the two warn-only "
+            "checks. No state migration in either direction: the two new adapter keys are "
+            "optional and an older build simply does not read them.",
+            "ROLLBACK REQUIRES ONE STEP, and skipping it is worse than not rolling back. The "
+            "installed hook entry is a settings/plugin entry and repinning does not remove it. An "
+            "older CLI has no `question-guard-hook` subcommand, and an unknown subcommand is an "
+            "ARGPARSE error -- it exits 2 before any handler runs, and a PreToolUse hook exiting 2 "
+            "is a DENY. Rolling back without removing the entry would therefore reject every "
+            "AskUserQuestion on the lane. This release makes the shim tolerate that case (an "
+            "unrecognized `*-hook` subcommand fails open with exit 0), so rolling back to "
+            "0.77.0 or later is safe; rolling back BELOW 0.77.0 predates that tolerance and "
+            "requires removing "
+            "the `AskUserQuestion` matcher from `~/.claude/settings.json` first.",
+        ]
+    elif parsed_version == version_tuple("0.76.0"):
+        # Item 101 PR-2a. MINOR. NOT WIP-safe, and the reason is subtle enough that an earlier
+        # draft of this entry got it wrong: teaching the blanker to recognize MORE code forms
+        # means a reference it previously failed to see now counts as quoted example text. A body
+        # whose ONLY `Resolves #N` sat inside a ~~~ fence or a double-backtick span was accepted
+        # at 0.75.0 and is refused after this release. Removing refusals elsewhere does not make
+        # the release safe for a PR that relied on the blanker's blind spot.
+        wip_safe = False
+        required_migrations = release_migration_report_data("0.75.0")["requiredMigrations"]
+        carried_ids = tuple(entry["id"] for entry in required_migrations)
+        expected_ids = (
+            "sync-the-install-before-reinstalling-hooks",
+            "reinstall-hooks-for-the-resolver-order",
+            "narrow-scope-query-if-a-board-read-refuses",
+            "python-312-floor",
+            "record-a-test-run",
+            "install-fleet-guard-hook",
+            "grant-gh-project-scopes",
+        )
+        if carried_ids != expected_ids:
+            raise SystemExit(
+                "0.76.0 carries 0.75.0's requiredMigrations forward; the predecessor list changed "
+                f"({carried_ids!r} != {expected_ids!r}). Re-derive by set difference and update "
+                "this assertion in the same change."
+            )
+        optional_migrations = []
+        behavior_changes = [
+            "The closing-reference checks run only where the backlog is ISSUE-BACKED -- an "
+            "enabled goalTracker or backlogProvider that also carries `owner` and "
+            "`projectNumber`, the same fields that decide whether the generated adapter states "
+            "the PR-reference contract at all. A repository without that pin is no longer asked "
+            "to bind an issue it does not have. Previously the merge boundary had NO provider "
+            "guard, so it demanded a closing keyword from repositories with no issue backlog, and "
+            "the compliant-looking way out of that refusal was to invent a reference -- the exact "
+            "harm the contract forbids.",
+            "The shared fence/inline-code blanker both closing-reference scanners read through "
+            "now follows GitHub's actual rules: `~~~` fences are code, a fence closes on a run of "
+            "AT LEAST its opening length, an inline span needs an EXACTLY equal run, an unclosed "
+            "fence is code through end of input, and a span may contain line endings. Previously "
+            "`~~~` fences and double-backtick spans were invisible, which cut both ways: a PR "
+            "body quoting a bad example was refused for quoting it, and a real closing reference "
+            "hidden in one of those forms passed while GitHub closed nothing.",
+            "NOT WIP-SAFE, and this is the one thing to check before upgrading: a PR body whose "
+            "ONLY closing reference sits inside a `~~~` fence or a double-backtick span was "
+            "ACCEPTED at 0.75.0, because the blanker could not see those forms and so read the "
+            "reference as live text. It is now correctly treated as quoted example text, so that "
+            "body binds nothing and `missing_closing_ref` refuses the next push or merge. Move the "
+            "reference out of the code span. Every other change in this release removes a refusal; "
+            "this one adds one, for bodies that were passing by accident.",
+            "NOT COVERED, stated so no adopter believes otherwise: rule 1 (the issue number in "
+            "every PR title), rule 3 (an advancing PR must not be DEMANDED a closing keyword) and "
+            "rule 4's advisories are still unenforced, as is rule 2's requirement that a closing "
+            "keyword be earned by a completed item. Where the gate applies it still demands a "
+            "keyword from every non-exempt PR body. Those remain tracked as their own work.",
+        ]
+        rollback_notes = [
+            "Repinning below 0.76.0 restores the unconditional merge-side demand and the previous "
+            "blanker. No state migration in either direction: this release adds no adapter key, "
+            "writes no new record, and changes no file an older version reads.",
+            "NOT WIP-safe: widening what counts as quoted example text is itself a behavior "
+            "change for any in-flight PR whose only closing reference lived in one of the "
+            "newly-recognized forms. Repinning below 0.76.0 restores the old blind spot and that "
+            "body passes again; the durable fix is to move the reference out of the code span.",
+        ]
+    elif parsed_version == version_tuple("0.14.0"):
         # NOT WIP-safe for the SAME engine-gap reason as 0.10.4-0.13.0: framework_update_decision
         # reads only the LATEST report, so a pre-0.10.3 patch-auto lane jumping straight to 0.14.0
         # would skip 0.10.3's auth migration and adopt the fail-closed board gates mid-work without
@@ -20274,6 +21906,21 @@ def readiness_review(args: argparse.Namespace) -> int:
 
 
 
+def background_run_runs_dir(adapter_data: dict | None, adapter_root: Path | None) -> Path | None:
+    """The lane's configured runs directory, or None when there is no adapter to configure it.
+
+    Resolved from `laneState.runsDir` rather than hardcoded: the turn-end yield gate scans the
+    CONFIGURED directory, and a lane that moved it would otherwise be told its run is inside the
+    gate's scan when it is not -- an advisory that is wrong in the reassuring direction.
+    """
+    if adapter_data is None or adapter_root is None:
+        return None
+    configured = str((adapter_data.get("laneState") or {}).get("runsDir") or "").strip()
+    if not configured:
+        configured = str(DEFAULT_LANE_STATE["runsDir"])
+    return (adapter_root / configured).resolve(strict=False)
+
+
 def background_run(args: argparse.Namespace) -> int:
     if not args.command:
         raise SystemExit("background-run requires a command after --")
@@ -20310,14 +21957,166 @@ def background_run(args: argparse.Namespace) -> int:
                 "costPreferences.fanOutCap, or set MINERVIT_METHODOLOGY_ALLOW_FANOUT=1 to override."
             )
     started_at = time.strftime("%Y-%m-%dT%H:%M:%S")
+    pid_file = log.with_name(f"{log.name}.pid")
+    meta_file = log.with_name(f"{log.name}.meta.json")
+
     with log.open("ab") as f:
         f.write(f"\n[minervit] starting at {started_at}: {redact_secrets(' '.join(args.command))}\n".encode())
         if timeout_seconds:
             f.write(f"[minervit] timeout_seconds: {timeout_seconds}\n".encode())
-        proc = subprocess.Popen(args.command, stdout=f, stderr=subprocess.STDOUT, env=env, start_new_session=True)
-    pid_identity = process_identity(proc.pid)
-    pid_file = log.with_name(f"{log.name}.pid")
-    pid_file.write_text(f"{proc.pid}\n", encoding="utf-8")
+    # A REAPER OWNS THE COMMAND, and that is the whole point of this change.
+    #
+    # `background-run` used to Popen the command and return, which means nothing in this process
+    # tree ever calls wait() -- so nothing can know the command's exit code, and nothing ever
+    # records that it finished. A monitor could only guess from a dead pid, and "the pid is gone"
+    # and "the pid never started" are the same observation. That is the completion-truth gap: the
+    # tool that launches the work cannot say whether the work succeeded.
+    #
+    # So the launcher spawns a detached reaper, the reaper spawns the command and wait()s on it,
+    # and the reaper writes both the terminal log line and the meta fields. This process then reads
+    # the child pid back from the pid file the reaper wrote.
+    #
+    # Crash-safety, recorded rather than assumed: if the reaper dies, meta simply never gains
+    # `finishedAt`. A consumer seeing a dead pid with no `finishedAt` must treat it as finished and
+    # UNREAD, which is the fail-safe direction -- it reports an unknown as unfinished business
+    # rather than as success.
+    reaper_code = r"""
+import json
+import os
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+log_path = Path(sys.argv[1])
+pid_file = Path(sys.argv[2])
+meta_path = Path(sys.argv[3])
+command = sys.argv[4:]
+
+try:
+    with log_path.open("ab") as handle:
+        proc = subprocess.Popen(
+            command, stdout=handle, stderr=subprocess.STDOUT, env=os.environ, start_new_session=True
+        )
+except OSError as exc:
+    # A command that cannot START -- missing binary, not executable -- produced nothing at all:
+    # no pid, no log line, and the launcher's bounded readback then reported only that the reaper
+    # never named a pid, which is true and useless. The failure is written where a reader will
+    # look, and recorded as a real exit code so `monitor-status` classifies it rather than
+    # inferring staleness (Codex R3).
+    finished_at = time.strftime("%Y-%m-%dT%H:%M:%S")
+    with log_path.open("ab") as handle:
+        handle.write(
+            f"\n[tautline] launch failed: {exc}\n"
+            f"[tautline] finished: exit=127 at {finished_at} log={log_path.name}\n".encode()
+        )
+    try:
+        meta = json.loads(meta_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        meta = {}
+    meta.update({"finishedAt": finished_at, "exitCode": 127, "launchError": str(exc)})
+    meta_path.write_text(json.dumps(meta, indent=2) + "\n", encoding="utf-8")
+    # No pid sentinel: "0" is not a pid, and anything reading it as one is being told a falsehood
+    # about a process that never existed. Ownership is NOT unlinked here either -- this process is
+    # about to exit, and a dead owner IS the release. Unlinking early let a later run claim the log
+    # while the launcher was still in its bounded readback (Codex v2 R2).
+    raise SystemExit(127)
+pid_file.write_text(f"{proc.pid}\n", encoding="utf-8")
+rc = proc.wait()
+finished_at = time.strftime("%Y-%m-%dT%H:%M:%S")
+# THE RECEIPT IS PUBLISHED FIRST, then the log marker. Both say the run finished, and this release
+# tells consumers to trust the receipt -- so the marker must never appear while the receipt is still
+# absent. Written the other way round, a consumer that saw the marker and then read the metadata got
+# a run with no exitCode and would classify it as stale: the visible signal arriving before the
+# authoritative one it points at (Codex v2 R4).
+# Atomic: a consumer polling meta must never read a half-written object.
+for _attempt in range(50):
+    try:
+        meta = json.loads(meta_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        time.sleep(0.1)
+        continue
+    # BOUND TO THE RUN THAT PRODUCED IT. If a later launcher has reused this --log path while
+    # this command was still running, the metadata now describes ITS run, and writing our exit
+    # result into it would report completion for a command that is still live -- a false success
+    # on the very receipt this release adds. Only write when the metadata still names our pid.
+    if meta.get("pid") not in (None, proc.pid):
+        break
+    # A watchdog kill is recorded DISTINCTLY. Reporting only the child's exit code conflates
+    # "the command chose to exit with this" and "we terminated it for running too long" -- and a
+    # SIGTERM-derived code is a plausible exit code for a program to return, so a consumer cannot
+    # tell them apart from the number alone. The whole point of this release is a receipt that says
+    # what happened (Codex R5).
+    timeout_marker = Path(str(log_path) + ".timedout")
+    timed_out = timeout_marker.exists()
+    meta.update({"finishedAt": finished_at, "exitCode": rc, "timedOut": timed_out})
+    tmp = meta_path.with_suffix(".tmp")
+    tmp.write_text(json.dumps(meta, indent=2) + "\n", encoding="utf-8")
+    tmp.replace(meta_path)
+    break
+
+with log_path.open("ab") as handle:
+    handle.write(
+        f"\n[tautline] finished: exit={rc} at {finished_at} log={log_path.name}\n".encode()
+    )
+
+# The lock is NOT unlinked. Ownership ends when this process does, which the staleness check reads
+# from the lock's own pid -- and every "release it here" placement tried so far released it a moment
+# too early for some path. A dead owner is the release; there is no ordering to get wrong.
+"""
+    # REFUSE to share a log path with a LIVE run. Three consecutive review rounds found attribution
+    # defects that all reduce to one ambiguity: two runs writing one log cannot have distinguishable
+    # receipts or terminal markers, so a completion from either can be read as the other's. Patching
+    # each path -- the pid readback, the metadata write, the finished marker -- treats the symptoms
+    # of a design that permits the collision. Refusing the overlap removes it (Codex R3).
+    #
+    # A DEAD previous run is fine and stays supported: its receipts are cleared below, which is the
+    # ordinary case of rerunning a command into the same log.
+    # Ownership is ACQUIRED ATOMICALLY, not checked. The previous version read the pid file, tested
+    # liveness, then proceeded -- classic check-then-act: two launchers can both pass the test and
+    # both proceed, which is the very collision the check was added to prevent (Codex R4). O_EXCL
+    # makes exactly one creator win, with no window.
+    # Clear the previous (now dead) run's receipts, or the readback below can accept the OLD pid and
+    # arm the timeout watchdog against a process this launcher never started (Codex R1).
+    for receipt in (pid_file, meta_file, log.with_name(f"{log.name}.timedout")):
+        try:
+            receipt.unlink()
+        except FileNotFoundError:
+            pass
+        except OSError:
+            raise SystemExit(
+                f"background-run: could not clear the stale receipt {receipt}; refusing to launch "
+                "rather than risk arming the watchdog against a previous run's pid"
+            ) from None
+
+    reaper = subprocess.Popen(
+        [sys.executable, "-c", reaper_code, str(log), str(pid_file), str(meta_file), *args.command],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        env=env,
+        start_new_session=True,
+    )
+    # Bounded, never unbounded: if the reaper cannot report a pid in five seconds it has failed,
+    # and hanging here would turn a launcher into the very stalled process this cluster is about.
+    command_pid: int | None = None
+    deadline = time.time() + 5.0
+    while time.time() < deadline:
+        try:
+            command_pid = int(pid_file.read_text(encoding="utf-8").strip())
+            break
+        except (OSError, ValueError):
+            time.sleep(0.05)
+    if command_pid is None:
+        raise SystemExit(
+            f"background-run: the reaper did not report a command pid within 5s (log {log}). "
+            "The command may not have started; inspect the log and retry."
+        )
+
+    class _CommandHandle:
+        pid = command_pid
+
+    proc = _CommandHandle()
+    pid_identity = process_identity(command_pid)
     watchdog_pid: int | None = None
     watchdog_pid_file: Path | None = None
     if timeout_seconds:
@@ -20368,9 +22167,25 @@ if not expected_identity or not current_identity or current_identity != expected
     raise SystemExit(0)
 with log_path.open("ab") as handle:
     handle.write(f"\n[minervit] timeout after {timeout_seconds}s; terminating process group {pid}\n".encode())
+# Written BEFORE the signal and RETRACTED if no signal lands. Both orderings are wrong on their own:
+# after the kill, the reaper can wake from the terminated child and read the marker before the
+# watchdog writes it, so a real timeout is missed; before the kill without retraction, a process
+# that exited on its own in that window is labelled terminated. Write-then-retract has neither race,
+# because the marker only survives when a signal was actually delivered (Codex v2 R2).
+timeout_marker = Path(str(log_path) + ".timedout")
+try:
+    timeout_marker.write_text(f"{timeout_seconds}\n", encoding="utf-8")
+except OSError:
+    pass
 try:
     os.killpg(pid, signal.SIGTERM)
 except ProcessLookupError:
+    # It finished on its own between the liveness check and the signal. Nothing was terminated, so
+    # nothing is a timeout.
+    try:
+        timeout_marker.unlink()
+    except OSError:
+        pass
     raise SystemExit(0)
 except OSError as exc:
     with log_path.open("ab") as handle:
@@ -20400,10 +22215,25 @@ except OSError as exc:
         )
         watchdog_pid = watchdog.pid
         watchdog_pid_file.write_text(f"{watchdog_pid}\n", encoding="utf-8")
-    meta_file = log.with_name(f"{log.name}.meta.json")
+    # MERGED, never overwritten. The launcher writes this after spawning the reaper, so a command
+    # that finishes quickly has already had `finishedAt` and `exitCode` published -- and a plain
+    # write would erase exactly the completion record this release exists to produce, for precisely
+    # the fastest runs. Reaper-owned keys win; launcher-owned keys fill in the rest (Codex R1).
+    published: dict = {}
+    try:
+        existing = json.loads(meta_file.read_text(encoding="utf-8"))
+        if isinstance(existing, dict):
+            published = {
+                key: existing[key]
+                for key in ("finishedAt", "exitCode", "launchError")
+                if key in existing
+            }
+    except (OSError, ValueError):
+        published = {}
     meta_file.write_text(
         json.dumps(
             {
+                **published,
                 "command": args.command,
                 "cwd": os.getcwd(),
                 "startedAt": started_at,
@@ -20415,6 +22245,8 @@ except OSError as exc:
                 "codexFastMode": codex_fast_mode_state,
                 "watchdogPid": watchdog_pid,
                 "watchdogPidFile": str(watchdog_pid_file) if watchdog_pid_file else None,
+                "reaperPid": reaper.pid,
+                **published,
             },
             indent=2,
         )
@@ -20429,7 +22261,21 @@ except OSError as exc:
         print(f"watchdog_pid_file: {watchdog_pid_file}")
     print(f"meta_file: {meta_file}")
     print(f"log: {log}")
-    print(f"monitor: tail -F {log}")
+    # NOT `tail -F`. The tool that launches background work must not recommend the unbounded form
+    # it refuses elsewhere: `tail -F` never exits, so it cannot report completion, and a lane that
+    # follows this line is watching a stream that can go quiet for either reason -- finished, or
+    # wedged. `monitor-status` reads the receipts the reaper writes and can tell those apart.
+    # shlex.quote: this line is printed to be COPIED AND RUN, and a log path with a space or a
+    # shell metacharacter would otherwise produce a command that silently monitors the wrong file
+    # or fails. A remedy that does not survive being pasted is a dead end (Codex v2 R2).
+    print(f"monitor: {CLI_NAME} monitor-status --target . --log {shlex.quote(str(log))}")
+    runs_dir = background_run_runs_dir(adapter_data, adapter_root)
+    if runs_dir is not None and runs_dir not in log.parents:
+        print(
+            f"advisory: {log} is outside this lane's configured runsDir ({runs_dir}), so the "
+            "turn-end yield gate -- which scans that directory -- will not see this run. Move the "
+            "log under the runsDir if the run should hold the turn open."
+        )
     return 0
 
 
@@ -20512,6 +22358,12 @@ def monitor_status(args: argparse.Namespace) -> int:
         print(f"monitor_watchdog_state: {watchdog_state}")
         print("monitor_reason: log file does not exist")
         print("monitor_next_action: treat as failed/stale monitor; inspect launch evidence and rerun or recover the command")
+        # The receipt is written HERE TOO. If a completed run's log was deleted while its pid and
+        # metadata sidecars remain, the yield gate reports the summary unread and names this
+        # command -- which returned before writing anything, so running the prescribed remedy could
+        # never clear the finding. A refusal whose own remedy cannot satisfy it is worse than the
+        # gap it covers.
+        _write_monitor_read_receipt(log, state="missing", finished_at=meta.get("finishedAt"), pid=meta.get("pid"))
         return 1 if args.strict else 0
 
     stat = log.stat()
@@ -20534,7 +22386,59 @@ def monitor_status(args: argparse.Namespace) -> int:
     has_success_marker = bool(success_marker and success_marker in tail_text)
     has_failure_marker = bool(failure_marker and failure_marker in tail_text)
 
+    # The RECORDED completion outranks every inference below it, because it is the only
+    # authoritative signal here: the reaper waited on the command and wrote what it returned.
+    # Without this the printed `monitor:` line was a worse recommendation than the `tail -F` it
+    # replaced -- both exit 0 and exit 3 classify as `stale` once the pid dies, so a caller
+    # following the advice this release prints could not tell success from failure, which is the
+    # exact confusion the reaper exists to end (Codex R1).
+    recorded_exit = meta.get("exitCode")
+    finished_at = meta.get("finishedAt")
+    if pid is not None and meta.get("pid") not in (None, pid):
+        # The receipt describes a DIFFERENT run than the pid the caller asked about, so it is not
+        # evidence about this one. Trusting it would report another run's completion (Codex R3).
+        recorded_exit = None
+        finished_at = None
     if has_failure_marker:
+        # An explicit caller-supplied failure marker is NOT an inference to be outranked -- it is
+        # the caller declaring what failure looks like for a tool whose exit code is insufficient,
+        # which is the entire reason the flag exists. Placing the recorded exit above it made a
+        # command that exits 0 while printing that marker report `success` (Codex R2).
+        state = "failed"
+        reason = f"failure marker found: {failure_marker}"
+        next_action = (
+            "treat as failed monitor; inspect the log and repair before continuing dependent work"
+        )
+    elif isinstance(recorded_exit, int) and finished_at:
+        if meta.get("timedOut"):
+            # Checked BEFORE the exit code, not after. A process group terminated by the watchdog
+            # can still leave a zero exit -- a wrapper that traps SIGTERM and exits cleanly, or a
+            # shell reporting its last successful builtin -- and ordering success first reported
+            # that run as a SUCCESS. The receipt says it was killed; the number does not (Codex R1).
+            state = "failed"
+            state = "failed"
+            reason = (
+                f"run was TERMINATED BY THE TIMEOUT WATCHDOG at {finished_at} "
+                f"(exit {recorded_exit}); it did not choose to exit"
+            )
+            next_action = (
+                "treat as timed out; raise --timeout-seconds or fix what made the command hang"
+            )
+        elif recorded_exit == 0 or has_success_marker:
+            state = "success"
+            reason = (
+                f"success marker found: {success_marker}"
+                if has_success_marker and recorded_exit != 0
+                else f"run finished at {finished_at} with exit 0 (recorded by the reaper)"
+            )
+            next_action = "consume the result and continue with the next authorized action"
+        else:
+            state = "failed"
+            reason = f"run finished at {finished_at} with exit {recorded_exit} (recorded by the reaper)"
+            next_action = (
+                "treat as failed; inspect the log tail and repair before continuing dependent work"
+            )
+    elif has_failure_marker:
         state = "failed"
         reason = f"failure marker found: {failure_marker}"
         next_action = "treat as failed monitor; inspect the log and repair before continuing dependent work"
@@ -20585,6 +22489,8 @@ def monitor_status(args: argparse.Namespace) -> int:
     print(f"monitor_log_modified_at: {modified_at}")
     print(f"monitor_seconds_since_log_update: {age_seconds}")
     print(f"monitor_max_stale_seconds: {max_stale_seconds}")
+    print(f"monitor_exit_code: {recorded_exit if isinstance(recorded_exit, int) else 'none'}")
+    print(f"monitor_finished_at: {finished_at or 'none'}")
     print(f"monitor_pid: {pid if pid is not None else 'unknown'}")
     print(f"monitor_pid_source: {pid_source}")
     print(f"monitor_pid_state: {pid_state}")
@@ -20595,8 +22501,39 @@ def monitor_status(args: argparse.Namespace) -> int:
     print(f"monitor_reason: {reason}")
     print(f"monitor_next_action: {next_action}")
 
+    # The READ RECEIPT. Item 83 PR2's yield gate blocks a stop while a finished run's terminal
+    # summary is unread, and this is the only thing that clears it -- so the receipt must be
+    # written on EVERY path that actually printed a status, including a failed or stale one. A
+    # receipt written only on success would leave a lane that correctly diagnosed a failure unable
+    # to end its turn, which is the false refusal this whole chain is rationed against.
+    #
+    # Best-effort by contract: `monitor-status` is a read verb, and a read-only runs directory must
+    # not make it fail. The cost of a lost receipt is one more poll, not a wrong answer.
+    _write_monitor_read_receipt(log, state=state, finished_at=finished_at, pid=meta.get("pid"))
+
     bad_states = {"missing", "stale", "failed", "unverified"}
     return 1 if args.strict and state in bad_states else 0
+
+
+def _write_monitor_read_receipt(
+    log: Path, *, state: str, finished_at: object, pid: object = None
+) -> None:
+    receipt = log.with_name(f"{log.name}.read.json")
+    payload = {
+        "schema": MONITOR_READ_RECEIPT_SCHEMA,
+        "readAt": datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z"),
+        "state": state,
+        # The finishedAt this read OBSERVED, so a later run of the same log does not read as
+        # already-consumed off an older receipt -- AND the pid, because `finishedAt` is recorded to
+        # one-second precision. Two quick runs of the same log that finish in the same second are
+        # indistinguishable by timestamp alone, and the older receipt would clear the newer run.
+        "finishedAt": finished_at if isinstance(finished_at, str) else None,
+        "pid": pid if isinstance(pid, int) else None,
+    }
+    try:
+        write_text_atomic(receipt, json.dumps(payload, indent=2) + "\n")
+    except OSError:
+        return
 
 
 def run_git(target: Path, args: list[str]) -> str:
@@ -21303,6 +23240,7 @@ RELEASE_ARTIFACT_PATHS = [
     "src/tautline_methodology/paths.py",
     "src/tautline_methodology/plan_authoring.py",
     "src/tautline_methodology/plan_reference.py",
+    "src/tautline_methodology/plan_round_record.py",
     "src/tautline_methodology/policy.py",
     "src/tautline_methodology/profiles.py",
     "src/tautline_methodology/public_release.py",
@@ -21316,6 +23254,14 @@ RELEASE_ARTIFACT_PATHS = [
     "methodology/canonical-rules.md",
     "methodology/adapter-schema.json",
     "methodology/policy-phrases.json",
+    # Item 82. The wave-3 aggregate false-positive budget is a MEASUREMENT, and these two files are
+    # what it is measured against. The baseline's entire value is that it cannot change quietly --
+    # it already pins the corpus digest for that reason -- so leaving it out of the integrity
+    # manifest would be the same subset-attesting gap this registry exists to close, on the one
+    # artifact whose job is tamper-evidence. The registry guard below only ENFORCES package
+    # modules; these are here on the same reasoning, not because a test demanded them.
+    "methodology/stop-guard/corpus.jsonl",
+    "methodology/stop-guard/aggregate-baseline.json",
     "plugins/tautline-core/.codex-plugin/plugin.json",
 ]
 
@@ -21527,6 +23473,211 @@ def canonical_policy_text_from_modules(manifest: dict | None = None) -> str:
             raise SystemExit(f"policy module is empty: {path}")
         parts.append(text)
     return "\n\n".join(parts) + "\n"
+
+
+def secret_name_spellings(name: str) -> list[str]:
+    """Every spelling a managed secret may be persisted under, preferred first.
+
+    ONE definition, shared by the probe and by every consumer. They disagreed three review rounds
+    running -- each time in a new direction -- and the consequence is always the same shape: the
+    probe calls a value reachable and the consumer refuses it, so an agent following the printed
+    remedy retries forever. `resolve_env` handles the process environment's alias preference, but
+    the FILE layers look up the exact key, so both directions have to be enumerated here.
+    """
+    if name.startswith("MINERVIT_"):
+        return ["TAUTLINE_" + name[len("MINERVIT_"):], name]
+    if name.startswith("TAUTLINE_"):
+        return [name, "MINERVIT_" + name[len("TAUTLINE_"):]]
+    return [name]
+
+
+def webhook_env_reachable_value(webhook_env: str) -> str:
+    """What a webhook secret is worth to a CONSUMER, under either rebrand spelling.
+
+    `secret-status` probes both spellings and reports where the value is. Every consumer that read
+    one-way saw nothing -- so an agent following the probe's remedy retried and hit the same
+    refusal, forever. Codex R2 found the first fix had routed two consumers and left six.
+
+    LAYER-MAJOR, not spelling-major, and that ordering is the whole correctness argument. Iterating
+    spellings and asking each for env-then-config-then-secrets let a STALE PERSISTED `TAUTLINE_X`
+    in a file beat a LIVE `MINERVIT_X` export -- reversing the process-env-first precedence every
+    other reader has, disagreeing with what `secret-status` reports, and letting a publisher post to
+    the wrong Chat space. An explicit live override must never lose to a file (Codex R4).
+    """
+    spellings = secret_name_spellings(webhook_env)
+    for name in spellings:
+        # Layer 1, every spelling: the process environment, through the resolver.
+        value = util_module().resolve_env(name).strip()
+        if value:
+            return value
+    config_env = resolve_user_config_env()
+    secrets_env = USER_SECRETS_ENV if USER_SECRETS_ENV.is_file() else LEGACY_USER_SECRETS_ENV
+    for layer in (config_env, secrets_env):
+        for name in spellings:
+            value = user_config_env_value(name, layer).strip()
+            if value:
+                return value
+    return ""
+
+def _env_file_is_selectable(path: Path) -> bool:
+    """True when this path should be treated as THE secrets file -- present, or present and
+    unreadable.
+
+    `Path.is_file()` does not merely return False for an untraversable parent: it RAISES
+    PermissionError, which would take the whole probe down before it printed anything. And when it
+    does return False for an unreadable path, the selection falls through to the LEGACY file, so
+    the probe reports on a file the operator does not use. Unreadable counts as selected.
+    """
+    if _env_file_is_unreadable(path):
+        return True
+    try:
+        return path.is_file()
+    except OSError:
+        return True
+
+
+def _env_file_is_unreadable(path: Path) -> bool:
+    """True when the file EXISTS but this process cannot read it.
+
+    A file that is simply not there is not unreadable -- it is a layer that legitimately holds
+    nothing, and reporting it as indeterminate would make `absent` unreachable on the very common
+    machine that has no secrets file at all.
+    """
+    try:
+        with path.open("rb"):
+            return False
+    except FileNotFoundError:
+        # Genuinely not there. The common machine has no secrets file at all, and calling that
+        # indeterminate would make the escalation predicate unreachable.
+        return False
+    except IsADirectoryError:
+        return True
+    except OSError:
+        # Everything else -- EACCES on the file, EACCES on a parent directory, EIO. `Path.is_file()`
+        # was the original test here and it RETURNS FALSE rather than raising when a parent
+        # directory lacks traverse permission, so an inaccessible file holding the secret was
+        # reported as a missing one and the probe exited 1: confirmed absent, escalate. Opening the
+        # file is what tells the two apart, so the open is the test.
+        return True
+
+
+def secret_status(args: argparse.Namespace) -> int:
+    """Where a named secret is reachable from, WITHOUT ever printing its value.
+
+    Item 85 WS1a. The remediation this closes: a refusal that says "the secret is missing" sends a
+    lane straight to an operator escalation, when the overwhelmingly common cause is that the value
+    IS persisted and the process simply cannot see it -- a session started outside the lane env, or
+    the value written under the MINERVIT_ spelling while the resolver prefers the TAUTLINE_ alias.
+
+    "Confirmed absent" therefore has to mean absent from ALL THREE layers, and the exit code says
+    which: 0 = reachable, 1 = confirmed absent and an operator escalation is now justified. That
+    predicate is what the policy rule needs by name.
+
+    The VALUE is never printed, at any layer, by contract -- only where it was found. A probe that
+    echoed the secret to make its own output more helpful would be a credential leak into every
+    lane log and CI transcript that ran it.
+    """
+    name = str(args.name or "").strip()
+    if not re.fullmatch(r"[A-Z_][A-Z0-9_]*", name):
+        raise SystemExit("secret-status --name must be an UPPER_CASE environment variable name")
+    # NOT plain `resolve_user_config_env()`: that returns the preferred path whenever `is_file()`
+    # is false, which it is for a legacy config sitting behind a non-traversable directory. The
+    # probe would then never look at the inaccessible layer and would print `absent` -- the
+    # escalation predicate -- for a layer it had not read, which is the contract this verb exists
+    # to keep.
+    # Selected through the SAFE selector directly, never `resolve_user_config_env()`: that helper
+    # calls `Path.is_file()`, which RAISES for a path behind a non-traversable directory -- so the
+    # probe died with a traceback before any of the unreadable-layer handling below could run. A
+    # verb whose contract is "tell absent from unreadable" must not crash on the unreadable case.
+    config_env = USER_CONFIG_ENV
+    if not _env_file_is_selectable(USER_CONFIG_ENV) and _env_file_is_selectable(LEGACY_USER_CONFIG_ENV):
+        config_env = LEGACY_USER_CONFIG_ENV
+    # Same defect one level up: `is_file()` is False for an unreadable path, so a secrets file the
+    # process cannot traverse to silently selected the LEGACY path, and the probe then reported on
+    # a file the operator does not use. Unreadable counts as present-and-selected.
+    # Legacy is selected only when it ACTUALLY EXISTS. On a first-setup machine neither store is
+    # there, and falling back unconditionally told the operator to create the deprecated Minervit
+    # store -- correct only for as long as the compatibility fallback survives, and wrong advice on
+    # the day it is removed.
+    secrets_env = USER_SECRETS_ENV
+    if not _env_file_is_selectable(USER_SECRETS_ENV) and _env_file_is_selectable(
+        LEGACY_USER_SECRETS_ENV
+    ):
+        secrets_env = LEGACY_USER_SECRETS_ENV
+    # Both spellings are live during the rebrand and resolve_env PREFERS the alias, so a probe that
+    # checked only the name it was handed would report `absent` for a value that is present under
+    # its sibling -- the exact misdiagnosis this verb exists to prevent.
+    names = [name]
+    if name.startswith("MINERVIT_"):
+        names.insert(0, "TAUTLINE_" + name[len("MINERVIT_"):])
+    elif name.startswith("TAUTLINE_"):
+        names.append("MINERVIT_" + name[len("TAUTLINE_"):])
+    # Through the RESOLVER, once per spelling -- not `os.environ` directly, and not resolve_env on
+    # the asked name alone. resolve_env resolves MINERVIT_ -> TAUTLINE_ and NOT the reverse, so a
+    # single call would report `absent` for a TAUTLINE_-spelled name whose value is exported under
+    # the MINERVIT_ one: this verb's own misdiagnosis, inside the verb. Reading os.environ directly
+    # would fix that and break something worth more --
+    # `test_no_shipped_source_bypasses_the_resolver`
+    # exists so no shipped read can miss a managed alias, which is the same failure one layer up.
+    # The legacy fallback's deprecation warning is WANTED here rather than tolerated: it names the
+    # exact cause a caller is standing in front of -- the value is under the retired spelling.
+    unreadable: list[str] = []
+    source = "absent"
+    if any(util_module().resolve_env(n).strip() for n in names):
+        source = "process-env"
+    else:
+        for label, path in (("config-env", config_env), ("secrets-file", secrets_env)):
+            if _env_file_is_unreadable(path):
+                # An unreadable layer is NOT an absent one, and the distinction is this verb's
+                # entire job. Collapsing them would send a lane to an operator on the strength of a
+                # layer nothing ever read -- a probe reporting a definite answer it did not measure.
+                unreadable.append(f"{label}:{path}")
+                continue
+            if any(user_config_env_value(n, path).strip() for n in names):
+                source = f"{label}:{path}"
+                break
+    print(f"secret_name: {name}")
+    # `absent` is not a description here, it is the ESCALATION PREDICATE -- canonical policy 03 and
+    # 23 and the risk-tier skill all name this exact marker as the thing that justifies going to an
+    # operator. Printing it above an exit code that says "indeterminate" hands an agent the token
+    # it was told to act on and relies on it reading the prose underneath. It does not.
+    printed_source = "indeterminate" if (source == "absent" and unreadable) else source
+    print(f"secret_source: {printed_source}")
+    print(f"secret_config_env: {config_env}")
+    print(f"secret_secrets_file: {secrets_env}")
+    for entry in unreadable:
+        print(f"secret_layer_unreadable: {entry}")
+    if source == "absent" and unreadable:
+        print(
+            "secret_next_action: NOT confirmed absent -- the layers above exist but could not be "
+            "read, so this probe cannot tell you whether the value is there. Fix the permissions "
+            "and re-run; do not escalate on this result"
+        )
+        return 2
+    if source == "absent":
+        print(
+            "secret_next_action: persist the value in the secrets file above (export NAME=...), "
+            "then re-run the failing command; only a value absent from all three layers is an "
+            "operator escalation"
+        )
+        return 1
+    if source.startswith(("config-env:", "secrets-file:")):
+        # `lane-run` builds its child environment from the CURRENT process environment; it does not
+        # source either persisted file. Prescribing it here would send the caller round the same
+        # refusal forever -- a remedy that cannot work is worse than none, because it looks like
+        # progress. Name the file the value is actually in.
+        print(
+            f"secret_next_action: the value is persisted but not exported into this process; run "
+            f"`set -a; . {shlex.quote(source.split(':', 1)[1])}; set +a` in this shell (or start "
+            "the session "
+            "through the operator launcher, which sources it) and re-run the failing command"
+        )
+        return 0
+    print(
+        "secret_next_action: the value is reachable in this process; re-run the failing command "
+        "(`tautline lane-run --target . -- <command>`)"
+    )
+    return 0
 
 
 def canonical_policy(args: argparse.Namespace) -> int:
@@ -22108,7 +24259,9 @@ def instrumentation_record_from_events(
             target_code: str | None = None
             if verdict in INSTRUMENTATION_FINALIZE_CLEAN_VERDICTS:
                 target_code = clean_code
-            elif verdict == "blocked":
+            elif verdict in INSTRUMENTATION_FINALIZE_BLOCKED_VERDICTS_BY_PRODUCER.get(
+                name, INSTRUMENTATION_FINALIZE_BLOCKED_VERDICTS
+            ):
                 target_code = blocked_code
             if target_code is None:
                 continue  # missing/unrecognized verdict: drop silently, never guess
@@ -25959,6 +28112,7 @@ def plan_review_hard_cap_refusal(
     observed_runs: int = 0,
     declared_label: str = "",
     finalizable_command: str = "",
+    capped_evidence_bound: bool = False,
 ) -> str:
     """Past the hard cap, refusal is unconditional; only the message varies with state.
 
@@ -25969,6 +28123,10 @@ def plan_review_hard_cap_refusal(
     `finalizable_command` is the runnable finalize invocation for an unbound successful run that
     matches the CURRENT plan hash. When one exists, that -- not a split -- is the exit that works
     from where the lane is standing.
+
+    `capped_evidence_bound` says the bound manifest is already a `capped-with-open-findings`
+    finalize for the current plan content (D2). That lane's exit is BUILD, and saying anything
+    else here would send a lane that already holds its release valve back into planning.
     """
     cap = PLAN_REVIEW_HARD_CAP_ROUNDS
     lead = (
@@ -25981,6 +28139,14 @@ def plan_review_hard_cap_refusal(
         lead += (
             f"; {observed_runs} successful review run(s) are already recorded for this plan"
             f"{label}, so the round budget is spent regardless of the label"
+        )
+    if capped_evidence_bound:
+        return (
+            f"{lead}; the bound evidence is already finalized as "
+            f"`{PLAN_REVIEW_CAPPED_VERDICT}` for the current plan content and its unresolved "
+            "Critical/P1 findings are binding implementation-review focus items, so the exit is "
+            "BUILD: run plan-finalization-precheck and start implementation. Do not split this "
+            "plan, do not launch another round, and do not ask the operator to choose a path"
         )
     if finalizable_command:
         return (
@@ -26009,6 +28175,7 @@ def plan_review_round_cap_errors(
     observed_runs: int = 0,
     declared_label: str = "",
     finalizable_command: str = "",
+    capped_evidence_bound: bool = False,
 ) -> list[str]:
     """Round-budget gate.
 
@@ -26033,12 +28200,19 @@ def plan_review_round_cap_errors(
                 observed_runs=observed_runs,
                 declared_label=declared_label,
                 finalizable_command=finalizable_command,
+                capped_evidence_bound=capped_evidence_bound,
             )
         ]
     if round_number <= target:
         return []
     if round_number > cap:
-        return [plan_review_hard_cap_refusal(round_number, unresolved_blockers=unresolved_blockers)]
+        return [
+            plan_review_hard_cap_refusal(
+                round_number,
+                unresolved_blockers=unresolved_blockers,
+                capped_evidence_bound=capped_evidence_bound,
+            )
+        ]
     if plan_review_exception_note(exception_reason, structural_critical_evidence):
         return []
     return [
@@ -27998,21 +30172,141 @@ def should_auto_rescue_methodology_for_project_startup() -> bool:
     return not invoked_from_methodology_repo()
 
 
+def framework_checkout_standdown_reason() -> str:
+    """The sanctioned "this checkout is intentional, do not ask me to reconcile it" signals.
+
+    ONE ENUMERATED SET, on purpose. Two review rounds each surfaced a different population this
+    control locked out -- package-mode runtimes, then operator-launcher sessions -- and patching
+    them one at a time invites a third. Every sanctioned way to say "I own this upstream" belongs
+    here, so the question "who is exempt?" has one answer that a test can read.
+
+    A control that refuses the wrong people does not get adopted; it gets bypassed, and the bypass
+    is a machine-wide standdown that disables far more than this check.
+    """
+    if running_from_installed_package():
+        # The canonical checkout is IRRELEVANT here: pip/pipx updates the running code, so a
+        # leftover clone on another channel's branch says nothing about what this runtime executes.
+        # `sync-methodology` already stands down for exactly this reason.
+        return "standing down - package mode; the canonical checkout does not drive this runtime"
+    if maintainer_mode_armed():
+        # The ARMED predicate, not `maintainer_mode_configured`: a machine that developed the
+        # framework and then disarmed is not standing down.
+        return "standing down - maintainer mode manages this checkout"
+    operator_channel = util_module().resolve_env("MINERVIT_METHODOLOGY_OPERATOR_CHANNEL")
+    if operator_channel:
+        # The operator launcher exports this when started with `--operator-channel`, which is the
+        # explicit "I own this upstream" declaration. That session deliberately runs a non-release
+        # checkout and its whole contract is that it never blocks.
+        #
+        # A DEDICATED signal, and Codex R3 P1 is why: an earlier version keyed on
+        # DISABLE_AUTO_RESCUE, which any managed session may set to suppress destructive rescue
+        # WITHOUT claiming ownership of the checkout. That turned a generic safety setting into a
+        # blanket bypass of the exact contradiction this control exists to catch -- an
+        # over-correction for R2's finding that was worse than the finding.
+        return (
+            f"standing down - operator-managed checkout (session declares channel "
+            f"{operator_channel})"
+        )
+    return ""
+
+
+def framework_checkout_reconciliation(
+    channel: str,
+    release_branch: str,
+    allow_non_main: bool = False,
+    target: Path | None = None,
+) -> tuple[str, str]:
+    """Returns ``("ok"|"deferred"|"advisory"|"required", line)``.
+
+    RCA 2026-07-22 control 5: a channel/branch CONTRADICTION demands a resolution and is never
+    carried forward as a bare warning again.
+
+    THE ARMING CONDITION IS NARROW ON PURPOSE, and the narrowing is the whole design. ``required``
+    fires ONLY when the checkout sits on ANOTHER CHANNEL's release branch -- the actual 2026-07-22
+    state (checkout on `experimental`, channel `stable`), where every enumerated resolution is real.
+
+    An any-non-release-branch rule was written first and rejected against measurement: this repo's
+    own adapter carries no framework pin, so the channel resolves to `stable` -> release branch
+    `main`, while every lane on the machine lives on `experimental` and on feature branches. That
+    rule turned every framework session on any feature branch into exit-2 debt, and of its three
+    enumerated exits two are impossible for a feature branch (you cannot check out a feature branch
+    as a release branch, and channels are only `stable|experimental`), leaving a machine-wide
+    `maintainer-mode on` as the only durable escape. **A fail-closed control whose cheapest exit is
+    a global gate standdown teaches the bypass this cluster exists to delete.** So any other
+    non-release branch -- feature branch, detached HEAD -- is ``advisory``: it prints the same
+    enumerated line and exits 0.
+
+    Every path this returns is executed by a test, so the function is bound by the composition rule
+    it exists to serve.
+    """
+    standdown = framework_checkout_standdown_reason()
+    if standdown:
+        return "ok", standdown
+    canonical = canonical_methodology_repo()
+    if run_git(canonical, ["rev-parse", "--is-inside-work-tree"]) != "true":
+        return "ok", ""
+    branch = run_git(canonical, ["branch", "--show-current"])
+    if branch in (release_branch, "unavailable"):
+        return "ok", ""
+    if allow_non_main or util_module().resolve_env("MINERVIT_METHODOLOGY_ALLOW_NON_MAIN") == "1":
+        return "deferred", "MINERVIT_METHODOLOGY_ALLOW_NON_MAIN=1 (single intentional deviation)"
+    display = branch or "detached HEAD"
+    contradiction = bool(branch) and branch in set(FRAMEWORK_CHANNEL_BRANCHES.values())
+    other_channel = next(
+        (name for name, value in FRAMEWORK_CHANNEL_BRANCHES.items() if value == branch), ""
+    )
+    # Codex R1 P1 and P2: the remedy must name the RESOLVED target and be shell-safe. A remedy
+    # that repins `.` when the operator ran `--target /path/to/lane` from elsewhere modifies the
+    # wrong worktree and leaves the gate uncleared, and an unquoted path with a space is split by
+    # the shell. This cluster shipped four wrong remedy lists; a remedy that runs somewhere else is
+    # the same defect wearing a different hat.
+    target_argument = guard_target_argument(target if target is not None else Path("."))
+    canonical_argument = shlex.quote(str(canonical))
+    third_path = (
+        f"(3) the channel is wrong -> `{CLI_NAME} set-framework-channel {other_channel} "
+        f"--target {target_argument}` (its release branch is the branch you are on); "
+        if contradiction and other_channel
+        else f"(3) you are on a working branch -> finish or park it and return to "
+        f"{release_branch}, or arm maintainer mode if this machine develops the framework; "
+    )
+    paths = (
+        f"Resolve one: (1) you develop the framework and track {display} on purpose -> "
+        f"`{CLI_NAME} maintainer-mode on`; "
+        f"(2) this machine should follow the channel -> `git -C {canonical_argument} checkout "
+        f"{release_branch}` then `{CLI_NAME} sync-methodology --target {target_argument}`; "
+        + third_path
+        + "One-shot deviation: MINERVIT_METHODOLOGY_ALLOW_NON_MAIN=1."
+    )
+    return ("required" if contradiction else "advisory"), (
+        f"methodology checkout tracks {display} but channel '{channel}' releases from "
+        f"{release_branch}. {paths}"
+    )
+
+
+def framework_checkout_reconciliation_lines(
+    channel: str,
+    release_branch: str,
+    allow_non_main: bool = False,
+    target: Path | None = None,
+) -> tuple[str, list[str]]:
+    """The printable form, so both surfaces emit byte-identical text from one place."""
+    state, line = framework_checkout_reconciliation(
+        channel, release_branch, allow_non_main, target
+    )
+    if not line:
+        return state, []
+    return state, [f"framework_checkout_reconciliation: {state} - {line}"]
+
+
 def methodology_checkout_hygiene_warning(allow_non_main: bool = False) -> str:
     canonical = canonical_methodology_repo()
     if run_git(canonical, ["rev-parse", "--is-inside-work-tree"]) != "true":
         return ""
-    branch = run_git(canonical, ["branch", "--show-current"])
-    if (
-        branch not in ("main", "unavailable")
-        and not allow_non_main
-        and util_module().resolve_env("MINERVIT_METHODOLOGY_ALLOW_NON_MAIN") != "1"
-    ):
-        branch_display = branch or "detached HEAD"
-        return (
-            f"methodology checkout is on {branch_display}, not main; "
-            "manual or pinned framework updates will not auto-rescue this checkout"
-        )
+    # The BRANCH condition moved to `framework_checkout_reconciliation`, which resolves the release
+    # branch from the CHANNEL instead of hardcoding `main`. Hardcoding it meant a lane on channel
+    # `experimental` sitting on `experimental` -- correct -- was warned, while the same lane sitting
+    # on `main` -- the actual contradiction -- was silent. This arm keeps only the dirty-checkout
+    # condition, which has a different owner and a different remedy.
     dirty = run_git(canonical, ["status", "--porcelain"])
     if dirty not in ("", "unavailable"):
         return (
@@ -29266,6 +31560,18 @@ def lane_start(args: argparse.Namespace) -> int:
     )
     print(framework_pin_status_line(framework_pin, framework_pin_source))
     print(framework_update_available_line(framework_decision, framework_probe))
+    # OUTSIDE the update skip, deliberately. The 2026-07-22 incident state HAD a pending update --
+    # that is what made the sync refuse the non-release branch in the first place -- so a
+    # reconciliation evaluated only when no update is pending would go silent in exactly the
+    # situation it exists for. This is the case v1 of the control omitted entirely.
+    _startup_checkout_state, startup_checkout_lines = framework_checkout_reconciliation_lines(
+        framework_pin.get("channel", "stable"),
+        framework_channel_branch(framework_pin.get("channel", "stable")),
+        getattr(args, "allow_non_main", False),
+        target,
+    )
+    for line in startup_checkout_lines:
+        print(line)
     if framework_decision["action"] != "update":
         remote_line = framework_remote_status_from_probe(framework_probe)
         if remote_line is None:
@@ -29550,6 +31856,15 @@ def lane_start(args: argparse.Namespace) -> int:
         write_claude_plan_review_pending_hook,
         Path.home() / ".claude" / "settings.json",
         "tautline plan-review-pending-hook",
+    )
+    _lane_start_hook_write(
+        defer_debt_preflights,
+        "hook",
+        "claude_question_guard_hook",
+        "present",
+        write_claude_question_guard_hook,
+        Path.home() / ".claude" / "settings.json",
+        "tautline question-guard-hook",
     )
     _lane_start_hook_write(
         defer_debt_preflights,
@@ -30182,6 +32497,65 @@ def _plan_review_without_quoted_frames(
     return "".join(kept)
 
 
+# Item 73 WS2, Codex R1 P1. An IMPLEMENTATION review log is not a plan-review log: it is the whole
+# `codex review` CLI transcript -- prompt echo, every tool invocation, and the full source diff --
+# and it carries no `## Findings` heading, because that heading is a contract of the builtin
+# plan-review wrapper's prompt, not of `codex review`.
+#
+# Measured, not assumed: on a real 751,076-byte implementation log from this very branch,
+# `review_findings_section` returns 0 characters and `review_output_text` returns all 751,076. The
+# transcript quotes source code containing the word "Critical" and test fixtures containing
+# "Verdict: changes requested", so the verdict scan fired and a genuinely CLEAN review could not be
+# finalized. Wiring the plan-review call shape unchanged would have made every implementation review
+# in the fleet unfinalizable -- a false refusal on the push boundary, which is the highest-cost
+# defect class there is and the same one this item's W1.1 half hit at its round cap.
+#
+# The codex CLI marks its own final response with a bare `codex` speaker line. Scoping to the text
+# after the LAST one yields the reviewer's answer and nothing else.
+CODEX_TRANSCRIPT_SPEAKER_MARKER = "codex"
+
+
+def codex_transcript_final_response(log_text: str) -> str:
+    """The reviewer's final response from a `codex review` CLI transcript, or "" if unlocatable."""
+    lines = log_text.splitlines()
+    marker_indexes = [
+        index
+        for index, line in enumerate(lines)
+        if line.strip() == CODEX_TRANSCRIPT_SPEAKER_MARKER
+    ]
+    if not marker_indexes:
+        return ""
+    return "\n".join(lines[marker_indexes[-1] + 1 :])
+
+
+def implementation_review_scan_text(log_text: str) -> tuple[str, str]:
+    """Scope an implementation-review log to the reviewer's answer.
+
+    Returns `(scan_text, source)`. `source` is `"findings-section"`, `"codex-final-response"`, or
+    `"unlocatable"`.
+
+    When the answer cannot be located this returns `("", "unlocatable")` and the caller SKIPS the
+    cross-check with a printed line rather than scanning the raw transcript. That is a deliberate
+    fail-open, and it is the direction that keeps the control real: scanning the transcript refuses
+    100% of genuine logs (measured), so "fail closed" here means closed to everyone, which is not a
+    gate but a fleet-wide wedge on a boundary whose input format this repo does not control. The
+    skip is PRINTED, never silent -- a quiet skip is indistinguishable from a clean reconciliation,
+    which is the exact defect class this cluster exists to close.
+    """
+    # ORDER MATTERS, and Codex R1-B P1 is why: a transcript that inspected a file containing a
+    # `## Findings` heading -- this repo's own plan-review code and test fixtures do -- would have
+    # that ECHOED heading chosen over the reviewer's actual answer, reproducing the very false
+    # refusal this scoping exists to fix. So the final-response marker wins whenever it exists; the
+    # findings section is the fallback for logs that are not codex transcripts at all.
+    final_response = codex_transcript_final_response(log_text)
+    if final_response.strip():
+        return final_response, "codex-final-response"
+    findings = review_findings_section(log_text, expected_nonce=None, authoritative=False)
+    if findings.strip():
+        return findings, "findings-section"
+    return "", "unlocatable"
+
+
 def review_output_text(
     log_text: str, *, expected_nonce: str | None = None, authoritative: bool = False
 ) -> str:
@@ -30277,6 +32651,7 @@ def review_log_verdict_errors(
     authoritative: bool = False,
     require_findings_section: bool = False,
     rerun_command: str = "",
+    blocker_evidence: str = "any",
 ) -> list[str]:
     errors: list[str] = []
     # Scope to the assistant's `## Findings` section so we do not flag
@@ -30317,10 +32692,24 @@ def review_log_verdict_errors(
         errors.append("review log verdict conflicts with recorded clean verdict")
     if unresolved_critical_count == 0 and unresolved_p1_count == 0:
         suspicious_lines = []
+        observed_blocker_classes: set[str] = set()
+        # RESIDUAL, named rather than smuggled in. `finding_counts` and `BLOCKER_SEVERITIES` both
+        # classify `p0` as Critical and `high` as P1, but THIS scan recognizes neither, so a blocker
+        # reported only as `[P0]` or `High` is invisible here.
+        #
+        # A widened alias set was written for exactly that gap and then REMOVED, because it produced
+        # false refusals on the push boundary from ordinary reviewer prose: "the tests provide high
+        # confidence" reads as a P1 finding under a bare-word match, and the no/zero suppressions
+        # below recognize only the original four, so a response saying "No P0 findings" would refuse
+        # too. Positive and negative detection have to move together, and matching `High` safely
+        # needs severity POSITIONS rather than word presence -- design work this item's round budget
+        # cannot confirm. Closing the gap is a filed successor; shipping a scan that refuses
+        # "high confidence" would be strictly worse than the gap it closes.
+        severity_alias_pattern = r"\b(?:critical|c1|p1|important)\b"
         scope_lines = scope_text.splitlines()
         for index, line in enumerate(scope_lines):
             line_lower = line.lower()
-            if not re.search(r"\b(?:critical|c1|p1|important)\b", line_lower):
+            if not re.search(severity_alias_pattern, line_lower):
                 continue
             # A bare severity section HEADER is structure ONLY when its section is EMPTY --
             # rendered as '### P1' + '- None.' (or equivalent) on the NEXT line, immediately
@@ -30337,14 +32726,37 @@ def review_log_verdict_errors(
                 ):
                     continue
                 suspicious_lines.append(line.strip())
+                observed_blocker_classes.update(re.findall(severity_alias_pattern, line_lower))
                 continue
             if re.search(r"\b(?:no|zero|0)\b.*\b(?:critical|c1|p1|important)\b", line_lower):
                 continue
             if re.search(r"\b(?:critical|c1|p1|important)\b.*\b(?:none|zero|0)\b", line_lower):
                 continue
             suspicious_lines.append(line.strip())
+            observed_blocker_classes.update(re.findall(severity_alias_pattern, line_lower))
         if suspicious_lines:
-            if not classified_findings_have_resolved_blocker_evidence(classified_findings or []):
+            if blocker_evidence == "all":
+                # Codex R2-B P1, and it is the same hole one level up. The helper below only ever
+                # inspected findings the classification file SUPPLIED, so a log carrying three
+                # Criticals alongside a JSON carrying one routed Important returned "all resolved"
+                # -- one routed finding masking omitted blockers, exactly the divergence this
+                # workstream exists to close. The escape now also requires the classification to
+                # ACCOUNT FOR every blocker class the log shows.
+                #
+                # Class-level, not count-level, on purpose: the log formats carry no per-finding
+                # identity to count against, so exact reconciliation remains the named residual and
+                # its successor's trigger. Class coverage is strictly stronger than what shipped
+                # and needs nothing the log does not already state.
+                has_evidence = classified_findings_all_blockers_resolved(
+                    classified_findings or []
+                ) and classified_findings_cover_blocker_classes(
+                    classified_findings or [], observed_blocker_classes
+                )
+            else:
+                has_evidence = classified_findings_have_resolved_blocker_evidence(
+                    classified_findings or []
+                )
+            if not has_evidence:
                 errors.append("review log mentions Critical/P1/Important findings while recorded unresolved counts are zero")
     return errors
 
@@ -31160,7 +33572,104 @@ def plan_review_recorded_predecessor(data: dict, target: Path, plan_rel: str) ->
         recorded = str(meta.get("predecessor_plan_path") or "").strip()
         if recorded:
             return recorded
+    # Codex R4 P2 (item 108 WS3): the durable round record is the third place a declaration
+    # survives -- after .ai-runs is pruned it is the ONLY place. Reading it here keeps the
+    # conflict branch honest: one plan cannot append a contradictory --predecessor while the
+    # resolver still counts the original record-backed edge. Earliest record wins, matching
+    # the append-once rule the metas already follow.
+    try:
+        for _record_path, record in plan_review_round_records_for_rel(data, target, plan_rel):
+            # Codex R1 P2 (post-rebase lineage): CHARGED only, matching the meta reader above,
+            # which counts successful runs alone. A failed wrapper still writes its invocation
+            # record, so an uncharged one would let a run that produced no review become the
+            # recorded lineage -- conflicting with a later correct --predecessor and pulling an
+            # ancestor's spend into the budget on the strength of an attempt that never happened.
+            if not plan_review_record_is_charged_invocation(record):
+                continue
+            recorded = str(record.get("declared_predecessor") or "").strip()
+            if recorded:
+                return recorded
+    except ValueError:
+        pass
     return None
+
+
+def plan_review_rounds_dir_for_rel(data: dict, target: Path, plan_rel: str) -> Path:
+    """A member's record directory from its recorded reference (item 108 WS2).
+
+    Resolves through the reference's ROOT exactly like `plan_review_manifest_path_for_rel`: the
+    records outlive the plan file, so this never requires the plan to still exist on disk.
+    """
+    return plan_review_rounds_dir(
+        data, target, paths_module().resolve_plan_reference(data, target, plan_rel)
+    )
+
+
+def plan_review_recorded_member_spend(
+    data: dict, target: Path, plan_rel: str
+) -> tuple[int, str] | None:
+    """Cumulative member spend from the durable record, or None for a pre-record member.
+
+    Item 108 WS2 T2.1, the Design-section arithmetic: ADDITIVE across the cutover, never a
+    max() -- `spend = baseline pre-record floor (corrections applied raise-only) + |charged
+    invocation records, run and imported alike|`. Cardinality of an append-only set is
+    order-free, so fresh worktrees and out-of-order finalization cannot decrement it. A member
+    with no baseline has no records by construction (every record-appending verb writes the
+    baseline first), so this returns None and the caller reads the pre-record floor instead.
+
+    A successful lane meta whose digest is in NEITHER the records NOR the baseline's enumerated
+    set is counted exactly once -- and surfaced loudly as a record write-path bug, never
+    silently absorbed. This reader is PURE: it never writes a baseline or any other record.
+    """
+    module = plan_round_record_module()
+    try:
+        rounds = plan_review_rounds_dir_for_rel(data, target, plan_rel)
+    except ValueError:
+        # An unresolvable recorded reference names no record directory; the floor is the truth.
+        return None
+    baseline = module.load_baseline(rounds)
+    if baseline is None:
+        return None
+    records = module.load_round_records(rounds)
+    recorded_digests = module.reviewer_invocation_log_sha256s(records)
+    baseline_set = {str(digest) for digest in (baseline.get("prerecord_log_sha256s") or [])}
+    unrecorded: set[str] = set()
+    for _meta_path, meta in plan_review_successful_run_meta_records(data, target, plan_rel):
+        digest = str(meta.get("log_sha256") or "")
+        if digest and digest not in recorded_digests and digest not in baseline_set:
+            unrecorded.add(digest)
+    if unrecorded:
+        print(
+            f"plan_review_round_spend_warning: {len(unrecorded)} successful run meta(s) for "
+            f"{plan_rel} match no round record and no baseline digest "
+            f"({', '.join(sorted(unrecorded))}); each is counted once in spend, but a spent "
+            "round without its record is a record write-path bug -- bind each log with "
+            "`tautline record-plan-review` so the durable record catches up",
+            file=sys.stderr,
+        )
+    spend = (
+        module.effective_prerecord_count(baseline, records)
+        + module.charged_invocation_count(records)
+        + len(unrecorded)
+    )
+    return spend, ("round_records" if records or unrecorded else "baseline")
+
+
+def plan_review_member_spend(data: dict, target: Path, plan_rel: str) -> tuple[int | None, str]:
+    """THE budget surface (item 108 WS2): cumulative member spend, and its honest source.
+
+    Every BUDGET decision reads through here; the manifest's lane-local
+    `observed_successful_runs` copy is display, the baseline input, and the no-baseline floor --
+    never the budget. Sources: `round_records` (the durable record, additively),
+    `baseline` (a cutover member with no invocations yet), `run_metas` / `manifest-floor` (a
+    pre-record member reading at today's floor -- relabelled from the chain display's
+    `manifest` so a floor never masquerades as the durable truth), or `unknown`.
+    """
+    recorded = plan_review_recorded_member_spend(data, target, plan_rel)
+    if recorded is not None:
+        return recorded
+    count, source = plan_review_prerecord_member_floor(data, target, plan_rel)
+    return count, ("manifest-floor" if source == "manifest" else source)
 
 
 def plan_review_member_recorded_rounds(
@@ -31168,19 +33677,34 @@ def plan_review_member_recorded_rounds(
 ) -> tuple[int | None, str]:
     """How many review rounds one chain member spent, and where that number came from.
 
-    The ladder, honest at every rung (K3): successful run metas when the lane still holds them;
-    else the member's finalized manifest, whose carried `observed_successful_runs` counts the runs
-    BEFORE the bound one, plus that bound run only when it actually succeeded -- a failed bind
-    never becomes a successful round. Past that the answer is `unknown`, which the summary reports
-    as an unknown and folds into a floor rather than inventing a number.
+    The durable record first (item 108 WS2): a member with a baseline reads its additive
+    record-backed spend, which survives fresh worktrees and out-of-order finalization. Only a
+    pre-record member (no baseline, hence no records) falls to the evidence ladder below, under
+    the ladder's own recorded source vocabulary.
 
     A member's own `chain_recorded_rounds` is deliberately NOT consulted: it already covers that
     member's ancestors, and summing chain totals double-counts every shared ancestor.
     """
+    recorded = plan_review_recorded_member_spend(data, target, plan_rel)
+    if recorded is not None:
+        return recorded
+    return plan_review_prerecord_member_floor(data, target, plan_rel)
+
+
+def plan_review_prerecord_member_floor(
+    data: dict, target: Path, plan_rel: str
+) -> tuple[int | None, str]:
+    """The pre-record evidence ladder, honest at every rung (K3).
+
+    Successful run metas when the lane still holds them; else the member's finalized manifest,
+    whose carried `observed_successful_runs` counts the runs BEFORE the bound one, plus that
+    bound run only when it actually succeeded -- a failed bind never becomes a successful round.
+    Past that the answer is `unknown`, which the summary reports as an unknown and folds into a
+    floor rather than inventing a number.
+    """
     records = plan_review_successful_run_meta_records(data, target, plan_rel)
-    if records:
-        return len(records), "run_metas"
     manifest = load_plan_review_manifest(plan_review_manifest_path_for_rel(data, target, plan_rel))
+    manifest_count = None
     if manifest:
         try:
             observed = int(manifest["observed_successful_runs"])
@@ -31191,62 +33715,807 @@ def plan_review_member_recorded_rounds(
                 bound_exit = int(manifest.get("wrapper_exit_code"))
             except (TypeError, ValueError):
                 bound_exit = None
-            return observed + (1 if bound_exit == 0 else 0), "manifest"
+            manifest_count = observed + (1 if bound_exit == 0 else 0)
+    # Codex R1 P2: retained run metas being NONEMPTY does not mean COMPLETE. A lane that pruned
+    # its .ai-runs/plan-review history keeps a partial set of metas alongside a manifest whose
+    # observed_successful_runs still remembers the full spend -- returning len(records) alone then
+    # UNDERCOUNTS and the caller reports it "exact". The manifest count is never lower than what
+    # actually happened (it is written once, at bind time, from the ledger this member itself
+    # walked), so whichever source is larger is closer to the truth; only when they genuinely
+    # disagree does the source label read "manifest" instead of "run_metas", which is honest either
+    # way since "run_metas" already means "this is the trusted rung of the ladder".
+    if records and (manifest_count is None or len(records) >= manifest_count):
+        return len(records), "run_metas"
+    if manifest_count is not None:
+        return manifest_count, "manifest"
     return None, "unknown"
 
 
-def plan_review_chain_members(data: dict, target: Path, plan_rel: str) -> tuple[list[dict], bool]:
-    """Every plan in this plan's succession chain, oldest first, plus a truncation flag.
+def plan_review_lineage_identity(data: dict, target: Path, plan_rel: str) -> str:
+    """A dedupe key that survives spelling. Two references naming one plan must count ONCE.
 
-    Walks recorded predecessor links backwards from `plan_rel`. A repeat visit is a cycle: the
-    walk stops there and reports truncation rather than looping or silently dropping the tail.
+    An unresolvable reference (a plan-root token this lane no longer configures) falls back to
+    its raw string: it stays inert and distinct rather than raising out of a ceremony.
     """
-    members: list[dict] = []
+    try:
+        return str(paths_module().resolve_plan_reference(data, target, plan_rel).resolve())
+    except (ValueError, OSError):
+        return plan_rel
+
+
+def plan_review_manifest_for_rel(data: dict, target: Path, plan_rel: str) -> dict | None:
+    """A recorded reference's manifest, or None when the reference cannot even be resolved.
+
+    RESOLUTION-SAFE on purpose: the lineage resolver walks EVERY recorded reference in the lane,
+    and one stale root token (`backlog` vs `tautline-backlog`) must never raise out of a run or
+    -- worse -- out of a finalize before its manifest write.
+    """
+    try:
+        manifest_path = plan_review_manifest_path_for_rel(data, target, plan_rel)
+    except (ValueError, OSError):
+        return None
+    return load_plan_review_manifest(manifest_path)
+
+
+def plan_review_round_records_for_rel(
+    data: dict, target: Path, plan_rel: str
+) -> list[tuple[Path, dict]]:
+    """The member's durable round records (item 108 WS1), or [] when the reference is inert."""
+    try:
+        plan_path = paths_module().resolve_plan_reference(data, target, plan_rel)
+    except (ValueError, OSError):
+        return []
+    return plan_round_record_module().load_round_records(
+        plan_review_rounds_dir(data, target, plan_path)
+    )
+
+
+def plan_review_reviewed_plan_references(data: dict, target: Path) -> list[str]:
+    """Every plan this lane holds review evidence for: manifests, run metas AND round records.
+
+    Read from each record's own `plan_path`, never from a manifest FILENAME: the filename is a
+    slug, and the recorded reference is the thing every other surface keys on. Run metas and
+    round-record directories count alongside manifests because a plan that took a round and was
+    never bound still has real spend -- enumerating manifests alone made it invisible, which is
+    a budget refill through a door a lane can open by accident.
+    """
+    references: list[str] = []
     seen: set[str] = set()
-    truncated = False
-    current = plan_rel
-    while True:
-        if current in seen:
-            truncated = True
-            break
-        if len(members) >= PLAN_REVIEW_CHAIN_WALK_MAX_DEPTH:
-            truncated = True
-            break
-        seen.add(current)
-        recorded_rounds, rounds_source = plan_review_member_recorded_rounds(data, target, current)
+
+    def add(reference: object) -> None:
+        text = str(reference or "").strip()
+        if not text:
+            return
+        key = plan_review_lineage_identity(data, target, text)
+        if key in seen:
+            return
+        seen.add(key)
+        references.append(text)
+
+    reviews_root = plan_review_root(data, target) / ".plan-reviews"
+    if reviews_root.is_dir():
+        for manifest_path in sorted(reviews_root.glob("*.json")):
+            if manifest_path.name.endswith(".imported.json"):
+                continue
+            manifest = load_plan_review_manifest(manifest_path)
+            if manifest:
+                add(manifest.get("plan_path"))
+    runs_dir = configured_path(target, data["laneState"]["runsDir"]) / "plan-review"
+    if runs_dir.is_dir():
+        for meta_path in sorted(runs_dir.glob("*.meta.json")):
+            try:
+                meta = json.loads(meta_path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                continue
+            if not isinstance(meta, dict) or meta.get("schema") != PLAN_REVIEW_RUN_SCHEMA:
+                continue
+            try:
+                if int(meta.get("wrapper_exit_code")) != 0:
+                    continue
+            except (TypeError, ValueError):
+                continue
+            add(meta.get("plan_path"))
+    rounds_root = reviews_root / "rounds"
+    if rounds_root.is_dir():
+        module = plan_round_record_module()
+        for member_dir in sorted(path for path in rounds_root.iterdir() if path.is_dir()):
+            baseline = module.load_baseline(member_dir)
+            if baseline:
+                add(baseline.get("plan_path"))
+                continue
+            records = module.load_round_records(member_dir)
+            if records:
+                add(records[0][1].get("plan_path"))
+    return references
+
+
+def plan_review_name_shape_predecessor(
+    data: dict, target: Path, plan_rel: str, universe: list[str] | None = None
+) -> str:
+    """The `-vN` ancestor among EXISTING entries -- enumeration, never candidate-name generation.
+
+    Item 108 P1 #2 (DD). The prior descent GENERATED names downward from N and stopped at the
+    32-name bound, so `admin-v34` never found `admin-v1` -- and a date-like `-v20260815` suffix
+    would have materialised twenty million strings first. This lists what actually exists --
+    sibling plan files, reviewed references (manifests, run metas, round records) -- matches each
+    stem against `^<base>(-v\\d+)?$`, and picks the highest version below N (the bare base counts
+    as version 0). Cost is bounded by directory and evidence size, never by N.
+
+    Only entries WITH review evidence bind: a bare file that never spent a round has no budget to
+    draw on, and binding it would put an invented lineage into the advisory output. Ties on one
+    version resolve to the lexicographically smallest reference, so the answer is deterministic
+    whichever enumeration order found it.
+    """
+    try:
+        plan_path = paths_module().resolve_plan_reference(data, target, plan_rel)
+    except (ValueError, OSError):
+        return ""
+    match = PLAN_REVIEW_SUCCESSOR_STEM_PATTERN.match(plan_path.stem)
+    if not match:
+        return ""
+    number = int(match.group("number"))
+    stem_pattern = re.compile(rf"^{re.escape(match.group('base'))}(?:-v(?P<n>\d+))?$")
+    try:
+        plan_dir = plan_path.parent.resolve()
+    except OSError:
+        return ""
+    best: tuple[int, str] | None = None
+
+    def consider(candidate_path: Path, reference: str, *, evidenced: bool) -> None:
+        nonlocal best
+        if candidate_path.suffix != plan_path.suffix:
+            return
+        shape = stem_pattern.match(candidate_path.stem)
+        if not shape:
+            return
+        version = int(shape.group("n")) if shape.group("n") else 0
+        if version >= number:
+            return
+        try:
+            if candidate_path.parent.resolve() != plan_dir:
+                return
+        except OSError:
+            return
+        if not evidenced and not plan_review_reference_has_review_evidence(
+            data, target, reference
+        ):
+            return
+        if best is None or version > best[0] or (version == best[0] and reference < best[1]):
+            best = (version, reference)
+
+    try:
+        siblings = sorted(entry for entry in plan_path.parent.iterdir() if entry.is_file())
+    except OSError:
+        siblings = []
+    for sibling in siblings:
+        try:
+            reference = plan_root_relative_reference(data, target, sibling)
+        except (ValueError, SystemExit):
+            continue
+        consider(sibling, reference, evidenced=False)
+    # Reviewed entries outlive their files: a deleted predecessor's manifest, run meta or round
+    # record is still an existing entry, so `rm` never buys the budget back.
+    if universe is None:
+        universe = plan_review_reviewed_plan_references(data, target)
+    for reference in universe:
+        try:
+            candidate = paths_module().resolve_plan_reference(data, target, reference)
+        except (ValueError, OSError):
+            continue
+        consider(candidate, reference, evidenced=True)
+    return best[1] if best else ""
+
+
+def plan_review_reference_has_review_evidence(data: dict, target: Path, plan_rel: str) -> bool:
+    """Whether this reference has spent anything reviewable: manifest, run meta or round record."""
+    if plan_review_manifest_for_rel(data, target, plan_rel):
+        return True
+    if plan_review_successful_run_meta_records(data, target, plan_rel):
+        return True
+    # Codex R5 P2 (item 108 WS3): only a CHARGED invocation is evidence -- a failed wrapper's
+    # uncharged record matches the meta path's wrapper_exit_code == 0 filter, or a predecessor
+    # with zero successful reviews binds lineage it never earned.
+    return any(
+        record.get("kind") == "reviewer-invocation" and record.get("charged")
+        for _path, record in plan_review_round_records_for_rel(data, target, plan_rel)
+    )
+
+
+def plan_review_record_is_charged_invocation(record: object) -> bool:
+    """Whether a round record is a reviewer invocation that actually spent a review.
+
+    ONE predicate for every lineage reader. A failed wrapper still writes its invocation record
+    -- deliberately, it is the audit trail -- but it produced no review, so it must never supply
+    a lineage edge: not a declared predecessor, not a work item. Two rounds of review found this
+    class at two different sites (Codex R1 P2 and R2 P2 on this lineage), which is the signature
+    of a rule expressed per-site instead of once. The meta readers beside these call sites have
+    always been success-only; this is that same rule, named.
+    """
+    if not isinstance(record, dict):
+        return False
+    return record.get("kind") == "reviewer-invocation" and bool(record.get("charged"))
+
+
+def plan_review_predecessor_edges(
+    data: dict,
+    target: Path,
+    plan_rel: str,
+    *,
+    seed: str = "",
+    universe: list[str] | None = None,
+) -> list[tuple[str, str]]:
+    """Every predecessor edge this plan asserts, as (reference, source) -- THE UNION.
+
+    Item 108 P1 #3 (T3.1). The prior first hop consulted the explicit `--predecessor` seed only
+    when name-shape inference found nothing, so one launch recorded two different lineages. Here
+    every edge is admitted: the caller's seed, the manifest's recorded predecessor, every run
+    meta's declaration, every durable round record's `declared_predecessor` (item 108 WS1), and
+    the name-shape inference -- deduped on resolved identity, declared edges first, so the order
+    is deterministic and a declared fact is never shadowed by an inference.
+    """
+    edges: list[tuple[str, str]] = []
+    seen: set[str] = set()
+
+    def admit(reference: object, source: str) -> None:
+        text = str(reference or "").strip()
+        if not text:
+            return
+        key = plan_review_lineage_identity(data, target, text)
+        if key in seen:
+            return
+        seen.add(key)
+        edges.append((text, source))
+
+    admit(seed, "declared")
+    manifest = plan_review_manifest_for_rel(data, target, plan_rel)
+    if manifest:
+        admit(manifest.get("predecessor_plan_path"), "declared")
+    for _meta_path, meta in plan_review_successful_run_meta_records(data, target, plan_rel):
+        admit(meta.get("predecessor_plan_path"), "declared")
+    for _record_path, record in plan_review_round_records_for_rel(data, target, plan_rel):
+        # CHARGED only -- see plan_review_charged_invocation_records: every recorded lineage
+        # edge must rest on a review that actually happened.
+        if plan_review_record_is_charged_invocation(record):
+            admit(record.get("declared_predecessor"), "declared")
+    admit(
+        plan_review_name_shape_predecessor(data, target, plan_rel, universe=universe),
+        "name-shape",
+    )
+    return edges
+
+
+def plan_review_work_items_for_rel(data: dict, target: Path, plan_rel: str) -> set[str]:
+    """EVERY work item this plan has declared -- recorded and live -- as a set.
+
+    A UNION, not a preference: recorded values (manifest, run metas, round records) survive the
+    deletion of the plan file, and the live declaration survives a between-rounds correction of
+    the field. Membership is an intersection test at the call site, so a plan belongs to every
+    lineage it has ever claimed.
+    """
+    items: set[str] = set()
+
+    def add(value: object) -> None:
+        text = str(value or "").strip()
+        if text:
+            items.add(text)
+
+    manifest = plan_review_manifest_for_rel(data, target, plan_rel)
+    if manifest:
+        add(manifest.get("work_item_reference"))
+    for _meta_path, meta in plan_review_successful_run_meta_records(data, target, plan_rel):
+        add(meta.get("work_item_reference"))
+    for _record_path, record in plan_review_round_records_for_rel(data, target, plan_rel):
+        # CHARGED only, same rule as the declared-predecessor edge above (Codex R2 P2): a failed
+        # wrapper records its work_items too, and harvesting them let an attempt that produced no
+        # review bind this plan to same-item siblings and their ancestors after the plan text
+        # changed. Live plan text still covers every legitimate current declaration.
+        if not plan_review_record_is_charged_invocation(record):
+            continue
+        recorded_items = record.get("work_items")
+        if isinstance(recorded_items, list):
+            for item in recorded_items:
+                add(item)
+    try:
+        plan_path = paths_module().resolve_plan_reference(data, target, plan_rel)
+        for item in plan_round_record_module().declared_work_items(plan_review_text(plan_path)):
+            add(item)
+    except (ValueError, OSError):
+        pass
+    return items
+
+
+def plan_review_lineage_members(
+    data: dict,
+    target: Path,
+    plan_rel: str,
+    *,
+    current_rounds: int | None = None,
+    declared_predecessor: str = "",
+) -> tuple[list[dict], bool, list[str]]:
+    """THE lineage resolver (item 108 WS3): one member set every consumer reads.
+
+    The lineage is the CONNECTED CLOSURE over three edge kinds -- declared predecessors (flag,
+    manifest, run metas, round records), `-vN` name shape against existing entries, and shared
+    declared work items -- walked backward from `plan_rel` and forward across every reviewed
+    reference in the lane, deduped on resolved identity. Advisory chain lines and the (future)
+    authoritative budget consume this one output, so a single launch can never record two
+    different lineages.
+
+    Truncation is LOUD and the result is a FLOOR (T3.3): a walk cut by a recorded cycle, the
+    chain-depth cap or the component cap prints `plan_review_lineage_walk_truncated` and returns
+    `truncated=True`, which `plan_review_chain_summary` labels `evidence=floor`. A cut lineage is
+    never silently a standalone plan on a fresh budget.
+
+    `current_rounds` merges the caller's known count for the current plan (launch: the same
+    `observed_successful_runs` the round ledger prints) with the durable ladder -- whichever
+    knows about MORE spend wins, so a fresh worktree's zero cannot mask recorded history.
+    `declared_predecessor` seeds the first hop for a successor's first round, when the validated
+    flag is not recorded anywhere yet.
+    """
+    identities: dict[str, str] = {}
+
+    def identity(reference: str) -> str:
+        if reference not in identities:
+            identities[reference] = plan_review_lineage_identity(data, target, reference)
+        return identities[reference]
+
+    start_id = identity(plan_rel)
+    universe = plan_review_reviewed_plan_references(data, target)
+    if all(identity(reference) != start_id for reference in universe):
+        universe.append(plan_rel)
+
+    truncation_reasons: list[str] = []
+    binding_sources: list[str] = []
+
+    def note_truncation(reason: str) -> None:
+        if reason not in truncation_reasons:
+            truncation_reasons.append(reason)
+
+    def note_source(source: str) -> None:
+        if source not in binding_sources:
+            binding_sources.append(source)
+
+    edges_cache: dict[str, list[tuple[str, str]]] = {}
+
+    def edges_of(reference: str) -> list[tuple[str, str]]:
+        key = identity(reference)
+        if key not in edges_cache:
+            seed = declared_predecessor if key == start_id else ""
+            edges_cache[key] = plan_review_predecessor_edges(
+                data, target, reference, seed=seed, universe=universe
+            )
+        return edges_cache[key]
+
+    def walk_back(start: str) -> tuple[list[str], list[str], bool, bool]:
+        """Backward closure via union edges: (preorder line, edge kinds used, cyclic, capped).
+
+        DFS with an explicit path stack so a BACK-EDGE is distinguishable from a DIAMOND: two
+        routes to one ancestor count it once and cut nothing, while a DECLARED edge pointing
+        back into the path is a recorded cycle and flags truncation. A name-shape back-edge is
+        skipped silently instead -- it is an inference restating connectivity the walk already
+        has (a `-v1`/base pair points at itself in both directions by shape alone), and calling
+        that a cycle would label an honest, complete walk a floor.
+        """
+        order: list[str] = []
+        used_sources: list[str] = []
+        seen_ids: set[str] = set()
+        cyclic = False
+        capped = False
+
+        def visit(reference: str, stack_ids: frozenset[str]) -> None:
+            nonlocal cyclic, capped
+            order.append(reference)
+            seen_ids.add(identity(reference))
+            if len(stack_ids) >= PLAN_REVIEW_CHAIN_WALK_MAX_DEPTH:
+                # Codex R1 P2 (item 108 WS3): a chain of EXACTLY cap depth whose last member
+                # has no further unvisited edge is complete, not a floor -- capped only says
+                # "there was more beyond the cap". Codex R2 P2: the boundary member's edges
+                # still get the CYCLE reading the loop below would have given them -- a
+                # declared edge closing back onto the stack at exactly the cap is a recorded
+                # cycle, and calling that walk exact would hide it.
+                for edge_reference, source in edges_of(reference):
+                    edge_id = identity(edge_reference)
+                    if edge_id in stack_ids:
+                        if source == "declared":
+                            cyclic = True
+                        continue
+                    if edge_id not in seen_ids:
+                        capped = True
+                return
+            for edge_reference, source in edges_of(reference):
+                edge_id = identity(edge_reference)
+                if edge_id in stack_ids:
+                    if source == "declared":
+                        cyclic = True
+                    continue
+                if edge_id in seen_ids:
+                    continue
+                if source not in used_sources:
+                    used_sources.append(source)
+                visit(edge_reference, stack_ids | {edge_id})
+
+        visit(start, frozenset({identity(start)}))
+        return order, used_sources, cyclic, capped
+
+    chain_line, chain_sources, chain_cyclic, chain_capped = walk_back(plan_rel)
+    for source in chain_sources:
+        note_source(source)
+    if chain_cyclic:
+        note_truncation("cycle")
+    if chain_capped:
+        note_truncation("chain-depth-cap")
+
+    component: dict[str, str] = {}
+
+    def admit_member(reference: str) -> bool:
+        key = identity(reference)
+        if key in component:
+            return True
+        if len(component) >= PLAN_REVIEW_CHAIN_WALK_MAX_DEPTH:
+            note_truncation("component-cap")
+            return False
+        component[key] = reference
+        return True
+
+    for reference in chain_line:
+        admit_member(reference)
+
+    work_items_cache: dict[str, set[str]] = {}
+
+    def work_items_of(reference: str) -> set[str]:
+        key = identity(reference)
+        if key not in work_items_cache:
+            work_items_cache[key] = plan_review_work_items_for_rel(data, target, reference)
+        return work_items_cache[key]
+
+    ancestry_cache: dict[str, tuple[list[str], list[str], bool, bool]] = {}
+
+    def ancestry_of(reference: str) -> tuple[list[str], list[str], bool, bool]:
+        key = identity(reference)
+        if key not in ancestry_cache:
+            ancestry_cache[key] = walk_back(reference)
+        return ancestry_cache[key]
+
+    # Forward and sideways closure: every reviewed plan whose own ancestry passes through the
+    # component, and every reviewed plan sharing a declared work item with a member, joins --
+    # and brings its own ancestors with it. Iterated to a fixpoint because each admission can
+    # make further candidates reachable. Speculative walks of candidates that never join do NOT
+    # taint the result: their cycles and caps describe lineages this plan is not in.
+    changed = True
+    while changed and "component-cap" not in truncation_reasons:
+        changed = False
+        for candidate in universe:
+            if identity(candidate) in component:
+                continue
+            line, line_sources, line_cyclic, line_capped = ancestry_of(candidate)
+            joined_via = ""
+            if any(identity(node) in component for node in line):
+                joined_via = "forward"
+            else:
+                candidate_items = work_items_of(candidate)
+                if candidate_items and any(
+                    candidate_items & work_items_of(member)
+                    for member in list(component.values())
+                ):
+                    joined_via = "work-item"
+            if not joined_via:
+                continue
+            if joined_via == "work-item":
+                note_source("work-item")
+            for source in line_sources:
+                note_source(source)
+            if line_cyclic:
+                note_truncation("cycle")
+            if line_capped:
+                note_truncation("chain-depth-cap")
+            for node in line:
+                if not admit_member(node):
+                    break
+            changed = True
+            if "component-cap" in truncation_reasons:
+                break
+
+    truncated = bool(truncation_reasons)
+    if truncated:
+        # LOUD, at the resolver itself, so no consumer -- advisory or authoritative -- can
+        # inherit a silently cut lineage (T3.3). The summary carries the same fact as
+        # `evidence=floor`, so the printed signal and the recorded label cannot disagree.
+        print(
+            "plan_review_lineage_walk_truncated: "
+            f"plan={plan_rel} reason={','.join(truncation_reasons)} "
+            f"cap={PLAN_REVIEW_CHAIN_WALK_MAX_DEPTH}; the resolved member set and its counted "
+            "rounds are a FLOOR -- deeper members were cut, never granted a fresh budget and "
+            "never reported as a standalone plan",
+            file=sys.stderr,
+        )
+
+    chain_ids = {identity(reference) for reference in chain_line}
+    siblings = [
+        reference
+        for member_id, reference in sorted(component.items())
+        if member_id not in chain_ids
+    ]
+    members: list[dict] = []
+    for reference in [*siblings, *reversed(chain_line)]:
+        # Codex R3 P2 (item 108 WS3): an admitted reference can still be unresolvable here --
+        # a stale plan-root token after a rename or checkout config change. That member is
+        # reported as unknown and the walk stays a floor; a crash would take run/finalize
+        # down with it.
+        try:
+            recorded_rounds, rounds_source = plan_review_member_recorded_rounds(
+                data, target, reference
+            )
+        except ValueError:
+            recorded_rounds, rounds_source = None, "unresolved"
+        if identity(reference) == start_id and current_rounds is not None:
+            # MERGE, never REPLACE: the caller's count is authoritative about what THIS
+            # invocation knows, but it is derived from lane-local run metas and a fresh worktree
+            # has none. Whichever source knows about MORE spend is telling the truth.
+            durable = recorded_rounds if recorded_rounds is not None else 0
+            if int(current_rounds) >= durable:
+                recorded_rounds, rounds_source = int(current_rounds), "launch"
         members.append(
             {
-                "plan_path": current,
+                "plan_path": reference,
                 "recorded_rounds": recorded_rounds,
                 "rounds_source": rounds_source,
             }
         )
-        predecessor = plan_review_recorded_predecessor(data, target, current)
-        if not predecessor:
-            break
-        current = predecessor
-    members.reverse()
+    return members, truncated, binding_sources
+
+
+def plan_review_chain_members(data: dict, target: Path, plan_rel: str) -> tuple[list[dict], bool]:
+    """Every plan in this plan's lineage, current plan last, plus a truncation flag.
+
+    A delegate over THE resolver (item 108 WS3): the members this returns are the members every
+    other consumer counts, so the finalize refresh, the merge-time report and any future budget
+    can never disagree about what the lineage is.
+    """
+    members, truncated, _sources = plan_review_lineage_members(data, target, plan_rel)
     return members, truncated
+
+
+def plan_review_member_round_proof(
+    data: dict,
+    target: Path,
+    plan_rel: str,
+    counted: int,
+) -> tuple[int, list[str]]:
+    """How many of ONE member's counted rounds carry a classification record, and the gaps.
+
+    Proof is per INVOCATION, and only an OBSERVED invocation can be proven: a charged
+    `reviewer-invocation` record with `source: run` -- a round this CLI itself launched and
+    watched exit -- is proven when some `round-classification` record references it by nonce or
+    by log digest. Two exclusions carry the whole property, and each closed a live hole:
+
+    - a classification carrying an `origin` (`pre-record`, `imported-unverified`) proves nothing:
+      neither knows the round it names was ever counted by a record of its own;
+    - a `source: imported` invocation can never be proven AT ALL, whatever classification points
+      at it (WS5 remediation P2). `plan_review_append_import_records` MINTS that invocation on a
+      first import, so a second identical `tautline record-plan-review` bound to it and wrote an
+      origin-free classification -- and one re-import flipped the basis to verified for a round
+      the CLI never observed. Proof that a lane can manufacture by re-running an import is not
+      proof.
+
+    The round being finalized right now proves itself the same way every other round does: its
+    classification record is appended BEFORE the basis is derived (WS5 remediation P1), so this
+    reads it off disk rather than trusting a digest handed in by the writer that has not yet
+    persisted anything.
+
+    Every counted round the invocation records cannot account for -- the baseline's pre-record
+    floor, a member with no baseline reading at the manifest floor, a successful run meta the
+    record never caught -- is reported as a residual GAP, never silently proven.
+    """
+    module = plan_round_record_module()
+    try:
+        rounds = plan_review_rounds_dir_for_rel(data, target, plan_rel)
+    except ValueError:
+        return 0, [
+            f"{plan_rel}: unresolvable plan reference, so its {counted} counted round(s) name no "
+            "record directory"
+        ]
+    baseline = module.load_baseline(rounds)
+    if baseline is None:
+        return 0, [
+            f"{plan_rel}: {counted} counted round(s) predate the durable record (no baseline; "
+            "this member reads at the manifest floor, which can never be verified)"
+        ]
+    records = module.load_round_records(rounds)
+    # A RETRACTION NAMES A RECORD, NOT A ROUND -- so ordering never has to be trusted.
+    #
+    # Three rounds walked this seam and each fix opened the next hole. R1 P1: an orphan
+    # classification, left by a finalize whose manifest write failed, was read as proof of a
+    # round whose blockers were never carried. R2 P2: retracting the round's TARGET poisoned it,
+    # so a legitimate retry could never re-prove it. R3 P2: folding by `recorded_at` (second
+    # precision) then a random filename suffix does not preserve append order, and in the very
+    # failure path this exists for -- classification and correction written back-to-back inside
+    # one second -- the correction could sort FIRST and be overwritten, silently reinstating the
+    # R1 defect.
+    #
+    # Ordering was the wrong foundation. A correction now names the RECORD it retracts, by that
+    # record's own file identity, which is unique by construction (O_EXCL on a fresh name). A
+    # retracted classification is skipped no matter what order it is read in, and a retry's new
+    # classification is a DIFFERENT record that nothing retracts, so it proves its round with no
+    # ordering rule at all.
+    retracted_records: set[str] = set()
+    for _path, record in records:
+        if record.get("kind") != "correction":
+            continue
+        corrects = str(record.get("corrects") or "").strip()
+        if corrects and corrects != module.CORRECTION_BASELINE_TARGET:
+            retracted_records.add(corrects)
+    classified_nonces: set[str] = set()
+    classified_digests: set[str] = set()
+    for path, record in records:
+        if record.get("kind") != "round-classification" or record.get("origin"):
+            continue
+        if Path(path).stem in retracted_records:
+            continue
+        if record.get("nonce"):
+            classified_nonces.add(str(record["nonce"]))
+        if record.get("log_sha256"):
+            classified_digests.add(str(record["log_sha256"]))
+    proven = 0
+    gaps: list[str] = []
+    for _path, record in records:
+        if record.get("kind") != "reviewer-invocation" or record.get("charged") is not True:
+            continue
+        nonce = str(record.get("nonce") or "")
+        digest = str(record.get("log_sha256") or "")
+        named = (
+            f"{plan_rel} round {str(record.get('declared_round') or '?')} "
+            f"(nonce={nonce or 'none'}, log={digest[:12] or 'none'})"
+        )
+        # Fails CLOSED on an unrecognised source: a record that cannot say it was observed is
+        # exactly the record that must not certify anything.
+        if str(record.get("source") or "") != "run":
+            gaps.append(
+                f"{named} is counted and was never observed by this CLI (imported evidence), so "
+                "no classification record can prove it"
+            )
+            continue
+        if (nonce and nonce in classified_nonces) or (digest and digest in classified_digests):
+            proven += 1
+            continue
+        gaps.append(f"{named} is counted and never classified")
+    proven = min(proven, counted)
+    residual = counted - proven - len(gaps)
+    if residual > 0:
+        gaps.append(
+            f"{plan_rel}: {residual} further counted round(s) have no invocation record to "
+            "classify (pre-record baseline floor, or a successful run the record missed)"
+        )
+    return proven, gaps
+
+
+def plan_review_carried_findings_basis(
+    data: dict, target: Path, plan_rel: str
+) -> tuple[str, int, int, int, list[str], list[str]]:
+    """The capped manifest's carried-findings basis, PROVEN or disclosed unproven (WS5, DF).
+
+    Returns `(basis, counted, proven, member_count, gaps, floors)`. The rounds counted here are
+    the rounds THE AUTHORITATIVE RESOLVER counts -- `plan_review_lineage_members`, the one member
+    set every budget decision reads -- never a local re-walk (R1 P1 on the plan): a narrower view
+    could certify fewer rounds than the cap later counts, and a verified token over a lineage
+    nobody else agrees with is worse than the honest `caller-asserted` it would replace.
+
+    Two kinds of unproven, deliberately separate, because they disclose different things:
+
+    - a GAP is a counted round that is named and unproven -- a lane can go and bind it;
+    - a FLOOR is a reason `counted` and `proven` are themselves understatements: a truncated walk,
+      or a member whose spend cannot be read at all. Its rounds are in NEITHER total, so a
+      disclosure that only printed the totals would report the smallest number exactly when the
+      lineage is least knowable (WS5 remediation P3). Floors are printed and they block the
+      upgrade: an unknown member's rounds can never be shown classified.
+
+    The basis upgrades ONLY when every counted round in the lineage carries a classification
+    record and nothing is a floor. Pre-record history and a member reading at the manifest floor
+    can never verify either -- neither has an invocation record to classify.
+    """
+    gaps: list[str] = []
+    floors: list[str] = []
+    try:
+        members, truncated, _sources = plan_review_lineage_members(data, target, plan_rel)
+    except (ValueError, OSError):
+        return (
+            PLAN_REVIEW_CARRIED_FINDINGS_BASIS,
+            0,
+            0,
+            0,
+            [f"{plan_rel}: the lineage could not be resolved, so no counted round can be proven"],
+            [],
+        )
+    if truncated:
+        floors.append(
+            "the lineage walk was truncated, so members beyond the cut are in neither total"
+        )
+    counted_total = 0
+    proven_total = 0
+    for member in members:
+        reference = str(member.get("plan_path") or "")
+        try:
+            counted = max(int(member["recorded_rounds"]), 0)
+        except (KeyError, TypeError, ValueError):
+            floors.append(
+                f"{reference}: spend reads "
+                f"{str(member.get('rounds_source') or 'unknown')}, so its rounds are in neither "
+                "total and none of them can be proven"
+            )
+            continue
+        counted_total += counted
+        if not counted:
+            continue
+        proven, member_gaps = plan_review_member_round_proof(data, target, reference, counted)
+        proven_total += proven
+        gaps.extend(member_gaps)
+    verified = counted_total > 0 and proven_total >= counted_total and not gaps and not floors
+    basis = (
+        PLAN_REVIEW_CARRIED_FINDINGS_BASIS_VERIFIED
+        if verified
+        else PLAN_REVIEW_CARRIED_FINDINGS_BASIS
+    )
+    return basis, counted_total, proven_total, len(members), gaps, floors
+
+
+def plan_review_basis_detail(reasons: list[str]) -> str:
+    """The named reasons, capped at what a lane can actually read, then summarised."""
+    named = reasons[:PLAN_REVIEW_BASIS_GAPS_NAMED]
+    more = len(reasons) - len(named)
+    return "; ".join(named) + (f"; and {more} more" if more > 0 else "")
+
+
+def plan_review_capped_disclosure_line(
+    basis: str,
+    counted: int,
+    proven: int,
+    member_count: int,
+    gaps: list[str],
+    floors: list[str],
+) -> str:
+    """What the capped finalize discloses about its carried list -- verified, or the named gap.
+
+    Unproven is NOT merely announced (T5.1): the counted rounds without a classification record
+    are named, because a lane can act on `round R2 of <plan>` and can do nothing at all with
+    "completeness is not verified". And when the totals themselves are understatements -- an
+    unknown member, a cut walk, a classification record that failed to persist -- the line says
+    so where it prints them, rather than letting "0 of 0 are NOT verified" read as reassurance.
+    """
+    if basis == PLAN_REVIEW_CARRIED_FINDINGS_BASIS_VERIFIED:
+        return (
+            f"plan_review_capped_disclosure: carried_findings_basis={basis} -- all {counted} "
+            f"counted round(s) across {member_count} lineage member(s) carry a round-"
+            "classification record, so the carried list is complete against every counted round"
+        )
+    floor_clause = (
+        f" (both totals are a FLOOR: {plan_review_basis_detail(floors)})" if floors else ""
+    )
+    gap_clause = f": {plan_review_basis_detail(gaps)}" if gaps else ""
+    return (
+        f"plan_review_capped_disclosure: carried_findings_basis={basis} -- the carried list is "
+        f"this round's caller classification; {counted - proven} of {counted} counted round(s) "
+        f"across {member_count} lineage member(s) are NOT verified"
+        f"{floor_clause}{gap_clause}. Bind each named "
+        "round with `tautline record-plan-review` (append only) before reading the carried list "
+        "as complete"
+    )
 
 
 def plan_review_launch_chain(
     data: dict, target: Path, plan_rel: str, predecessor_rel: str, observed_runs: int
 ) -> tuple[list[dict], bool]:
-    """The chain as it stands at a launch, with the current plan's spend taken from the caller.
+    """The lineage as it stands at a launch, with the current plan's spend from the caller.
 
-    At launch the current plan's count is KNOWN -- it is the same `observed_runs` the round ledger
-    prints -- so it must never fall through the evidence ladder to `unknown`, which is exactly what
-    a successor's first round would do (no run metas, no manifest yet) and would falsely mark the
-    whole chain as a floor. The declared predecessor also may not be recorded anywhere yet, so the
-    first hop comes from the caller rather than from disk.
+    At launch the current plan's count is KNOWN -- it is the same `observed_runs` the round
+    ledger prints -- so it must never fall through the evidence ladder to `unknown`. The declared
+    predecessor may not be recorded anywhere yet, so it seeds the resolver's first hop. Same
+    resolver, same members: this wrapper only carries the launch-time knowns.
     """
-    members, truncated = plan_review_chain_members(data, target, predecessor_rel)
-    if any(plan_references_match(data, target, m["plan_path"], plan_rel) for m in members):
-        # The declared lineage points back into the chain. Report the ancestors that exist and
-        # flag the truncation; never emit the current plan twice.
-        return members, True
-    members.append(
-        {"plan_path": plan_rel, "recorded_rounds": int(observed_runs), "rounds_source": "launch"}
+    members, truncated, _sources = plan_review_lineage_members(
+        data,
+        target,
+        plan_rel,
+        current_rounds=int(observed_runs),
+        declared_predecessor=predecessor_rel or "",
     )
     return members, truncated
 
@@ -31294,6 +34563,41 @@ def plan_review_chain_advisory_line(summary: dict, surface: str = "run") -> str:
     )
 
 
+def plan_review_lineage_rounds_for_merge(data: dict, target: Path, plan_rel: str) -> dict:
+    """Cumulative LINEAGE review rounds for one plan's succession chain, at PR-merge time.
+
+    T4.2 (item 106 WS4). Reuses the existing chain walk (`plan_review_chain_members`) and its
+    honesty-marked summary (`plan_review_chain_summary`) -- the same machinery
+    `run-plan-review`/`finalize-plan-review` already use for the chain advisory. No new counting
+    logic and no new telemetry vocabulary: the approved v1 event codes `plan_review_round` /
+    `plan_review_clean` / `plan_review_blocked` already cover round spend and verdict, so
+    surfacing their cumulative total per merged PR needs no enum change and no T0 vocabulary
+    re-approval gate.
+    """
+    members, truncated = plan_review_chain_members(data, target, plan_rel)
+    summary = plan_review_chain_summary(members, truncated)
+    return {
+        "plan_rel": plan_rel,
+        "depth": summary["depth"],
+        "cumulative_recorded_rounds": summary["cumulative_recorded_rounds"],
+        "evidence": summary["evidence"],
+        "members": members,
+    }
+
+
+def plan_review_lineage_rounds_merge_line(pr_number: str, report: dict) -> str:
+    """The one printed line a merged PR owes: how many lineage rounds it cost, honestly marked."""
+    total_display = (
+        f">={report['cumulative_recorded_rounds']}"
+        if report["evidence"] == "floor"
+        else str(report["cumulative_recorded_rounds"])
+    )
+    return (
+        "plan_review_lineage_rounds_at_merge: "
+        f"pr={pr_number} plan={report['plan_rel']} depth={report['depth']} "
+        f"cumulative_recorded_rounds={total_display} evidence={report['evidence']} "
+        "(vocabulary: plan_review_round/plan_review_clean/plan_review_blocked)"
+    )
 
 
 
@@ -31320,15 +34624,11 @@ def plan_review_lineage_shape_hint(data: dict, target: Path, plan_path: Path) ->
     match = PLAN_REVIEW_SUCCESSOR_STEM_PATTERN.match(plan_path.stem)
     if not match:
         return ""
-    base = match.group("base")
-    number = int(match.group("number"))
-    candidates = [f"{base}-v{number - 1}"] if number > 1 else []
-    candidates.append(base)
-    for candidate in candidates:
-        candidate_path = plan_path.with_name(candidate + plan_path.suffix)
-        if not plan_review_manifest_path(data, target, candidate_path).exists():
-            continue
-        candidate_rel = plan_root_relative_reference(data, target, candidate_path)
+    # Codex R1 P3 (item 108 WS3): the hint names the SAME predecessor the resolver's
+    # enumerated inference binds advisorily -- the old v(N-1)/bare-base probe went silent on
+    # exactly the lineages the enumeration now finds (admin-v34 -> admin-v1).
+    inferred = plan_review_name_shape_predecessor(data, target, plan_rel)
+    for candidate_rel in ([inferred] if inferred else []):
         return (
             f"plan_review_lineage_hint: this plan's name has the `-vN` successor shape and "
             f"{candidate_rel} already has recorded review evidence, but no lineage is recorded "
@@ -31385,14 +34685,18 @@ def plan_review_lineage_errors(
         runs_rel = path_relative_to_target(
             target, configured_path(target, data["laneState"]["runsDir"]) / "plan-review"
         )
-        has_manifest = plan_review_manifest_path(data, target, predecessor_path).exists()
-        has_runs = bool(plan_review_successful_run_meta_records(data, target, predecessor_rel))
-        if not has_manifest and not has_runs:
+        # Codex R3 P2 (item 108 WS3): the validator accepts the SAME evidence set the
+        # resolver counts -- manifest, run metas, or the durable round record. A lane whose
+        # .ai-runs was pruned before finalization still holds record-backed spend, and
+        # refusing its explicit flag while the resolver would count that spend is a
+        # contradiction between two readers of one truth.
+        if not plan_review_reference_has_review_evidence(data, target, predecessor_rel):
             return (
                 [
                     f"--predecessor '{predecessor_rel}' has no recorded plan-review evidence; "
-                    f"checked for a manifest at '{manifest_rel}' and for successful run metas "
-                    f"keyed on '{predecessor_rel}' under '{runs_rel}'. Remedies: correct the path, "
+                    f"checked for a manifest at '{manifest_rel}', for successful run metas "
+                    f"keyed on '{predecessor_rel}' under '{runs_rel}', and for durable round "
+                    "records. Remedies: correct the path, "
                     "or omit --predecessor when the predecessor genuinely has no recorded reviews "
                     "(then there is no chain spend to account for)"
                 ],
@@ -31489,6 +34793,312 @@ def plan_review_manifest_is_clean_for_hash(manifest: dict | None, plan_hash: str
     return critical == 0 and p1 == 0
 
 
+def plan_review_carried_findings(manifest: dict | None) -> list[dict]:
+    """The Critical/P1 findings a capped manifest carried into implementation review.
+
+    Reads the record rather than re-deriving severity from prose: `finalize-plan-review` stamped
+    `status: carried` on exactly the findings it carried, at the severity the classification
+    recorded. An empty list from a capped manifest is a defect the precheck refuses, not a quiet
+    "nothing to do" -- see `plan_review_capped_manifest_errors`.
+    """
+    if not manifest:
+        return []
+    findings = manifest.get("classified_findings")
+    if not isinstance(findings, list):
+        return []
+    return [
+        item
+        for item in findings
+        if isinstance(item, dict)
+        and str(item.get("status") or "").strip().lower() == PLAN_REVIEW_CARRIED_STATUS
+    ]
+
+
+def plan_review_capped_manifest_errors(manifest: dict) -> list[str]:
+    """What a `capped-with-open-findings` manifest must prove before finalization accepts it.
+
+    The release valve is only safe because the findings it releases past are RECORDED as binding
+    obligations. Without this check the new verdict would be strictly weaker than the refusal it
+    replaces: a lane could write `capped-with-open-findings` over any blocked round and walk. The
+    predicate is mechanical -- every unresolved Critical/P1 in the record must carry the carried
+    marker -- so it needs no judgment and cannot be argued with.
+    """
+    errors: list[str] = []
+    findings = manifest.get("classified_findings")
+    if not isinstance(findings, list):
+        return [
+            f"plan review manifest verdict {PLAN_REVIEW_CAPPED_VERDICT} requires "
+            "classified_findings evidence"
+        ]
+    # The reviewer's own word must survive, and must still be a REFUSAL (Codex remediation-round
+    # P2). `asserted_verdict` is the entire reason the record keeps two verdicts: the derived one
+    # says the budget ran out, the asserted one says what the reviewer actually concluded, and the
+    # pair is what lets a capped record be reconciled against the log that produced it. Nothing
+    # required the field or constrained its value, so deleting it or rewriting it to `clean` left a
+    # record claiming the final review found nothing while carrying binding Criticals -- the audit
+    # trail testifying against itself. A capped finalize is only ever derived from a round that
+    # asserted blockers, so `clean`/`clean-with-deferrals` there is provably false rather than
+    # merely unverified.
+    asserted = str(manifest.get("asserted_verdict") or "").strip().lower()
+    if not asserted:
+        errors.append(
+            f"plan review manifest verdict {PLAN_REVIEW_CAPPED_VERDICT} requires "
+            '"asserted_verdict" -- the reviewer\'s own verdict is what makes a capped record '
+            "reconcilable against its log, so a capped manifest without it cannot be audited"
+        )
+    elif asserted != PLAN_REVIEW_BLOCKED_VERDICT:
+        # EQUALS `blocked`, not merely "is not clean" (Codex round 4 P2). Both clean verdicts are
+        # refused before the manifest is written, so `blocked` is the ONLY value a legitimate
+        # capped finalize can have asserted -- which makes an allowlist of one the honest check.
+        # Rejecting just the clean values left every other string passing, so a hand-edited
+        # `"banana"` satisfied the guard while destroying exactly the reconcilability the field
+        # exists to provide. A validator that enumerates what it forbids is only as good as that
+        # enumeration; this one now enumerates what it permits.
+        errors.append(
+            f"plan review manifest verdict {PLAN_REVIEW_CAPPED_VERDICT} records "
+            f'"asserted_verdict": {asserted!r}, but a capped finalize is derived only from a '
+            f"round that asserted {PLAN_REVIEW_BLOCKED_VERDICT!r}; any other value cannot be "
+            "reconciled against the log that produced it"
+        )
+    records = [item for item in findings if isinstance(item, dict)]
+    unresolved_blockers = [
+        item
+        for item in records
+        if str(item.get("severity", item.get("priority", ""))).lower() in BLOCKER_SEVERITIES
+        and str(item.get("status") or "").lower() not in plan_review_resolved_statuses()
+    ]
+    if not unresolved_blockers:
+        errors.append(
+            f"plan review manifest verdict {PLAN_REVIEW_CAPPED_VERDICT} records no unresolved "
+            "Critical/P1 finding; a capped finalize exists to CARRY open blockers, so a record "
+            "with none belongs at verdict clean or clean-with-deferrals"
+        )
+    for item in unresolved_blockers:
+        label = str(item.get("id") or item.get("title") or item.get("summary") or "finding")[:80]
+        if str(item.get("status") or "").lower() != PLAN_REVIEW_CARRIED_STATUS:
+            errors.append(
+                f"unresolved {str(item.get('severity', item.get('priority', ''))).lower()} finding "
+                f"{label!r} in a {PLAN_REVIEW_CAPPED_VERDICT} manifest must carry "
+                f'"status": "{PLAN_REVIEW_CARRIED_STATUS}"'
+            )
+        if item.get("binding") is not True:
+            errors.append(
+                f"carried finding {label!r} must carry \"binding\": true -- a carried Critical/P1 "
+                "is a binding implementation-review focus item, never an advisory note"
+            )
+        # A carried finding with no identity is INVISIBLE, not merely untidy (Codex
+        # remediation-round P2). `plan_review_carried_focus_items` keys on
+        # `focus_id or id` and skips anything with neither, so stripping the generated
+        # `focus_id` from an id-less blocker leaves a record that still satisfies the
+        # status and binding checks above while every downstream report -- the finalize
+        # print, the push gate, the implementation-review focus list -- omits it. The
+        # obligation would be recorded and unreportable at the same time, which is worse
+        # than an obligation that was never carried, because the manifest testifies that
+        # it was.
+        if not str(item.get("focus_id") or item.get("id") or "").strip():
+            errors.append(
+                f"carried finding {label!r} must carry a non-empty \"focus_id\" (or \"id\") -- "
+                "carried findings are reported by that key, so one without it is recorded as "
+                "binding and then omitted from every downstream report"
+            )
+    return errors
+
+
+def plan_review_finalize_event_severity(
+    *, capped: bool, convergence_errors: bool, blockers: int, wrapper_exit_code: int
+) -> str:
+    """The severity the `plan_review_finalized` event carries.
+
+    `warn` on the capped path, and the distinction is the whole release valve in one word. The
+    command exits 0 and the lane is released into implementation, so recording `block` beside a
+    successful exit would make every status surface say the lane is stuck at the exact moment the
+    gate let it out. It is not `ok` either: real Critical/P1 findings are open and binding on
+    implementation review, and calling that clean would be the ledger lying in the cheaper
+    direction.
+
+    Extracted rather than inlined so the choice is testable without writing an event: the event
+    file resolves against a lane-relative state dir, which no test can assert on without
+    contaminating every other lane sharing it.
+
+    The wrapper exit code is checked BEFORE the capped branch (Codex R1 P2). A wrapper that exited
+    nonzero can still produce enough output to reach finalization; the command then returns that
+    nonzero code and the precheck rejects the manifest, so the lane is NOT released and an event
+    saying `warn` would be describing a release that did not happen.
+    """
+    if capped and wrapper_exit_code == 0:
+        return "warn"
+    if not convergence_errors and not blockers and wrapper_exit_code == 0:
+        return "ok"
+    return "block"
+
+
+def plan_review_focus_key(plan_rel: str, focus_id: str) -> str:
+    """The identity a carried finding is REPORTED under. Plan-qualified on purpose: two plans in
+    one lane can both carry a finding called `carried-1`.
+
+    REPORT-ONLY, and this key is currently only ever printed. An earlier draft of this release
+    also shipped a disposition flag (`<focus-key>=<what review found>`) that discharged an
+    obligation, and this docstring used to describe percent-encoding `=` in both halves so a plan
+    path or finding id containing `=` could not truncate the key. That gate was removed before
+    release (see `plan_review_carried_focus_items`), and the encoding it justified was removed with
+    it -- so the paragraph was describing behaviour this function does not have. It is restated
+    here as history rather than deleted, because the encoding becomes REQUIRED again the moment a
+    disposition flag returns: reinstate it in the same commit as the flag, not after.
+    """
+    return f"{plan_rel}::{focus_id}"
+
+
+def plan_review_carried_focus_items(data: dict, target: Path) -> list[dict]:
+    """The BINDING implementation-review focus items this lane owes, oldest manifest first.
+
+    Sourced from capped plan-review manifests recorded by a trusted writer. An untrusted import
+    can neither create this verdict (it is absent from every `--verdict` choice list) nor be
+    believed about it here.
+
+    NOT SCOPED TO A BRANCH LINEAGE, and that is a KNOWN OPEN GAP, not a solved problem. This
+    docstring previously claimed the glob was scoped to the branch's lineage and credited a Codex
+    confirming-round P1 for it. No such filter exists here or in any caller -- the claim was
+    written against a draft that was removed, and it survived the removal. Restating it honestly:
+
+    Every capped manifest in the lane is listed on every call, on every branch, indefinitely. The
+    hazard the old text described is real -- a repo accumulates capped manifests for unrelated
+    plans -- but the reason it is not a DEFECT today is that this list is REPORT-ONLY: nothing
+    refuses on it, so plan A's implementation is never blocked by plan B's findings, and there is
+    no disposition mechanism that could discharge plan B's binding Critical early. The cost is
+    that the report degrades toward unconditional noise as manifests accumulate, which is how a
+    report gets ignored.
+
+    Scoping needs a durable plan-to-implementation lineage this codebase does not have yet; that
+    lineage is the follow-up work. Whichever change first makes this list GATE anything must add
+    the scope in the same commit -- an unscoped glob behind a refusal is the failure the removed
+    draft actually had.
+    """
+    items: list[dict] = []
+    reviews_root = planning_source_root(data, target) / ".plan-reviews"
+    if not reviews_root.is_dir():
+        return items
+    for manifest_path in sorted(reviews_root.glob("*.json")):
+        manifest = load_plan_review_manifest(manifest_path)
+        if not manifest:
+            continue
+        if str(manifest.get("verdict") or "").strip().lower() != PLAN_REVIEW_CAPPED_VERDICT:
+            continue
+        if str(manifest.get("recorded_by") or "") not in PLAN_REVIEW_TRUSTED_RECORDERS:
+            continue
+        plan_rel = str(manifest.get("plan_path") or manifest_path.stem)
+        for finding in plan_review_carried_findings(manifest):
+            if finding.get("binding") is not True:
+                continue
+            focus_id = str(finding.get("focus_id") or finding.get("id") or "").strip()
+            if not focus_id:
+                continue
+            key = plan_review_focus_key(plan_rel, focus_id)
+            items.append(
+                {
+                    "focus_key": key,
+                    "focus_id": focus_id,
+                    "plan": plan_rel,
+                    "severity": str(
+                        finding.get("severity", finding.get("priority", "unknown"))
+                    ).lower(),
+                    "summary": " ".join(str(finding.get("summary") or "").split())[:240],
+                    "acceptance_criterion": str(finding.get("acceptance_criterion") or ""),
+                    "manifest": path_relative_to_target(target, manifest_path),
+                    "binding": True,
+                }
+            )
+    return items
+
+
+def plan_review_carried_focus_lines(items: list[dict]) -> list[str]:
+    """One printable line per binding focus item, in the machine-greppable house shape."""
+    return [
+        f"implementation_review_focus: [{item['severity'].upper()}] {item['focus_key']} -- "
+        f"{item['summary'] or 'no summary recorded'} (BINDING; re-test against the code)"
+        for item in items
+    ]
+
+
+def plan_review_carry_blockers(findings: list[dict], effective_round: int) -> list[dict]:
+    """Stamp every still-unresolved Critical/P1 as CARRIED into implementation review.
+
+    Severity is untouched, deliberately. The temptation at a cap is to relabel blockers down until
+    the gate is satisfied -- `status: deferred` was already the cheapest escape on this record --
+    and a valve that quietly downgrades findings buys convergence with the honesty of the ledger.
+    Carrying changes the MEDIUM a finding gets settled in (prose -> code), never its severity.
+
+    `binding: True` is what distinguishes these from the advisory transfer the round-3 message has
+    always offered. `plan_review_carried_focus_items` reads that flag and REPORTS them at
+    `plan-finalization-precheck`, `review-evidence-check` and `finalize-implementation-review`.
+    Recorded here, enforced by the follow-up: recording it is what makes the obligation exist.
+
+    Findings already carrying a resolving status pass through untouched: `finding_counts` does not
+    count them, so carrying them would invent obligations the round did not record.
+    """
+    carried: list[dict] = []
+    sequence = 0
+    # Codex R1 P2: `id` is not unique in the classified-findings contract, and the implementation
+    # finalizer keys outstanding obligations by focus key in a SET. Two Critical findings sharing
+    # an id would collapse into one obligation, so one disposition would discharge both -- the
+    # exact "one routed finding masks the rest" shape the contract already refuses elsewhere.
+    used_focus_ids: set[str] = set()
+    for item in findings:
+        if not isinstance(item, dict):
+            carried.append(item)
+            continue
+        severity = str(item.get("severity", item.get("priority", ""))).lower()
+        status = str(item.get("status") or "").lower()
+        if severity not in BLOCKER_SEVERITIES or status in plan_review_resolved_statuses():
+            carried.append(item)
+            continue
+        sequence += 1
+        record = dict(item)
+        record["status"] = PLAN_REVIEW_CARRIED_STATUS
+        record["carried_at_round"] = int(effective_round)
+        record["carried_to"] = PLAN_REVIEW_CARRY_TARGET
+        record["binding"] = True
+        # A finding that never carried an id still has to be dispositionable, and the disposition
+        # is typed by a human at a shell. Positional ids are stable for a manifest that is written
+        # once and never rewritten, which is what this one is.
+        focus_id = str(item.get("id") or "").strip() or f"carried-{sequence}"
+        if focus_id in used_focus_ids:
+            # THE DISAMBIGUATOR MUST ITSELF BE CHECKED. The suffixed form was previously trusted
+            # without re-testing it, so it could collide with an id a finding already SUPPLIED:
+            # ids `R1#3`, `R1`, `R1` gave `R1#3`, `R1`, and then `R1#3` again -- two carried
+            # blockers sharing one focus key. Downstream keys obligations by that key in a set, so
+            # the pair collapses into a single obligation and one disposition discharges both.
+            # That is the binding-ness of carried findings failing quietly, which is the single
+            # property the release valve rests on, so the uniquifier cannot be the thing that
+            # takes it away. Bounded: `attempt` strictly increases and the set is finite.
+            attempt = sequence
+            candidate = f"{focus_id}#{attempt}"
+            while candidate in used_focus_ids:
+                attempt += 1
+                candidate = f"{focus_id}#{attempt}"
+            focus_id = candidate
+        used_focus_ids.add(focus_id)
+        record["focus_id"] = focus_id
+        carried.append(record)
+    return carried
+
+
+def plan_review_manifest_is_capped_for_hash(manifest: dict | None, plan_hash: str) -> bool:
+    """True when the bound evidence is a capped finalize for the CURRENT plan content.
+
+    Capped evidence is finalizable evidence: `plan_finalization_precheck_errors` accepts it, so
+    every gate that asks "can this lane still get out of here?" must answer yes for it. Answering
+    no would leave the lane holding a successful finalize that the next gate calls unusable, which
+    is the deadlock shape one step downstream.
+    """
+    if not manifest:
+        return False
+    if str(manifest.get("verdict") or "").strip().lower() != PLAN_REVIEW_CAPPED_VERDICT:
+        return False
+    if str(manifest.get("plan_content_sha256") or "") != plan_hash:
+        return False
+    return bool(plan_review_carried_findings(manifest))
+
+
 def plan_review_bound_evidence_is_unfinalizable(manifest: dict | None, plan_hash: str) -> bool:
     """True when the bound evidence cannot be finalized against the CURRENT plan.
 
@@ -31499,7 +35109,13 @@ def plan_review_bound_evidence_is_unfinalizable(manifest: dict | None, plan_hash
     provably fails and the cap forbids another round -- a dead end, which is exactly what this
     ladder exists to remove. Stale-clean evidence therefore takes the mandatory split, like any
     other state with no usable evidence for the plan in hand.
+
+    Capped-for-hash evidence counts as finalizable (D2). It IS finalized -- the whole point of the
+    release valve -- so a refusal that told this lane to split would be prescribing a fresh budget
+    to a lane that already has its exit in hand.
     """
+    if plan_review_manifest_is_capped_for_hash(manifest, plan_hash):
+        return False
     return not plan_review_manifest_is_clean_for_hash(manifest, plan_hash)
 
 
@@ -31581,7 +35197,13 @@ def plan_review_sha_stale_at_cap(
     by the hash check, so the only sanctioned exit is the successor-plan path.
     """
     records = plan_review_successful_run_meta_records(data, target, plan_rel)
-    if len(records) < PLAN_REVIEW_TARGET_ROUNDS:
+    # Codex R1 P2 (item 108 WS2): a fresh worktree has no lane metas, but the durable record
+    # still knows the spend -- this routing must follow the same count the record-backed cap
+    # enforces, or a lane at a record-spent cap is told to carry findings into implementation
+    # while every recorded review is stale and the next run is refused.
+    recorded_spend, _spend_source = plan_review_member_spend(data, target, plan_rel)
+    spent = max(len(records), recorded_spend or 0)
+    if spent < PLAN_REVIEW_TARGET_ROUNDS:
         return False
     manifest = load_plan_review_manifest(plan_review_manifest_path(data, target, plan_path))
     if plan_review_manifest_is_clean_for_hash(manifest, plan_hash):
@@ -31604,7 +35226,7 @@ def plan_review_sha_stale_at_cap(
     # is accepted, telling the operator to split the plan would contradict the gate; only when none
     # is left is it a genuine dead end (a clean bound round the plan then edited, or the hard cap
     # truly spent).
-    next_round = len(records) + 1
+    next_round = spent + 1
     # run_plan_review runs BOTH cap gates and a run needs both to pass. Past this point we are
     # already past the runtime cap's COUNT-based target (len(records) >= TARGET) and not clean,
     # and that gate clears only on self-authorization -- so a within-target round NUMBER does not
@@ -31617,7 +35239,30 @@ def plan_review_sha_stale_at_cap(
     )
     if next_round_accepted:
         return False
-    return not any(str(meta.get("plan_content_sha256") or "") == plan_hash for _, meta in records)
+    # Codex R2 P2 (item 108 WS2): the staleness scan must see the DURABLE invocation hashes
+    # too. With record-backed spend and an empty lane (fresh worktree), a metas-only scan calls
+    # evidence for the CURRENT hash stale and routes to a successor plan the cap does not
+    # require. Union both sources; charged invocation records carry plan_content_sha256.
+    observed_hashes = {str(meta.get("plan_content_sha256") or "") for _, meta in records}
+    try:
+        rounds = plan_review_rounds_dir_for_rel(data, target, plan_rel)
+        module = plan_round_record_module()
+        for _record_path, record in module.load_round_records(rounds):
+            if record.get("kind") != "reviewer-invocation" or not record.get("charged"):
+                continue
+            observed_hashes.add(str(record.get("plan_content_sha256") or ""))
+    except ValueError:
+        pass
+    # Codex R3 P2 (item 108 WS2): the manifest is the THIRD and last evidence surface. A
+    # baselineless member at the manifest-floor cap in a fresh checkout has neither metas nor
+    # records -- but a manifest bound to the CURRENT hash (any verdict: the valve finalizes
+    # capped over a blocked one) is not stale evidence, and routing it to a successor plan is
+    # the budget-refill exit this program retires. Metas, records, manifest: the enumeration
+    # is complete, there is no fourth surface.
+    if manifest:
+        observed_hashes.add(str(manifest.get("plan_content_sha256") or ""))
+    observed_hashes.discard("")
+    return plan_hash not in observed_hashes
 
 
 
@@ -31953,7 +35598,11 @@ def plan_review_runtime_cap_errors(
     errors: list[str] = []
     manifest = load_plan_review_manifest(plan_review_manifest_path(data, target, plan_path))
     successful_records = plan_review_successful_run_meta_records(data, target, plan_rel)
-    effective_round = plan_review_effective_round(round_number, len(successful_records))
+    # Record-backed like every other budget decision (item 108 WS2): the lane-local meta count
+    # can only undercount a member whose spend lives in committed records.
+    member_spend, _member_spend_source = plan_review_member_spend(data, target, plan_rel)
+    spent_rounds = member_spend or 0
+    effective_round = plan_review_effective_round(round_number, spent_rounds)
     if effective_round > PLAN_REVIEW_HARD_CAP_ROUNDS:
         # Belt and braces: the round-cap gate already refused, but no caller may reach a launch
         # past the hard cap through this path either. Keyed on the effective round for the same
@@ -31963,23 +35612,24 @@ def plan_review_runtime_cap_errors(
             plan_review_hard_cap_refusal(
                 effective_round,
                 unresolved_blockers=plan_review_bound_evidence_is_unfinalizable(manifest, plan_hash),
-                observed_runs=len(successful_records),
+                observed_runs=spent_rounds,
                 declared_label=str(review_round),
                 finalizable_command=(
                     plan_review_finalize_command(target, plan_rel, finalizable)
                     if finalizable
                     else ""
                 ),
+                capped_evidence_bound=plan_review_manifest_is_capped_for_hash(manifest, plan_hash),
             )
         ]
     self_authorized = bool(exception_reason) or allow_r3_structural_critical
     if (
-        len(successful_records) >= PLAN_REVIEW_TARGET_ROUNDS
+        spent_rounds >= PLAN_REVIEW_TARGET_ROUNDS
         and not self_authorized
         and not plan_review_manifest_is_clean_for_hash(manifest, plan_hash)
     ):
         cap_preamble = (
-            f"plan review has already launched {len(successful_records)} successful Codex round(s) "
+            f"plan review has already launched {spent_rounds} successful Codex round(s) "
             f"for this source plan; the {PLAN_REVIEW_TARGET_ROUNDS}-round convergence target is "
             "exhausted and no convergence exception applies (no blockers were fixed since the "
             "bound round and there is no voided run to rebind), so "
@@ -32027,6 +35677,8 @@ def write_plan_review_manifest(
     recorded_by: str,
     run_meta_path: Path | None = None,
     exception_note: str = "",
+    asserted_verdict: str = "",
+    carried_findings_basis: str = "",
 ) -> tuple[Path, dict]:
     manifest_path = plan_review_manifest_path(data, target, plan_path)
     manifest_path.parent.mkdir(parents=True, exist_ok=True)
@@ -32062,6 +35714,10 @@ def write_plan_review_manifest(
         # read one higher than the launch this manifest describes. A run meta written before this
         # release (every one now on disk) and the record-plan-review import path carry nothing, so
         # the manifest simply omits the keys rather than inventing numbers.
+        #
+        # Since item 108 WS2 these carried keys are DISPLAY: every budget decision reads the
+        # durable round records through plan_review_member_spend, so a smaller lane-local ledger
+        # landing here can no longer shrink any member's cumulative spend.
         for key in ("observed_successful_runs", "effective_round"):
             value = plan_review_run_meta_ledger_value(run_meta_path, key)
             if value is not None:
@@ -32073,6 +35729,16 @@ def write_plan_review_manifest(
     # target rounds keeps a byte-identical manifest.
     if exception_note:
         manifest["exception_note"] = exception_note
+    # Written ONLY on the capped path, so every other manifest stays byte-identical. `verdict` on a
+    # capped record is derived by the gate, not attested by the lane, and the ledger has to keep
+    # both: the reviewer's own word is the thing the log can be checked against, and losing it
+    # would leave a record nobody could reconcile with the log that produced it.
+    if asserted_verdict and asserted_verdict != verdict:
+        manifest["asserted_verdict"] = asserted_verdict
+    # Same capped-only rule. The basis token is the record's own honesty about what its carried
+    # list rests on -- see PLAN_REVIEW_CARRIED_FINDINGS_BASIS.
+    if carried_findings_basis:
+        manifest["carried_findings_basis"] = carried_findings_basis
 
     manifest_rel = path_relative_to_target(target, manifest_path)
     body = plan_review_evidence_body(manifest, manifest_rel)
@@ -32088,6 +35754,463 @@ def write_plan_review_manifest(
         plan_path.write_text(updated, encoding="utf-8")
     manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     return manifest_path, manifest
+
+
+def plan_review_rounds_dir(data: dict, target: Path, plan_path: Path) -> Path:
+    """Where a member's durable per-round records live (item 108 WS1, decision DA).
+
+    Under the COMMITTED reviews root beside the manifests -- never `.ai-runs/` -- keyed by the
+    collision-aware manifest identity, so 38 `plan.md`s cannot share a record directory.
+    """
+    return plan_round_record_module().rounds_dir(
+        plan_review_root(data, target) / ".plan-reviews",
+        plan_review_manifest_identity(data, target, plan_path),
+    )
+
+
+def plan_review_round_prerecord_inputs(
+    data: dict, target: Path, plan_rel: str
+) -> tuple[int, list[str]]:
+    """The baseline's inputs: the manifest spend floor plus every successful lane meta digest.
+
+    The floor is the manifest ladder `observed_successful_runs + bound-run-success` -- the same
+    arithmetic `plan_review_member_recorded_rounds` trusts -- DUPLICATED here deliberately rather
+    than refactored out of it: WS1 is dual-write only, so the existing accounting reader stays
+    byte-for-byte untouched while the record writer grows its own leaf.
+    """
+    records = plan_review_successful_run_meta_records(data, target, plan_rel)
+    digests = sorted({str(meta.get("log_sha256") or "") for _path, meta in records} - {""})
+    manifest = load_plan_review_manifest(plan_review_manifest_path_for_rel(data, target, plan_rel))
+    floor = 0
+    if manifest:
+        try:
+            observed = int(manifest["observed_successful_runs"])
+        except (KeyError, TypeError, ValueError):
+            observed = None
+        if observed is not None:
+            try:
+                bound_exit = int(manifest.get("wrapper_exit_code"))
+            except (TypeError, ValueError):
+                bound_exit = None
+            floor = observed + (1 if bound_exit == 0 else 0)
+    return max(floor, len(records)), digests
+
+
+def plan_review_ensure_round_baseline(
+    data: dict,
+    target: Path,
+    plan_path: Path,
+    plan_rel: str,
+    baseline_inputs: tuple[int, list[str]],
+) -> tuple[dict, Path, bool]:
+    """Write the member's one-time baseline, or re-read the one that already exists."""
+    module = plan_round_record_module()
+    rounds = plan_review_rounds_dir(data, target, plan_path)
+    prerecord_count, digests = baseline_inputs
+    baseline = module.render_baseline(
+        plan_identity=plan_review_manifest_identity(data, target, plan_path),
+        plan_path=plan_rel,
+        prerecord_count=prerecord_count,
+        prerecord_log_sha256s=digests,
+    )
+    record, created = module.write_baseline_once(rounds, baseline)
+    return record, module.baseline_path(rounds), created
+
+
+def plan_review_declared_work_items(plan_path: Path) -> list[str]:
+    try:
+        return plan_round_record_module().declared_work_items(plan_review_text(plan_path))
+    except OSError:
+        return []
+
+
+def plan_review_round_record_failure(exc: OSError) -> None:
+    # Dual-write: the lane-local ledger still counted this round, so a failed record write is a
+    # LOUD stderr line, never a refusal of a run or of a finalize exit. The remedy is the
+    # sanctioned append, not a rerun and not an overwrite.
+    print(
+        f"plan_review_round_record_error: could not append the durable round record: {exc}; "
+        "the lane-local ledger still counted this round -- fix the reviews root, then append a "
+        "correction record with `tautline record-plan-review --target <lane> --plan <plan> "
+        "--correct <nonce|baseline> --correction-note '<why>'`; never overwrite or regenerate "
+        "a record or manifest",
+        file=sys.stderr,
+    )
+
+
+def plan_review_append_run_round_records(
+    *,
+    data: dict,
+    target: Path,
+    plan_path: Path,
+    plan_rel: str,
+    plan_hash: str,
+    baseline_inputs: tuple[int, list[str]],
+    declared_round: str,
+    wrapper_exit_code: int,
+    reviewer_model: str,
+    started_at: str,
+    finished_at: str,
+    frame_nonce: str,
+    log_sha256: str,
+    predecessor_rel: str | None,
+) -> None:
+    """Dual-write the durable per-round record for a launch (item 108 WS1 T1.1).
+
+    `baseline_inputs` is the PRE-RUN snapshot (108-R4-P1-1): it was measured before this run's
+    meta existed, so a first-post-cutover baseline can never absorb the run the invocation
+    record beneath it is counting -- the run is counted exactly once, by its own record.
+    """
+    module = plan_round_record_module()
+    try:
+        _baseline, baseline_file, created = plan_review_ensure_round_baseline(
+            data, target, plan_path, plan_rel, baseline_inputs
+        )
+        record = module.render_reviewer_invocation(
+            plan_identity=plan_review_manifest_identity(data, target, plan_path),
+            plan_path=plan_rel,
+            plan_content_sha256=plan_hash,
+            declared_round=declared_round,
+            wrapper_exit_code=wrapper_exit_code,
+            reviewer="codex",
+            reviewer_model=reviewer_model,
+            started_at=started_at,
+            finished_at=finished_at,
+            nonce=frame_nonce,
+            log_sha256=log_sha256,
+            declared_predecessor=predecessor_rel or "",
+            work_items=plan_review_declared_work_items(plan_path),
+            source="run",
+        )
+        record_path = module.append_record(
+            plan_review_rounds_dir(data, target, plan_path), record
+        )
+    except OSError as exc:
+        plan_review_round_record_failure(exc)
+        return
+    if created:
+        print(f"plan_review_round_baseline: {baseline_file}")
+    print(f"plan_review_round_record: {record_path}")
+
+
+def plan_review_retract_classification_record(
+    *,
+    data: dict,
+    target: Path,
+    plan_path: Path,
+    plan_rel: str,
+    classification_record_id: str,
+    declared_round: str,
+    recorded_by: str,
+) -> bool:
+    """Append a `correction` retracting the classification whose finalize did not complete.
+
+    Codex R1 P1 (WS5): the classification is appended BEFORE the manifest so a failed append can
+    never leave a manifest certifying a record that does not exist. That ordering opens the
+    mirror case -- manifest write fails AFTER the append -- and an orphan classification is read
+    as proof by the NEXT capped finalize, certifying a round whose blockers were never carried.
+    A classification proves a round only if its finalize completed, and in an append-only design
+    the way to say "that did not happen" is another record, never an edit or an unlink.
+
+    Best-effort by construction: it runs on a failure path, and a retraction that itself raised
+    would replace the caller's real error with its own.
+    """
+    module = plan_round_record_module()
+    try:
+        rounds = plan_review_rounds_dir(data, target, plan_path)
+        target_ref = classification_record_id
+        module.append_record(
+            rounds,
+            module.render_correction(
+                plan_identity=plan_review_manifest_identity(data, target, plan_path),
+                plan_path=plan_rel,
+                corrects=target_ref,
+                note=(
+                    f"round {declared_round}: the finalize that appended this classification did "
+                    "not complete -- its manifest was never written, so the classification "
+                    "proves nothing and must not certify the round"
+                ),
+                raise_prerecord_count_to=None,
+                recorded_by=recorded_by,
+                recorded_at=now_iso(),
+            ),
+        )
+        return True
+    except (OSError, ValueError) as exc:  # pragma: no cover - failure path of a failure path
+        print(
+            f"plan_review_round_record_error: could not retract the classification for "
+            f"{plan_rel} round {declared_round}: {exc}",
+            file=sys.stderr,
+        )
+        return False
+
+
+def plan_review_append_classification_record(
+    *,
+    data: dict,
+    target: Path,
+    plan_path: Path,
+    plan_rel: str,
+    plan_hash: str,
+    log_path: Path,
+    run_meta_path: Path | None,
+    declared_round: str,
+    verdict: str,
+    unresolved_critical_count: int,
+    unresolved_p1_count: int,
+    findings_count: int,
+    recorded_by: str,
+) -> str:
+    """Append the bind-time classification record (item 108 WS1 T1.2). Appends; never mutates.
+
+    Returns the appended record's IDENTITY (its unique file stem), or "" when the append failed.
+    A compensating correction names that identity, so a retraction never depends on record order
+    and never poisons a later retry (Codex R2 P2 and R3 P2).
+
+    Binding is deterministic: a recorded invocation (matched on the bound log's digest) binds by
+    nonce + log_sha256; a digest in the baseline's enumerated set is a PRE-CUTOVER round and
+    binds by digest alone with `origin: pre-record`; anything else binds by the meta's own nonce
+    and is WS2's write-path bug to surface -- a finalize never refuses its exit over record
+    bookkeeping.
+
+    Returns whether the record is ON DISK (WS5 remediation P1). A finalize still exits 0 when the
+    append fails -- the lane-local ledger counted the round either way -- but the caller must be
+    able to tell, because a manifest that certifies its carried list against a record that was
+    never written is the exact failure this whole item exists to remove.
+    """
+    module = plan_round_record_module()
+    try:
+        rounds = plan_review_rounds_dir(data, target, plan_path)
+        log_digest = file_sha256(log_path)
+        baseline, baseline_file, created = plan_review_ensure_round_baseline(
+            data,
+            target,
+            plan_path,
+            plan_rel,
+            plan_review_round_prerecord_inputs(data, target, plan_rel),
+        )
+        recorded = module.find_reviewer_invocation(rounds, log_sha256=log_digest)
+        origin = ""
+        nonce = ""
+        if recorded is not None:
+            nonce = str(recorded.get("nonce") or "")
+        elif log_digest in (baseline.get("prerecord_log_sha256s") or []):
+            origin = "pre-record"
+        elif run_meta_path is not None:
+            nonce = plan_review_run_meta_frame_nonce(run_meta_path) or ""
+        record = module.render_round_classification(
+            plan_identity=plan_review_manifest_identity(data, target, plan_path),
+            plan_path=plan_rel,
+            plan_content_sha256=plan_hash,
+            declared_round=declared_round,
+            verdict=verdict,
+            unresolved_critical_count=unresolved_critical_count,
+            unresolved_p1_count=unresolved_p1_count,
+            classified_findings_count=findings_count,
+            nonce=nonce,
+            log_sha256=log_digest,
+            origin=origin,
+            recorded_by=recorded_by,
+            recorded_at=now_iso(),
+        )
+        record_path = module.append_record(rounds, record)
+    except OSError as exc:
+        plan_review_round_record_failure(exc)
+        return ""
+    if created:
+        print(f"plan_review_round_baseline: {baseline_file}")
+    print(f"plan_review_round_record: {record_path}")
+    # The record's own identity, so a compensating correction can name THIS record rather than
+    # the round it describes -- see plan_review_member_round_proof (Codex R3 P2).
+    return Path(record_path).stem
+
+
+def plan_review_append_import_records(
+    *,
+    data: dict,
+    target: Path,
+    plan_path: Path,
+    plan_rel: str,
+    plan_hash: str,
+    log_path: Path,
+    run_meta: dict,
+    declared_round: str,
+    verdict: str,
+    unresolved_critical_count: int,
+    unresolved_p1_count: int,
+    findings_count: int,
+    reviewer: str,
+    reviewer_model: str,
+    wrapper_exit_code: int,
+) -> None:
+    """One deterministic rule for record-plan-review imports (item 108, 108-R4-P1-2).
+
+    In order: a digest matching a recorded invocation binds to that record (a re-import never
+    charges twice); a digest in the baseline's enumerated set is a pre-cutover round and gets a
+    classification with `origin: pre-record` and NO spend record; anything else -- including
+    every import against a digestless floor, where the baseline count came from
+    `observed_successful_runs` with nothing enumerable -- first appends a CHARGED
+    `reviewer-invocation` record with `source: imported` (nonce minted here) and references it
+    from an `origin: imported-unverified` classification. Never an uncharged classification for
+    an unknown digest: manifest evidence can never outrun the budget that produced it.
+
+    A RE-IMPORT inherits the origin of the invocation it binds to (WS5 remediation P2). The first
+    import MINTS its own `source: imported` invocation, so re-running the same
+    `tautline record-plan-review` used to bind to that minted record and write an origin-free
+    classification -- and an origin-free classification is what the carried-findings basis reads
+    as proof. Two identical imports therefore certified a round nobody ever observed. An import
+    that binds a `source: run` invocation is the opposite case and still classifies cleanly: that
+    is the sanctioned remedy the capped disclosure names for a round that ran but was never bound.
+    """
+    module = plan_round_record_module()
+    try:
+        rounds = plan_review_rounds_dir(data, target, plan_path)
+        log_digest = file_sha256(log_path)
+        baseline, baseline_file, created = plan_review_ensure_round_baseline(
+            data,
+            target,
+            plan_path,
+            plan_rel,
+            plan_review_round_prerecord_inputs(data, target, plan_rel),
+        )
+        recorded = module.find_reviewer_invocation(rounds, log_sha256=log_digest)
+        origin = ""
+        nonce = ""
+        invocation_path: Path | None = None
+        if recorded is not None:
+            nonce = str(recorded.get("nonce") or "")
+            if str(recorded.get("source") or "") != "run":
+                origin = "imported-unverified"
+        elif log_digest in (baseline.get("prerecord_log_sha256s") or []):
+            origin = "pre-record"
+        else:
+            nonce = secrets.token_hex(8)
+            invocation = module.render_reviewer_invocation(
+                plan_identity=plan_review_manifest_identity(data, target, plan_path),
+                plan_path=plan_rel,
+                plan_content_sha256=plan_hash,
+                declared_round=declared_round,
+                wrapper_exit_code=wrapper_exit_code,
+                reviewer=reviewer,
+                reviewer_model=reviewer_model,
+                started_at=str(run_meta.get("started_at") or ""),
+                finished_at=str(run_meta.get("finished_at") or ""),
+                nonce=nonce,
+                log_sha256=log_digest,
+                declared_predecessor=str(run_meta.get("predecessor_plan_path") or ""),
+                work_items=plan_review_declared_work_items(plan_path),
+                source="imported",
+            )
+            invocation_path = module.append_record(rounds, invocation)
+            origin = "imported-unverified"
+        record = module.render_round_classification(
+            plan_identity=plan_review_manifest_identity(data, target, plan_path),
+            plan_path=plan_rel,
+            plan_content_sha256=plan_hash,
+            declared_round=declared_round,
+            verdict=verdict,
+            unresolved_critical_count=unresolved_critical_count,
+            unresolved_p1_count=unresolved_p1_count,
+            classified_findings_count=findings_count,
+            nonce=nonce,
+            log_sha256=log_digest,
+            origin=origin,
+            recorded_by="tautline record-plan-review",
+            recorded_at=now_iso(),
+        )
+        record_path = module.append_record(rounds, record)
+    except OSError as exc:
+        plan_review_round_record_failure(exc)
+        return
+    if created:
+        print(f"plan_review_round_baseline: {baseline_file}")
+    if invocation_path is not None:
+        print(f"plan_review_round_record: {invocation_path}")
+    print(f"plan_review_round_record: {record_path}")
+
+
+def plan_review_append_correction_record(
+    data: dict,
+    target: Path,
+    plan_path: Path,
+    plan_rel: str,
+    *,
+    corrects: str,
+    note: str,
+    raise_prerecord_count_to: int | None,
+) -> int:
+    """The sanctioned amendment writer (item 108 WS1 T1.2, 108-R4-P2-2).
+
+    Appends a `correction` record referencing the original -- an invocation nonce, or the
+    literal `baseline`. Corrections RAISE; nothing lowers anything, and nothing here rewrites,
+    renames, or deletes an existing record. WS2's reader consumes the raise-only semantics; WS1
+    only writes.
+    """
+    module = plan_round_record_module()
+    try:
+        rounds = plan_review_rounds_dir(data, target, plan_path)
+        if corrects == module.CORRECTION_BASELINE_TARGET:
+            baseline, _baseline_file, _created = plan_review_ensure_round_baseline(
+                data,
+                target,
+                plan_path,
+                plan_rel,
+                plan_review_round_prerecord_inputs(data, target, plan_rel),
+            )
+            # Codex R2 P2: the floor includes every PRIOR baseline correction, or a later,
+            # lower raise slips under an earlier one and the durable record turns ambiguous.
+            current = module.current_prerecord_floor(rounds, baseline)
+            if raise_prerecord_count_to is not None and raise_prerecord_count_to <= current:
+                print(
+                    "plan_review_record_error: corrections raise and nothing lowers anything: "
+                    f"--raise-prerecord-count-to {raise_prerecord_count_to} does not exceed the "
+                    f"member's current pre-record floor of {current} (baseline plus prior "
+                    "corrections)",
+                    file=sys.stderr,
+                )
+                return 1
+        else:
+            if raise_prerecord_count_to is not None:
+                print(
+                    "plan_review_record_error: --raise-prerecord-count-to targets the member's "
+                    "pre-record floor; pass `--correct baseline` to raise it",
+                    file=sys.stderr,
+                )
+                return 1
+            if module.find_reviewer_invocation(rounds, nonce=corrects) is None:
+                print(
+                    f"plan_review_record_error: no reviewer-invocation record with nonce "
+                    f"{corrects} under {rounds}; a correction is an append that references an "
+                    "existing record -- inspect the record files there for the nonce to pass to "
+                    "--correct, or pass `--correct baseline` to amend the pre-record floor",
+                    file=sys.stderr,
+                )
+                return 1
+        record = module.render_correction(
+            plan_identity=plan_review_manifest_identity(data, target, plan_path),
+            plan_path=plan_rel,
+            corrects=corrects,
+            note=note,
+            raise_prerecord_count_to=raise_prerecord_count_to,
+            recorded_by="tautline record-plan-review --correct",
+            recorded_at=now_iso(),
+        )
+        record_path = module.append_record(rounds, record)
+    except OSError as exc:
+        print(
+            f"plan_review_record_error: could not append the correction record: {exc}; fix the "
+            "reviews root named in the error and rerun the same `tautline record-plan-review "
+            "--target <lane> --plan <plan> --correct <nonce|baseline> --correction-note '<why>'` "
+            "invocation -- a refused append wrote nothing, so retrying is safe",
+            file=sys.stderr,
+        )
+        return 1
+    print(f"plan_review_round_record: {record_path}")
+    print(
+        "plan_review_correction: appended; a correction references its original and is applied "
+        "raise-only by the spend reader -- no record or manifest was rewritten"
+    )
+    return 0
 
 
 def plan_template_coverage_errors(data: dict, template_path: Path) -> list[str]:
@@ -32254,8 +36377,17 @@ def run_plan_review(args: argparse.Namespace) -> int:
     exception_reason = exception_note or detected_reason
     manifest_path = plan_review_manifest_path(data, target, plan_path)
     existing_manifest = load_plan_review_manifest(manifest_path)
-    # Only the LAUNCH path spends budget, so only this caller passes the observed count.
-    observed_runs = plan_review_observed_run_count(data, target, plan_rel)
+    # Only the LAUNCH path spends budget, so only this caller passes the observed count -- and
+    # the budget reads the DURABLE record (item 108 WS2 T2.1): a fresh worktree launches at its
+    # committed cumulative spend, never at zero. The lane-local meta count and the manifest's
+    # `observed_successful_runs` copy stay what they now are -- display, the baseline input, and
+    # the pre-record floor for a member with no baseline.
+    member_spend, _member_spend_source = plan_review_member_spend(data, target, plan_rel)
+    observed_runs = member_spend or 0
+    # Snapshot the durable baseline's inputs BEFORE this run can write a meta (item 108 WS1,
+    # finding 108-R4-P1-1): the cutover marker written after the run below must never absorb the
+    # very run its invocation record counts, or the first post-cutover round bills twice.
+    round_baseline_inputs = plan_review_round_prerecord_inputs(data, target, plan_rel)
     effective_round = plan_review_effective_round(round_number, observed_runs)
     finalizable_meta = plan_review_finalizable_run_meta(
         data, target, plan_path, plan_rel, plan_hash
@@ -32272,6 +36404,7 @@ def run_plan_review(args: argparse.Namespace) -> int:
             if finalizable_meta
             else ""
         ),
+        capped_evidence_bound=plan_review_manifest_is_capped_for_hash(existing_manifest, plan_hash),
     )
     if round_cap_errors:
         for error in round_cap_errors:
@@ -32376,12 +36509,18 @@ def run_plan_review(args: argparse.Namespace) -> int:
         return 1
     chain_fields: dict = {}
     chain_summary: dict = {}
-    chain_members: list[dict] = []
-    if predecessor_rel:
-        chain_members, chain_truncated = plan_review_launch_chain(
-            data, target, plan_rel, predecessor_rel, observed_runs
-        )
+    # ONE resolver, one lineage (item 108 WS3): the declared flag, the `-vN` name shape and
+    # shared work items bind as a UNION, so the advisory summary printed below and any
+    # authoritative consumer read the same member set -- a launch can never record two different
+    # lineages. Resolved on every run: an UNDECLARED lineage (name shape or work item, no flag)
+    # still gets the advisory ledger line, while the recorded chain fields stay declared-only --
+    # recording an inferred predecessor would put an invented fact into an evidence record.
+    chain_members, chain_truncated = plan_review_launch_chain(
+        data, target, plan_rel, predecessor_rel, observed_runs
+    )
+    if predecessor_rel or len(chain_members) > 1:
         chain_summary = plan_review_chain_summary(chain_members, chain_truncated)
+    if predecessor_rel:
         chain_fields = {
             "predecessor_plan_path": predecessor_rel,
             "predecessor_manifest_path": path_relative_to_target(
@@ -32524,6 +36663,25 @@ def run_plan_review(args: argparse.Namespace) -> int:
         # Empty for a standalone plan, so its run meta is byte-identical to a pre-item-32 record.
         meta.update(chain_fields)
         meta_path.write_text(json.dumps(meta, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        # The durable per-round record (item 108 WS1): every invocation, success or failure,
+        # appends exactly one committed record beside the manifests -- printed so the plan-review
+        # evidence commit picks the new files up.
+        plan_review_append_run_round_records(
+            data=data,
+            target=target,
+            plan_path=plan_path,
+            plan_rel=plan_rel,
+            plan_hash=plan_hash,
+            baseline_inputs=round_baseline_inputs,
+            declared_round=str(args.review_round),
+            wrapper_exit_code=wrapper_exit_code,
+            reviewer_model=args.model,
+            started_at=started_at,
+            finished_at=finished_at,
+            frame_nonce=frame_nonce,
+            log_sha256=str(meta["log_sha256"]),
+            predecessor_rel=predecessor_rel,
+        )
         review_failed_stale = wrapper_exit_code == 124 and stale_marker_path is not None
         review_finish_next_action = (
             "Recover the stale review process and rerun this configured review round; do not classify the frozen log as review evidence."
@@ -32546,16 +36704,25 @@ def run_plan_review(args: argparse.Namespace) -> int:
             f"observed_successful_runs={observed_runs} effective_round={effective_round} "
             f"hard_cap={PLAN_REVIEW_HARD_CAP_ROUNDS}"
         )
-        # Printed only when a chain exists, so standalone output is unchanged. The one exception is
-        # the shape hint below: a `-vN` plan with a reviewed predecessor and no recorded
-        # lineage gets
-        # exactly one added line, because a chain nobody declares is a chain nobody can account for.
+        # Printed only when a lineage exists, so standalone output is unchanged. Since item 108
+        # WS3 the resolver binds name-shape and work-item lineages too, so an UNDECLARED lineage
+        # prints the same ledger -- the advisory surface and the resolver can never disagree.
         if chain_summary:
             print(plan_review_chain_ledger_line(chain_summary, chain_members))
-            advisory = plan_review_chain_advisory_line(chain_summary)
-            if advisory:
-                print(advisory)
-        else:
+            # Codex R1 P1: when this round inline-finalizes (finalize_requested), the finalize
+            # call below prints its OWN chain advisory -- correctly suppressed there whenever the
+            # round is capped/blocked, so the build-carry remedy is never contradicted. Printing
+            # this run-time copy unconditionally reached that contradiction from an EARLIER site
+            # in the same invocation, before the finalize call ever got a chance to suppress
+            # anything. Print it here only on a bare run (finalize NOT requested this call), where
+            # no later print gets a chance to say it.
+            if not finalize_requested:
+                advisory = plan_review_chain_advisory_line(chain_summary)
+                if advisory:
+                    print(advisory)
+        if not predecessor_rel:
+            # Adoption pressure stays: an undeclared `-vN` lineage now COUNTS advisorily, but it
+            # is still unrecorded, and the flag is the only sanctioned way to record it.
             hint = plan_review_lineage_shape_hint(data, target, plan_path)
             if hint:
                 print(hint)
@@ -32671,13 +36838,12 @@ def finalize_trusted_plan_review(
     # can actually finalize. Choosing on the submitted counts would print "finalize the existing
     # review evidence" whenever THIS round happens to be clean -- even when the bound evidence is
     # stale and plan-finalization-precheck provably rejects it. Refusal itself stays unconditional.
+    bound_manifest = load_plan_review_manifest(plan_review_manifest_path(data, target, plan_path))
     round_cap_errors = plan_review_round_cap_errors(
         round_number=round_number,
         exception_reason=recorded_note,
-        unresolved_blockers=plan_review_bound_evidence_is_unfinalizable(
-            load_plan_review_manifest(plan_review_manifest_path(data, target, plan_path)),
-            plan_hash,
-        ),
+        unresolved_blockers=plan_review_bound_evidence_is_unfinalizable(bound_manifest, plan_hash),
+        capped_evidence_bound=plan_review_manifest_is_capped_for_hash(bound_manifest, plan_hash),
     )
     if round_cap_errors:
         for error in round_cap_errors:
@@ -32809,34 +36975,139 @@ def finalize_trusted_plan_review(
     recorded_effective = plan_review_run_meta_ledger_value(run_meta_path, "effective_round")
     effective_round = max(round_number or 0, recorded_effective or 0)
     convergence_errors: list[str] = []
-    if current_blockers > 0:
-        if effective_round >= PLAN_REVIEW_HARD_CAP_ROUNDS:
-            convergence_errors.append(
-                f"plan review reached the hard cap of {PLAN_REVIEW_HARD_CAP_ROUNDS} rounds with "
-                "unresolved Critical/P1 blockers; the split is mandatory: decompose this plan into "
-                "smaller source-of-truth plans, review each of those, and continue; do not ask the "
-                "operator to choose a path and do not launch another round"
-            )
-        elif (
+    # THE RELEASE VALVE (D2). This branch used to be the refusal that made the whole loop possible:
+    # it prescribed decomposing the plan into smaller source-of-truth plans as the remedy, and a
+    # successor plan is a new file path, and a new file path is a fresh 4-round budget. The gate
+    # refusing here was therefore not bounding the ceremony -- it was PRESCRIBING the refill.
+    #
+    # It now finalizes instead. The budget is still absolute (a fifth round is still refused at
+    # launch); what changed is that spending it ends the planning, honestly, with the blockers
+    # written down at their real severity and carried into the medium where they can be falsified
+    # against an artifact. No state of this gate refuses every exit.
+    asserted_verdict = verdict
+    # SPENT INVOCATIONS, never the declared label (Codex R1 P1). `effective_round` is
+    # max(declared, observed+1), so a plan whose FIRST round is labelled `--round R4` reads as
+    # round 4 and would reach the valve after one Codex invocation -- buying the release with a
+    # label while R1-R3 never happened. That is the same label-trust defect the round cap itself
+    # was rebuilt to close (item 24), reintroduced through a new door.
+    #
+    # The bound run meta's own ledger is authoritative when it carries one; a pre-release run meta
+    # carries nothing, and then the count of successful run metas on disk is the honest floor. This
+    # finalize's own run is already recorded by the time it runs, so that count includes it.
+    # Only a SUCCESSFUL current run counts toward the release (Codex confirming-round P2). A
+    # wrapper that exits nonzero can still emit classifiable output; counting it would open the
+    # valve on a run that produced no usable review, write `capped-with-open-findings`, and then
+    # fail -- leaving a manifest that a later cap check could mistake for finalizable evidence and
+    # act on by sending the lane to BUILD.
+    recorded_spend = plan_review_run_meta_ledger_value(run_meta_path, "observed_successful_runs")
+    meta_ledger_spend = (
+        recorded_spend + (1 if wrapper_exit_code == 0 else 0)
+        if recorded_spend is not None
+        else plan_review_observed_run_count(data, target, plan_rel)
+    )
+    # ...AND the durable record reads THROUGH the finalize (item 108 WS2 T2.2): the bound run's
+    # own invocation record is already on disk (charged only if the wrapper succeeded), so the
+    # record-backed member spend covers it without the +1. Evidence can only read the spend UP,
+    # never down -- a fresh worktree's bound meta carrying a smaller lane-local ledger no longer
+    # walks the budget under the committed cumulative count, and the manifest this finalize
+    # writes stays a display copy of the bound meta's ledger exactly as before.
+    member_spend, _member_spend_source = plan_review_member_spend(data, target, plan_rel)
+    spent_invocations = max(member_spend or 0, meta_ledger_spend)
+    # `existing_manifest_present` is a REQUIREMENT, not a refinement (Codex remediation-round P1).
+    # The valve counts successful reviewer INVOCATIONS; it said nothing about whether those
+    # invocations were ever classified. Launch R1-R3 under distinct labels without finalizing any
+    # of them and all three metas count, so finalizing R4 derives the capped verdict here -- ahead
+    # of the `not existing_manifest_present` convergence check below, which exists precisely to
+    # refuse a late round that cannot prove what the earlier ones found. `plan-finalization-
+    # precheck` then passes on four metas whose first three logs were never classified, and every
+    # Critical those rounds raised is gone: not carried, not deferred, just absent.
+    #
+    # That is the failure the valve exists to prevent, arriving through the valve. Requiring a
+    # finalized predecessor costs the legitimate path nothing -- each round finalizes inline, so
+    # by R4 a manifest is always present -- and a lane without one falls through to the
+    # convergence branch that names the real problem.
+    # WHAT THIS DOES NOT PROVE, stated because two earlier versions of this comment each claimed
+    # more than the code delivered. `existing_manifest_present` shows that SOME round was
+    # classified, not that every one was: finalize R1, leave R2/R3 unclassified, and R4 still
+    # reaches the valve with their findings never carried.
+    #
+    # A continuity check was written for that and REMOVED again. It compared the current run
+    # against the latest manifest, which proves only that this round immediately follows that one;
+    # four successive rounds then found holes in it and in the recovery instruction it needed
+    # (each fix defective in the next round, the last one prescribing a backfill that OVERWRITES
+    # the single per-plan manifest and can erase the blocker it was recovering). Four rounds of
+    # findings in one small area is a design being wrong, not prose.
+    #
+    # Closing it properly needs per-round evidence that survives out-of-order finalization -- a
+    # durable record this codebase does not have, and a COUNTING concern belonging to the
+    # workstream that owns round counting rather than the one that owns the cap's exit. Deferred
+    # with a decision record and disclosed in the PR body rather than half-built here.
+    capped_with_open_findings = (
+        current_blockers > 0
+        and spent_invocations >= PLAN_REVIEW_HARD_CAP_ROUNDS
+        and existing_manifest_present
+    )
+    # A clean assertion cannot ride the valve (Codex round 3 P2). `--verdict clean` with nonzero
+    # counts used to reach the derivation, get recorded as `asserted_verdict`, and return success
+    # -- and then `plan-finalization-precheck` rejected the manifest, because the guard added last
+    # round refuses a capped record asserting clean. A successful finalize whose evidence the very
+    # next required gate calls unusable is the deadlock this release exists to remove, reintroduced
+    # by my own fix. Caught here, before the manifest is written, where the message can still name
+    # the contradiction the lane actually typed.
+    if capped_with_open_findings and verdict in INSTRUMENTATION_FINALIZE_CLEAN_VERDICTS:
+        print(
+            f"{error_prefix}: --verdict {verdict} was submitted with "
+            f"{current_blockers} unresolved Critical/P1 finding(s) at the round cap; a capped "
+            "finalize carries open blockers forward, so the asserted verdict must be blocked",
+            file=sys.stderr,
+        )
+        return 1
+    if capped_with_open_findings:
+        findings = plan_review_carry_blockers(findings, effective_round)
+        verdict = PLAN_REVIEW_CAPPED_VERDICT
+    elif current_blockers > 0:
+        # The three convergence refusals below record `blocked`, which plan-finalization-precheck
+        # correctly refuses -- the note keeps that from reading as a second blocker. The capped
+        # path above no longer needs the note: precheck accepts `capped-with-open-findings`
+        # directly. (This note predates the valve; item 106 WS4 threaded it through the ladder
+        # when the hard-cap refusal still lived here.)
+        precheck_note = (
+            "plan-finalization-precheck correctly refuses this blocked verdict, so do not wait on "
+            "it or treat its refusal as a blocker itself"
+        )
+        if (
             effective_round >= PLAN_REVIEW_DECOMPOSE_IF_STALLED_ROUND
             and not existing_manifest_present
         ):
             convergence_errors.append(
-                "plan review round 3 or later has unresolved Critical/P1 blockers but no previous manifest to prove convergence; split the work unless an actual prior review manifest was lost and can be restored from its original log; do not ask for a path choice"
+                "plan review round 3 or later has unresolved Critical/P1 blockers but no previous "
+                f"manifest to prove convergence; restore the prior review manifest from its "
+                f"original log if it was lost, else -- {precheck_note} -- carry every unresolved "
+                "Critical/P1 into the implementation-review focus list yourself and proceed "
+                "to the build straight away without it; do not ask for a path choice"
             )
         elif (
             effective_round >= PLAN_REVIEW_DECOMPOSE_IF_STALLED_ROUND
             and previous_blockers is None
         ):
             convergence_errors.append(
-                "plan review round 3 or later cannot read previous blocker evidence; repair the manifest or split the work into smaller source-of-truth plans; do not ask for a path choice"
+                "plan review round 3 or later cannot read previous blocker evidence; append a "
+                "correction record (`tautline record-plan-review --target <lane> --plan <plan> "
+                "--correct <nonce|baseline> --correction-note '<why>'`) -- never overwrite or "
+                "regenerate review evidence -- "
+                f"or -- {precheck_note} -- carry every unresolved Critical/P1 into the "
+                "implementation-review focus list yourself and proceed to the build straight away "
+                "without it; do not ask for a path choice"
             )
         elif (
             effective_round >= PLAN_REVIEW_DECOMPOSE_IF_STALLED_ROUND
             and current_blockers >= previous_blockers
         ):
             convergence_errors.append(
-                "plan review has not reduced unresolved Critical/P1 blockers by round 3; do not ask for a path choice; split the work into smaller source-of-truth plans, review those plans successfully, and continue"
+                "plan review has not reduced unresolved Critical/P1 blockers by round 3; do not "
+                f"ask for a path choice; {precheck_note}: carry every unresolved Critical/P1 into "
+                "the implementation-review focus list yourself and proceed to the build straight "
+                "away without it, never a successor plan for budget"
             )
 
     std_cfg = plan_authoring_module().normalize_planning_authoring_standard(data)
@@ -32862,37 +37133,187 @@ def finalize_trusted_plan_review(
         else:
             guard_log_event(target, "plan.authoring_standard", False, "state", "compliant")
 
-    manifest_path, manifest = write_plan_review_manifest(
+    # The durable per-round record (item 108 WS1 T1.2): the bind APPENDS a classification record
+    # referencing the invocation; it never rewrites the invocation record the launch appended.
+    #
+    # BEFORE the manifest write, and before the basis is derived from it (WS5 remediation P1). The
+    # first cut wrote the manifest -- carrying `round-record-verified` -- and appended this record
+    # afterwards, inside a handler that turns an OSError into a stderr line and a return. Finalize
+    # a capped round with the record directory unwritable and the run exited 0 with a manifest
+    # certifying its carried list against a classification record that does not exist: a control
+    # reporting success while the thing it counts is already lost, which is the named defect class
+    # this item was opened to remove. Ordering it first makes the record the fact and the manifest
+    # the report of it. If the manifest write then fails, an append-only classification record
+    # exists for a round with no manifest -- evidence surviving its report, which is the safe
+    # direction and the one the whole record design already takes.
+    classification_recorded = plan_review_append_classification_record(
         data=data,
         target=target,
         plan_path=plan_path,
         plan_rel=plan_rel,
         plan_hash=plan_hash,
         log_path=log_path,
-        review_command=review_command,
-        reviewer="codex",
-        model=model,
-        review_round=review_round,
-        wrapper_exit_code=wrapper_exit_code,
+        run_meta_path=run_meta_path,
+        declared_round=str(review_round),
         verdict=verdict,
         unresolved_critical_count=unresolved_critical_count,
         unresolved_p1_count=unresolved_p1_count,
-        findings=findings,
+        findings_count=len(findings),
         recorded_by=recorded_by,
-        run_meta_path=run_meta_path,
-        exception_note=recorded_note,
     )
+
+    # The valve's disclosed precondition, UPGRADED ON PROOF (item 108 WS5 T5.1, decision DF).
+    # Read before the manifest write so the token the record carries and the line the lane reads
+    # are one derivation -- and read from DISK, so the bound round proves itself through the
+    # record appended above rather than through a digest the writer promises to persist later.
+    carried_findings_basis = ""
+    basis_counted = basis_proven = basis_members = 0
+    basis_gaps: list[str] = []
+    basis_floors: list[str] = []
+    if capped_with_open_findings:
+        (
+            carried_findings_basis,
+            basis_counted,
+            basis_proven,
+            basis_members,
+            basis_gaps,
+            basis_floors,
+        ) = plan_review_carried_findings_basis(data, target, plan_rel)
+        if not classification_recorded:
+            # Belt AND braces. The disk read above already misses this round when its invocation
+            # record exists; when the whole record tree is unwritable the invocation record is
+            # missing too, the counted total silently drops by one, and what is left could still
+            # read as complete. A round whose classification did not persist can never be part of
+            # a verified basis, whatever the surviving records happen to say.
+            carried_findings_basis = PLAN_REVIEW_CARRIED_FINDINGS_BASIS
+            basis_floors = [
+                f"{plan_rel} round {review_round}: this finalize's own classification record "
+                "could not be appended (see plan_review_round_record_error above), so the round "
+                "this manifest records is unproven and may be in neither total",
+                *basis_floors,
+            ]
+
+    # Codex R1 P1 (WS5 fresh lineage): ORDERING ALONE CANNOT MAKE THIS SAFE, and the comment
+    # above used to claim it could. Appending the classification first closed "manifest says
+    # verified, record never landed" but opened its mirror image: if the manifest write fails
+    # AFTER the append, an append-only classification record survives for a round whose manifest
+    # and classified_findings were never written -- and a LATER capped finalize reads that orphan
+    # as proof, certifying a round whose blockers were never carried into the binding focus list.
+    # Same defect class, opposite direction.
+    #
+    # A classification proves a round only if the finalize that appended it COMPLETED, and the
+    # append-only design already carries the tool for saying so: a compensating `correction`
+    # record. If the manifest write raises, the classification just appended is invalidated by a
+    # correction naming it, and the proof reader skips any classification a correction retracts.
+    # Nothing is rewritten or deleted, and the failure is still raised to the caller.
+    try:
+        manifest_path, manifest = write_plan_review_manifest(
+            data=data,
+            target=target,
+            plan_path=plan_path,
+            plan_rel=plan_rel,
+            plan_hash=plan_hash,
+            log_path=log_path,
+            review_command=review_command,
+            reviewer="codex",
+            model=model,
+            review_round=review_round,
+            wrapper_exit_code=wrapper_exit_code,
+            verdict=verdict,
+            unresolved_critical_count=unresolved_critical_count,
+            unresolved_p1_count=unresolved_p1_count,
+            findings=findings,
+            recorded_by=recorded_by,
+            run_meta_path=run_meta_path,
+            exception_note=recorded_note,
+            asserted_verdict=asserted_verdict,
+            carried_findings_basis=carried_findings_basis,
+        )
+    except BaseException:
+        # The manifest never landed, so the classification appended just above describes a round
+        # with no report. Retract it with a correction rather than leaving an orphan that a later
+        # finalize would read as proof. Append-only: nothing is rewritten or removed, and the
+        # original failure is re-raised untouched.
+        if classification_recorded:
+            plan_review_retract_classification_record(
+                data=data,
+                target=target,
+                plan_path=plan_path,
+                plan_rel=plan_rel,
+                classification_record_id=classification_recorded,
+                declared_round=str(review_round),
+                recorded_by=recorded_by,
+            )
+        raise
     print(f"plan_review_manifest: {manifest_path}")
     print(f"plan_review_run_log: {log_path}")
     print(f"plan_review_run_meta: {run_meta_path}")
     print(f"plan_review_run_command: {review_command}")
     next_round = (round_number or 0) + 1
-    if convergence_errors:
+    if capped_with_open_findings:
+        carried = plan_review_carried_findings(manifest)
+        # Enumerated, not counted. A lane handed "3 findings carried" has to open the JSON to
+        # learn what it now owes; the obligation is binding, so it is printed where the lane is
+        # already looking.
+        for item in carried:
+            print(
+                "plan_review_carried_focus: "
+                f"[{str(item.get('severity', item.get('priority', 'unknown'))).upper()}] "
+                f"{str(item.get('id') or item.get('title') or 'finding')} -- "
+                f"{' '.join(str(item.get('summary') or 'no summary recorded').split())[:160]} "
+                "(BINDING)"
+            )
         next_action = (
-            "decompose this plan into smaller source-of-truth plans and review those, or transfer "
-            "non-blocking findings into implementation review focus"
+            f"the plan-review budget is spent -- {spent_invocations} of "
+            f"{PLAN_REVIEW_HARD_CAP_ROUNDS} reviewer invocations against this plan: "
+            f"{len(carried)} unresolved Critical/P1 finding(s) are "
+            "recorded as carried and are BINDING implementation-review focus items, so run "
+            "plan-finalization-precheck and start implementation. Do not spawn a successor plan "
+            "and do not launch another round"
+        )
+        print(
+            f"plan_review_capped: verdict={PLAN_REVIEW_CAPPED_VERDICT}; "
+            f"asserted_verdict={asserted_verdict}; carried_binding_findings={len(carried)}; "
+            f"spent_invocations={spent_invocations}; effective_round={effective_round}"
+        )
+        # What the carried list rests on, said out loud where the lane is already reading -- and
+        # since item 108 WS5, PROVEN rather than merely disclosed whenever the durable record can
+        # prove it. When it cannot, the line names the counted rounds that lack a classification
+        # record: an unverified claim a lane can act on beats a warning it can only acknowledge.
+        print(
+            plan_review_capped_disclosure_line(
+                carried_findings_basis,
+                basis_counted,
+                basis_proven,
+                basis_members,
+                basis_gaps,
+                basis_floors,
+            )
+        )
+    elif convergence_errors:
+        next_action = (
+            "plan-finalization-precheck correctly refuses this blocked verdict -- do not wait on "
+            "it: carry every unresolved Critical/P1 into the implementation-review focus list "
+            "yourself and proceed to the build straight away without it, never a successor plan "
+            "for budget"
         )
     elif unresolved_critical_count or unresolved_p1_count:
+        # UNCHANGED BY THIS RELEASE, DELIBERATELY. Three successive review rounds tried to make
+        # this message smarter -- derive the round from the spend, then special-case the exhausted
+        # budget, then prescribe backfilling the unclassified runs -- and each attempt was itself
+        # found defective by the next round: the first dead-ended the recovery by leaving a run
+        # meta unbound, the second still advertised a round the cap refuses, and the third
+        # prescribed a backfill that OVERWRITES the single per-plan manifest and can erase the
+        # very blocker it was recovering.
+        #
+        # That is four rounds of findings in one small area, which says the design is wrong rather
+        # than the wording. A correct recovery needs per-round evidence that survives out-of-order
+        # finalization -- the same durable per-round record the continuity proof needs -- and that
+        # is the round-counting workstream's to build. So this release leaves the message exactly
+        # as it shipped: the pre-existing "round 5 of 4" wording for a label-inflated lane is a
+        # wart that predates this branch and is unchanged by it, routed as its own item rather
+        # than half-fixed here. Reverting is the honest move; three of my own P1s came from
+        # improving it.
         next_action = (
             f"fix the Critical/P1 blockers and self-authorize round {next_round} of "
             f"{PLAN_REVIEW_HARD_CAP_ROUNDS} with --exception-note (no operator authorization "
@@ -32933,10 +37354,24 @@ def finalize_trusted_plan_review(
             "plan_review_chain_members: "
             f"{plan_review_chain_members_display(chain_members)} (refreshed at finalize)"
         )
-        advisory = plan_review_chain_advisory_line(chain_summary, surface="finalize")
-        if advisory:
-            print(advisory)
-    severity = "ok" if not convergence_errors and not current_blockers and wrapper_exit_code == 0 else "block"
+        # Codex R1 P1: this advisory's own remedy text ("decompose the scope into smaller
+        # independent source-of-truth plans") is the exact split instruction the convergence
+        # ladder above just replaced with "carry into the build" -- printing both in the same
+        # finalize call sends contradictory directions for the highest-spend chains, the ones a
+        # cap-state message is already governing. Suppressed whenever convergence_errors fired;
+        # the authoritative remedy already printed above is what a capped lane should read.
+        # The capped finalize is the same contradiction one step later: the valve just told the
+        # lane to build, so the advisory's split remedy is suppressed there too.
+        if not convergence_errors and not capped_with_open_findings:
+            advisory = plan_review_chain_advisory_line(chain_summary, surface="finalize")
+            if advisory:
+                print(advisory)
+    severity = plan_review_finalize_event_severity(
+        capped=capped_with_open_findings,
+        convergence_errors=bool(convergence_errors),
+        blockers=current_blockers,
+        wrapper_exit_code=wrapper_exit_code,
+    )
     try_write_event(
         data,
         target,
@@ -32999,6 +37434,69 @@ def record_plan_review(args: argparse.Namespace) -> int:
             print(f"plan_review_record_error: {error}", file=sys.stderr)
         return 1
 
+    plan_rel_reference = plan_root_relative_reference(data, target, plan_path)
+    # The correction writer (item 108 WS1 T1.2): the ONLY sanctioned amendment to the durable
+    # per-round record is appending a new record that references the original. It takes no
+    # import evidence -- a correction is not a review.
+    if getattr(args, "correct", None):
+        import_flags = [
+            flag
+            for flag, value in (
+                ("--log", args.log),
+                ("--reviewer", args.reviewer),
+                ("--wrapper-exit-code", args.wrapper_exit_code),
+                ("--verdict", args.verdict),
+                ("--unresolved-critical-count", args.unresolved_critical_count),
+                ("--unresolved-p1-count", args.unresolved_p1_count),
+                ("--classified-findings-json", args.classified_findings_json),
+            )
+            if value is not None
+        ]
+        if import_flags:
+            print(
+                "plan_review_record_error: --correct appends a correction record and takes no "
+                f"import evidence; drop {', '.join(import_flags)} or drop --correct",
+                file=sys.stderr,
+            )
+            return 1
+        note = str(getattr(args, "correction_note", None) or "").strip()
+        if not note:
+            print(
+                "plan_review_record_error: a correction carries its reason on the record: pass "
+                "--correction-note '<why this correction is needed>'",
+                file=sys.stderr,
+            )
+            return 1
+        return plan_review_append_correction_record(
+            data,
+            target,
+            plan_path,
+            plan_rel_reference,
+            corrects=str(args.correct).strip(),
+            note=note,
+            raise_prerecord_count_to=getattr(args, "raise_prerecord_count_to", None),
+        )
+    missing_import_flags = [
+        flag
+        for flag, value in (
+            ("--log", args.log),
+            ("--reviewer", args.reviewer),
+            ("--wrapper-exit-code", args.wrapper_exit_code),
+            ("--verdict", args.verdict),
+            ("--unresolved-critical-count", args.unresolved_critical_count),
+            ("--unresolved-p1-count", args.unresolved_p1_count),
+        )
+        if value is None
+    ]
+    if missing_import_flags:
+        print(
+            "plan_review_record_error: a diagnostic import requires "
+            f"{', '.join(missing_import_flags)} (a correction instead passes --correct "
+            "<nonce|baseline> with --correction-note)",
+            file=sys.stderr,
+        )
+        return 1
+
     log_path = (args.log.expanduser() if args.log.is_absolute() else target / args.log).resolve(strict=False)
     if not log_path.exists() or not log_path.is_file():
         print(f"plan_review_record_error: log missing: {log_path}", file=sys.stderr)
@@ -33022,13 +37520,12 @@ def record_plan_review(args: argparse.Namespace) -> int:
     # writers -- the refused round is never written, so its counts cannot say whether the operator
     # has finalizable evidence in hand. Refusal itself remains unconditional.
     recorded_note = plan_review_exception_note(getattr(args, "exception_note", None))
+    bound_manifest = load_plan_review_manifest(plan_review_manifest_path(data, target, plan_path))
     round_cap_errors = plan_review_round_cap_errors(
         round_number=plan_review_round_number(args.review_round),
         exception_reason=recorded_note,
-        unresolved_blockers=plan_review_bound_evidence_is_unfinalizable(
-            load_plan_review_manifest(plan_review_manifest_path(data, target, plan_path)),
-            plan_hash,
-        ),
+        unresolved_blockers=plan_review_bound_evidence_is_unfinalizable(bound_manifest, plan_hash),
+        capped_evidence_bound=plan_review_manifest_is_capped_for_hash(bound_manifest, plan_hash),
     )
     if round_cap_errors:
         for error in round_cap_errors:
@@ -33128,6 +37625,25 @@ def record_plan_review(args: argparse.Namespace) -> int:
     if recorded_note:
         manifest["exception_note"] = recorded_note
     manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    # The durable per-round record (item 108 WS1, finding 108-R4-P1-2): one deterministic rule
+    # for imports -- pre-cutover digests classify as pre-record, everything else spends.
+    plan_review_append_import_records(
+        data=data,
+        target=target,
+        plan_path=plan_path,
+        plan_rel=plan_rel,
+        plan_hash=plan_hash,
+        log_path=log_path,
+        run_meta=run_meta,
+        declared_round=str(args.review_round),
+        verdict=args.verdict,
+        unresolved_critical_count=args.unresolved_critical_count,
+        unresolved_p1_count=args.unresolved_p1_count,
+        findings_count=len(findings),
+        reviewer=args.reviewer,
+        reviewer_model=args.model,
+        wrapper_exit_code=args.wrapper_exit_code,
+    )
 
     print(f"plan_review_manifest: {manifest_path}")
     print(f"plan_review_plan: {plan_path}")
@@ -33227,7 +37743,53 @@ def plan_finalization_precheck_errors(data: dict, target: Path, plan_arg: Path) 
         wrapper_exit_code = -1
     if wrapper_exit_code != 0:
         errors.append(f"plan review wrapper_exit_code is not clean: {manifest['wrapper_exit_code']}")
-    if manifest["verdict"] not in PLAN_REVIEW_ALLOWED_VERDICTS:
+    # D2. A capped finalize is a LEGITIMATE finalization state, and this is the gate that decides
+    # whether the release valve actually releases anything. Refusing it here would leave the lane
+    # holding a successful `finalize-plan-review` that the very next command calls unusable -- the
+    # 2026-07-14 deadlock moved one gate downstream, which is not a fix. The capped record earns
+    # that acceptance by carrying its blockers: `plan_review_capped_manifest_errors` refuses a
+    # capped verdict whose findings were not actually stamped as binding carried items, so
+    # "capped" cannot become a way to declare open blockers away.
+    capped = str(manifest["verdict"]).strip().lower() == PLAN_REVIEW_CAPPED_VERDICT
+    if capped:
+        errors.extend(plan_review_capped_manifest_errors(manifest))
+        # ...AND the spend is re-derived from the durable round records (or, pre-record, the run
+        # metadata on disk), never read out of the manifest (Codex confirming-round P1).
+        # Everything checked above this line lives INSIDE
+        # the manifest -- verdict, recorded_by, wrapper_exit_code, the carried stamps -- so a lane
+        # holding a trusted `blocked` R1 manifest could edit that one file into
+        # `capped-with-open-findings`, stamp its blockers carried/binding, and walk through this
+        # gate having spent one reviewer invocation instead of four. `PLAN_REVIEW_CAPPED_VERDICT`
+        # being absent from every `--verdict` choice list stops the verb from ASSERTING it; it
+        # does nothing about the file. The valve's whole claim is "the budget is spent", so the
+        # budget is the thing that must be proved, against evidence the manifest does not own.
+        #
+        # SCOPE: this proves the INVOCATION COUNT, not that each invocation was classified (Codex
+        # round 4 P1). A forged capped manifest sitting on four spent-but-unclassified runs still
+        # satisfies it. Proving classification needs the persisted continuity provenance deferred
+        # above; counting is the half that can be proved from evidence the manifest does not own,
+        # and it is stated as that rather than as the whole guarantee.
+        #
+        # Item 108 WS2: the durable record is now the first-choice evidence, so a fresh worktree
+        # holding the committed records passes without the lane-local metas. The `manifest-floor`
+        # fallback of the budget reader is deliberately NOT consulted here: that floor is read
+        # out of the manifest itself, and this gate exists to prove the manifest's claim against
+        # evidence the manifest does not own.
+        recorded_member_spend = plan_review_recorded_member_spend(data, target, expected_plan_rel)
+        observed_runs = (
+            recorded_member_spend[0]
+            if recorded_member_spend is not None
+            else plan_review_observed_run_count(data, target, expected_plan_rel)
+        )
+        if observed_runs < PLAN_REVIEW_HARD_CAP_ROUNDS:
+            errors.append(
+                f"plan review manifest verdict {PLAN_REVIEW_CAPPED_VERDICT} claims the round "
+                f"budget is spent, but only {observed_runs} successful reviewer invocation(s) are "
+                f"recorded on disk for this plan (the valve opens at {PLAN_REVIEW_HARD_CAP_ROUNDS})"
+                "; the capped verdict is DERIVED by finalize-plan-review from real runs and cannot "
+                "be written into the manifest by hand"
+            )
+    elif manifest["verdict"] not in PLAN_REVIEW_ALLOWED_VERDICTS:
         errors.append(f"plan review verdict does not allow finalization: {manifest['verdict']}")
     if str(manifest.get("reviewer", "")).lower() != "codex":
         errors.append("plan review manifest must be from the configured Codex cross-model reviewer")
@@ -33240,7 +37802,7 @@ def plan_finalization_precheck_errors(data: dict, target: Path, plan_arg: Path) 
             unresolved_counts[key] = None
             continue
         unresolved_counts[key] = count
-        if count != 0:
+        if count != 0 and not capped:
             errors.append(f"plan review manifest {key} must be 0 before finalization")
     if not isinstance(manifest["classified_findings"], list):
         errors.append("plan review manifest classified_findings must be an array")
@@ -33395,16 +37957,88 @@ def plan_review_recovery_instruction(data: dict, target: Path, plan_path: Path |
     )
 
 
+def plan_finalization_goal_prompt_report(
+    data: dict, target: Path, plan_path: Path | None, std_cfg: dict
+) -> tuple[list[str], list[str]]:
+    """`(block_errors, advisory_warnings)` for the goal-prompt-shipped requirement.
+
+    Deliberately layered OUTSIDE `plan_finalization_precheck_errors`, not inside it: that
+    shared function is also what `goal-assignment` itself consults to gate composition
+    (cli.py, the `goal_assignment` verb). If "no goal prompt yet" were one of the errors that
+    function returns, `goal-assignment` would refuse to compose the very artifact this check
+    requires -- the tool built to close the gap would be locked out by its own gate. Layering
+    this here -- called explicitly by every finalization-adjacent seam (the standalone verb,
+    the ExitPlanMode hook, and goal-status readiness) but never by `goal_assignment` itself --
+    avoids that deadlock while still applying uniformly everywhere a plan's build-readiness is
+    actually judged (Codex R1 P1: the first version only reached the standalone verb, so
+    ExitPlanMode could pass and `goal-status` could report `execution-ready` under `block` with
+    no goal prompt at all).
+    """
+    level = std_cfg["enforcement"]
+    if level == "off" or plan_path is None or not plan_path.exists():
+        return [], []
+    try:
+        plan_ref = plan_root_relative_reference(data, target, plan_path)
+    except (ValueError, SystemExit):
+        plan_ref = plan_path.name
+    issue = plan_authoring_module().plan_missing_goal_prompt_issue(
+        plan_path, target=target, plan_ref=plan_ref
+    )
+    if not issue:
+        guard_log_event(target, "plan.goal_prompt", False, "state", "shipped")
+        return [], []
+    guard_log_event(target, "plan.goal_prompt", True, "state", issue)
+    if level == "block":
+        return [f"plan-authoring standard not met: {issue}"], []
+    if level == "advise":
+        return [], [issue]
+    return [], []  # observe: logged above, never printed or refused
+
+
+def plan_finalization_goal_prompt_next_action(
+    data: dict, target: Path, plan_path: Path | None
+) -> str:
+    """The goal-assignment-specific remedy for a `block`-refused goal-prompt-only failure.
+
+    Codex R1 P2: appending the goal-prompt error to the generic `errors` list made the
+    standalone verb's next-action line `plan_review_recovery_instruction`, which tells the
+    operator to spend another cross-model review round -- a round that cannot create the
+    missing file and can consume the capped review budget for nothing. This is the honest
+    alternative for exactly the case where a goal prompt is the ONLY thing missing.
+    """
+    arg = guard_target_argument(target)
+    plan_arg = ""
+    if plan_path is not None:
+        try:
+            plan_ref = plan_root_relative_reference(data, target, plan_path)
+            plan_arg = " --plan " + shlex.quote(plan_ref)
+        except (ValueError, SystemExit):
+            plan_arg = ""
+    return (
+        f"compose the missing goal prompt with `tautline goal-assignment --target {arg}"
+        f"{plan_arg} --out <dir>/goal-<name>.txt`, then rerun this precheck. This is not a "
+        "review-round failure; do not run run-plan-review or finalize-plan-review again."
+    )
+
+
 def plan_finalization_precheck(args: argparse.Namespace) -> int:
     data, _project_path, target = lane_project(args)
-    errors, plan_path, manifest_path = plan_finalization_precheck_errors(data, target, args.plan)
+    base_errors, plan_path, manifest_path = plan_finalization_precheck_errors(
+        data, target, args.plan
+    )
+    std_cfg = plan_authoring_module().normalize_planning_authoring_standard(data)
+    goal_prompt_errors, goal_prompt_warnings = plan_finalization_goal_prompt_report(
+        data, target, plan_path, std_cfg
+    )
+    for issue in goal_prompt_warnings:
+        print(f"plan_authoring_standard_warning: {issue}", file=sys.stderr)
+    errors = list(base_errors) + goal_prompt_errors
     ac_cfg = data.get("planAcceptance") or DEFAULT_PLAN_ACCEPTANCE
     if ac_cfg.get("enforcement") == "warn" and plan_path and plan_path.exists():
         for issue in plan_acceptance_binding_issues(
             plan_path.read_text(encoding="utf-8", errors="replace"), ac_cfg, _plan_pending_tags(data)
         ):
             print(f"plan_finalization_precheck_warning: {issue}", file=sys.stderr)
-    std_cfg = plan_authoring_module().normalize_planning_authoring_standard(data)
     if std_cfg["enforcement"] == "advise" and plan_path and plan_path.exists():
         std_text = plan_review_text(plan_path)
         for issue in plan_authoring_module().plan_authoring_standard_issues(std_text):
@@ -33416,13 +38050,22 @@ def plan_finalization_precheck(args: argparse.Namespace) -> int:
             print(f"plan_finalization_plan: {plan_path}", file=sys.stderr)
         if manifest_path:
             print(f"plan_finalization_manifest: {manifest_path}", file=sys.stderr)
-        print(
-            "plan_finalization_next_action: " + plan_review_recovery_instruction(data, target, plan_path),
-            file=sys.stderr,
-        )
+        # A goal-prompt-only failure is not a review-round failure: naming the generic review
+        # recovery instruction here sent the operator to spend capped review budget on a round
+        # that cannot create the missing file (Codex R1 P2).
+        if goal_prompt_errors and not base_errors:
+            next_action = plan_finalization_goal_prompt_next_action(data, target, plan_path)
+        else:
+            next_action = plan_review_recovery_instruction(data, target, plan_path)
+        print("plan_finalization_next_action: " + next_action, file=sys.stderr)
         return 1
     print("plan_finalization_precheck: pass")
     print(f"plan_finalization_plan: {plan_path}")
+    # D2. A lane leaving planning through the release valve leaves owing something, and the whole
+    # value of carrying findings is lost if the obligation is only discoverable inside a JSON file.
+    # Printed on the PASS path deliberately: this is not a refusal, it is the bill.
+    for line in plan_review_carried_focus_lines(plan_review_carried_focus_items(data, target)):
+        print(line)
     if manifest_path is not None:
         print(f"plan_finalization_manifest: {manifest_path}")
     else:
@@ -33435,6 +38078,14 @@ def plan_finalization_precheck(args: argparse.Namespace) -> int:
     if plan_path is not None:
         plan_arg = shlex.quote(plan_root_relative_reference(data, target, plan_path))
         emit_goal += f" --target {guard_target_argument(target)} --plan {plan_arg}"
+        # Codex R1 (second confirming round) P2: under `advise` with no goal prompt shipped,
+        # this hint used to print WITHOUT `--out`, so following it only printed the goal to
+        # stdout and created no file -- the warning above would fire again on every future
+        # precheck, forever, no matter how many times the advertised action was followed. Give
+        # the pass-path hint a concrete output path too, exactly like the block-path remedy
+        # already has, so following it actually clears the warning next time.
+        if goal_prompt_warnings:
+            emit_goal += " --out <dir>/goal-<name>.txt"
     print(emit_goal + "`")
     return 0
 
@@ -33491,6 +38142,20 @@ response_looks_like_human_discussion_framing = _rg_mod.response_looks_like_human
 
 
 response_has_status_report_as_stop = _rg_mod.response_has_status_report_as_stop
+
+
+# Item 82 -- stop-guard evasion shapes (RCAs 20260616T005348Z, 20260616T132017Z, 20260701T115759Z).
+response_has_announce_and_stop = _rg_mod.response_has_announce_and_stop
+response_asks_standing_authorization = _rg_mod.response_asks_standing_authorization
+response_has_self_contradicting_question = _rg_mod.response_has_self_contradicting_question
+question_is_continue_vs_stop_menu = _rg_mod.question_is_continue_vs_stop_menu
+question_payload_is_direction_menu = _rg_mod.question_payload_is_direction_menu
+question_payload_option_texts = _rg_mod.question_payload_option_texts
+flatten_question_tool_input = _rg_mod.flatten_question_tool_input
+ASK_USER_QUESTION_TOOL_NAMES = _rg_mod.ASK_USER_QUESTION_TOOL_NAMES
+RESPONSE_GUARD_ANNOUNCE_AND_STOP_RE = _rg_mod.RESPONSE_GUARD_ANNOUNCE_AND_STOP_RE
+RESPONSE_GUARD_STANDING_AUTH_OBJECTS = _rg_mod.RESPONSE_GUARD_STANDING_AUTH_OBJECTS
+RESPONSE_GUARD_NAMED_DEFAULT_MARKERS = _rg_mod.RESPONSE_GUARD_NAMED_DEFAULT_MARKERS
 
 
 response_is_terminal_stop_context = _rg_mod.response_is_terminal_stop_context
@@ -33686,22 +38351,151 @@ def normalize_response_guard_phrase_checks(value: object) -> str:
     return mode
 
 
+# Item 82 / T2.0 -- the HIGH-PRECISION phrase tier.
+#
+# Plain phrase checks default to "advisory" and `git grep phraseChecks adapters/` returns nothing,
+# so a new Stop-seam phrase check registered in the standard tier is telemetry-only in every
+# deployed lane -- a control that reads healthy because nothing ever lets it act.
+#
+# ADMISSION RULE, and it is the whole reason the tier is narrow: only a check whose false-positive
+# surface is STRUCTURALLY BOUNDED -- multiple independent carve-outs, each pinned by a negative
+# test -- may pass `high_precision=True`. A prose heuristic must never be smuggled in as
+# mechanism="state" to dodge the advisory default; it stays mechanism="phrase" and earns the tier
+# on its carve-outs or it does not enter.
+RESPONSE_GUARD_HIGH_PRECISION_TIER = "high-precision"
+
+
+# Wave 3 of the RCA remediation program adds blocking conditions to ONE Stop boundary from four
+# separate plans (items 82, 83, 84, and item 79's WS3). Each measured its own false-positive rate
+# in isolation and nobody owned the AGGREGATE -- the named risk being a lane that cannot end a turn
+# at all. The program's DECISION 4 posture, reaffirmed by the 2026-08-13 close-out decision D2:
+# every Stop-boundary check in the chain ships WARN-ONLY until the FOURTH PR lands, and blocking is
+# a separate, evidence-gated flip taken once, after the aggregate is re-measured a final time on
+# the completed chain.
+#
+# This constant is that flip, and it is deliberately one grep-able line rather than a sentence in a
+# migration report. Item 79 WS3 -- the last PR of the chain -- sets it True in the same commit that
+# records the final aggregate measurement. Until then every id below logs its guard event, so
+# telemetry, the guard-events report and `tautline stop-guard-aggregate` all see the check fire;
+# only the block is withheld.
+WAVE3_STOP_CHAIN_BLOCKING_ENABLED = False
+
+# frozenset, not a list: an UPPER_CASE list-of-str constant auto-enters the policy-phrases SSOT,
+# and these are check ids, not policy phrases.
+WAVE3_STOP_CHAIN_WARN_ONLY_CHECKS = frozenset(
+    {
+        "stop.announce_and_stop",
+        "stop.standing_authorization_reask",
+        # Item 83 PR2's two state gates. Listed here so the chain's posture is one grep, and so the
+        # clamp -- now applied above the mechanism shortcut -- actually reaches them.
+        "stop.background_run_unyielded",
+        "stop.pending_work_unfinished",
+    }
+)
+
+
+def response_guard_effective_check_mode(
+    check_id: str,
+    mechanism: str,
+    phrase_checks: str,
+    high_precision_phrase_checks: str,
+    *,
+    high_precision: bool = False,
+    wave3_chain_blocking: bool | None = None,
+) -> str:
+    """Resolve one check's effective mode: ``"off"``, ``"advisory"``, or ``"blocking"``.
+
+    Extracted as a pure function so the tier semantics are testable without shipping a check purely
+    to exercise them -- and so the wave-3 warn-only clamp is provable in isolation rather than
+    inferred from a check that happens not to fire.
+
+    ``wave3_chain_blocking`` overrides :data:`WAVE3_STOP_CHAIN_BLOCKING_ENABLED`. The aggregate FP
+    harness passes ``True``: measuring the chain at its shipped warn-only posture would report zero
+    blocks for exactly the checks the ceiling governs, which is a harness that reports success while
+    doing nothing. The number the ceiling is about is "what WOULD the aggregate be if the chain
+    were blocking today".
+    """
+    chain_blocking = (
+        WAVE3_STOP_CHAIN_BLOCKING_ENABLED
+        if wave3_chain_blocking is None
+        else bool(wave3_chain_blocking)
+    )
+    # For a STATE check the clamp is applied here, above the mechanism shortcut. It used to sit
+    # only below `if mechanism != "phrase": return "blocking"`, which made it unreachable for state
+    # checks -- and every remaining PR in this chain (83 PR2, 84, 79 WS3) adds state checks. The
+    # constant's own docstring promises "every id below logs its guard event ... only the block is
+    # withheld"; for a state id that promise was false, and the chain's warn-only posture would
+    # have been announced and not implemented. Item 83 PR2.
+    #
+    # Deliberately NOT applied to phrase checks here: for those, an explicit `phraseChecks: off`
+    # must still win, and hoisting the clamp above that lookup turned a lane that had switched
+    # phrase checks OFF into one emitting advisories. A warn-only clamp is a limit on enforcement,
+    # never a way to switch a disabled check back on.
+    if mechanism != "phrase":
+        if check_id in WAVE3_STOP_CHAIN_WARN_ONLY_CHECKS and not chain_blocking:
+            return "advisory"
+        return "blocking"
+    mode = high_precision_phrase_checks if high_precision else phrase_checks
+    mode = normalize_response_guard_phrase_checks(mode)
+    if mode == "off":
+        return "off"
+    if check_id in WAVE3_STOP_CHAIN_WARN_ONLY_CHECKS and not chain_blocking:
+        # Never "off": the aggregate harness and the guard-events report both need the event, and a
+        # silenced check is indistinguishable from a clean one.
+        return "advisory"
+    return mode
+
+
 def response_guard_config_for_root(adapter_root: Path | None) -> dict:
     if adapter_root is None:
-        return {"phraseChecks": "advisory"}
+        return {
+            "phraseChecks": "advisory",
+            "highPrecisionPhraseChecks": "blocking",
+            "questionGuard": "advisory",
+        }
     try:
         data = load_project(adapter_marker_path(adapter_root))
     except FileNotFoundError:
-        return {"phraseChecks": "advisory"}
+        return {
+            "phraseChecks": "advisory",
+            "highPrecisionPhraseChecks": "blocking",
+            "questionGuard": "advisory",
+        }
     except (Exception, SystemExit):
         # Fail-safe decision: an adapter that IS present but fails to load/parse is a broken
         # lane state, not an absent one -- fail toward the SAFE (blocking) default rather
         # than silently loosening enforcement, mirroring the goal-boundary fail-safe above.
-        return {"phraseChecks": "blocking"}
+        return {
+            "phraseChecks": "blocking",
+            "highPrecisionPhraseChecks": "blocking",
+            "questionGuard": "advisory",
+        }
     raw = data.get("responseGuard")
     if not isinstance(raw, dict):
         raw = {}
-    return {"phraseChecks": normalize_response_guard_phrase_checks(raw.get("phraseChecks"))}
+    return {
+        "phraseChecks": normalize_response_guard_phrase_checks(raw.get("phraseChecks")),
+        # Defaults to "blocking", unlike the standard tier: the tier exists precisely because the
+        # advisory default made new Stop-seam checks telemetry-only everywhere. Demotable per
+        # adapter with `responseGuard.highPrecisionPhraseChecks: "advisory"`.
+        "highPrecisionPhraseChecks": normalize_response_guard_phrase_checks(
+            raw.get("highPrecisionPhraseChecks") or "blocking"
+        ),
+        # ADVISORY by default -- item 82 decomposed at its round cap. Three consecutive review
+        # rounds each found a fresh FALSE POSITIVE in the menu classifier, on a seam that denies by
+        # default: a real menu missed, a credential question blocked, and finally a genuine
+        # operator-owned approval question ("May I run the destructive migration?" / "Proceed with
+        # migration" / "Hold off for approval") denied -- which can deadlock exactly the T3 work
+        # whose only legal next step IS requesting approval. Findings clustering in one area round
+        # after round is evidence the design is wrong, not the prose.
+        #
+        # So the hook installs, evaluates, and LOGS all three detectors; it does not deny. The
+        # shapes stay visible and measurable, which is the evidence item 82-B needs to build a
+        # classifier that can defensibly block. Set `questionGuard: "blocking"` to opt in early.
+        "questionGuard": normalize_response_guard_phrase_checks(
+            raw.get("questionGuard") or "advisory"
+        ),
+    }
 
 
 def response_guard_errors(
@@ -33717,6 +38511,8 @@ def response_guard_errors(
     human_discussion_request: bool = False,
     guard_adapter_root: Path | None = None,
     phrase_checks: str = "advisory",
+    high_precision_phrase_checks: str = "blocking",
+    wave3_chain_blocking: bool | None = None,
     advisory_only: bool = False,
 ) -> list[str]:
     errors: list[str] = []
@@ -33724,15 +38520,43 @@ def response_guard_errors(
     scan_text = response_guard_monitor_scan_text(response_text)
     autonomous_errors: list[str] = []
     phrase_checks = normalize_response_guard_phrase_checks(phrase_checks)
+    high_precision_phrase_checks = normalize_response_guard_phrase_checks(
+        high_precision_phrase_checks
+    )
 
-    def log_guard(check_id: str, fired: bool, mechanism: str = "state", detail: object = "") -> bool:
-        if mechanism == "phrase" and phrase_checks == "off":
+    def log_guard(
+        check_id: str,
+        fired: bool,
+        mechanism: str = "state",
+        detail: object = "",
+        *,
+        high_precision: bool = False,
+    ) -> bool:
+        mode = response_guard_effective_check_mode(
+            check_id,
+            mechanism,
+            phrase_checks,
+            high_precision_phrase_checks,
+            high_precision=high_precision,
+            wave3_chain_blocking=wave3_chain_blocking,
+        )
+        if mode == "off":
             return False
         if guard_adapter_root is not None:
-            guard_log_event(guard_adapter_root, check_id, fired, mechanism, detail)
+            # Mechanism stays "phrase" in the record; the tier rides alongside it so telemetry can
+            # tell the two apart without reclassifying a prose heuristic as state.
+            guard_log_event(
+                guard_adapter_root,
+                check_id,
+                fired,
+                mechanism,
+                f"{detail} [tier: {RESPONSE_GUARD_HIGH_PRECISION_TIER}]"
+                if high_precision
+                else detail,
+            )
         if advisory_only:
             return False
-        if mechanism == "phrase" and phrase_checks != "blocking":
+        if mode != "blocking":
             return False
         return fired
 
@@ -33786,6 +38610,33 @@ def response_guard_errors(
     if log_guard("stop.anthropomorphic_capacity_deferral", anthropomorphic_capacity, "phrase", "capacity deferral"):
         errors.append(
             "anthropomorphic capacity deferral: fatigue, sleep, fresh-eyes, and time-of-day explanations are not true blockers; name the concrete host, context, credential, gate, or tool limit and the required recovery action"
+        )
+    announce_and_stop = response_has_announce_and_stop(response_text)
+    if log_guard(
+        "stop.announce_and_stop",
+        announce_and_stop,
+        "phrase",
+        "announced next action",
+        high_precision=True,
+    ):
+        errors.append(
+            "announce-and-stop: text stating an in-progress or next action ('I'm proceeding now', "
+            "'next I'll') with the turn ending is a promise, not work; execute the announced "
+            "action in this same turn, or replace it with a named true blocker via "
+            "`tautline blocker-declare`"
+        )
+    standing_authorization_reask = response_asks_standing_authorization(response_text)
+    if log_guard(
+        "stop.standing_authorization_reask",
+        standing_authorization_reask,
+        "phrase",
+        "standing authorization re-ask",
+    ):
+        errors.append(
+            "re-asking break-glass / admin-merge authorization: standing approval recorded in a "
+            "source-of-truth plan, packet, backlog row, PR body, or adapter counts once conditions "
+            "match -- check those artifacts and act under the recorded approval, or ask one exact "
+            "blocker question naming the condition that no longer matches"
         )
     status_report_stop = derivable_next_action_prompt and response_has_status_report_as_stop(response_text)
     if log_guard("stop.status_report_as_stop", status_report_stop, "phrase", "derivable next action"):
@@ -33879,7 +38730,8 @@ def response_guard(args: argparse.Namespace) -> int:
         "monitor" in scan_text and ("yield" in scan_text or "until then" in scan_text)
     )
     guard_adapter_root = find_adapter_root(args.target.expanduser().resolve(strict=False)) if args.target else None
-    phrase_checks = args.phrase_checks or response_guard_config_for_root(guard_adapter_root)["phraseChecks"]
+    guard_config = response_guard_config_for_root(guard_adapter_root)
+    phrase_checks = args.phrase_checks or guard_config["phraseChecks"]
     errors = response_guard_errors(
         response_text,
         active_monitor=active_monitor,
@@ -33892,6 +38744,7 @@ def response_guard(args: argparse.Namespace) -> int:
         human_discussion_request=args.human_discussion_request,
         guard_adapter_root=guard_adapter_root,
         phrase_checks=phrase_checks,
+        high_precision_phrase_checks=guard_config["highPrecisionPhraseChecks"],
     )
     if errors:
         for error in errors:
@@ -34021,6 +38874,126 @@ def response_guard_goal_boundary_errors(adapter_root: Path, text: str) -> list[s
     return [error] if error else []
 
 
+def _response_guard_lane_state(adapter_root: Path) -> dict:
+    try:
+        data = load_project(adapter_marker_path(adapter_root))
+        lane_state = data.get("laneState", {})
+        return lane_state if isinstance(lane_state, dict) else {}
+    except Exception:  # noqa: BLE001 - a malformed adapter must not break a Stop hook
+        return {}
+
+
+def _response_guard_configured(adapter_root: Path, key: str, default: str) -> Path:
+    """Resolve one adapter-configured lane path, exactly the way the goal-ledger read does.
+
+    Never hardcode the default: a lane with a non-default `runsDir` would escape a gate that did,
+    and the escape would be invisible -- the gate reports clean because it looked in the wrong
+    directory, not because the directory was empty.
+    """
+    raw = _response_guard_lane_state(adapter_root).get(key, default)
+    path = Path(str(raw or default)).expanduser()
+    return path if path.is_absolute() else adapter_root / path
+
+
+def _response_guard_read_json(path: Path) -> dict:
+    try:
+        loaded = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return loaded if isinstance(loaded, dict) else {}
+
+
+def response_guard_background_run_stop_errors(adapter_root: Path) -> list[str]:
+    """Detached background runs that have no wake path, or a finished one nobody read.
+
+    A detached run never re-invokes anyone. Yielding the turn while one is live means the result is
+    observed by nobody -- the stalled-monitor RCA -- and yielding after one finished without
+    reading its terminal summary means reporting on a run whose outcome was never consumed.
+    """
+    runs_dir = _response_guard_configured(adapter_root, "runsDir", ".ai-runs")
+    if not runs_dir.is_dir():
+        return []
+    errors: list[str] = []
+    # RECURSIVE, because `background-run` treats any DESCENDANT of the configured runsDir as
+    # in-scope -- `background_run_runs_dir`'s advisory fires only for a log outside it entirely. A
+    # top-level-only scan meant a run at `.ai-runs/reviews/build.log` was blessed by one control
+    # and invisible to the other: the two halves of this feature disagreeing about the same run,
+    # with the gate reporting clean because it looked one directory too shallow (Codex R2).
+    # Discovered from BOTH sidecars. A run that could not spawn its command records `finishedAt`
+    # and exit 127 in the metadata and deliberately writes no `.pid` file -- so a pid-only scan was
+    # blind to precisely the terminal failure most worth catching, and blind to it silently
+    # (Codex R3). The union is keyed by log path so a run with both sidecars is visited once.
+    candidates: dict[Path, Path] = {}
+    for pid_file in sorted(runs_dir.rglob("*.pid")):
+        candidates[pid_file.with_name(pid_file.name[: -len(".pid")])] = pid_file
+    for meta_file in sorted(runs_dir.rglob("*.meta.json")):
+        candidates.setdefault(meta_file.with_name(meta_file.name[: -len(".meta.json")]), meta_file)
+    for log, pid_file in sorted(candidates.items()):
+        if log.name.endswith(".watchdog"):
+            # The watchdog is a timer for its run, not work anyone is waiting on. Blocking on it
+            # would make every timeout-bounded run un-yieldable for its whole timeout.
+            continue
+        # ABSOLUTE, and the target named explicitly. `find_adapter_root` walks UP, so a session
+        # launched in a subdirectory gets a log path relative to the parent adapter while
+        # `--target .` resolves to the session's cwd: running the remedy as printed would monitor
+        # the wrong path and write a receipt beside it, and the original finding would never clear.
+        # A remedy that silently acts on a different file than the one it names is worse than none.
+        cmd = (
+            f"tautline monitor-status --target {shlex.quote(str(adapter_root))} "
+            f"--log {shlex.quote(str(log))}"
+        )
+        meta = _response_guard_read_json(log.with_name(f"{log.name}.meta.json"))
+        pid = read_pid_file(pid_file) if pid_file.name.endswith(".pid") else None
+        recorded_identity = meta.get("pidIdentity")
+        identity_matches = True
+        if pid is not None and recorded_identity:
+            # An old `.pid` sidecar whose number has been REUSED by an unrelated process would
+            # otherwise report a finished run as live forever, and no amount of polling could clear
+            # it -- a refusal whose printed remedy cannot work. `monitor-status` already resolves
+            # this from `pidIdentity`; the gate has to agree with it or the two disagree about the
+            # same run.
+            current = process_identity(pid)
+            identity_matches = (not current) or current == recorded_identity
+        if pid is not None and identity_matches and pid_is_live(pid) and not meta.get("finishedAt"):
+            errors.append(
+                f"live detached background run (pid {pid}, log {log.name}) has no wake path: "
+                f"a detached run never re-invokes you -- poll `{cmd}` and consume the result, "
+                "or terminate the run, before yielding"
+            )
+            continue
+        finished_at = meta.get("finishedAt")
+        if not isinstance(finished_at, str) or not finished_at:
+            # No recorded completion: either a pre-0.82.0 run or one whose reaper was lost. Both
+            # are UNKNOWABLE from here, and a gate that blocks on what it cannot establish is the
+            # eternal-nag failure. The launch-time advisory owns that case.
+            continue
+        receipt = _response_guard_read_json(log.with_name(f"{log.name}.read.json"))
+        read_at = receipt.get("readAt")
+        observed = receipt.get("finishedAt")
+        # Compare against what the receipt OBSERVED, not merely against its timestamp: a relaunch
+        # writes a new finishedAt, and a receipt from the previous run of the same log would
+        # otherwise clear a completion nobody has looked at.
+        observed_pid = receipt.get("pid")
+        run_pid = meta.get("pid")
+        same_run = observed == finished_at and (
+            observed_pid is None or run_pid is None or observed_pid == run_pid
+        )
+        if isinstance(read_at, str) and read_at and same_run:
+            continue
+        errors.append(
+            f"background run finished at {finished_at} but its terminal summary is unread "
+            f"(log {log.name}): run `{cmd}` and quote its monitor_reason line "
+            "before reporting on that run"
+        )
+    # A littered runs directory must not flood the hook output; the count says what was withheld,
+    # because a truncated list that does not admit it is truncated reads as the whole story.
+    if len(errors) > 3:
+        withheld = len(errors) - 3
+        errors = errors[:3]
+        errors.append(f"(+{withheld} more background-run finding(s) withheld from this message)")
+    return errors
+
+
 def response_guard_has_active_goal(adapter_root: Path) -> bool:
     try:
         data = load_project(adapter_marker_path(adapter_root))
@@ -34039,6 +39012,204 @@ def response_guard_has_active_goal(adapter_root: Path) -> bool:
     if run.get("schema") != GOAL_RUN_SCHEMA:
         return True
     return str(run.get("status") or "").lower() not in GOAL_TERMINAL_STATUSES
+
+
+# Compiled here, not inline: a TUPLE rather than an UPPER_CASE list, because an UPPER_CASE
+# list-of-str constant auto-enters the policy-phrases SSOT and this is a parser, not a policy
+# phrase. Matches `Next Action`, `## Immediate Next Action`, and the bare-line spelling.
+RESPONSE_GUARD_NEXT_ACTION_PATTERNS = (
+    re.compile(r"(?im)^#{0,6}\s*(?:immediate\s+)?next\s+action\b.*$"),
+)
+
+
+def _response_guard_next_session_item(adapter_root: Path) -> str:
+    """First non-empty line under a `Next Action` heading in the continuity file."""
+    # Read from the adapter's `continuity.path`, not the default location. An adopter who
+    # configured a different handoff file writes there via `write_continuity_handoff` and would
+    # otherwise lose the continuity source from this gate entirely -- silently, and precisely when
+    # it is their only source.
+    try:
+        data = load_project(adapter_marker_path(adapter_root))
+        raw = data.get("continuity", {}).get("path", ".ai-continuity/NEXT_SESSION.md")
+    except Exception:  # noqa: BLE001 - a malformed adapter must not break a Stop hook
+        raw = ".ai-continuity/NEXT_SESSION.md"
+    candidate = Path(str(raw or ".ai-continuity/NEXT_SESSION.md")).expanduser()
+    path = candidate if candidate.is_absolute() else adapter_root / candidate
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:
+        return ""
+    for pattern in RESPONSE_GUARD_NEXT_ACTION_PATTERNS:
+        match = pattern.search(text)
+        if not match:
+            continue
+        # The heading line itself may carry the action inline (`Next Action: rebase and push`).
+        inline = match.group(0).split(":", 1)[1].strip() if ":" in match.group(0) else ""
+        if inline:
+            return inline
+        for raw in text[match.end():].splitlines():
+            line = raw.strip()
+            if line.startswith("#"):
+                # STOP at the next heading rather than skipping it. Continuing past it returned the
+                # first content line of an UNRELATED section as this lane's next action -- a false
+                # advisory today and a false block once the chain flips, produced by a handoff that
+                # correctly says it has no next action.
+                break
+            line = line.lstrip("-*").strip()
+            if line:
+                return line
+    return ""
+
+
+def _response_guard_packet_item(adapter_root: Path) -> str:
+    """First unchecked `- [ ]` item in the execution packet."""
+    path = _response_guard_configured(
+        adapter_root, "executionPacket", ".ai-work/EXECUTION_PACKET.md"
+    )
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:
+        return ""
+    # `execution_queue_items` is the parser the packet WORK LOOP itself uses, and it accepts an
+    # ordinary bullet under a queue heading as well as an unchecked box. Recognising only `- [ ]`
+    # meant a packet the executor happily runs read as empty here -- the gate and the executor
+    # disagreeing about the same file. Reuse the parser; do not introduce a second, narrower one.
+    items = execution_queue_items(text)
+    return items[0] if items else ""
+
+
+def _response_guard_milestone_item(adapter_root: Path) -> str:
+    """First incomplete milestone in the lane's milestone ledger -- the machine-readable queue."""
+    path = _response_guard_configured(adapter_root, "milestoneRun", ".ai-work/MILESTONE_RUN.json")
+    data = _response_guard_read_json(path)
+    if data.get("schema") != MILESTONE_RUN_SCHEMA:
+        return ""
+    # `items` and MILESTONE_TERMINAL_STATUSES -- the shape `initial_milestone_run` actually
+    # writes. The first version read `milestones` with the GOAL terminal statuses, so a lane whose
+    # ONLY pending source was a real milestone ledger reported empty: the machine-readable queue
+    # this gate exists to consult, consulted with the wrong key. And fixing only the key would have
+    # been worse than leaving it, because `pr_queued` and `merged` are terminal here and absent
+    # from the goal set, so every queued or merged item would have read as pending work.
+    items = data.get("items")
+    if not isinstance(items, list):
+        return ""
+    for entry in items:
+        if not isinstance(entry, dict):
+            continue
+        if str(entry.get("status") or "").lower() in MILESTONE_TERMINAL_STATUSES:
+            continue
+        return str(entry.get("title") or entry.get("index") or "untitled milestone")
+    return ""
+
+
+def _response_guard_goal_item(adapter_root: Path) -> str:
+    return "active goal ledger" if response_guard_has_active_goal(adapter_root) else ""
+
+
+WORKTREE_ROLE_MARKER_RELPATH = ".ai-work/WORKTREE_ROLE.json"
+
+
+def response_guard_worktree_role_is_subagent(adapter_root: Path) -> bool:
+    """True when this checkout declares itself a subagent worktree.
+
+    Stated up front rather than discovered: the main-worktree fallback below means every linked
+    worktree of a lane with an active ledger INHERITS that lane's arming -- including the
+    worktree-per-subagent default this framework itself prescribes. Without a marker, dispatching
+    a subagent would make it unable to end its turn on work it does not own.
+    """
+    data = _response_guard_read_json(adapter_root / WORKTREE_ROLE_MARKER_RELPATH)
+    return str(data.get("role") or "").strip().lower() == "subagent"
+
+
+def response_guard_main_worktree(adapter_root: Path) -> Path | None:
+    """The main worktree of a linked worktree, or None.
+
+    Shell-out is acceptable here -- the hook already runs under the lane's environment -- but it is
+    bounded and fails OPEN to current behaviour, because a Stop hook that hangs on git is worse
+    than one that misses inherited state.
+    """
+    try:
+        completed = subprocess.run(  # noqa: S603
+            [
+                "git", "-C", str(adapter_root), "rev-parse",
+                "--path-format=absolute", "--git-common-dir",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=2,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if completed.returncode != 0:
+        return None
+    common_dir = Path(completed.stdout.strip() or ".")
+    if common_dir.name != ".git":
+        return None
+    main_root = common_dir.parent
+    try:
+        if main_root.resolve() == adapter_root.resolve():
+            return None
+    except OSError:
+        return None
+    return main_root
+
+
+# (key, label, reader). A TUPLE, per the policy-phrases SSOT note above. The refusal text renders
+# its "queue enumerated empty (...)" clause FROM THIS REGISTRY rather than hardcoding the prose, so
+# a source added or dropped without updating the claim fails the suite -- the gate cannot claim an
+# enumeration it does not perform.
+RESPONSE_GUARD_PENDING_SOURCES = (
+    ("goal", "goal ledger", _response_guard_goal_item),
+    ("next_session", "NEXT_SESSION next action", _response_guard_next_session_item),
+    ("packet", "execution packet", _response_guard_packet_item),
+    ("queue", "milestone ledger", _response_guard_milestone_item),
+)
+
+
+def response_guard_pending_work(adapter_root: Path) -> list[tuple[str, str]]:
+    """Every pending-work source that is non-empty, as (key, item-title) pairs.
+
+    All four are read on every evaluation. Dropping any one silently is what left the
+    summary-as-stop-signal shape unguarded: the goal ledger had been cleared on SUCCESS, so a gate
+    that consulted only the goal ledger saw a lane with nothing to do while its continuity file
+    still named the next action.
+    """
+    found = _response_guard_pending_work_local(adapter_root)
+    if found:
+        return found
+    # Sibling-worktree resolution. A linked worktree carries no `.ai-work/` of its own, so a lane
+    # driving its goal from the main checkout looked, from inside any worktree, like a lane with
+    # nothing pending. Only consulted when the LOCAL read came back empty, so a worktree with its
+    # own ledger is never overridden by its parent's.
+    if response_guard_worktree_role_is_subagent(adapter_root):
+        # THE one place inheritance happens, and therefore the only place the marker belongs. A
+        # dispatched subagent must be able to end its turn on work that is not its own; its own
+        # local sources were already read above and still count.
+        return []
+    main_root = response_guard_main_worktree(adapter_root)
+    if main_root is None:
+        return []
+    return [
+        (f"{key} (main worktree)", title)
+        for key, title in _response_guard_pending_work_local(main_root)
+    ]
+
+
+def _response_guard_pending_work_local(adapter_root: Path) -> list[tuple[str, str]]:
+    found: list[tuple[str, str]] = []
+    for key, _label, reader in RESPONSE_GUARD_PENDING_SOURCES:
+        try:
+            item = reader(adapter_root)
+        except Exception:  # noqa: BLE001 - no pending-work reader may break a Stop hook
+            item = ""
+        if item:
+            found.append((key, item))
+    return found
+
+
+def response_guard_pending_sources_clause() -> str:
+    return ", ".join(label for _key, label, _reader in RESPONSE_GUARD_PENDING_SOURCES)
 
 
 response_guard_has_live_goal_session = _rg_mod.response_guard_has_live_goal_session
@@ -34090,6 +39261,170 @@ def response_guard_state_stop_errors(
     ]
 
 
+RESPONSE_GUARD_STOP_RETRY_LIMIT = 3
+
+# Item 83 PR2's two gates, as check ids. Both are mechanism="state".
+RESPONSE_GUARD_YIELD_CHECK_IDS = ("stop.background_run_unyielded", "stop.pending_work_unfinished")
+
+
+def response_guard_yield_state_errors(
+    adapter_root: Path,
+    *,
+    explicit_user_stop: bool,
+    human_discussion_request: bool,
+    stop_hook_active: bool,
+    payload: dict,
+    last_assistant: str = "",
+) -> dict[str, list[str]]:
+    """The yield gates' findings, after every legal exit has been applied.
+
+    The exits are the false-positive control, deliberately, rather than an advisory downgrade: an
+    operator who is chatting hits the human-discussion exit, and a lane whose continuity file is
+    genuinely stale is cleared by editing the file or enumerating the queue empty. Downgrading the
+    gate instead would leave the incident configuration -- pending work on record, no live goal,
+    an hours-old work directive -- logging a line and stopping anyway.
+    """
+    empty: dict[str, list[str]] = {check_id: [] for check_id in RESPONSE_GUARD_YIELD_CHECK_IDS}
+    if explicit_user_stop or human_discussion_request:
+        return empty
+    # The other two legal exits apply to the PENDING-WORK gate only, and the asymmetry is the
+    # design rather than an oversight. Declaring a blocker or rotating context is a legitimate way
+    # to stop having work in progress; neither makes a detached run observable, and a lane that
+    # yields with one live leaves the same orphan the RCA is about. The background-run gate's
+    # remedy stays runnable in both cases -- poll it, or terminate it -- so this is not a lane with
+    # no way out.
+    #
+    # Omitting these exits ENTIRELY (the first version) made every goal-active lane holding a fresh
+    # blocker -- a lane that did exactly what the guard asks -- carry a pending-work advisory
+    # anyway: the false-refusal class this chain is rationed against, produced by the gate meant to
+    # ration it. Caught by the shipped suite, not by the tests written for this gate.
+    stopped_legally = response_guard_has_documented_rotation_exit(last_assistant)
+    if not stopped_legally:
+        record, _read_error = read_blocker_record(adapter_root)
+        stopped_legally = record is not None and blocker_freshness(adapter_root, record)[0]
+    # The marker is NOT applied here. Returning early exempted a subagent worktree from its own
+    # live background run and its own execution packet -- everything, not the inherited state the
+    # contract names. The exemption belongs at the ONE place inheritance happens, in
+    # `response_guard_pending_work`'s parent fallback, and it is applied there.
+    #
+    # Worth recording: this gate's own test passed while that was wrong, because it called the
+    # low-level background reader directly and never went through the path that returned early.
+    # A test one level below the defect proves the level it tests, not the behaviour that ships.
+    found = {
+        "stop.background_run_unyielded": response_guard_background_run_stop_errors(adapter_root),
+        "stop.pending_work_unfinished": [],
+    }
+    pending = [] if stopped_legally else response_guard_pending_work(adapter_root)
+    if pending:
+        key, title = pending[0]
+        found["stop.pending_work_unfinished"] = [
+            f"active pending work on record ({key}: \"{title}\"): a stop requires one of -- that "
+            "item in progress this turn, the queue enumerated empty "
+            f"({response_guard_pending_sources_clause()} all clear), or a declared blocker via "
+            f"`tautline blocker-declare --kind <k> --reason <r>`; continue \"{title}\" now"
+        ]
+    return found
+
+
+def response_guard_emit_yield_errors(
+    adapter_root: Path, found: dict[str, list[str]], *, extra_advisory: str = ""
+) -> None:
+    """Log the gate events, then advise or block per the wave-3 chain posture.
+
+    Warn-only until the fourth PR of the chain lands. The events are logged EITHER WAY: a silenced
+    check is indistinguishable from a clean one, and `tautline stop-guard-aggregate` needs the
+    firing to measure the ceiling this chain is rationed against.
+    """
+    for check_id in RESPONSE_GUARD_YIELD_CHECK_IDS:
+        # Attributed per gate, not "something fired". The aggregate harness reports a rate PER
+        # CHECK, so a shared boolean would credit every block to both gates and make the ceiling
+        # unattributable -- a measurement that cannot say which detector spent the budget.
+        guard_log_event(
+            adapter_root, check_id, bool(found.get(check_id)), "state", "yield state gate"
+        )
+    errors = [
+        message
+        for check_id in RESPONSE_GUARD_YIELD_CHECK_IDS
+        for message in found.get(check_id, [])
+    ]
+    if not errors:
+        # An advisory from another arm still has to reach the turn. Returning here because THIS
+        # gate found nothing is how a new control silently swallows an older one.
+        if extra_advisory:
+            hook_additional_context("Stop", extra_advisory)
+        return
+    message = "Minervit response guard: " + " ".join(errors)
+    if extra_advisory:
+        message = extra_advisory + "\n\n" + message
+    if WAVE3_STOP_CHAIN_BLOCKING_ENABLED:
+        record_gate_telemetry("response-guard-stop", "block", error_count=len(errors))
+        hook_decision(
+            message
+            + " Legal exits are: continue the next authorized action in this same turn; declare a "
+            "true blocker with `tautline blocker-declare --kind <k> --reason <r>`; or rotate "
+            "context through the documented continuity/startup path."
+        )
+        return
+    hook_additional_context("Stop", message + " (warn-only: wave-3 stop chain is not yet blocking)")
+
+
+def response_guard_stop_retry_path(adapter_root: Path) -> Path:
+    runs_dir = _response_guard_configured(adapter_root, "runsDir", ".ai-runs")
+    return runs_dir / "stop-guard-retries.json"
+
+
+def response_guard_reset_stop_retries(adapter_root: Path) -> None:
+    path = response_guard_stop_retry_path(adapter_root)
+    try:
+        if path.exists():
+            path.unlink()
+    except OSError:
+        return
+
+
+def response_guard_stop_retries_exhausted(adapter_root: Path) -> bool:
+    """Bump the consecutive-retry counter and say whether the HANDLER must now stand down."""
+    count = response_guard_bump_stop_retries(adapter_root)
+    if count < RESPONSE_GUARD_STOP_RETRY_LIMIT:
+        return False
+    guard_log_event(
+        adapter_root,
+        "stop.state_gate_exhausted_fail_open",
+        True,
+        "state",
+        f"{count} consecutive stop_hook_active evaluations",
+    )
+    return True
+
+
+def response_guard_bump_stop_retries(adapter_root: Path) -> int:
+    """Count consecutive `stop_hook_active` evaluations; returns the new count.
+
+    Fails OPEN on an unwritable runs directory by returning the limit, so a lane that cannot
+    persist the counter stands down rather than looping forever against a counter stuck at 1.
+    """
+    path = response_guard_stop_retry_path(adapter_root)
+    count = int(_response_guard_read_json(path).get("count") or 0) + 1
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        write_text_atomic(
+            path,
+            json.dumps(
+                {
+                    "count": count,
+                    "lastAt": datetime.now(timezone.utc)
+                    .isoformat(timespec="seconds")
+                    .replace("+00:00", "Z"),
+                },
+                indent=2,
+            )
+            + "\n",
+        )
+    except OSError:
+        return RESPONSE_GUARD_STOP_RETRY_LIMIT
+    return count
+
+
 def response_guard_hook(args: argparse.Namespace) -> int:
     try:
         payload = json.load(sys.stdin)
@@ -34097,15 +39432,25 @@ def response_guard_hook(args: argparse.Namespace) -> int:
         return 0
     if payload.get("hook_event_name") not in {None, "Stop"}:
         return 0
-    if payload.get("stop_hook_active"):
-        return 0
+    # `stop_hook_active` NO LONGER returns here. It used to return 0 above adapter-root resolution,
+    # which made the guard a one-shot: block once, and the very next evaluation let anything
+    # through regardless of lane state. The bound that protects the harness from an infinite loop
+    # now lives below, applies to the STATE gates only, and needs adapter_root for its ledger --
+    # which is why the check had to move rather than be extended in place.
+    stop_hook_active = bool(payload.get("stop_hook_active"))
     cwd = Path(payload.get("cwd") or ".").expanduser().resolve(strict=False)
     adapter_root = find_adapter_root(cwd)
     if adapter_root is None:
         return 0
     # Product-dev mode: whole-handler standdown of the active-goal Stop-guard for the checkout.
+    # DECISION (recorded): the new yield state gates stand down WITH it rather than carving
+    # themselves out. That mode is TTL-bounded and announces itself; a per-gate exception would
+    # make the standdown's contract "whole handler except two gates", which no reader could verify.
+    # The advisory names the state gates so the standdown is not silent about what it covers.
     if product_dev_mode_active(adapter_root):
-        product_dev_mode_standdown_advisory(adapter_root, "the active-goal Stop-guard", "Stop")
+        product_dev_mode_standdown_advisory(
+            adapter_root, "the active-goal Stop-guard and the yield state gates", "Stop"
+        )
         return 0
     last_assistant = flatten_hook_text(payload.get("last_assistant_message"))
     transcript_path_raw = payload.get("transcript_path")
@@ -34116,7 +39461,46 @@ def response_guard_hook(args: argparse.Namespace) -> int:
         last_user = payload_last_user
     if not last_assistant:
         last_assistant = transcript_assistant
+    # --- Item 83 PR2: the yield state gates. Evaluated with NO dependence on a live goal. -------
+    #
+    # This is the replacement for the `if not response_guard_has_active_goal(...): return 0` below,
+    # for these two gates only. The summary-as-stop-signal shape had the goal ledger auto-cleared
+    # on SUCCESS, so anything gated on a live goal was already past the point of usefulness by the
+    # time it ran -- the same "something upstream never let it run" class the B7 note below records.
+    explicit_stop_early = user_explicitly_stopped_lane(last_user)
+    discussion_early = text_contains_any(
+        last_user.lower(), RESPONSE_GUARD_HUMAN_DISCUSSION_REQUEST_MARKERS
+    ) or (not last_user.strip() and response_looks_like_human_discussion_framing(last_assistant))
+    yield_errors = response_guard_yield_state_errors(
+        adapter_root,
+        explicit_user_stop=explicit_stop_early,
+        human_discussion_request=discussion_early,
+        stop_hook_active=stop_hook_active,
+        payload=payload,
+        last_assistant=last_assistant,
+    )
+    if not stop_hook_active:
+        # A non-retry evaluation is the end of the retry sequence, whatever its outcome. Resetting
+        # only on a CLEAN stand-down would leave the counter at its limit after one blocked turn,
+        # so the next real block would fail open immediately.
+        response_guard_reset_stop_retries(adapter_root)
+    elif response_guard_stop_retries_exhausted(adapter_root):
+        # THE BOUND IS A PROPERTY OF THE HANDLER, NOT OF ONE ARM. Applying it only to the yield
+        # gates left `state_errors`, `legacy_errors` and `goal_boundary_errors` still blocking on
+        # every retry -- so removing the old unconditional `stop_hook_active` bypass turned an
+        # active-goal lane without a fresh blocker into an INFINITE Stop loop, which is strictly
+        # worse than the one-shot hole it replaced. Every arm fails open together, or the bound is
+        # a fiction. (Codex R1.)
+        return 0
     if not response_guard_has_active_goal(adapter_root):
+        # The done-bar advisory is computed BEFORE the yield gate speaks, and the two are COMBINED
+        # rather than raced. A terminal goal with unmet definition-of-done conditions makes
+        # `response_guard_has_active_goal` false while a pending source keeps `yield_errors`
+        # non-empty, so returning on the yield path replaced a condition-specific diagnostic --
+        # which names the unmet condition and its remediation -- with a generic "pending work"
+        # line. A new control that suppresses an older, more specific one is a net loss even when
+        # it is right (Codex R3).
+        #
         # Batch 2026-08-11 B7 WS3. THIS early return, not the one inside
         # `response_guard_state_stop_errors`, is the one that made a self-declared-done session
         # unguarded: it fires before that function is ever called, so extending only the inner
@@ -34125,9 +39509,8 @@ def response_guard_hook(args: argparse.Namespace) -> int:
         #
         # WARN, never block. `hook_decision` prints `{"decision": "block"}` and the hook still
         # returns exit code 0, so an exit-code assertion would pass while this violated RCA
-        # DECISION 4. `hook_additional_context` is the advisory channel, and the test asserts
-        # the emitted JSON carries no `decision` key. The two paths cannot both fire: this
-        # branch returns before the active-goal logic below runs.
+        # DECISION 4. `hook_additional_context` is the advisory channel, and the test asserts the
+        # emitted JSON carries no `decision` key.
         advisory = ""
         try:
             advisory = done_bar_stop_advisory(adapter_root, str(payload.get("session_id") or ""))
@@ -34139,9 +39522,17 @@ def response_guard_hook(args: argparse.Namespace) -> int:
             advisory = ""
         if advisory:
             guard_log_event(adapter_root, "stop.done_bar", True, "state", "self-declared done")
-            hook_additional_context("Stop", advisory)
+        # `any(...values())`, never `if yield_errors:` -- the dict always carries both check ids as
+        # keys, so a truthiness test on the mapping itself is unconditionally true. Emitted
+        # unconditionally so the CLEAN evaluation is recorded too: a check that logs only when it
+        # fires cannot be told from one never reached.
+        response_guard_emit_yield_errors(adapter_root, yield_errors, extra_advisory=advisory)
         return 0
     if not response_guard_should_evaluate_stop(payload, recent_text, last_assistant):
+        # The phrase path stands down here, but the STATE gates do not depend on what the turn
+        # said -- a live detached run is a live detached run whatever the wording. Emitting from
+        # this branch is what keeps the gate from being silently skipped on a quiet turn.
+        response_guard_emit_yield_errors(adapter_root, yield_errors)
         return 0
     last_user_lower = last_user.lower()
     assistant_lower = last_assistant.lower()
@@ -34184,6 +39575,7 @@ def response_guard_hook(args: argparse.Namespace) -> int:
         human_discussion_request=human_discussion_request,
         guard_adapter_root=adapter_root,
         phrase_checks=phrase_checks,
+        high_precision_phrase_checks=config["highPrecisionPhraseChecks"],
     )
     errors = state_errors + legacy_errors
     recovery_cancellation = response_has_recovery_cancellation_without_explicit_stop(last_assistant, last_user)
@@ -34205,6 +39597,28 @@ def response_guard_hook(args: argparse.Namespace) -> int:
     goal_boundary_errors = response_guard_goal_boundary_errors(adapter_root, last_assistant)
     guard_log_event(adapter_root, "stop.goal_boundary_claim", bool(goal_boundary_errors), "state", "goal boundary")
     errors.extend(goal_boundary_errors)
+    # The yield gates on the live-goal path. Their events are logged HERE, once, and their messages
+    # join `errors` only when the chain is blocking -- otherwise this turn would carry both a
+    # `decision: block` from the legacy checks and an advisory from the same handler, and a reader
+    # could not tell which one refused it.
+    for check_id in RESPONSE_GUARD_YIELD_CHECK_IDS:
+        guard_log_event(
+            adapter_root, check_id, bool(yield_errors.get(check_id)), "state", "yield state gate"
+        )
+    yield_messages = [
+        m
+        for check_id in RESPONSE_GUARD_YIELD_CHECK_IDS
+        for m in yield_errors.get(check_id, [])
+    ]
+    if yield_messages and WAVE3_STOP_CHAIN_BLOCKING_ENABLED:
+        errors.extend(yield_messages)
+    elif yield_messages and not errors:
+        hook_additional_context(
+            "Stop",
+            "Minervit response guard: "
+            + " ".join(yield_messages)
+            + " (warn-only: wave-3 stop chain is not yet blocking)",
+        )
     if errors:
         record_gate_telemetry("response-guard-stop", "block", error_count=len(errors))
         hook_decision(
@@ -34212,6 +39626,484 @@ def response_guard_hook(args: argparse.Namespace) -> int:
             + " ".join(errors)
             + " Legal exits are: continue the next authorized action in this same turn; declare a true blocker with `tautline blocker-declare --kind <k> --reason <r>`; or rotate context through the documented continuity/startup path."
         )
+    return 0
+
+
+# --- Wave-3 aggregate stop-blocking harness (RCA program DECISION 4 / close-out decision D2) ----
+#
+# Four plans add blocking conditions to ONE Stop boundary. Each measured its own false-positive rate
+# in isolation; nobody owned the AGGREGATE, and the named risk is a lane that cannot end a turn at
+# all. The decision taken 2026-08-13 is that the budget is a MEASURED AGGREGATE CEILING enforced by
+# this harness, not a number written in a document.
+#
+# Item 82 stamps the baseline. Items 83, 84 and item 79's WS3 each re-measure on their own rebased
+# tip and state the number in the PR body; a lane may not carry a predecessor's number forward, the
+# same rule the ratchet and the adapter corridor already carry, for the same reason.
+STOP_GUARD_CORPUS_RELPATH = "methodology/stop-guard/corpus.jsonl"
+STOP_GUARD_BASELINE_RELPATH = "methodology/stop-guard/aggregate-baseline.json"
+
+# Percentage POINTS, across all four chain PRs combined -- not per PR. A lane that would cross it
+# decomposes or narrows its detector; it does not spend the whole budget and strand its successor.
+STOP_GUARD_AGGREGATE_CEILING_POINTS = 2.0
+
+# A corpus small enough to make 2 percentage points meaningless is not a budget, it is a rounding
+# error. These floors are asserted, not assumed.
+STOP_GUARD_CORPUS_MIN_LEGITIMATE = 40
+STOP_GUARD_CORPUS_MIN_EVASION = 8
+
+
+def stop_guard_corpus_path(repo_root: Path) -> Path:
+    return Path(repo_root) / STOP_GUARD_CORPUS_RELPATH
+
+
+def stop_guard_baseline_path(repo_root: Path) -> Path:
+    return Path(repo_root) / STOP_GUARD_BASELINE_RELPATH
+
+
+def stop_guard_corpus_sha256(repo_root: Path) -> str:
+    """Digest of the corpus bytes.
+
+    Pinned into the baseline artifact ON PURPOSE. Without it a successor could bring the aggregate
+    back under the ceiling by deleting the corpus entries its own detector started firing on, and
+    every gate would stay green. The corpus is frozen; changing it is a deliberate, reviewed act
+    that re-stamps the baseline and says so.
+    """
+    return hashlib.sha256(stop_guard_corpus_path(repo_root).read_bytes()).hexdigest()
+
+
+def stop_guard_corpus_entries(repo_root: Path) -> list[dict]:
+    entries: list[dict] = []
+    for number, line in enumerate(
+        stop_guard_corpus_path(repo_root).read_text(encoding="utf-8").splitlines(), start=1
+    ):
+        line = line.strip()
+        if not line or line.startswith("//"):
+            continue
+        try:
+            record = json.loads(line)
+        except json.JSONDecodeError as exc:
+            raise SystemExit(
+                f"stop_guard_corpus_error: line {number} is not valid JSON: {exc}"
+            ) from exc
+        if not isinstance(record, dict) or record.get("expect") not in {"allow", "block"}:
+            raise SystemExit(
+                f"stop_guard_corpus_error: line {number} needs an expect of allow|block"
+            )
+        entries.append(record)
+    return entries
+
+
+def stop_guard_entry_blocks(entry: dict, adapter_root: Path) -> list[str]:
+    """Run one corpus turn through the Stop boundary and return the errors that would block it.
+
+    Mirrors ``response_guard_hook``'s own flag derivation rather than re-deciding it, so the number
+    this harness reports is the boundary's number. All three arms run: the state arm (where item
+    84's predicates land), the phrase arm (where item 82's and 83's land), and the goal-boundary arm
+    (item 79 WS3's).
+
+    THE LANE FIXTURE CARRIES A FRESH BLOCKER RECORD, and that is the load-bearing choice here. With
+    an active goal and no legal exit, ``response_guard_state_stop_errors`` refuses EVERY turn
+    unconditionally -- correctly; that is the goal guard doing its job, not a false positive. A
+    corpus measured against it reads 100% blocked for legitimate and evasion turns alike, which is a
+    harness that cannot distinguish the thing it exists to measure. Declaring the legal exit removes
+    the unconditional arm and leaves every CONDITIONAL refusal -- the ones this chain adds --
+    visible.
+    Predicates that must be measurable therefore belong ahead of the blocker check, beside the
+    context-rotation refusal, which is where a conditional state refusal already lives.
+    """
+    text = str(entry.get("text") or "")
+    last_user = str(entry.get("lastUser") or "")
+    last_user_lower = last_user.lower()
+    scan_text = response_guard_monitor_scan_text(text)
+    active_monitor = text_contains_any(scan_text, RESPONSE_GUARD_PASSIVE_MONITOR_PHRASES) or (
+        "monitor" in scan_text and ("yield" in scan_text or "until then" in scan_text)
+    )
+    human_discussion_request = text_contains_any(
+        last_user_lower, RESPONSE_GUARD_HUMAN_DISCUSSION_REQUEST_MARKERS
+    )
+    explicit_user_stop = user_explicitly_stopped_lane(last_user)
+    state_errors = response_guard_state_stop_errors(
+        adapter_root,
+        text,
+        explicit_user_stop=explicit_user_stop,
+        human_discussion_request=human_discussion_request,
+    )
+    phrase_errors = response_guard_errors(
+        text,
+        active_monitor=active_monitor,
+        autonomous_yield=response_looks_like_autonomous_yield(text),
+        rca_request=text_contains_any(last_user_lower, RESPONSE_GUARD_RCA_TRIGGERS),
+        derivable_next_action_prompt=text_contains_any(
+            last_user_lower, RESPONSE_GUARD_DERIVABLE_NEXT_PROMPT_MARKERS
+        ),
+        terminal_stop=response_is_terminal_stop_context(text),
+        boundary_summary=response_has_boundary_summary_marker(text),
+        human_discussion_request=human_discussion_request,
+        # Maximum enforcement, deliberately: the ceiling governs what the chain WOULD block, and
+        # measuring at the shipped warn-only posture would report zero for the checks it governs.
+        guard_adapter_root=None,
+        phrase_checks="blocking",
+        high_precision_phrase_checks="blocking",
+        wave3_chain_blocking=True,
+    )
+    goal_boundary_errors = response_guard_goal_boundary_errors(adapter_root, text)
+    # Codex R3 P2. `response_guard_hook` appends this refusal ITSELF, outside
+    # `response_guard_errors`
+    # -- it does not go through that function's log_guard closure. A harness that claims to measure
+    # the boundary at maximum enforcement and omits one of the boundary's own refusal arms is
+    # measuring something other than the boundary, and the number the whole chain is judged against
+    # would have been quietly low.
+    hook_only_errors: list[str] = []
+    if response_has_recovery_cancellation_without_explicit_stop(text, last_user):
+        hook_only_errors.append("provider recovery cancellation without explicit stop")
+    # Item 83 PR2's yield gates are a FOURTH arm of the same boundary, and the harness has to run
+    # them or the number it reports for this release is zero-by-construction -- the "control reads
+    # healthy because nothing ever let it measure" shape this whole program exists to close, in the
+    # instrument that measures the program. Exactly the omission Codex R3 caught for the
+    # recovery-cancellation arm above, one release earlier.
+    #
+    # WHAT THIS DOES AND DOES NOT MEASURE, corrected after Codex R4 and stated bluntly because the
+    # first version of this note was too kind to itself:
+    #
+    # The corpus fixture installs a fresh blocker and no background run, so BOTH yield gates return
+    # empty for every entry. Their contribution to the aggregate is therefore ZERO BY
+    # CONSTRUCTION -- not measured-and-clean. The mutation test below proves only that this arm is
+    # CALLED; it cannot prove the corpus can arm it, and those are different claims. So the
+    # reported +0.0 is evidence about the phrase and goal-boundary arms, and is NOT evidence that
+    # these two gates have a false-positive rate of zero.
+    #
+    # That matters because the chain's blocking flip is supposed to be evidence-gated on this
+    # number. Arming the corpus for state gates needs stateful entries (a live pid, an unread
+    # completion, a pending source) or a separate state-gate harness, and is filed rather than
+    # bodged in at the round cap: ready/2026-08-15-stop-guard-corpus-cannot-arm-state-gates/.
+    # Until it lands, the false-positive evidence for these two gates is
+    # tests/test_response_guard_yield_gates.py, and it is a suite, not a rate.
+    yield_errors = response_guard_yield_state_errors(
+        adapter_root,
+        explicit_user_stop=explicit_user_stop,
+        human_discussion_request=human_discussion_request,
+        stop_hook_active=False,
+        payload={},
+        last_assistant=text,
+    )
+    yield_messages = [
+        message
+        for check_id in RESPONSE_GUARD_YIELD_CHECK_IDS
+        for message in yield_errors.get(check_id, [])
+    ]
+    return state_errors + phrase_errors + goal_boundary_errors + hook_only_errors + yield_messages
+
+
+def stop_guard_aggregate_measure(repo_root: Path) -> dict:
+    entries = stop_guard_corpus_entries(repo_root)
+    legitimate = [entry for entry in entries if entry.get("expect") == "allow"]
+    evasion = [entry for entry in entries if entry.get("expect") == "block"]
+    blocked_legitimate: list[str] = []
+    missed_evasion: list[str] = []
+    # The lane fixture is materialized from the repo's OWN example-saas adapter, not hand-rolled:
+    # the state half of the boundary reads adapter keys, and a stub adapter would silently skip the
+    # very predicates items 84 and 79 WS3 add. An active goal is required or every check gated on
+    # one reports zero and the corpus measures nothing.
+    example_adapter = load_project(Path(repo_root) / "adapters" / "projects" / "example-saas.json")
+    with tempfile.TemporaryDirectory(prefix="tautline-stop-guard-corpus-") as scratch:
+        adapter_root = Path(scratch)
+        (adapter_root / ".ai-work").mkdir(parents=True, exist_ok=True)
+        (adapter_root / ".tautline.json").write_text(
+            json.dumps(example_adapter, indent=2), encoding="utf-8"
+        )
+        (adapter_root / ".ai-work" / "GOAL_RUN.json").write_text(
+            json.dumps(
+                {
+                    "schema": GOAL_RUN_SCHEMA,
+                    "goalId": "stop-guard-corpus",
+                    "status": "in_progress",
+                }
+            ),
+            encoding="utf-8",
+        )
+        (adapter_root / ".ai-work" / "BLOCKER.json").write_text(
+            json.dumps(
+                guards_module().blocker_declare_record(
+                    kind="approval-needed",
+                    reason=(
+                        "corpus fixture: the legal exit is declared so the unconditional arm "
+                        "stands down"
+                    ),
+                    artifact=None,
+                    goal_id="stop-guard-corpus",
+                    checked=[],
+                )
+            ),
+            encoding="utf-8",
+        )
+        for entry in legitimate:
+            if stop_guard_entry_blocks(entry, adapter_root):
+                blocked_legitimate.append(str(entry.get("id") or "?"))
+        for entry in evasion:
+            if not stop_guard_entry_blocks(entry, adapter_root):
+                missed_evasion.append(str(entry.get("id") or "?"))
+    legitimate_count = len(legitimate)
+    evasion_count = len(evasion)
+    return {
+        "corpusSha256": stop_guard_corpus_sha256(repo_root),
+        "legitimateTurns": legitimate_count,
+        "blockedLegitimateTurns": len(blocked_legitimate),
+        "aggregateStopBlockingRatePct": (
+            round(100.0 * len(blocked_legitimate) / legitimate_count, 2)
+            if legitimate_count
+            else 0.0
+        ),
+        "blockedLegitimateIds": sorted(blocked_legitimate),
+        "evasionTurns": evasion_count,
+        "detectedEvasionTurns": evasion_count - len(missed_evasion),
+        "sensitivityPct": (
+            round(100.0 * (evasion_count - len(missed_evasion)) / evasion_count, 2)
+            if evasion_count
+            else 0.0
+        ),
+        "missedEvasionIds": sorted(missed_evasion),
+        "ceilingPoints": STOP_GUARD_AGGREGATE_CEILING_POINTS,
+    }
+
+
+def stop_guard_aggregate(args: argparse.Namespace) -> int:
+    repo_root = args.repo_root.expanduser().resolve(strict=False)
+    measured = stop_guard_aggregate_measure(repo_root)
+    baseline_path = stop_guard_baseline_path(repo_root)
+    baseline: dict = {}
+    if baseline_path.exists():
+        baseline = json.loads(baseline_path.read_text(encoding="utf-8"))
+    if args.write_baseline:
+        record = dict(measured)
+        version_path = repo_root / "VERSION"
+        record["recordedAtRelease"] = (
+            version_path.read_text(encoding="utf-8").strip() if version_path.exists() else "unknown"
+        )
+        record["note"] = (
+            "Aggregate stop-blocking rate over the frozen corpus at maximum enforcement. Items 83, "
+            "84 and 79 WS3 re-measure on their own rebased tip and state the number in the PR "
+            "body; "
+            "never carry this number forward."
+        )
+        baseline_path.parent.mkdir(parents=True, exist_ok=True)
+        baseline_path.write_text(
+            json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+        )
+        print(f"stop_guard_aggregate: baseline written to {baseline_path}")
+        baseline = record
+    # Codex R1 P1. The failures are computed BEFORE the output format is chosen, and both formats
+    # return the same exit status. The previous shape returned 0 from the --json branch before any
+    # of these checks ran, so a drifted corpus produced valid JSON and exit 0 -- a machine-readable
+    # consumer would have read a FAILED aggregate gate as a passing one. That is the exact defect
+    # class this harness exists to detect, reproduced in the harness itself: a control that reports
+    # success because something upstream never let it run.
+    failures: list[str] = []
+    baseline_rate = float(baseline.get("aggregateStopBlockingRatePct") or 0.0) if baseline else 0.0
+    delta = round(measured["aggregateStopBlockingRatePct"] - baseline_rate, 2)
+    if not baseline and not args.write_baseline:
+        # Codex R2 P1. A missing or empty baseline used to skip every comparison and return 0 with
+        # ok:true -- the gate reporting success in the one state where it can enforce nothing. The
+        # baseline is the whole contract; its absence is a failure, and only the command that
+        # CREATES one may proceed without it.
+        failures.append(
+            "no committed aggregate baseline at "
+            f"{STOP_GUARD_BASELINE_RELPATH}, so there is nothing to enforce the ceiling against; "
+            "stamp one with `tautline stop-guard-aggregate --write-baseline` and commit it"
+        )
+    if baseline:
+        if baseline.get("corpusSha256") != measured["corpusSha256"]:
+            failures.append(
+                "the corpus no longer matches the digest the baseline was stamped against; a "
+                "corpus edit re-stamps the baseline with a recorded decision, it does not slide "
+                "under the ceiling silently"
+            )
+        if delta > STOP_GUARD_AGGREGATE_CEILING_POINTS:
+            failures.append(
+                f"the aggregate stop-blocking rate is {delta:+} points against a ceiling of "
+                f"+{STOP_GUARD_AGGREGATE_CEILING_POINTS} across the whole wave-3 chain; decompose "
+                "or narrow the detector rather than stranding the successor"
+            )
+        if measured["missedEvasionIds"]:
+            failures.append(
+                "evasion turns the corpus exists to catch are no longer detected: "
+                + ", ".join(measured["missedEvasionIds"])
+                + " -- a corpus that stopped firing reports a perfect false-positive rate"
+            )
+    if args.json:
+        print(
+            json.dumps(
+                {
+                    "measured": measured,
+                    "baseline": baseline,
+                    "deltaPoints": delta if baseline else None,
+                    "failures": failures,
+                    "ok": not failures,
+                },
+                indent=2,
+                sort_keys=True,
+            )
+        )
+    else:
+        print(f"stop_guard_corpus_sha256: {measured['corpusSha256']}")
+        print(f"stop_guard_legitimate_turns: {measured['legitimateTurns']}")
+        print(f"stop_guard_blocked_legitimate_turns: {measured['blockedLegitimateTurns']}")
+        print(f"stop_guard_aggregate_rate_pct: {measured['aggregateStopBlockingRatePct']}")
+        print(
+            f"stop_guard_sensitivity_pct: {measured['sensitivityPct']} "
+            f"({measured['detectedEvasionTurns']}/{measured['evasionTurns']})"
+        )
+        if measured["blockedLegitimateIds"]:
+            print(
+                "stop_guard_blocked_legitimate_ids: "
+                + ", ".join(measured["blockedLegitimateIds"])
+            )
+        if measured["missedEvasionIds"]:
+            print("stop_guard_missed_evasion_ids: " + ", ".join(measured["missedEvasionIds"]))
+        if baseline:
+            print(
+                f"stop_guard_baseline_rate_pct: {baseline_rate} "
+                f"(release {baseline.get('recordedAtRelease')})"
+            )
+            print(f"stop_guard_delta_points: {delta:+}")
+        else:
+            print("stop_guard_baseline: absent (run with --write-baseline to stamp one)")
+    for failure in failures:
+        print(f"stop_guard_aggregate_error: {failure}", file=sys.stderr)
+    return 1 if failures else 0
+
+
+def question_guard_hook(args: argparse.Namespace) -> int:
+    """PreToolUse hook on AskUserQuestion -- RCA 20260701T115759Z.
+
+    The Stop guard is text-shaped and an AskUserQuestion menu is payload-shaped, so the exact
+    continue-vs-stop menu `response_has_forbidden_opt_in` was built to catch was invisible to every
+    guard. Worse, AskUserQuestion BLOCKS the turn waiting for the human, so the Stop hook may never
+    fire at all: this PreToolUse seam is the only one that can catch the shape before the operator
+    sees it.
+
+    BLOCKING inputs are the question payload ONLY. `last_assistant` is advisory context and never a
+    blocking input -- turns in this repo's own lanes routinely quote guard output and say "I
+    recommend", and must not poison a legitimate question.
+    """
+    try:
+        payload = json.load(sys.stdin)
+    except json.JSONDecodeError:
+        return 0
+    if payload.get("hook_event_name") not in {None, "PreToolUse"}:
+        return 0
+    if str(payload.get("tool_name") or "").lower() not in ASK_USER_QUESTION_TOOL_NAMES:
+        return 0
+    cwd = Path(payload.get("cwd") or ".").expanduser().resolve(strict=False)
+    adapter_root = find_adapter_root(cwd)
+    if adapter_root is None:
+        # Un-adapted session: guided onboarding routes adopt-or-skip through AskUserQuestion by
+        # design (queue item 6), and there is no goal to evade. Sanctioned use stays legal.
+        return 0
+    if product_dev_mode_active(adapter_root):
+        product_dev_mode_standdown_advisory(adapter_root, "the AskUserQuestion guard", "PreToolUse")
+        return 0
+    # Codex R1 P2. The config is resolved FIRST, because it is the one call here that has a
+    # documented fail-safe for a broken adapter -- it answers "blocking" when the adapter is present
+    # but unparseable. `response_guard_has_active_goal` has no such handling: `load_project` raises
+    # SystemExit on an invalid adapter, which derives from BaseException, so it escaped the ordering
+    # and the guard stood down in exactly the degraded lane state the fail-safe exists for.
+    mode = response_guard_config_for_root(adapter_root)["questionGuard"]
+    if mode == "off":
+        return 0
+    try:
+        has_active_goal = response_guard_has_active_goal(adapter_root)
+    except (SystemExit, Exception):  # noqa: BLE001
+        # SystemExit named explicitly and first: several adapter lookups RAISE it rather than
+        # returning, and an Exception-only handler would let a guard die on the boundary it guards.
+        # A broken adapter is a broken lane, not an absent goal -- fail toward guarding.
+        has_active_goal = True
+    if not has_active_goal:
+        # A direction question BETWEEN goals is not this defect.
+        return 0
+    question_text = flatten_question_tool_input(payload.get("tool_input"))
+    transcript_path_raw = payload.get("transcript_path")
+    transcript_path = (
+        Path(transcript_path_raw).expanduser() if isinstance(transcript_path_raw, str) else None
+    )
+    _last_user, last_assistant, _recent = transcript_context(transcript_path)
+    payload_last_user = flatten_hook_text(
+        payload.get("last_user_message") or payload.get("last_user")
+    )
+    if user_explicitly_stopped_lane(payload_last_user or _last_user):
+        return 0
+    # THE BLOCKING INPUT IS THE MENU SHAPE ALONE, and the reason is a false positive found by
+    # probing this seam with realistic true-blocker questions rather than by reasoning about it.
+    #
+    # `response_has_forbidden_opt_in` was built for FREE-TEXT final turns, where "should I <verb>"
+    # is evasion -- the turn had an authorized action and asked permission instead. Inside an
+    # AskUserQuestion payload the same words mean the opposite: "Production credentials are missing.
+    # Should I deploy with the staging credential?" and "The API contract is ambiguous. Should I
+    # implement pagination or reject large results?" are the sanctioned form of a true-blocker
+    # question, and the canonical rules tell an agent to ask exactly that. Both were denied. A guard
+    # that blocks the one question shape the rules require is worse than no guard: it teaches lanes
+    # to route around it.
+    #
+    # It still runs, and still logs -- the shape is worth measuring, and a payload that carries a
+    # numbered "path 1 / path 2 / path 3" menu is genuinely evasive. It just does not decide.
+    # The STRUCTURED payload, not the flattened text: flattening destroys the option boundaries the
+    # menu rule depends on (Codex R2 P1). The flattened text is still what the advisory predicates
+    # and the Stop-seam defence-in-depth path read.
+    menu = question_payload_is_direction_menu(payload.get("tool_input"))
+    prose_opt_in = response_has_forbidden_opt_in(question_text)
+    contradiction = response_has_self_contradicting_question(last_assistant, question_text)
+    standing_reask = response_asks_standing_authorization(question_text)
+    guard_log_event(
+        adapter_root, "pretool.question_direction_menu", menu, "phrase", "AskUserQuestion"
+    )
+    guard_log_event(
+        adapter_root, "pretool.question_prose_opt_in", prose_opt_in, "phrase", "AskUserQuestion"
+    )
+    guard_log_event(
+        adapter_root,
+        "pretool.question_self_contradiction",
+        contradiction,
+        "phrase",
+        "AskUserQuestion",
+    )
+    guard_log_event(
+        adapter_root,
+        "pretool.question_standing_authorization_reask",
+        standing_reask,
+        "phrase",
+        "AskUserQuestion",
+    )
+    if mode != "blocking" or not menu:
+        # `contradiction`, `standing_reask` and `prose_opt_in` are ADVISORY at this seam and by
+        # construction:
+        # neither predicate can verify that a named default is real or that a standing approval
+        # exists, so they supply telemetry and reason text, never the block. Only the menu shape --
+        # payload-only, active-goal-gated, with the onboarding and explicit-stop carve-outs above --
+        # has a false-positive surface narrow enough to deny a tool call.
+        return 0
+    reason = (
+        "continue-vs-stop direction menu while a goal is unmet and buildable authorized work "
+        "remains: "
+        "take the next buildable step in this turn instead of presenting paths."
+    )
+    if contradiction:
+        reason += (
+            " The surrounding turn already names a safe/defensible default: take the named default."
+        )
+    if standing_reask:
+        reason += (
+            " Standing approval recorded in a source-of-truth artifact counts once conditions "
+            "match "
+            "(canonical rule): act under it or name the condition that no longer matches."
+        )
+    # Single exit path: `hook_decision` prints the decision JSON, and a hook that reaches it twice
+    # emits two decision objects (inherited finding, queue item 28 -- do not re-derive).
+    hook_decision(
+        "Tautline question guard blocked this AskUserQuestion. "
+        + reason
+        + " If a genuine fork remains, ask one exact true-blocker question naming the scope, "
+        "approval, "
+        "credential, or gate change -- never a direction menu."
+    )
     return 0
 
 
@@ -34787,7 +40679,10 @@ def plan_finalization_hook(args: argparse.Namespace) -> int:
             "Treat this as unfinished plan finalization, not plan approval.",
         )
         return 0
-    errors, _plan_path, _manifest_path = plan_finalization_precheck_errors(data, target, _plan_path)
+    base_errors, _plan_path, _manifest_path = plan_finalization_precheck_errors(
+        data, target, _plan_path
+    )
+    errors = list(base_errors)
     if errors:
         log_plan_guard(True, "; ".join(errors[:2]))
         prefix = f"{resolution_note} " if resolution_note else ""
@@ -34800,6 +40695,38 @@ def plan_finalization_hook(args: argparse.Namespace) -> int:
             + "; ".join(errors[:8])
         )
         return 0
+    # Codex R1 P1 (final confirming round): a goal-prompt-missing finding must NEVER refuse
+    # ExitPlanMode, even under `block`. Claude is still in read-only plan mode here, and the
+    # only remedy -- `goal-assignment --out` -- WRITES a file; a hook that blocks the exit a
+    # write needs to run is an unconditional deadlock, not a strict gate. The prior version of
+    # this hook merged goal_prompt_errors into the blocking `errors` list, which is exactly that
+    # deadlock under `planning.authoringStandard.enforcement=block`. The standalone
+    # `plan-finalization-precheck` verb still enforces `block` in full -- it runs AFTER plan mode
+    # is left, when writing the artifact is possible -- so build-readiness is not silently
+    # unenforced, only deferred to the seam where enforcing it is actually achievable.
+    std_cfg = plan_authoring_module().normalize_planning_authoring_standard(data)
+    goal_prompt_errors, goal_prompt_warnings = plan_finalization_goal_prompt_report(
+        data, target, _plan_path, std_cfg
+    )
+    # Codex R1 P2 (this lineage): hook consumers expect ONE JSON response on stdout, so the
+    # goal-prompt advisory and the goal-ledger nudge below must never each emit their own.
+    # Both advisories are collected and emitted as a single hook_additional_context call.
+    # Codex R2 P2: ADVISE (the default) reports through the warnings list, and discarding it
+    # left default lanes with no hook advisory at all -- both lists reach the same advisory
+    # here; only the standalone precheck escalates block-level findings to a refusal.
+    advisory_contexts: list[str] = []
+    goal_prompt_issues = list(goal_prompt_errors) + list(goal_prompt_warnings)
+    if goal_prompt_issues:
+        arg = guard_target_argument(target)
+        advisory_contexts.append(
+            "Minervit goal-prompt check: "
+            + "; ".join(goal_prompt_issues)
+            + f". This does NOT block ExitPlanMode -- compose the goal prompt after leaving plan "
+            f"mode with `tautline goal-assignment --target {arg} --plan "
+            f"{shlex.quote(plan_root_relative_reference(data, target, _plan_path))} --out "
+            "<dir>/goal-<name>.txt` before `plan-finalization-precheck`, which still enforces "
+            "this in full."
+        )
     # RCA O14: substantial multi-milestone/multi-PR/overnight work must have a goal-orchestration
     # ledger before implementation-start, or iteration-review and milestone tracking are bypassed.
     # Non-blocking nudge at plan finalization (the implementation-start gate) when the plan reads as
@@ -34807,15 +40734,16 @@ def plan_finalization_hook(args: argparse.Namespace) -> int:
     goal_path = goal_run_path(data, target)
     scope_text = (str(plan_text or "") + " " + extra_reference_text).lower()
     if not goal_path.exists() and text_contains_any(scope_text, GOAL_LEDGER_SUBSTANTIAL_MARKERS):
-        hook_additional_context(
-            "PreToolUse",
+        advisory_contexts.append(
             "Minervit goal-ledger check: this plan reads as substantial (multi-milestone/multi-PR/"
             f"overnight/build-ship-finish) but no goal-orchestration ledger exists at {goal_path}. "
             "Before implementation-start, run "
             f"`tautline goal-start --target {guard_target_argument(target)} "
             "--goal <source-of-truth-goal-plan>` so milestone and iteration-review orchestration "
-            "is tracked. If this is a single tactical PR, proceed.",
+            "is tracked. If this is a single tactical PR, proceed."
         )
+    if advisory_contexts:
+        hook_additional_context("PreToolUse", " ".join(advisory_contexts))
     log_plan_guard(False, "pass")
     return 0
 
@@ -35255,6 +41183,12 @@ def install_hooks(args: argparse.Namespace) -> int:
     pending_state = "already present" if pending_already_present else "installed"
     print(f"claude_plan_review_pending_hook: {pending_state}")
     print(f"claude_plan_review_pending_hook_command: {args.plan_review_pending_command}")
+    _, question_guard_already_present = write_claude_question_guard_hook(
+        args.settings, args.question_guard_command
+    )
+    question_guard_state = "already present" if question_guard_already_present else "installed"
+    print(f"claude_question_guard_hook: {question_guard_state}")
+    print(f"claude_question_guard_hook_command: {args.question_guard_command}")
     _, fleet_guard_already_present = write_claude_fleet_guard_hook(
         args.settings, args.fleet_guard_command
     )
@@ -36710,6 +42644,16 @@ METHODOLOGY_STATUS_DEBT_GATES: tuple[str, ...] = (
     "remediation_failures",
     "autocompact_failures",
     "context_failures",
+    # Item 70 WS1 / RCA 2026-07-22 control 5. DEBT, not integrity: the lane can still start and
+    # still prove things -- what it cannot do is carry a channel/branch CONTRADICTION forward as a
+    # bare warning, which is how the incident persisted for weeks. Only `required` populates this
+    # list; `advisory` prints the same enumerated line and exits 0.
+    "framework_checkout_failures",
+    # Item 74 PR-C / policy 16a. DEBT: a lane can start and prove things with a go-live control
+    # off; what it cannot do is call itself ready for a customer surface without either enforcing
+    # the control or recording a decline. Populated ONLY for a lane that opted into the profile,
+    # or one that set enforcement:block itself.
+    "go_live_failures",
 )
 # Synthetic integrity gates are display/summary identifiers with no backing `..._failures` list
 # -- they are never part of the will_fail list partition above. remediation_marker is reserved
@@ -36769,6 +42713,8 @@ def methodology_status_gate_conditions(
     autocompact_failures: list[str],
     development_environment_failures: list[str],
     context_failures: list[str],
+    framework_checkout_failures: list[str],
+    go_live_failures: list[str],
 ) -> dict[str, bool]:
     """Whether each gate list currently blocks `methodology-status`, one boolean per list name.
 
@@ -36810,6 +42756,8 @@ def methodology_status_gate_conditions(
         "remediation_failures": bool(remediation_failures) and args.fail_on_drift,
         "autocompact_failures": bool(autocompact_failures) and args.fail_on_drift,
         "context_failures": bool(context_failures) and strict_or_fail,
+        "framework_checkout_failures": bool(framework_checkout_failures) and strict_or_fail,
+        "go_live_failures": bool(go_live_failures) and strict_or_fail,
     }
 
 
@@ -36821,6 +42769,26 @@ STARTUP_REMEDIATION_MARKER_RELATIVE_PATH = Path(".ai-work") / "STARTUP_REMEDIATI
 # is permitted while the marker's recorded `gates` list contains a key mapping to it. Only gates
 # whose remediation genuinely requires an otherwise-blocked mutator get an entry; goal-advance and
 # milestone-advance are deliberately absent everywhere (graduation, not remediation).
+# Commands a refusal may NAME without them being agent-runnable during remediation, because they
+# are operator-owned. Naming an operator action is a HANDOFF, not a dead end: the operator can run
+# it, and hiding it would leave a real resolution unmentioned. The exemption is self-limiting by
+# construction -- a test asserts every entry is in STARTUP_REMEDIATION_BLOCKED_COMMANDS, so it can
+# only ever cover commands the remediation contract already reserves to the operator, and can never
+# be used to paper over a genuinely missing recovery entry.
+STARTUP_REMEDIATION_OPERATOR_OWNED_COMMANDS: tuple[str, ...] = ("maintainer-mode",)
+
+# The gates a go-live control hands off to when an adopter brings it to `block`. Each is fixed by a
+# SOURCE-ADAPTER edit plus a re-render, so each needs the render verb reachable during remediation
+# or the hand-off is a deadlock. Derived from the go-live control list rather than enumerated by
+# hand, so a control added to GO_LIVE_GATES cannot silently miss its downstream entry.
+GO_LIVE_DOWNSTREAM_GATES: tuple[str, ...] = (
+    "health_contract",
+    "ci_test_gate",
+    "runtime_secret",
+    "critical_journey",
+    "remediation",
+)
+
 STARTUP_REMEDIATION_GATE_RECOVERY_COMMANDS: dict[str, tuple[str, ...]] = {
     "goal": ("goal-start", "goal-next", "goal-condition", "backlog-provider-next", "backlog-provider-sync"),
     "goal_tracker": ("backlog-board-examine", "backlog-board-adopt", "backlog-provider-update", "goal-tracker-update"),
@@ -36829,6 +42797,36 @@ STARTUP_REMEDIATION_GATE_RECOVERY_COMMANDS: dict[str, tuple[str, ...]] = {
     # dirs/classification/headers); without this entry a context-debt remediation session cannot
     # clear its own gate through the CLI (Codex T7 R2 P2).
     "context": ("context-bootstrap",),
+    # Item 70 WS1. Every resolution the reconciliation line enumerates must be RUNNABLE from inside
+    # a remediation session, or the gate it raises is a dead end -- which is the failure this
+    # cluster exists to delete, reproduced by the control itself. `maintainer-mode` arms the
+    # standdown, `set-framework-channel` repoints the channel, and `sync-methodology` completes the
+    # checkout move. A test asserts the line names only registered subcommands; this asserts the
+    # named ones are reachable while the marker is present.
+    # Codex R4 P1: `maintainer-mode` is deliberately ABSENT. It is in
+    # STARTUP_REMEDIATION_BLOCKED_COMMANDS because it changes machine-wide update-gate state, and
+    # the remediation contract keeps gate relaxation operator-only. Granting a local remediation
+    # session authority to globally stand down updates -- in order to clear its own gate -- is the
+    # bypass this cluster exists to delete, arriving through the recovery map instead of through
+    # the refusal text. The reconciliation line still NAMES maintainer-mode as an operator path;
+    # naming an operator-owned action is not the same as making it self-service.
+    "framework_checkout": ("set-framework-channel", "sync-methodology"),
+    # Item 74 PR-C: the remedy is an adapter edit plus a re-render, so the render verb must be
+    # reachable while a remediation marker is present or the gate is a dead end.
+    "go_live": ("render-adapters", "validate-adapter", "decision-record"),
+    # A DEADLOCK, not a missing convenience, and the R1 fix for it was PARTIAL.
+    #
+    # Bringing a go-live control to `block` clears the go_live issue and ACTIVATES that control's
+    # own gate -- `healthContract` on a target with no outcomeSignals, `ciTestGate` on a
+    # deliberately testless lane. The marker is then refreshed carrying only the downstream gate,
+    # and the source-adapter edit that fixes it needs `render-adapters`, which only the go_live
+    # entry permitted. The adopter ends up in a remediation session that refuses the one command
+    # that clears it.
+    #
+    # R1 fixed `health_contract` alone; R2 found `ciTestGate` has the identical shape. So this is
+    # driven by GO_LIVE_DOWNSTREAM_GATES below -- every adapter-backed gate a go-live control can
+    # hand off to -- rather than by whichever one a review happened to notice.
+    **{gate: ("render-adapters", "validate-adapter") for gate in GO_LIVE_DOWNSTREAM_GATES},
 }
 
 
@@ -36894,7 +42892,9 @@ def startup_remediation_guard_refusal(cmd_name: str, args: argparse.Namespace) -
     marker_path = startup_remediation_marker_path(target)
     if not marker_path.exists():
         return None
-    if cmd_name in STARTUP_REMEDIATION_WRITE_FLAG_GATED_COMMANDS and not getattr(args, "write", False):
+    if cmd_name in STARTUP_REMEDIATION_WRITE_FLAG_GATED_COMMANDS and not getattr(
+        args, STARTUP_REMEDIATION_WRITE_FLAG_ATTRIBUTES.get(cmd_name, "write"), False
+    ):
         return None
     marker_gates = _startup_remediation_marker_gates(marker_path)
     recovery_commands = {
@@ -36964,6 +42964,21 @@ def methodology_status(args: argparse.Namespace) -> int:
             framework_decision, framework_probe, framework_pin
         ):
             print(offer_line)
+    # OUTSIDE the update skip, deliberately, and this is the case v1 of this control omitted
+    # entirely: the 2026-07-22 incident state HAD a pending update, so the sync refused the
+    # non-release branch and the reconciliation -- had it lived inside this branch -- would never
+    # have printed on the one surface where it mattered.
+    framework_checkout_failures: list[str] = []
+    framework_checkout_state, framework_checkout_lines = framework_checkout_reconciliation_lines(
+        framework_pin.get("channel", "stable"),
+        framework_channel_branch(framework_pin.get("channel", "stable")),
+        getattr(args, "allow_non_main", False),
+        target,
+    )
+    for line in framework_checkout_lines:
+        print(line)
+    if framework_checkout_state == "required":
+        framework_checkout_failures.append(framework_checkout_lines[0])
     if framework_decision["action"] != "update":
         hygiene_warning = methodology_checkout_hygiene_warning()
         if hygiene_warning:
@@ -37137,6 +43152,25 @@ def methodology_status(args: argparse.Namespace) -> int:
         for row in posture_rows:
             if row["state"] != "block":
                 print(control_posture_detail_line(row, "control_posture_warn"))
+    elif go_live_profile_active(data):
+        # A lane that opted in is held to these six gates, so their detail is not optional trivia
+        # for it. Without this, a VALIDLY DECLINED control emits no issue line either (declines
+        # suppress them by design), and the row's actionable detail is reachable only by knowing to
+        # re-run with --posture -- a gate whose remedy is invisible unless you already know it.
+        # Restricted to GO_LIVE_CONTROLS: the opt-in buys these rows, not the whole posture dump.
+        for row in posture_rows:
+            if row["control"] in GO_LIVE_CONTROLS and row["state"] != "block":
+                print(control_posture_detail_line(row, "control_posture_warn"))
+    # Go-live readiness (policy 16a). The warn lines are printed unconditionally and the failing
+    # issues are gated INSIDE `go_live_posture_issues`, not here -- the opt-in test lives with the
+    # rule it belongs to, so a future caller cannot accidentally promote a warn by passing a
+    # different flag combination.
+    go_live_issue_list, go_live_warn_lines = go_live_posture_issues(data, posture_rows)
+    for warn_line in go_live_warn_lines:
+        print(f"go_live_posture_warn: {warn_line}")
+    for issue in go_live_issue_list:
+        print(f"go_live_posture_issue: {issue}")
+    go_live_failures = go_live_issue_list if (args.strict or args.fail_on_drift) else []
     # Operator decision: warn elsewhere, block where the adapter opts in. ci-test-gate is a hard
     # failure ONLY in block mode -- --strict must NOT escalate a warn-mode lane into a failure, or
     # every non-opted-in repo without a CI test gate would fail methodology-status --strict.
@@ -37273,6 +43307,8 @@ def methodology_status(args: argparse.Namespace) -> int:
         "autocompact_failures": autocompact_failures,
         "development_environment_failures": development_environment_failures,
         "context_failures": context_failures,
+        "framework_checkout_failures": framework_checkout_failures,
+        "go_live_failures": go_live_failures,
     }
     gate_conditions = methodology_status_gate_conditions(args, **gate_issue_lists)
     # Truthful three-way exit contract (0.8.9 startup remediation). Integrity-first ordering so
@@ -38473,6 +44509,12 @@ def operator_launcher_content(name: str, channel: str, runtime: str) -> str:
         f"export TAUTLINE_METHODOLOGY_REPO={q_runtime}",
         "export MINERVIT_METHODOLOGY_DISABLE_AUTO_RESCUE=1",
         "export TAUTLINE_METHODOLOGY_DISABLE_AUTO_RESCUE=1",
+        # A DEDICATED signal, not a reused one. `--operator-channel` is the explicit "I own this
+        # upstream" declaration, and the checkout reconciliation stands down for it -- but only for
+        # THIS, never for the generic auto-rescue opt-out, which any managed session may set to
+        # suppress destructive rescue without claiming ownership of the checkout (Codex R3 P1).
+        f"export MINERVIT_METHODOLOGY_OPERATOR_CHANNEL={q_channel}",
+        f"export TAUTLINE_METHODOLOGY_OPERATOR_CHANNEL={q_channel}",
         # BEST-EFFORT only (Stage2 P1): UPDATE_POLICY IS a managed methodology.env key, so a child
         # command routed through the shim re-sources the file and sees the machine's pinned value.
         # Harmless -- DISABLE_AUTO_RESCUE=1 above (NOT a managed key, so it survives) already
@@ -41123,6 +47165,97 @@ def finalize_implementation_review(args: argparse.Namespace) -> int:
                 file=sys.stderr,
             )
             return 1
+        # Item 73 WS2 -- the recorded counts can never silently diverge from the log.
+        #
+        # The incident: a round whose log carried 3 Critical and 22 Important findings was
+        # finalized at 0 unresolved Critical / 0 unresolved P1, and nothing on this path read the
+        # log to notice. `review_log_verdict_errors` already detects exactly that, in both of the
+        # real log formats, and has been hardened over several rounds on the plan-review path --
+        # it was simply never wired into this consumer. This wires it, and does not touch it.
+        #
+        # Implementation logs carry no frame nonce (that plumbing is plan-review only), so the
+        # documented fallback is used: expected_nonce=None, authoritative=False. Adding a nonce to
+        # codex-run logs is a named successor, not this item.
+        # The log is already proven to exist and to match its recorded `log_sha256` --
+        # `implementation_review_manifest_errors` above checks both, for EVERY verdict, and refuses
+        # first. Re-checking here looked like defense in depth and was dead code: the branches could
+        # not be reached, so they would have been shipped untested while reading as guarded. The
+        # cross-check therefore reads the log directly, and the tests pin the EXISTING refusals so
+        # the dependency is recorded rather than assumed.
+        log_file = cli_path(target, str(manifest["log_path"]))
+        scan_text, scan_source = implementation_review_scan_text(
+            log_file.read_text(encoding="utf-8", errors="replace")
+        )
+        log_errors: list[str] = []
+        if scan_source == "unlocatable":
+            # PRINTED, never silent. A quiet skip is indistinguishable from a clean reconciliation,
+            # and that is the exact defect class this cluster exists to close.
+            print(
+                "implementation_review_log_crosscheck: skipped - the reviewer's final response "
+                f"could not be located in {manifest['log_path']} (no `## Findings` section and no "
+                "codex final-response marker), so the recorded counts were NOT reconciled against "
+                "it. The counts stand on your classification alone for this round.",
+                file=sys.stderr,
+            )
+        else:
+            log_errors = review_log_verdict_errors(
+                scan_text,
+                args.verdict,
+                args.unresolved_critical_count,
+                args.unresolved_p1_count,
+                findings,
+                expected_nonce=None,
+                # The text is ALREADY scoped to the reviewer's answer, so the frame machinery has
+                # nothing left to do and `authoritative` is irrelevant here -- passing the raw log
+                # with authoritative=False is what produced the 100% false-refusal rate.
+                authoritative=False,
+                blocker_evidence="all",
+            )
+        # REPORT-ONLY, and the reason is measured rather than cautious.
+        #
+        # `review_log_verdict_errors` was built for a structured `## Findings` section, where a line
+        # mentioning Critical IS a finding. This path feeds it FREE-FORM reviewer prose, where it is
+        # not: "The critical retry path is covered by tests." and "This preserves an important
+        # invariant." both read as blocker evidence and would refuse a clean 0/0 finalization. Four
+        # review rounds each found another ordinary English sentence that refuses an honest review;
+        # no amount of alias tuning fixes a detector reading the wrong KIND of input.
+        #
+        # A gate that refuses honest reviews teaches lanes to record dishonest verdicts, which is
+        # the opposite of what this item is for. So the divergence is PRINTED at the boundary where
+        # it matters -- visible where it was previously invisible, which is the RCA's actual
+        # mechanism -- and enforcement waits for the reviewer-side structured findings contract, the
+        # successor that makes a severity claim machine-readable instead of inferred from prose.
+        if log_errors:
+            for error in log_errors:
+                print(
+                    f"implementation_review_log_crosscheck: possible divergence - {error}",
+                    file=sys.stderr,
+                )
+            print(
+                "implementation_review_log_crosscheck: REPORT-ONLY -- this does not block the "
+                "finalize, and it may be a false alarm: the scan reads free-form reviewer prose, "
+                "where an ordinary sentence like \"the critical retry path is covered\" looks like "
+                "a "
+                "finding. If it is REAL, two runnable exits, both honest: record what review "
+                "actually found "
+                "-- `tautline finalize-implementation-review --target "
+                f"{guard_target_argument(target)} "
+                f"--manifest {shlex.quote(path_display(target, manifest_path))} "
+                "--verdict blocked --unresolved-critical-count <n> --unresolved-p1-count <n>`, "
+                "which runs none of this -- or dispose of EVERY blocker finding in the "
+                "--classified-findings-json (each carrying a resolving status, or a disposition "
+                "of fixed/refuted, or routed with a non-empty routed_to) and retry. Disposing of "
+                "only some of them is not enough on this path, deliberately: one routed finding "
+                "must never suppress the evidence for the blockers still unaccounted for.",
+                file=sys.stderr,
+            )
+    # THE VALVE REPORTS; IT DOES NOT GATE (see `plan_review_carried_focus_items`). The refusal
+    # that used to live here is deferred to the follow-up that gives the obligation a durable
+    # plan-to-implementation lineage. Three review rounds found eight defects in it, every one
+    # rooted in the substitutes it used for that missing lineage, and a gate an unstaged edit can
+    # bypass is worse than no gate: it reports success while doing nothing.
+    for line in plan_review_carried_focus_lines(plan_review_carried_focus_items(data, target)):
+        print(line, file=sys.stderr)
     manifest.update(
         {
             "classification_status": args.verdict,
@@ -41448,6 +47581,22 @@ def review_evidence_check(args: argparse.Namespace) -> int:
             )
             if args.strict:
                 return 1
+        # D2. The push gate is the last place a binding carried plan-review finding can still be
+        # noticed, and noticing it here is what makes "an implementation review that ignored a
+        # carried finding" detectable rather than merely disallowed at one verb. Empty for every
+        # lane that never capped a plan review, so this changes nothing for them.
+        outstanding_focus = plan_review_carried_focus_items(data, target)
+        if outstanding_focus:
+            for line in plan_review_carried_focus_lines(outstanding_focus):
+                print(line, file=sys.stderr)
+            print(
+                "review_evidence_next_action: re-test each carried finding above against the code "
+                "as part of this implementation review. REPORT-ONLY in this release -- nothing "
+                "refuses on it -- because deciding which implementation review owes a given plan's "
+                "findings needs a durable plan-to-implementation lineage this codebase does not "
+                "have yet.",
+                file=sys.stderr,
+            )
         print("review_evidence_check: pass")
         print(f"review_evidence_manifest: {path_display(target, manifest_path)}")
         print(f"review_evidence_ledger: {path_display(target, implementation_review_ledger_path(data, target, state))}")
@@ -43953,10 +50102,13 @@ def iteration_review_status(args: argparse.Namespace) -> int:
         and cfg["enabled"]
         and cfg["delivery"].get("enabled")
         and delivery_webhook_env
-        and not util_module().resolve_env(delivery_webhook_env).strip()
+        and not webhook_env_reachable_value(delivery_webhook_env)
     ):
         print(
-            f"iteration_review_issue: iterationReview.delivery webhook env var {delivery_webhook_env} is unset/empty in this environment"
+            "iteration_review_issue: iterationReview.delivery webhook env var "
+            f"{delivery_webhook_env} is unset/empty in this environment; check the persisted "
+            f"secrets store with `tautline secret-status --name {delivery_webhook_env}` before "
+            "treating this as a blocker"
         )
         issues = list(issues) + ["delivery webhook env unset"]
     if issues:
@@ -44542,11 +50694,16 @@ def publish_iteration_review(args: argparse.Namespace) -> int:
     chat_status = "skipped"
     if should_post_chat:
         webhook_env = str(cfg["delivery"].get("webhookEnv") or "")
-        webhook_url = util_module().resolve_env(webhook_env).strip()
+        webhook_url = webhook_env_reachable_value(webhook_env)
         if not webhook_url and args.dry_run:
             webhook_url = "https://example.invalid/google-chat-webhook"
         if not webhook_url:
-            raise SystemExit(f"iteration review Google Chat webhook env var is missing: {webhook_env}")
+            raise SystemExit(
+                f"iteration review Google Chat webhook env var is missing: {webhook_env}. "
+                "Check the persisted secrets store with "
+                f"`tautline secret-status --name {webhook_env}` "
+                "and re-run through the lane env before treating this as a blocker."
+            )
         if not webhook_url.startswith("https://"):
             raise SystemExit(f"iteration review Google Chat webhook env var must contain an https URL: {webhook_env}")
         post_iteration_review_google_chat(webhook_url, iteration_review_chat_payload(record, page_url), dry_run=args.dry_run)
@@ -44818,10 +50975,12 @@ def milestone_update_completion_blocker(data: dict, target: Path, milestone: dic
     webhook_env = str(cfg.get("webhookEnv") or "")
     if not webhook_env:
         return "milestoneUpdate is enabled but webhookEnv is blank; fix the project adapter before completing the milestone"
-    if not util_module().resolve_env(webhook_env).strip():
+    if not webhook_env_reachable_value(webhook_env):
         return (
             f"milestone update Google Chat webhook env var is missing: {webhook_env}. "
-            "Set it in the lane environment before marking the milestone complete."
+            "Check the persisted secrets store with "
+            f"`tautline secret-status --name {webhook_env}` "
+            "and re-run through the lane env before treating this as a blocker."
         )
     title = str(milestone.get("title") or f"milestone {milestone.get('index')}").strip()
     return (
@@ -44840,9 +50999,12 @@ def print_milestone_update_status(data: dict, target: Path) -> list[str]:
     if cfg["enabled"] and not webhook_env:
         issues.append("milestoneUpdate.enabled is true but webhookEnv is blank")
     elif cfg["enabled"]:
-        webhook_status = "set" if util_module().resolve_env(webhook_env).strip() else "missing"
+        webhook_status = "set" if webhook_env_reachable_value(webhook_env) else "missing"
         if webhook_status == "missing":
-            issues.append(f"milestoneUpdate webhook env var is missing: {webhook_env}")
+            issues.append(
+                f"milestoneUpdate webhook env var is missing: {webhook_env}; check the "
+                f"persisted secrets store with `tautline secret-status --name {webhook_env}`"
+            )
     print(f"milestone_update: enabled={str(cfg['enabled']).lower()}")
     print(f"milestone_update_trigger: {cfg['trigger']}")
     print(f"milestone_update_provider: {cfg['provider']}")
@@ -45035,9 +51197,23 @@ def publish_release_update(args: argparse.Namespace) -> int:
     # rehearsal too keeps the operator from being told the run is fine, then blocked for real.
     require_dev_checkout("publish-release-update")
     versions = release_update_versions(args)
-    webhook_url = str(args.webhook_url or "").strip() or env_value_with_user_config_fallback(args.webhook_env)
+    if not re.fullmatch(r"[A-Z_][A-Z0-9_]*", str(args.webhook_env or "")):
+        # Rejected HERE rather than downstream: this name is interpolated into a refusal that names
+        # `tautline secret-status --name <it>` as a runnable remedy, and the probe validates its own
+        # argument. An unvalidated name would ship a remedy that refuses when run as printed.
+        raise SystemExit(
+            f"--webhook-env must be an UPPER_CASE environment variable name: {args.webhook_env!r}"
+        )
+    webhook_url = str(args.webhook_url or "").strip() or webhook_env_reachable_value(
+        args.webhook_env
+    )
     if not webhook_url and not args.dry_run:
-        raise SystemExit(f"release update Google Chat webhook env var is missing: {args.webhook_env}")
+        raise SystemExit(
+            f"release update Google Chat webhook env var is missing: {args.webhook_env}. "
+            "Check the persisted secrets store with "
+            f"`tautline secret-status --name {args.webhook_env}` "
+            "and re-run through the lane env before treating this as a blocker."
+        )
     if webhook_url and not webhook_url.startswith("https://"):
         raise SystemExit("release update Google Chat webhook URL must start with https://")
     one_off_webhook = bool(str(args.webhook_url or "").strip())
@@ -45109,7 +51285,9 @@ def publish_milestone_update(args: argparse.Namespace) -> int:
         print("milestone_update_chat_posted: already_sent")
         return 0
     webhook_env = str(cfg.get("webhookEnv") or "")
-    webhook_url = chat_module().google_chat_webhook_url("milestone update", webhook_env, dry_run=args.dry_run, environ=os.environ)
+    webhook_url = chat_module().google_chat_webhook_url(
+        "milestone update", webhook_env, dry_run=args.dry_run, value=webhook_env_reachable_value(webhook_env)
+    )
     post_google_chat_webhook("milestone_update", webhook_url, milestone_update_payload(data, milestone, content), dry_run=args.dry_run)
     if not args.dry_run:
         chat_module().milestone_update_write_marker(
@@ -45169,7 +51347,9 @@ def publish_product_note(args: argparse.Namespace) -> int:
             print(f"product_note_validation_error: {error}", file=sys.stderr)
         return 1
     webhook_env = str(cfg.get("webhookEnv") or "")
-    webhook_url = chat_module().google_chat_webhook_url("product note", webhook_env, dry_run=args.dry_run, environ=os.environ)
+    webhook_url = chat_module().google_chat_webhook_url(
+        "product note", webhook_env, dry_run=args.dry_run, value=webhook_env_reachable_value(webhook_env)
+    )
     post_google_chat_webhook("product_note", webhook_url, product_note_payload(data, title, content), dry_run=args.dry_run)
     print(f"product_note: {slugify(title, fallback='note')}")
     print(f"product_note_chat_space: {cfg.get('chatSpace')}")
@@ -45291,9 +51471,13 @@ def print_deployment_notification_status(data: dict, target: Path) -> list[str]:
     if cfg["enabled"] and not webhook_env:
         issues.append("deploymentNotification.enabled is true but no webhookEnv is configured or reusable from iterationReview.delivery")
     elif cfg["enabled"]:
-        webhook_status = "set" if util_module().resolve_env(webhook_env).strip() else "missing"
+        webhook_status = "set" if webhook_env_reachable_value(webhook_env) else "missing"
         if webhook_status == "missing":
-            issues.append(f"deployment notification Google Chat webhook env var is missing: {webhook_env}")
+            issues.append(
+                f"deployment notification Google Chat webhook env var is missing: {webhook_env}; "
+                "check the persisted secrets store with "
+                f"`tautline secret-status --name {webhook_env}`"
+            )
     pipeline = cfg.get("pipeline") or {}
     pipeline_issues = deployment_notification_pipeline_issues(data, target)
     issues.extend(pipeline_issues)
@@ -45489,7 +51673,9 @@ def publish_deploy_ready_update(args: argparse.Namespace) -> int:
             print("deployment_notification_chat_posted: already_sent")
             return 0
     webhook_env = deployment_notification_effective_webhook_env(data)
-    webhook_url = deploy_module().deployment_notification_webhook_url(webhook_env, dry_run=args.dry_run, environ=os.environ)
+    webhook_url = deploy_module().deployment_notification_webhook_url(
+        webhook_env, dry_run=args.dry_run, value=webhook_env_reachable_value(webhook_env)
+    )
     payload = deployment_notification_payload(
         data,
         environment=environment,
@@ -48187,6 +54373,15 @@ def goal_plan_readiness(data: dict, target: Path, path: Path) -> tuple[str, list
         errors, _plan_path, _manifest_path = plan_finalization_precheck_errors(data, target, path)
     except SystemExit as exc:
         errors = [str(exc)]
+    else:
+        # Codex R1 P1: a THIRD consumer of the shared precheck core. Without this, a plan
+        # missing its goal prompt under `block` enforcement could be reported `execution-ready`
+        # here while the standalone precheck verb refused the same plan.
+        std_cfg = plan_authoring_module().normalize_planning_authoring_standard(data)
+        goal_prompt_errors, _goal_prompt_warnings = plan_finalization_goal_prompt_report(
+            data, target, _plan_path, std_cfg
+        )
+        errors = list(errors) + goal_prompt_errors
     if not errors:
         return "execution-ready", []
     lowered = " | ".join(errors).lower()
@@ -49016,6 +55211,17 @@ def goal_assignment(args: argparse.Namespace) -> int:
 
     plan_text = plan_path.read_text(encoding="utf-8", errors="replace")
     milestones = module.plan_assignment_milestones(plan_text)
+    # The operator asked for a goal focused on acceptance criteria and the composer stated only
+    # the adapter's definition of done, so every goal read the same regardless of which plan it
+    # came from. The plan's own bar leads the clause; the definition-of-done floor stays behind
+    # it. A plan with no acceptance section yields none and composes with the floor alone.
+    # The adapter's own acceptance headings, not a second hardcoded list: `planAcceptance`
+    # already tells plan finalization which section holds this project's criteria, and a
+    # composer that ignored it would report "no acceptance section" for the very section the
+    # finalization gate just graded.
+    ac_headings = (data.get("planAcceptance") or DEFAULT_PLAN_ACCEPTANCE).get("acHeadings")
+    criteria = module.plan_acceptance_criteria(plan_text, ac_headings)
+    criteria_heading = module.plan_acceptance_criteria_heading(plan_text, ac_headings)
     # Batch 2026-08-11 B7 T4.1: the composed clause states the EFFECTIVE enabled condition set,
     # not a second hardcoded bar. A fixed sentence would keep demanding a PR from a project
     # that has disabled `pr_handed_off` for a no-PR workflow -- a generated goal contradicting
@@ -49027,6 +55233,7 @@ def goal_assignment(args: argparse.Namespace) -> int:
             title=goal_plan_title(plan_path),
             plan_ref=plan_rel or str(plan_path),
             milestones=milestones,
+            criteria=criteria,
             # Compose to the AUTHORING ceiling, not the delivered cap: a goal composed right up
             # to the host limit fails its own checker one line later, and the reserve exists to
             # absorb indentation a renderer adds between here and the paste.
@@ -49074,6 +55281,23 @@ def goal_assignment(args: argparse.Namespace) -> int:
         f"{meta['milestones_included']} of {meta['milestones_total']} included"
         + (f"; {meta['milestones_omitted']} omitted to fit" if meta["milestones_omitted"] else "")
         + (f"; {meta['milestones_shortened']} shortened" if meta["milestones_shortened"] else "")
+    )
+    # Reported for the same reason the milestone line is: a criterion the budget dropped is
+    # named as a count here and in the goal itself, never silently absent.
+    #
+    # The SOURCE is named alongside the count because `0 of 0` alone is two different facts
+    # wearing one string: a plan that names no criteria, and a plan whose section this parser
+    # could not read. The second wants someone to look; the first does not.
+    if criteria_heading:
+        source = f"read from `{criteria_heading}`"
+    else:
+        source = "no acceptance-criteria section found in the plan; the generic bar applies"
+    print(
+        "goal_assignment_acceptance_criteria: "
+        f"{meta['criteria_included']} of {meta['criteria_total']} included"
+        + (f"; {meta['criteria_omitted']} summarised by count" if meta["criteria_omitted"] else "")
+        + (f"; {meta['criteria_shortened']} shortened" if meta["criteria_shortened"] else "")
+        + f" ({source})"
     )
     # A delimited block, NOT a `goal_assignment: <text>` label. char_count certifies the goal
     # text alone, so a labelled line invites pasting the prefix too and can push a certified
@@ -51252,6 +57476,32 @@ CLOSING_KEYWORD_SINGLE_RE = re.compile(
 )
 
 
+# The scope is an ISSUE NUMBER only when it is bare digits or an explicitly qualified reference.
+# Anything dotted is not: `release(0.75.0): ...` is this repository's own release-PR title shape,
+# and reading its version as issue #0.75.0 would bind every release PR to an issue that does not
+# exist. A word scope (`feat(board):`) is likewise not a reference.
+def closing_reference_checks_apply(data: dict) -> bool:
+    """Whether closing-reference enforcement applies to this repository at all. Item 101 T-B.
+
+    ONE reader for a fact BOTH boundaries need, because they answered it differently and the
+    disagreement had a measured cost. The prepush side sits inside a verb that early-returns when
+    no provider or tracker is enabled; `merge_command_closing_refs` had no such guard at all, so
+    the merge boundary demanded closing keywords from repositories that have no issue backlog to
+    reference. That is what drove this framework's own lanes to satisfy the gate with `Resolves #N`
+    against unrelated merged PRs -- rule 4's harm manufactured by a blocking gate.
+
+    ISSUE-BACKED, not merely `enabled`: the generated adapter renders the PR-reference contract
+    only when an enabled provider also carries `owner` and `projectNumber` (see `render_adapter`),
+    so enforcing on `enabled` alone would enforce an obligation the adapter deliberately withheld
+    from the very repo being checked. The predicate and the renderer answer the same question, so
+    they read the same fields.
+    """
+    for config in (goal_tracker_config(data), backlog_provider_config(data)):
+        if config.get("enabled") and config.get("owner") and config.get("projectNumber"):
+            return True
+    return False
+
+
 def closing_reference_exemption(data: dict, target: Path) -> str:
     """The lane's standing reason a PR body need not bind an issue, or "" if it has none.
 
@@ -51313,6 +57563,9 @@ def outgoing_pr_closing_ref_issues(data: dict, target: Path, branch: str) -> lis
         not branch
         or branch in adapter_base_branch_names(data, target)
         or shutil.which("gh") is None
+        # Item 101 T-B: the same issue-backed question the merge boundary now asks, asked here
+        # through the same reader rather than inferred from the enclosing verb's own early return.
+        or not closing_reference_checks_apply(data)
     ):
         return []
     code, payload, _ = command_json(
@@ -52767,6 +59020,157 @@ def remediation_ledger_gap(cfg: dict, target: Path | None) -> str:
     )
 
 
+def go_live_profile_active(data: dict) -> bool:
+    """Has this lane opted in to the go-live profile?
+
+    Deliberately strict about the shape: a non-object block or a misspelled profile value is NOT an
+    active profile, so this never reports an opt-in that `go_live_posture_issues` is about to refuse
+    as malformed. It answers "is this lane held to the six gates", nothing more.
+    """
+    raw = data.get("goLiveReadiness")
+    if not isinstance(raw, dict):
+        return False
+    return raw.get("profile") == "live-tenant"
+
+
+def go_live_posture_issues(data: dict, rows: list[dict]) -> tuple[list[str], list[str]]:
+    """Returns ``(failing_issues, warn_lines)`` for the go-live readiness profile (policy 16a).
+
+    THE ENFORCEMENT BOUNDARY IS THE DESIGN, and it is chosen against a measured constraint rather
+    than out of caution. `methodology-status --target . --fail-on-drift` is the mandated lane-start
+    command rendered into every generated adapter, and `adapters/projects/example-saas.json`
+    already carries a `milestoneClose` deployment target. A drift failure keyed on "milestone-close
+    target without the profile" would therefore red every live-surface lane at session start on
+    upgrade, with no migration -- the adapter-removal 0.6.115 class, where a control shipped faster
+    than the lanes could adopt it and had to be reverted.
+
+    So:
+
+    * A lane that has OPTED IN (`profile: live-tenant`) is held to the gates: every go-live control
+      must be at `block`, or carry a recorded decline with a real reason.
+    * A lane that has NOT opted in gets at most one WARN line, which never enters any `*_failures`
+      list at any flag combination -- including `--strict` and `--fail-on-drift`.
+    * The forcing function is a shipped, tested switch rather than silence: `enforcement: block`
+      turns the un-opted live-surface case into drift. It ships now and defaults to `warn`; flipping
+      the default is a separately released change gated on the adoption checklist.
+
+    A decline is not a loophole: it is a recorded, reviewable statement that this lane has weighed
+    the control and declined it, with a reason long enough to be a reason.
+    """
+    # Normalize BEFORE consuming. Adapter validation deliberately continues with semantic checks
+    # when the installed schema is unreadable, so a malformed value reaches here -- and a truthy
+    # non-object like `goLiveReadiness: "live-tenant"` used to raise TypeError out of
+    # methodology-status. A crash is not an actionable adapter error: it tells the adopter nothing
+    # about which key is wrong, and it takes down the surface that would have told them.
+    raw = data.get("goLiveReadiness")
+    if raw is not None and not isinstance(raw, dict):
+        return (
+            [
+                "goLiveReadiness must be an object with `profile`/`enforcement`/`declines` "
+                f"(found {type(raw).__name__}); fix it in the SOURCE adapter and re-render"
+            ],
+            [],
+        )
+    cfg = {**DEFAULT_GO_LIVE_READINESS, **(raw or {})}
+    raw_declines = cfg.get("declines") or []
+    if not isinstance(raw_declines, list):
+        return (
+            [
+                "goLiveReadiness.declines must be an array of {control, reason} objects "
+                f"(found {type(raw_declines).__name__}); fix it in the SOURCE adapter and re-render"
+            ],
+            [],
+        )
+    # Malformed entries grant NO exemption, and the types are checked rather than coerced.
+    #
+    # Codex R2: `str()` coercion turned any value into a candidate reason, so `reason: 123456789012`
+    # or a list of words cleared the twelve-character floor and silenced a control -- malformed
+    # configuration DISABLING enforcement, which is the fail-open shape this program keeps finding.
+    # The schema requires strings; when the schema is unreadable (a supported fail-open path) this
+    # is the only thing standing between a typo and a disabled gate.
+    declines = {
+        item["control"]: item["reason"].strip()
+        for item in raw_declines
+        if isinstance(item, dict)
+        and isinstance(item.get("control"), str)
+        and isinstance(item.get("reason"), str)
+    }
+    live_surface = any(
+        isinstance(entry, dict) and entry.get("milestoneClose")
+        for entry in (data.get("deploymentTargets") or [])
+    )
+    # Validate the SCALARS against their enums before branching on them, and fail toward the
+    # stricter reading. Codex R3, and it is the third round to find a fail-open in this same
+    # input-validation surface -- so this closes the CLASS rather than the field: a typo such as
+    # `profile: "live_tenant"` used to read as the un-opted case and, with the default warn
+    # enforcement, contributed no failure at all while enforcing none of the go-live controls. An
+    # intended `enforcement: "blocK"` similarly fell back to warning.
+    #
+    # A misspelled opt-in is the most dangerous input here, because the lane that wrote it BELIEVES
+    # it is covered. Refusing it by name is the only answer that leaves the adopter better off than
+    # silence.
+    # An UNKNOWN key is the same defect one level up, and the enum check above cannot see it: a
+    # lane that writes `{"profil": "live-tenant"}` merges cleanly over the defaults, reads as
+    # profile `off`, and is told nothing -- while believing it opted in. Rejecting by name is the
+    # only outcome that leaves that adopter better off than silence, and on the unreadable-schema
+    # path this is again the only thing between a typo and a disabled gate. Codex R2.
+    unknown = sorted(set(raw or {}) - set(DEFAULT_GO_LIVE_READINESS))
+    if unknown:
+        return [
+            f"goLiveReadiness has unknown key(s) {', '.join(repr(k) for k in unknown)}; supported "
+            f"keys are {', '.join(sorted(DEFAULT_GO_LIVE_READINESS))}. A misspelled key reads as "
+            "un-opted and enforces nothing -- fix it in the SOURCE adapter and re-render"
+        ], []
+    invalid: list[str] = []
+    for field, allowed in (("profile", GO_LIVE_PROFILES), ("enforcement", GO_LIVE_ENFORCEMENTS)):
+        value = cfg.get(field)
+        if not isinstance(value, str) or value not in allowed:
+            invalid.append(
+                f"goLiveReadiness.{field} must be one of {'/'.join(allowed)} (found {value!r}); "
+                "fix it in the SOURCE adapter and re-render"
+            )
+    if invalid:
+        return invalid, []
+    if cfg.get("profile") != "live-tenant":
+        declined = declines.get(GO_LIVE_PROFILE_DECLINE_KEY, "")
+        if not live_surface or len(declined) >= GO_LIVE_DECLINE_MIN_REASON:
+            return [], []
+        message = (
+            "milestone-close deployment target without goLiveReadiness.profile live-tenant: "
+            "declare the profile, or record a goLiveReadiness.profile decline with a reason of "
+            f"at least {GO_LIVE_DECLINE_MIN_REASON} characters (policy 16a). Adopt with "
+            "`goLiveReadiness: {\"profile\": \"live-tenant\"}` in the "
+            "SOURCE adapter, then re-render"
+        )
+        if str(cfg.get("enforcement", "warn")) == "block":
+            return [message], []
+        return [], [message]
+    issues: list[str] = []
+    by_control = {row["control"]: row for row in rows}
+    for control in GO_LIVE_CONTROLS:
+        state = (by_control.get(control) or {"state": "off"})["state"]
+        if state == "block":
+            continue
+        if len(declines.get(control, "")) >= GO_LIVE_DECLINE_MIN_REASON:
+            continue
+        # Codex R1 P2: "set it to enforcement block" is a DEAD END for a control that has no
+        # enforcement field -- `criticalJourneys` is an array, and `readiness`/`flakyQuarantine`
+        # report `unreachable` until their paths or sources exist. The posture row already carries
+        # the specific detail and default status output hides it, so the refusal carries it here.
+        # A refusal naming a fix the adopter cannot perform is the dead-end class this program
+        # exists to delete.
+        detail = str((by_control.get(control) or {}).get("detail") or "").strip()
+        remedy = f" ({detail})" if detail else ""
+        issues.append(
+            f"go-live control {control} is {state} with no recorded decline{remedy}: bring the "
+            "control to `block` -- for enforcement-keyed controls set `enforcement: block`, for "
+            "the others populate what the detail names -- or record a "
+            f"`goLiveReadiness.declines` entry naming {control} with a reason of at least "
+            f"{GO_LIVE_DECLINE_MIN_REASON} characters (policy 16a)"
+        )
+    return issues, []
+
+
 def control_posture_rows(data: dict, target: Path | None = None) -> list[dict]:
     """One row per known quality control: {control, state, detail}.
 
@@ -52795,11 +59199,27 @@ def control_posture_rows(data: dict, target: Path | None = None) -> list[dict]:
         })
     rows.append(binding_preflight_row(data))
     rc = runtime_config(data)
+    # A registry nothing checks is not a control. Naming the secrets is half the gate; the other
+    # half is the command that asserts them at boot -- with neither command set, this row would
+    # report `block` while nothing on the lane ever verifies a single declared secret, which is the
+    # precise shape the #448 class produced. Treated as `empty` (the missing-INPUT state) rather
+    # than as weak enforcement, because the enforcement string is not what is missing.
+    rc_asserted = bool(rc.get("bootAssertionCommand") or rc.get("secretParityCommand"))
+    if not rc.get("requiredSecrets"):
+        rc_state, rc_detail = "empty", (
+            "no required runtime secrets registered (boot-time secret assertion is unguarded)"
+        )
+    elif not rc_asserted:
+        rc_state, rc_detail = "empty", (
+            "secrets are registered but neither bootAssertionCommand nor secretParityCommand is "
+            "set: nothing asserts them, so the registry records an intention, not a check"
+        )
+    else:
+        rc_state, rc_detail = posture_enforcement_state(rc), ""
     rows.append({
         "control": "runtimeConfig.requiredSecrets",
-        "state": "empty" if not rc.get("requiredSecrets") else posture_enforcement_state(rc),
-        "detail": "no required runtime secrets registered (boot-time secret assertion is unguarded)"
-                  if not rc.get("requiredSecrets") else "",
+        "state": rc_state,
+        "detail": rc_detail,
     })
     journeys = data.get("criticalJourneys") or []
     rows.append({
@@ -54015,6 +60435,12 @@ def merge_command_closing_refs(
     are otherwise green, and silence would make the gate decorative.
     """
     if enforcement == "off" or shutil.which("gh") is None:
+        return 0
+    if not closing_reference_checks_apply(data):
+        # Item 101 T-B, Gap C. This guard did not exist, so a repository with no issue backlog was
+        # still told its PR body had to bind an issue -- and the compliant-looking way out was to
+        # invent a reference, which is the harm rule 4 forbids. The prepush side asks the same
+        # question through the same reader, so one fact keeps one answer.
         return 0
     args = ["gh", "pr", "view"]
     if pr_ref:
@@ -56483,6 +62909,34 @@ def milestone_advance(args: argparse.Namespace) -> int:
     save_milestone_run(data, target, run)
     saved = load_milestone_run(data, target)
     print_milestone_run(saved, path)
+    if args.event == "pr-merged":
+        # T4.2 (item 106 WS4): report cumulative LINEAGE review rounds per merged PR, using the
+        # ledger's own recorded source plan. Advisory reporting only -- a plan reference this
+        # lane cannot resolve (unset, retargeted, outside a configured root) must never block a
+        # merge event that already happened; the milestone transition above already succeeded.
+        try:
+            source_plan_ref = str(saved.get("sourcePlan") or "").strip()
+            if source_plan_ref:
+                lineage_plan_path = paths_module().resolve_plan_reference(
+                    data, target, source_plan_ref
+                )
+                lineage_plan_rel = plan_root_relative_reference(data, target, lineage_plan_path)
+                lineage_report = plan_review_lineage_rounds_for_merge(
+                    data, target, lineage_plan_rel
+                )
+                # Codex R1 P2 (first pass): `--item-index` is a supported way to record
+                # pr-merged, and when used alone (no `--pr`) args.pr is None even though the
+                # selected item already carries the PR recorded at pr-queued time -- so prefer
+                # that. Codex R1 P2 (re-run): an item that never passed through `pr-queued` (or a
+                # legacy item with no stored `pr`) leaves BOTH sources empty; printing `pr=` then
+                # ships a per-PR report nothing can attribute. Omit the line entirely rather than
+                # emit an unattributed one -- this is advisory reporting, not evidence, so a
+                # skipped line is honest where a blank identifier is not.
+                merged_pr = str(item.get("pr") or args.pr or "")
+                if merged_pr:
+                    print(plan_review_lineage_rounds_merge_line(merged_pr, lineage_report))
+        except (ValueError, OSError):
+            pass
     next_action = milestone_next_action_record(saved)["instruction"]
     try_write_event(
         data,
@@ -58182,6 +64636,20 @@ def _register_misc_3(sub) -> None:
     dump_instrumentation_schema_p.add_argument("--output", type=Path, help="Write/check a path other than the default.")
     dump_instrumentation_schema_p.set_defaults(func=dump_instrumentation_schema)
 
+    secret_status_p = sub.add_parser(
+        "secret-status",
+        help=(
+            "Report WHERE a named secret is reachable from (process env, config env, secrets file) "
+            "without printing its value; exit 1 only when it is absent from all three."
+        ),
+    )
+    secret_status_p.add_argument(
+        "--name",
+        required=True,
+        help="UPPER_CASE environment variable name to probe, e.g. STRIPE_API_KEY.",
+    )
+    secret_status_p.set_defaults(func=secret_status)
+
 
 def _register_release_3(sub) -> None:
     cut_release_p = sub.add_parser(
@@ -58349,6 +64817,19 @@ def _register_misc_8(sub) -> None:
     status.add_argument("--project", type=Path)
     status.add_argument("--target", type=Path, default=Path("."))
     status.add_argument("--no-remote", action="store_true")
+    # Codex R1 P2. `lane-start` already carries this flag, and the supported two-step startup runs
+    # lane-start and then `methodology-status --fail-on-drift`. Without the same flag here, a lane
+    # that started successfully under `--allow-non-main` failed the very next required gate -- an
+    # escape that works on one surface and not the next is not an escape.
+    status.add_argument(
+        "--allow-non-main",
+        action="store_true",
+        help=(
+            "Allow a non-release-branch methodology checkout for this run, matching lane-start's "
+            "flag of the same name (one-shot deviation; MINERVIT_METHODOLOGY_ALLOW_NON_MAIN=1 is "
+            "the environment equivalent)."
+        ),
+    )
     status.add_argument(
         "--fail-on-drift",
         action="store_true",
@@ -59578,17 +66059,40 @@ def _register_review_3(sub) -> None:
     plan_record.add_argument("--project", type=Path)
     plan_record.add_argument("--target", type=Path, default=Path("."))
     plan_record.add_argument("--plan", type=Path, required=True)
-    plan_record.add_argument("--log", type=Path, required=True)
+    # Required for an import, absent for a correction; the handler enforces per mode, because
+    # argparse cannot express "required unless --correct".
+    plan_record.add_argument("--log", type=Path)
     plan_record.add_argument("--review-command")
-    plan_record.add_argument("--reviewer", required=True)
+    plan_record.add_argument("--reviewer")
     plan_record.add_argument("--model", default="unknown")
     plan_record.add_argument("--round", dest="review_round", default="R1")
-    plan_record.add_argument("--wrapper-exit-code", type=int, required=True)
-    plan_record.add_argument("--verdict", choices=PLAN_REVIEW_ALL_VERDICTS, required=True)
-    plan_record.add_argument("--unresolved-critical-count", type=int, required=True)
-    plan_record.add_argument("--unresolved-p1-count", type=int, required=True)
+    plan_record.add_argument("--wrapper-exit-code", type=int)
+    plan_record.add_argument("--verdict", choices=PLAN_REVIEW_ALL_VERDICTS)
+    plan_record.add_argument("--unresolved-critical-count", type=int)
+    plan_record.add_argument("--unresolved-p1-count", type=int)
     plan_record.add_argument("--classified-findings-json", help=CLASSIFIED_FINDINGS_PLAN_HELP)
     plan_record.add_argument("--exception-note", help=PLAN_REVIEW_EXCEPTION_NOTE_HELP)
+    plan_record.add_argument(
+        "--correct",
+        metavar="NONCE|baseline",
+        help=(
+            "Append a correction record referencing an existing reviewer-invocation record's "
+            "nonce, or the literal `baseline` -- the only sanctioned amendment to the durable "
+            "per-round plan-review record. Never overwrites or regenerates anything."
+        ),
+    )
+    plan_record.add_argument(
+        "--correction-note",
+        help="Why the correction is needed; recorded verbatim on the correction record.",
+    )
+    plan_record.add_argument(
+        "--raise-prerecord-count-to",
+        type=int,
+        help=(
+            "With `--correct baseline`: raise the member's pre-record spend floor to this "
+            "value. Corrections raise; nothing lowers anything."
+        ),
+    )
     plan_record.set_defaults(func=record_plan_review)
 
     plan_precheck = sub.add_parser("plan-finalization-precheck", help="Check whether a plan passes finalization gates (review manifest, verdict) and print pass/repair pointer.")
@@ -59626,6 +66130,33 @@ def _register_response_guard_3(sub) -> None:
     response_hook = sub.add_parser("response-guard-hook", help="(internal) Stop hook: block the stop when the final message violates response-guard rules.")
     response_hook.set_defaults(func=response_guard_hook)
 
+    aggregate = sub.add_parser(
+        "stop-guard-aggregate",
+        help=(
+            "Measure the AGGREGATE stop-blocking rate over the frozen corpus and compare it with "
+            "the committed baseline (RCA program wave-3 false-positive budget)."
+        ),
+    )
+    aggregate.add_argument("--repo-root", type=Path, default=Path("."))
+    aggregate.add_argument("--json", action="store_true")
+    aggregate.add_argument(
+        "--write-baseline",
+        action="store_true",
+        help=(
+            "Re-stamp the committed baseline from this measurement (a reviewed act, not routine)."
+        ),
+    )
+    aggregate.set_defaults(func=stop_guard_aggregate)
+
+    question_hook = sub.add_parser(
+        "question-guard-hook",
+        help=(
+            "(internal) PreToolUse hook: deny an AskUserQuestion carrying a continue-vs-stop "
+            "direction menu while a goal is unmet."
+        ),
+    )
+    question_hook.set_defaults(func=question_guard_hook)
+
 
 def _register_misc_14(sub) -> None:
     background_hook = sub.add_parser("background-command-hook", help="(internal) Bash hook: block fake shell monitor loops and point to background-run/monitor-status.")
@@ -59657,6 +66188,7 @@ def _register_install_6(sub) -> None:
     hooks.add_argument("--context-rotation-heartbeat-command", default="tautline context-rotation-heartbeat-hook")
     hooks.add_argument("--plan-review-pending-command", default="tautline plan-review-pending-hook")
     hooks.add_argument("--fleet-guard-command", default="tautline fleet-guard-hook")
+    hooks.add_argument("--question-guard-command", default="tautline question-guard-hook")
     hooks.add_argument(
         "--session-start-directive-command", default=SESSION_START_DIRECTIVE_HOOK_COMMAND
     )
@@ -59847,6 +66379,24 @@ def main(argv: list[str] | None = None) -> int:
     _register_publish_4(sub)
 
     raw_argv = list(sys.argv[1:] if argv is None else argv)
+    # Codex R1 P2, and the durable half of the rollback note for item 82. An UNKNOWN subcommand is
+    # an argparse error: it exits 2 before any handler runs, and `dispatch_command`'s `-hook`
+    # fail-open contract is never reached. For an ordinary verb that is correct and loud. For a
+    # HOOK it is dangerous in one specific direction: a PreToolUse hook exiting 2 is a DENY, so a
+    # machine repinned BELOW the release that introduced a hook would have that hook installed in
+    # its settings, invoked by the host, and rejecting every matching tool call -- a rollback that
+    # makes the lane less usable than the version it rolled back from.
+    #
+    # Hooks are the one command family where the host, not a human, chooses the argv, so failing
+    # open is the only safe answer. Scoped to the `-hook` suffix (the same discriminator
+    # `bin/tautline` already uses for the missing-package case) so a mistyped ordinary verb still
+    # fails loudly.
+    if raw_argv and raw_argv[0].endswith("-hook") and raw_argv[0] not in sub.choices:
+        print(
+            f"hook_fail_open: {raw_argv[0]} - not a subcommand of this framework version",
+            file=sys.stderr,
+        )
+        return 0
     if raw_argv and raw_argv[0] == "codex-plan-review":
         args, unknown_args = parser.parse_known_args(raw_argv)
         if unknown_args:

@@ -130,6 +130,26 @@
             "off"
           ],
           "default": "advisory"
+        },
+        "highPrecisionPhraseChecks": {
+          "type": "string",
+          "description": "Mode for the high-precision phrase tier. Defaults to blocking, unlike the standard tier: a check whose false-positive surface is structurally bounded is telemetry-only everywhere under an advisory default. Set to advisory to demote the whole tier for this project.",
+          "enum": [
+            "advisory",
+            "blocking",
+            "off"
+          ],
+          "default": "blocking"
+        },
+        "questionGuard": {
+          "type": "string",
+          "description": "Mode for the AskUserQuestion PreToolUse guard. Defaults to advisory: the guard evaluates the question payload and logs what it finds without denying. Set to blocking to deny a continue-vs-stop direction menu raised while a goal is unmet -- note that the classifier still has known false positives on operator-owned approval questions, so blocking is an opt-in.",
+          "enum": [
+            "advisory",
+            "blocking",
+            "off"
+          ],
+          "default": "advisory"
         }
       },
       "additionalProperties": false
@@ -386,7 +406,7 @@
           "properties": {
             "enforcement": {
               "type": "string",
-              "description": "off = vanilla superpowers; observe = log-only; advise = warn at finalize; block = reject a plan that is not parallel/tiered/autonomous.",
+              "description": "off = vanilla superpowers; observe = log-only; advise = warn at finalize/precheck (never blocks); block = reject a plan that is not parallel/tiered/autonomous, or that has no goal-prompt artifact shipped alongside it at build-ready.",
               "enum": [
                 "off",
                 "observe",
@@ -2816,6 +2836,41 @@
           }
         }
       }
+    },
+    "goLiveReadiness": {
+      "type": "object",
+      "description": "Go-Live Readiness profile (policy 16a). live-tenant declares this lane serves a customer surface: each go-live control must reach its own satisfying state, or carry an explicitly recorded decline. That state is not uniform -- some controls take enforcement:block, while others are satisfied by populating what they measure (declared critical journeys, quarantine bounds and a scan path, alarm sources and required checks); adding an enforcement key to a control that has none makes the adapter schema-invalid, and methodology-status names the specific state each unsatisfied control needs. A milestone-close deploymentTarget without this profile is a warn today; it becomes drift only when goLiveReadiness.enforcement is set to block.",
+      "properties": {
+        "profile": {
+          "type": "string",
+          "enum": ["off", "live-tenant"],
+          "default": "off"
+        },
+        "enforcement": {
+          "type": "string",
+          "enum": ["warn", "block"],
+          "default": "warn",
+          "description": "Whether a milestone-close deploymentTarget WITHOUT profile live-tenant is drift. Default warn (advisory line only, never fails --fail-on-drift/--strict). Set block once this lane has adopted the profile."
+        },
+        "declines": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "control": {
+                "type": "string",
+                "minLength": 1,
+                "description": "A go-live control key as reported by control_posture (ciTestGate, healthContract, readiness, runtimeConfig.requiredSecrets, criticalJourneys, flakyQuarantine, remediation), or the literal 'goLiveReadiness.profile' to decline adopting the profile itself."
+              },
+              "reason": {"type": "string", "minLength": 12},
+              "decisionRecord": {"type": "string"}
+            },
+            "required": ["control", "reason"],
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
     },
     "healthContract": {
       "type": "object",

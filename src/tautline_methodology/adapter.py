@@ -8,7 +8,30 @@ import re
 from pathlib import Path
 
 
-_ADAPTER_SCHEMA_CACHE: dict[Path, dict] = {}
+# One entry per path, holding the exact bytes it parsed: {path: (raw_bytes, parsed_schema)}.
+#
+# Keying on the path ALONE made the memo outlive the thing it memoized -- a process that read a
+# schema, then saw that path rewritten, kept serving the first read for the rest of its life, and
+# because the fail-open `{}` was cached the same way, a briefly unreadable schema stayed
+# "unavailable" forever. Both are silent, which is the expensive kind of wrong: the caller cannot
+# tell a stale schema from a current one.
+#
+# Two tempting fixes are worse than this one. Folding a stat identity into the KEY invalidates
+# correctly but grows one entry per revision, so a long-lived process watching a busy schema leaks a
+# dict per rewrite. Keeping the identity as the value fixes the growth but still compares a
+# (mtime, size, inode) triple obtained from a SEPARATE stat() -- a rewrite landing between the stat
+# and the open files new bytes under the old identity, which is the staleness this exists to stop.
+#
+# Comparing the bytes has neither problem: it is exact rather than heuristic, needs no clock and no
+# second syscall, and keeps adapter.py a stdlib leaf (no `os` import -- a layering invariant this
+# module is tested for). The memo now saves the PARSE, not the read; for a file this size that is
+# where the cost was anyway.
+#
+# A short CLI run rarely notices any of this. Anything long-lived does -- a hook, a daemon, and the
+# test suite, which is where it surfaced: pytest numbers tmp_path off the directories that already
+# exist, so once per-test reclaim began deleting them, two tests sharing a truncated name prefix
+# reused one absolute path and the second was handed the first one's schema.
+_ADAPTER_SCHEMA_CACHE: dict[Path, tuple[bytes, dict]] = {}
 DEFAULT_RENDER_BUDGET = {"maxGeneratedBytes": 31000, "minGeneratedBytes": 15000, "enforcement": "warn"}
 
 
@@ -19,15 +42,28 @@ def adapter_schema(schema_path: Path) -> dict | None:
     fail-loud typo/contract check layered on top of the CLI's semantic checks;
     if the schema itself cannot be read, callers keep running those deeper
     checks rather than wedging every adapter load.
+
+    The entry remembers the exact bytes it parsed, so a rewrite is a cache MISS rather than a stale
+    hit -- and the comparison needs no mtime, no inode, and no second syscall that a rewrite could
+    slip between. See _ADAPTER_SCHEMA_CACHE for why the cheaper-looking keys are worse.
+
+    Failures are not cached at all. Caching them is what made an unreadable schema permanent, and
+    the retry costs one read of a path that is already broken.
     """
     schema_path = schema_path.resolve()
-    if schema_path not in _ADAPTER_SCHEMA_CACHE:
-        try:
-            with schema_path.open("r", encoding="utf-8") as f:
-                _ADAPTER_SCHEMA_CACHE[schema_path] = json.load(f)
-        except (OSError, json.JSONDecodeError):
-            _ADAPTER_SCHEMA_CACHE[schema_path] = {}
-    return _ADAPTER_SCHEMA_CACHE[schema_path] or None
+    try:
+        raw = schema_path.read_bytes()
+    except OSError:
+        return None
+    cached = _ADAPTER_SCHEMA_CACHE.get(schema_path)
+    if cached is not None and cached[0] == raw:
+        return cached[1] or None
+    try:
+        schema = json.loads(raw)
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return None
+    _ADAPTER_SCHEMA_CACHE[schema_path] = (raw, schema)
+    return schema or None
 
 
 def schema_type_matches(value: object, type_name: str) -> bool:

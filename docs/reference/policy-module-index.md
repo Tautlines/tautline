@@ -38,6 +38,7 @@ single-file surface for existing consumers while the source policy stays modular
 | [14-technical-stack-and-platform-defaults](../../methodology/policy/14-technical-stack-and-platform-defaults.md) | Adapter-owned stack policy, cloud-provider defaults, AWS credential path, and deployment platform boundaries. |
 | [15-tdd-and-behavior-specs](../../methodology/policy/15-tdd-and-behavior-specs.md) | TDD requirements, behavior-spec source materials, acceptance coverage, and user-facing behavior tests. |
 | [16-early-warning-smoke](../../methodology/policy/16-early-warning-smoke.md) | Early main-health smoke timing, monitor reuse, failure response, and post-merge smoke boundaries. |
+| [16a-go-live-readiness](../../methodology/policy/16a-go-live-readiness.md) | The go-live readiness profile, the six gates a customer-surface lane is held to, and what a recorded decline is. |
 | [17-review-before-push](../../methodology/policy/17-review-before-push.md) | Stage 1/Stage 2 review sequence, review evidence, round budgets, blocker handling, and review-tool supervision. |
 | [18-merge-and-ci](../../methodology/policy/18-merge-and-ci.md) | Main health, branch liveness, pre-push/pre-merge validation, merge queue, auto-merge, and admin-merge boundaries. |
 | [19-demo-and-staging-deployment](../../methodology/policy/19-demo-and-staging-deployment.md) | Adapter-owned deploy targets, standing approval for deploy closeout, and credential/setup blockers. |

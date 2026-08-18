@@ -179,8 +179,14 @@ def test_rebinding_round_allowed_after_voided_run_past_a_bound_manifest(tmp_path
     assert "plan_review_exception: convergence round 4 of 4 - rebinding round after a voided run" in r4.stdout
 
 
-def test_round_past_hard_cap_requires_split(tmp_path):
-    """Round 5 with unresolved blockers: the split is mandatory and is never a question."""
+def test_round_at_hard_cap_releases_into_build(tmp_path):
+    """At the cap the finalize RELEASES (D2); a fifth round is still refused, now toward build.
+
+    This test used to assert the opposite -- R4 exiting 2 and R5 being told the split was
+    mandatory -- and that assertion was the defect written down: a successor plan is a new file
+    path and a new file path is a fresh four-round budget, so the refusal here was the refill
+    instruction. The budget is unchanged; only its exit moved from prose to code.
+    """
     home, adapter_root, target, adapter = _prepare_target(tmp_path)
     assert _run_round(home, adapter_root, target, adapter, "R1", *_blocked(3)).returncode == 0
     assert _run_round(home, adapter_root, target, adapter, "R2", *_blocked(2)).returncode == 0
@@ -189,19 +195,22 @@ def test_round_past_hard_cap_requires_split(tmp_path):
     assert r3.returncode == 0, r3.stdout + r3.stderr
     _mutate_plan(target, "5. Fail to fix the last blocker.\n")
     r4 = _run_round(home, adapter_root, target, adapter, "R4", "--exception-note", NOTE, *_blocked(1))
-    assert r4.returncode == 2, r4.stdout + r4.stderr
+    assert r4.returncode == 0, r4.stdout + r4.stderr
 
     manifest = json.loads(_manifest_path(target).read_text(encoding="utf-8"))
     assert manifest["round"] == "R4"
-    assert manifest["verdict"] == "blocked"
+    assert manifest["verdict"] == "capped-with-open-findings"
+    assert manifest["asserted_verdict"] == "blocked"
 
     _mutate_plan(target, "6. Try to buy a fifth round.\n")
     r5 = _run_round(home, adapter_root, target, adapter, "R5", "--exception-note", NOTE)
 
     assert r5.returncode == 1
     assert "exceeds the hard cap of 4 rounds" in r5.stderr
-    assert "the split is mandatory" in r5.stderr
-    assert "smaller source-of-truth plans" in r5.stderr
+    # The plan moved after the capped manifest was bound, so this lane's bound evidence is stale
+    # and the message is the generic past-cap one -- but it is still a refusal of the ROUND, never
+    # of every exit, and the capped-evidence remedy is asserted on its own lane in
+    # tests/test_plan_review_release_valve.py.
     # Refusal is a directive, never an operator question.
     assert "?" not in r5.stderr
     assert "do not ask the operator" in r5.stderr

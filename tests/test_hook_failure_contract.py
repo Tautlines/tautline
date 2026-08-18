@@ -59,6 +59,13 @@ def test_plugin_hooks_json_registers_required_claude_guards():
     assert _commands_for_event(
         settings, "PreToolUse", matcher="Edit|Write|MultiEdit|NotebookEdit"
     ) == ["tautline fleet-guard-hook"]
+    # Item 82 / RCA 20260701T115759Z: AskUserQuestion BLOCKS the turn waiting for the human, so the
+    # Stop hook may never fire on a forbidden continue-vs-stop menu. Registered HERE because plugin
+    # installs take their hooks from this manifest and would otherwise never receive it -- the same
+    # reasoning as the plan-review block above, and the same failure it prevents.
+    assert _commands_for_event(settings, "PreToolUse", matcher="AskUserQuestion") == [
+        "tautline question-guard-hook"
+    ]
     assert _commands_for_event(settings, "Stop") == [
         "tautline response-guard-hook"
     ]

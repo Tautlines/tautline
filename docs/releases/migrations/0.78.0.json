@@ -1,0 +1,464 @@
+{
+  "behaviorChanges": [
+    "REPORT-ONLY, and stated first because it bounds everything below: `finalize-implementation-review` now reconciles the recorded unresolved counts against the review log the manifest pins and PRINTS any divergence it finds. It does not refuse, so the RCA mechanism becomes VISIBLE where it was invisible, and enforcement is not claimed. The reason is measured: `review_log_verdict_errors` was built for a structured `## Findings` section, where a line mentioning Critical IS a finding, and this path feeds it FREE-FORM reviewer prose, where it is not -- \"The critical retry path is covered by tests.\" and \"This preserves an important invariant.\" both read as blocker evidence. Four review rounds each found another ordinary English sentence that would refuse an honest review, and a gate that refuses honest reviews teaches lanes to record dishonest verdicts.",
+    "The incident this addresses: a round whose log carried 3 Critical and 22 Important findings was finalized at 0 unresolved Critical / 0 unresolved P1, and nothing on the implementation path read the log to notice. The detector is not new -- it has caught exactly this on the PLAN-review path, in both real log formats, hardened over several rounds. It was simply never wired into this consumer.",
+    "The cross-check reads the REVIEWER'S ANSWER, not the raw log. An implementation review log is the whole `codex review` CLI transcript and carries no `## Findings` heading, because that heading is a contract of the plan-review wrapper's prompt. Measured on a real 751,076-byte log: the findings section is 0 characters and the raw fallback is all 751,076. The scope is the codex final-response marker when present, else a `## Findings` section; when neither can be located the check is skipped and says so on stderr rather than refusing.",
+    "New helper family for the successor that will enforce this: `classified_findings_all_blockers_resolved` (every recorded blocker disposed of, not merely one -- the shipped any-one helper is left byte-for-byte alone so the three plan-review call sites are unaffected) and `classified_findings_cover_blocker_classes` (the classification must account for every blocker CLASS the log shows, closing the case where blockers are omitted from the record entirely rather than left unresolved).",
+    "RESIDUAL 1: exact count reconciliation between log and classification is impossible here -- the log formats carry no per-finding identity to count against. That needs the reviewer-side structured findings contract, which is also what enforcement waits on.",
+    "RESIDUAL 2: this scan recognizes Critical/C1/P1/Important, while `finding_counts` and `BLOCKER_SEVERITIES` also classify `P0` as Critical and `High` as P1, so a blocker reported only as `[P0]` or `High` is invisible to it. A widened alias set was written for that gap and REMOVED, because under a bare-word match ordinary reviewer prose -- \"the tests provide high confidence\" -- reads as a P1 finding. Matching `High` safely needs severity POSITIONS rather than word presence, and positive and negative detection must move together; both residuals are filed."
+  ],
+  "deprecatedSurfaces": [
+    {
+      "name": "goal-tracker-next",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-next",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-status",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-status",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-sync",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-sync",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goal-tracker-update",
+      "removeAfter": "1.0.0",
+      "replacement": "backlog-provider-update",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "publish-pending-session-journals",
+      "removeAfter": "1.0.0",
+      "replacement": "publish-instrumentation-record",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "publish-session-journal",
+      "removeAfter": "1.0.0",
+      "replacement": "publish-instrumentation-record",
+      "section": "commands",
+      "status": "deprecated"
+    },
+    {
+      "name": "goalTracker",
+      "removeAfter": "1.0.0",
+      "replacement": "backlogProvider",
+      "section": "adapterKeys",
+      "status": "deprecated"
+    },
+    {
+      "name": "rules-audit",
+      "path": "plugins/tautline-core/skills/rules-audit/SKILL.md",
+      "removeAfter": "1.0.0",
+      "replacement": "framework-intake",
+      "section": "skills",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_CLAUDE_AUTOCOMPACT_PCT",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_CLAUDE_AUTOCOMPACT_PCT",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_CLAUDE_AUTOCOMPACT_REQUIRED",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_CLAUDE_AUTOCOMPACT_REQUIRED",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_GITHUB_CACHE_DIR",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_GITHUB_CACHE_DIR",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_GITHUB_CACHE_READ_MODE",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_GITHUB_CACHE_READ_MODE",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_GITHUB_CACHE_TTL_SECONDS",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_GITHUB_CACHE_TTL_SECONDS",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_GITHUB_COALESCE",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_GITHUB_COALESCE",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_GITHUB_GRAPHQL_LOW_WATERMARK",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_GITHUB_GRAPHQL_LOW_WATERMARK",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_GITHUB_LOCK_STALE_SECONDS",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_GITHUB_LOCK_STALE_SECONDS",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_GITHUB_LOCK_TIMEOUT_SECONDS",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_GITHUB_LOCK_TIMEOUT_SECONDS",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_GITHUB_RATE_GUARD",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_GITHUB_RATE_GUARD",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_GITHUB_RETRY_MAX_SECONDS",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_GITHUB_RETRY_MAX_SECONDS",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_GITHUB_RETRY_MIN_SECONDS",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_GITHUB_RETRY_MIN_SECONDS",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_GITHUB_SERIALIZE",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_GITHUB_SERIALIZE",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_GITHUB_SHARED_SNAPSHOT_SECONDS",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_GITHUB_SHARED_SNAPSHOT_SECONDS",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_GITHUB_TELEMETRY_DIR",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_GITHUB_TELEMETRY_DIR",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_LANE_EPICS",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_LANE_EPICS",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_METHODOLOGY_ADAPTER_ROOT",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_METHODOLOGY_ADAPTER_ROOT",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_METHODOLOGY_ALLOW_FANOUT",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_METHODOLOGY_ALLOW_FANOUT",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_METHODOLOGY_ALLOW_NON_MAIN",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_METHODOLOGY_ALLOW_NON_MAIN",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_METHODOLOGY_AVAILABLE_VERSION",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_METHODOLOGY_AVAILABLE_VERSION",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_METHODOLOGY_CANONICAL_REPO",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_METHODOLOGY_CANONICAL_REPO",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_METHODOLOGY_CLI",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_METHODOLOGY_CLI",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_METHODOLOGY_DISABLE_AUTO_RESCUE",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_METHODOLOGY_DISABLE_AUTO_RESCUE",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_METHODOLOGY_DISABLE_SNAPSHOT_EXEC",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_METHODOLOGY_DISABLE_SNAPSHOT_EXEC",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_METHODOLOGY_RELEASE_GOOGLE_CHAT_WEBHOOK",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_METHODOLOGY_RELEASE_GOOGLE_CHAT_WEBHOOK",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_METHODOLOGY_REPO",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_METHODOLOGY_REPO",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_METHODOLOGY_RESCUE_STATE_DIR",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_METHODOLOGY_RESCUE_STATE_DIR",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_METHODOLOGY_SNAPSHOT_KEEP",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_METHODOLOGY_SNAPSHOT_KEEP",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_METHODOLOGY_SNAPSHOT_PIN_TTL_HOURS",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_METHODOLOGY_SNAPSHOT_PIN_TTL_HOURS",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_METHODOLOGY_SNAPSHOT_STORE",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_METHODOLOGY_SNAPSHOT_STORE",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_METHODOLOGY_SYNC_FRESHNESS_MINUTES",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_METHODOLOGY_SYNC_FRESHNESS_MINUTES",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_METHODOLOGY_TELEMETRY",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_METHODOLOGY_TELEMETRY",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_METHODOLOGY_TELEMETRY_PATH",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_METHODOLOGY_TELEMETRY_PATH",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_METHODOLOGY_UPDATE_PINS",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_METHODOLOGY_UPDATE_PINS",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_METHODOLOGY_UPDATE_POLICY",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_METHODOLOGY_UPDATE_POLICY",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_METHODOLOGY_UPDATE_PROBE",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_METHODOLOGY_UPDATE_PROBE",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_METHODOLOGY_UPDATE_SIGNERS",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_METHODOLOGY_UPDATE_SIGNERS",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_NO_REPAIR_SESSION",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_NO_REPAIR_SESSION",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_PREPUSH_RECORDS_FILE",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_PREPUSH_RECORDS_FILE",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_PUBLIC_RELEASE_PRIVATE_TERMS",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_PUBLIC_RELEASE_PRIVATE_TERMS",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_REAL_CODEX",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_REAL_CODEX",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_RENDERER_KIT_STATE_DIR",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_RENDERER_KIT_STATE_DIR",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "MINERVIT_SHOW_GOAL_PROMPT",
+      "removeAfter": "1.0.0",
+      "replacement": "TAUTLINE_SHOW_GOAL_PROMPT",
+      "section": "env",
+      "status": "deprecated"
+    },
+    {
+      "name": "minervit-methodology",
+      "removeAfter": "1.0.0",
+      "replacement": "tautline",
+      "section": "cli",
+      "status": "deprecated"
+    },
+    {
+      "name": ".minervit-ai-delivery.json",
+      "removeAfter": "1.0.0",
+      "replacement": ".tautline.json",
+      "section": "markers",
+      "status": "deprecated"
+    },
+    {
+      "name": ".minervit/adapter.json",
+      "removeAfter": "1.0.0",
+      "replacement": ".tautline/adapter.json",
+      "section": "markers",
+      "status": "deprecated"
+    },
+    {
+      "name": "~/.config/minervit/methodology.env",
+      "removeAfter": "1.0.0",
+      "replacement": "~/.config/tautline/tautline.env",
+      "section": "markers",
+      "status": "deprecated"
+    },
+    {
+      "name": "minervit/minervit-ai-delivery-methodology",
+      "removeAfter": "1.0.0",
+      "replacement": "tautlines/tautline-dev",
+      "section": "slug",
+      "status": "deprecated"
+    }
+  ],
+  "optionalMigrations": [],
+  "productsTested": [],
+  "requiredMigrations": [
+    {
+      "command": "tautline sync-methodology --target .",
+      "description": "Run this FIRST. The hook's CLI path is baked by whichever install runs install-hooks, so reinstalling from an install that predates 0.49.0 rewrites the hook with the old resolver and reports success.",
+      "id": "sync-the-install-before-reinstalling-hooks",
+      "surface": "framework-install"
+    },
+    {
+      "command": "<methodology_repo>/bin/tautline install-hooks --target .",
+      "description": "Then rewrite the hook FROM THE UPDATED CHECKOUT. The command is path-qualified on purpose: an unqualified `tautline` resolves from PATH, which may be the stale install this migration exists to route around, and run there it rewrites the hook with the OLD resolver and reports success. An adopter lane with no framework checkout uses `tautline install-hooks --target .`, which is safe there because the step above already updated the install that `tautline` resolves to. `lane-start` performs the same rewrite.",
+      "id": "reinstall-hooks-for-the-resolver-order",
+      "surface": "git-hooks"
+    },
+    {
+      "command": "tautline backlog-provider-board-check --target .",
+      "description": "A board larger than the 5000-item read ceiling now REFUSES rather than silently returning a partial page. On 'board read truncated at N of M', narrow backlogProvider.scopeQuery so the read fits. Boards under the ceiling need no action.",
+      "id": "narrow-scope-query-if-a-board-read-refuses",
+      "surface": "board-provider"
+    },
+    {
+      "command": "python3 --version",
+      "description": "Carried forward from 0.36.0: the declared Python floor is 3.12.",
+      "id": "python-312-floor",
+      "surface": "runtime"
+    },
+    {
+      "command": "tautline test-run --target .",
+      "description": "Carried forward from 0.38.0: testEvidence.enforcement defaults to `block`, and a lane with no tautline-test-run/v1 record classifies `missing`.",
+      "id": "record-a-test-run",
+      "surface": "test-evidence"
+    },
+    {
+      "command": "tautline install-hooks --target .",
+      "description": "methodology-status --fail-on-drift requires the fleet-guard-hook PreToolUse entry. Carried forward from 0.17.0; lane-start also repairs it.",
+      "id": "install-fleet-guard-hook",
+      "surface": "claude-hooks"
+    },
+    {
+      "command": "gh auth refresh --hostname github.com -s read:project -s project",
+      "description": "Carried forward from 0.10.3 for lanes updating across it: grant the gh token the GitHub Projects scopes the fail-closed board gates need.",
+      "id": "grant-gh-project-scopes",
+      "surface": "board-provider-auth"
+    },
+    {
+      "command": "tautline install-hooks",
+      "description": "Reinstall hooks so the AskUserQuestion PreToolUse guard is registered: `tautline install-hooks` (settings-managed lanes) or the next `tautline lane-start`, which installs it automatically. Plugin installs pick it up from the refreshed plugin manifest. Until a lane does this the guard is absent, not advisory -- an uninstalled hook reports nothing at all.",
+      "id": "install-question-guard-hook",
+      "surface": "claude-hooks"
+    }
+  ],
+  "rollbackNotes": [
+    "Repinning below 0.78.0 removes the report line and the helper family. No state migration in either direction: no adapter key, no new record, and no file an older version reads.",
+    "WIP-safe in both directions, because the cross-check never refuses: a branch whose recorded counts disagree with its review log finalizes identically before and after this release, and only the printed output differs."
+  ],
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.78.0",
+  "wipSafe": true
+}

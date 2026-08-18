@@ -184,6 +184,89 @@ RESPONSE_GUARD_FORWARD_MOTION_MARKERS = [
 ]
 
 
+# Item 82 / RCA 20260616T005348Z -- announce-and-stop. A final turn that ASSERTS an in-progress or
+# next action instead of taking it. At the Stop seam the turn is ending by definition, so the
+# announced action provably did not happen in this turn.
+#
+# The leading negative lookbehinds carry the "I'm not proceeding until <named blocker>" carve-out;
+# a declared blocker is a legal exit, an announcement is not.
+RESPONSE_GUARD_ANNOUNCE_AND_STOP_RE = re.compile(
+    r"(?<!not )(?<!n't )\b(?:"
+    r"i(?:'m| am)\s+(?:proceeding|starting|beginning|moving)\s+(?:now|next|on(?:to)?)"
+    r"|proceeding\s+now"
+    r"|next[,]?\s+i(?:'ll| will)"
+    r"|i(?:'ll| will)\s+(?:now\s+)?(?:bring|start|begin|draft|write|implement|open|push|run"
+    r"|kick off"
+    r"|pick up|circle back|follow up|move on|come back)"
+    r"|about\s+to\s+(?:start|begin|run|open|push)"
+    r")\b"
+)
+
+
+RESPONSE_GUARD_STANDING_AUTH_OBJECTS = [
+    "break-glass",
+    "break glass",
+    "admin merge",
+    "--admin",
+    "--no-verify",
+    "force push",
+    "bypass the gate",
+    "standing approval",
+]
+
+
+RESPONSE_GUARD_STANDING_AUTH_ASK_RE = re.compile(
+    r"\b(?:authorize|approve|green-?light|sign(?: |-)?off on|want me to|should i|shall i|"
+    r"do you want|your call|need your (?:approval|authorization|sign-?off))\b"
+)
+
+
+RESPONSE_GUARD_NAMED_DEFAULT_NEGATION_RE = re.compile(
+    r"\b(?:no|not|isn't|is not|without|lacks?|there is no)\s*$"
+)
+
+
+RESPONSE_GUARD_NAMED_DEFAULT_MARKERS = [
+    "safe default",
+    "defensible default",
+    "the default is",
+    "my recommendation is",
+    "i recommend",
+    "recommended path",
+    "the safe path is",
+]
+
+
+# Item 82 / RCA 20260701T115759Z -- the objects a continue-vs-stop direction menu is built from.
+# Tuple-free on purpose: this is a compiled regex, not a policy-phrase list, so it stays out of the
+# policy-phrases SSOT without needing a tuple.
+# TWO classes, not one list, and the split is what makes this usable at a blocking seam.
+#
+# Codex R2 P1: counting DISTINCT matched words across the flattened payload was wrong in both
+# directions at once. "Continue now" / "Continue later" yields the single token `continue` and was
+# MISSED -- a real direction menu. "proceed with staging" / "continue with production" yields two
+# tokens and was BLOCKED -- a legitimate credential question. The number of distinct direction words
+# is simply not the property that separates them.
+#
+# What does: a continue-vs-stop menu offers a way to CONTINUE and a way to STOP or DEFER. A domain
+# choice offers two ways to do the same thing, differing by a domain noun. So the options must SPAN
+# both classes.
+QUESTION_GUARD_CONTINUE_OBJECT_RE = re.compile(
+    r"\b(?:keep (?:going|grinding|working)|continue|resume|proceed|carry on|press on)\b"
+)
+
+QUESTION_GUARD_STOP_OBJECT_RE = re.compile(
+    r"\b(?:next session|fresh session|new session|stop(?: here)?|pause|hold off|"
+    r"wrap(?:ping)? up|call it (?:here|a day|a night)|pick (?:this |it )?up later|later|"
+    r"defer|park (?:it|this)|merge (?:it |#?\d+ )?first|come back to it)\b"
+)
+
+QUESTION_GUARD_PROCEED_PHRASING_RE = re.compile(
+    r"how (?:do|would) you want to proceed|what(?:'s| is) next|which (?:path|option)|"
+    r"how should (?:i|we) proceed|where (?:do|should) (?:we|i) go from here"
+)
+
+
 RESPONSE_GUARD_STATUS_REPORT_NEXT_ACTION_MARKERS = [
     "needs drafting",
     "needs to be drafted",
@@ -967,6 +1050,187 @@ def response_has_status_report_as_stop(text: str) -> bool:
     return True
 
 
+def response_has_announce_and_stop(text: str) -> bool:
+    """Final text asserting an in-progress or next action. At the Stop seam this is structurally
+    announce-and-stop: the turn is ending, so by definition no tool call toward the announced
+    action follows (RCA 20260616T005348Z).
+
+    Carve-outs: (1) forward-motion evidence AFTER the last announcement, and (2) a well-formed
+    autonomous yield, which names its own next retry/action by contract.
+
+    The position gate is load-bearing. The incident shape is a summary of COMPLETED prior work
+    followed by an unexecuted announcement, and such summaries are full of forward-motion markers
+    (`committed `, `pushed `, `wrote `). A whole-response marker scan would silence the detector on
+    the exact class it exists to catch. Evidence of prior work is not evidence of motion toward the
+    announced action, so only text after the final announce match counts.
+
+    Residual gap, documented and not hidden: the detector cannot verify that the trailing evidence
+    corresponds to the ANNOUNCED object, so "I'm proceeding now -- committed abc123" passes even
+    when `abc123` predates the turn. Correlating them needs tool-call provenance the Stop hook does
+    not have. This is a deliberate false-negative floor, chosen over false positives at a
+    default-blocking tier.
+    """
+    policy_scan = response_guard_policy_scan_text(text)
+    if not RESPONSE_GUARD_ANNOUNCE_AND_STOP_RE.search(policy_scan):
+        return False
+    if response_looks_like_autonomous_yield(text):
+        return False
+    # Detection AND location must come from ONE string, and it must be the QUOTE-STRIPPED one.
+    #
+    # Codex R2 P2: an earlier version detected on the policy scan but located the last match on the
+    # monitor scan, which keeps blockquotes. So "I'm proceeding now. I wrote the plan.\n> Next I'll
+    # run tests." chose the QUOTED announcement as the final match, and the tail after it held no
+    # evidence -- so the check fired on a turn that had actually done the work. Quoting a guard
+    # refusal or a peer's message is routine in these lanes, and the wave-3 switch would have turned
+    # that into a blocked stop.
+    matches = list(RESPONSE_GUARD_ANNOUNCE_AND_STOP_RE.finditer(policy_scan))
+    if not matches:
+        return True  # detected above but unlocatable: no addressable evidence tail
+    tail = policy_scan[matches[-1].end() :]
+    return not text_contains_any(tail, RESPONSE_GUARD_FORWARD_MOTION_MARKERS)
+
+
+def response_asks_standing_authorization(text: str) -> bool:
+    """An ask-shaped sentence whose object is a break-glass / admin-merge class action.
+
+    Canonical rule: standing approval recorded in a source-of-truth artifact counts once conditions
+    match; do not re-ask because the action is break-glass or admin merge.
+
+    Mechanism is `phrase` and the tier is the STANDARD (advisory) one, deliberately: this predicate
+    cannot see whether a standing approval actually exists, so a hard block would deny a legitimate
+    FIRST-TIME break-glass blocker question. The proximity window (ask verb -> object within 160
+    characters) is the false-positive control.
+    """
+    scan = response_guard_policy_scan_text(text)
+    if not text_contains_any(scan, RESPONSE_GUARD_STANDING_AUTH_OBJECTS):
+        return False
+    for match in RESPONSE_GUARD_STANDING_AUTH_ASK_RE.finditer(scan):
+        window = scan[match.start() : match.start() + 160]
+        if text_contains_any(window, RESPONSE_GUARD_STANDING_AUTH_OBJECTS):
+            return True
+    return False
+
+
+def response_has_self_contradicting_question(turn_text: str, question_text: str) -> bool:
+    """The turn's own prose names a safe/defensible default or a recommendation, and the same turn
+    asks the operator anyway (RCA 20260616T132017Z: "the trivial-fix exemption is the defensible
+    safe default" followed by a three-option AskUserQuestion menu). Recovery: take the named
+    default.
+
+    ADVISORY wherever it is wired. The markers are loose by construction -- "i recommend" matches
+    "I recommend Redis for the cache." next to a genuine credential question -- which is exactly
+    why this predicate never reaches a hard-block seam.
+    """
+    if not question_text.strip():
+        return False
+    scan = response_guard_policy_scan_text(turn_text)
+    for marker in RESPONSE_GUARD_NAMED_DEFAULT_MARKERS:
+        start = scan.find(marker)
+        while start != -1:
+            # "No safe default exists -- every path changes approved scope" is the HONEST turn: it
+            # says a default could not be named, which is the opposite of naming one and then asking
+            # anyway. A bare substring test fires on it and would flag exactly the turn that got the
+            # judgement right. The window is short on purpose -- a negation further away is usually
+            # about something else.
+            preceding = scan[max(0, start - 14) : start]
+            if not RESPONSE_GUARD_NAMED_DEFAULT_NEGATION_RE.search(preceding):
+                return True
+            start = scan.find(marker, start + 1)
+    return False
+
+
+def question_is_continue_vs_stop_menu(question_text: str) -> bool:
+    """True when the text spans BOTH a continue object and a stop/defer object.
+
+    Kept as a text-level predicate for the Stop-seam defence-in-depth path, where only flattened
+    text is available. The PreToolUse hook uses `question_payload_is_direction_menu` instead, which
+    reads the structured options and is strictly more precise -- option boundaries are exactly what
+    flattening destroys.
+    """
+    scan = question_text.lower()
+    has_continue = bool(QUESTION_GUARD_CONTINUE_OBJECT_RE.search(scan))
+    has_stop = bool(QUESTION_GUARD_STOP_OBJECT_RE.search(scan))
+    if has_continue and has_stop:
+        return True
+    return (has_continue or has_stop) and bool(QUESTION_GUARD_PROCEED_PHRASING_RE.search(scan))
+
+
+def question_payload_option_texts(value: object) -> list[str]:
+    """Every option's own text, kept SEPARATE -- one string per option.
+
+    Flattening the payload into one blob is precisely what destroyed the option boundaries the menu
+    rule needs.
+    """
+    texts: list[str] = []
+
+    def walk_question(question: object) -> None:
+        if not isinstance(question, dict):
+            return
+        for option in question.get("options") or []:
+            if isinstance(option, str):
+                texts.append(option)
+            elif isinstance(option, dict):
+                parts = [str(option.get(key) or "") for key in ("label", "description")]
+                joined = " ".join(part for part in parts if part)
+                if joined:
+                    texts.append(joined)
+
+    if isinstance(value, dict):
+        questions = value.get("questions")
+        if isinstance(questions, list):
+            for question in questions:
+                walk_question(question)
+        else:
+            walk_question(value)
+    elif isinstance(value, list):
+        for question in value:
+            walk_question(question)
+    return texts
+
+
+def question_payload_question_texts(value: object) -> list[str]:
+    """The question/header text, separate from the options."""
+    texts: list[str] = []
+    if isinstance(value, dict):
+        questions = value.get("questions")
+        candidates = questions if isinstance(questions, list) else [value]
+    elif isinstance(value, list):
+        candidates = value
+    else:
+        return texts
+    for question in candidates:
+        if isinstance(question, dict):
+            for key in ("question", "header"):
+                text = str(question.get(key) or "")
+                if text:
+                    texts.append(text)
+    return texts
+
+
+def question_payload_is_direction_menu(tool_input: object) -> bool:
+    """True when the structured OPTIONS form a continue-vs-stop menu.
+
+    The rule: the option set must SPAN both classes -- somewhere to continue and somewhere to stop
+    or defer. Two options that both continue, differing only by a domain noun ("proceed with
+    staging" / "continue with production"), are a domain choice, and denying that shape denies the
+    exact true-blocker question the canonical rules tell an agent to ask.
+
+    One direction option plus explicit how-do-you-want-to-proceed phrasing also counts: a lone
+    "keep going" option under that question is the same menu with its alternative left implicit.
+    """
+    options = question_payload_option_texts(tool_input)
+    if not options:
+        return False
+    continues = sum(1 for text in options if QUESTION_GUARD_CONTINUE_OBJECT_RE.search(text.lower()))
+    stops = sum(1 for text in options if QUESTION_GUARD_STOP_OBJECT_RE.search(text.lower()))
+    if continues and stops:
+        return True
+    if not (continues or stops):
+        return False
+    prompt = " ".join(question_payload_question_texts(tool_input)).lower()
+    return bool(QUESTION_GUARD_PROCEED_PHRASING_RE.search(prompt))
+
+
 def response_is_terminal_stop_context(text: str) -> bool:
     scan_text = response_guard_policy_scan_text(text)
     marker_count = sum(1 for marker in RESPONSE_GUARD_TERMINAL_STOP_MARKERS if marker in scan_text)
@@ -1487,6 +1751,12 @@ def response_is_terse_no_information(text: str) -> bool:
             "unchanged",
             "same",
             "blocked",
+            # Item 83 PR2 T2.6. The null-turn RCA's own examples: a turn that reports nothing and
+            # ends. This is the CHEAP phrase backstop the proposal asked for -- the real closure is
+            # the state arming above, which does not care what the turn said.
+            "no response requested",
+            "nothing to do",
+            "done for now",
         ],
     )
 
@@ -1805,6 +2075,47 @@ def response_has_blocked_pr_yield_without_context(text: str) -> bool:
     )
 
 
+# Tuples, not lists, ON PURPOSE: an UPPER_CASE list-of-str constant auto-enters the policy-phrases
+# SSOT. These are structural keys and tool names, not policy phrases, so they stay out of it.
+ASK_USER_QUESTION_TOOL_NAMES = ("askuserquestion", "ask_user_question")
+
+ASK_USER_QUESTION_INPUT_KEYS = (
+    "question",
+    "questions",
+    "header",
+    "options",
+    "label",
+    "description",
+)
+
+
+def flatten_question_tool_input(value: object) -> str:
+    """Flatten an AskUserQuestion-class tool input (the questions/options tree) to scannable text.
+
+    RCA 20260701T115759Z: the forbidden continue-vs-stop menu lived under
+    `input` -> `questions[]` -> `question`/`header`/`options[]` -> `label`/`description`, none of
+    which `flatten_hook_text` ever walked, so the exact pattern the free-text detector would have
+    caught was invisible to every guard.
+    """
+    parts: list[str] = []
+
+    def walk(item: object) -> None:
+        if isinstance(item, str):
+            parts.append(item)
+            return
+        if isinstance(item, list):
+            for child in item:
+                walk(child)
+            return
+        if isinstance(item, dict):
+            for key in ASK_USER_QUESTION_INPUT_KEYS:
+                if key in item:
+                    walk(item[key])
+
+    walk(value)
+    return "\n".join(part for part in parts if part)
+
+
 def flatten_hook_text(value: object) -> str:
     parts: list[str] = []
 
@@ -1822,6 +2133,14 @@ def flatten_hook_text(value: object) -> str:
                 walk(child)
             return
         if isinstance(item, dict):
+            # Targeted, never generic. Adding a plain "input" key to the walk below would pour
+            # every `Write` tool's file body into every Stop-guard scan ("content" is already in
+            # the key list), so the extension is scoped to tool_use blocks named AskUserQuestion.
+            if (
+                str(item.get("type") or "") == "tool_use"
+                and str(item.get("name") or "").lower() in ASK_USER_QUESTION_TOOL_NAMES
+            ):
+                parts.append(flatten_question_tool_input(item.get("input")))
             for key in ["text", "content", "message", "result", "error", "stdout", "stderr"]:
                 if key in item:
                     walk(item[key])

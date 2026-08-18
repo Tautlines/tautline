@@ -105,6 +105,10 @@
       "status": "stable"
     },
     {
+      "name": "goLiveReadiness",
+      "status": "stable"
+    },
+    {
       "name": "goalArtifacts",
       "status": "stable"
     },
@@ -801,6 +805,10 @@
       "status": "stable"
     },
     {
+      "name": "question-guard-hook",
+      "status": "internal"
+    },
+    {
       "name": "readiness-review",
       "status": "stable"
     },
@@ -869,6 +877,10 @@
       "status": "stable"
     },
     {
+      "name": "secret-status",
+      "status": "stable"
+    },
+    {
       "name": "set-framework-channel",
       "status": "stable"
     },
@@ -890,6 +902,10 @@
     },
     {
       "name": "stakeholder-question-status",
+      "status": "stable"
+    },
+    {
+      "name": "stop-guard-aggregate",
       "status": "stable"
     },
     {
@@ -1126,6 +1142,11 @@
       "status": "stable"
     },
     {
+      "name": "methodology/policy/16a-go-live-readiness.md",
+      "path": "methodology/policy/16a-go-live-readiness.md",
+      "status": "stable"
+    },
+    {
       "name": "methodology/policy/17-review-before-push.md",
       "path": "methodology/policy/17-review-before-push.md",
       "status": "stable"
@@ -1219,6 +1240,16 @@
       "name": "methodology/public-contract-manifest.json",
       "path": "methodology/public-contract-manifest.json",
       "status": "stable"
+    },
+    {
+      "name": "methodology/stop-guard/aggregate-baseline.json",
+      "path": "methodology/stop-guard/aggregate-baseline.json",
+      "status": "experimental"
+    },
+    {
+      "name": "methodology/stop-guard/corpus.jsonl",
+      "path": "methodology/stop-guard/corpus.jsonl",
+      "status": "experimental"
     }
   ],
   "schema": "minervit-public-contract-manifest/v1",
@@ -1387,5 +1418,5 @@
       "status": "stable"
     }
   ],
-  "version": "0.75.0"
+  "version": "0.111.0"
 }

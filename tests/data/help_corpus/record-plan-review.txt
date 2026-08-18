@@ -1,15 +1,17 @@
 usage: tautline record-plan-review [-h] [--project PROJECT] [--target TARGET]
-                                   --plan PLAN --log LOG
+                                   --plan PLAN [--log LOG]
                                    [--review-command REVIEW_COMMAND]
-                                   --reviewer REVIEWER [--model MODEL]
-                                   [--round REVIEW_ROUND] --wrapper-exit-code
-                                   WRAPPER_EXIT_CODE --verdict
-                                   {blocked,clean,clean-with-deferrals}
-                                   --unresolved-critical-count
-                                   UNRESOLVED_CRITICAL_COUNT
-                                   --unresolved-p1-count UNRESOLVED_P1_COUNT
+                                   [--reviewer REVIEWER] [--model MODEL]
+                                   [--round REVIEW_ROUND]
+                                   [--wrapper-exit-code WRAPPER_EXIT_CODE]
+                                   [--verdict {blocked,clean,clean-with-deferrals}]
+                                   [--unresolved-critical-count UNRESOLVED_CRITICAL_COUNT]
+                                   [--unresolved-p1-count UNRESOLVED_P1_COUNT]
                                    [--classified-findings-json CLASSIFIED_FINDINGS_JSON]
                                    [--exception-note EXCEPTION_NOTE]
+                                   [--correct NONCE|baseline]
+                                   [--correction-note CORRECTION_NOTE]
+                                   [--raise-prerecord-count-to RAISE_PRERECORD_COUNT_TO]
 
 options:
   -h, --help            show this help message and exit
@@ -40,3 +42,16 @@ options:
                         record any round past the convergence target; rounds
                         3-4 are self-authorized and never need operator
                         approval.
+  --correct NONCE|baseline
+                        Append a correction record referencing an existing
+                        reviewer-invocation record's nonce, or the literal
+                        `baseline` -- the only sanctioned amendment to the
+                        durable per-round plan-review record. Never overwrites
+                        or regenerates anything.
+  --correction-note CORRECTION_NOTE
+                        Why the correction is needed; recorded verbatim on the
+                        correction record.
+  --raise-prerecord-count-to RAISE_PRERECORD_COUNT_TO
+                        With `--correct baseline`: raise the member's pre-
+                        record spend floor to this value. Corrections raise;
+                        nothing lowers anything.

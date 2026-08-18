@@ -191,7 +191,11 @@ STABLE_MONITOR_RESPONSE_GUARD_AND_RCA_MARKERS = (
     "Heartbeat/poll cadence must be concrete and no longer than 10 minutes",
     "arm `ScheduleWakeup` or an equivalent host self-wakeup at the same cadence",
     "Claude Stop response guards and tool-rejection hooks are mandatory",
-    "response guard is active only when the lane has an active goal ledger and the current Claude transcript or hook payload proves a live goal session",
+    # Item 83 PR2 REPLACED this marker rather than adding beside it: the old sentence said the
+    # guard is active only with a live goal ledger, which is the hole this release closes. A marker
+    # test that still demanded it would pin the policy to the behaviour that caused the incident.
+    "STATE gates arm from any pending-work source",
+    "only the legacy PHRASE checks stay scoped to a proven live goal session",
     "terminal continuity omission",
     "Strict monitor checks require a verified PID/process identity",
     "Terminal monitor states are success, failure, cancelled",
@@ -562,7 +566,19 @@ def test_lane_lifecycle_policy_module_stays_concise():
 def test_autonomy_and_status_policy_module_stays_concise():
     words = AUTONOMY_AND_STATUS_POLICY_MODULE.read_text(encoding="utf-8").split()
 
-    assert len(words) <= 377
+    # Raised 377 -> 399 (+22 words, THIS lane's own measured delta) for item 82's
+    # encoding-independence clause on the pick-path prohibition. The rule already forbade the
+    # pattern; what it never said is that the pattern is not made of prose. The whole cluster is
+    # policy describing enforcement that did not exist, and an agent reading only this bullet could
+    # honestly conclude a structured question tool was outside it -- which is exactly the reasoning
+    # RCA 20260701T115759Z records. Operational detail (the check ids, their recovery actions, the
+    # advisory-vs-blocking split, the demotion knob) went to the stop-guard-evasion-shapes skill
+    # reference, which costs no ratchet and no rendered-adapter corridor.
+    # Raised 399 -> 437 (+38 words, measured) for item 83 PR1's goal-clear hand-back: a hook that
+    # auto-clears on success must, in the same turn, start the next queue item or enumerate pending
+    # work and say what it found. The incident this closes is a cleared goal reading as an idle
+    # state while work remained on record.
+    assert len(words) <= 437
 
 
 def test_delivery_summaries_policy_module_stays_concise():
@@ -582,7 +598,12 @@ def test_delivery_summaries_policy_module_stays_concise():
     # sent before the merge, and a merge to a non-default base does not close anything either, so
     # an unqualified "cites the auto-closed issue" would have this module licensing a completion
     # claim for a closure that has not happened -- against the module's own proof-of-done rule.
-    assert len(words) <= 549
+    #
+    # Raised 549 -> 563 (+14 words, THIS lane's own measured delta) for item 82: the bullet already
+    # said "start that action in the same turn", and the added clause names the check that now
+    # enforces it and states the distinction the check turns on -- announcing is not starting. A
+    # control lanes cannot read about is half a control.
+    assert len(words) <= 563
 
 
 def test_canonical_rules_require_key_with_title_reference():
@@ -666,7 +687,22 @@ def test_unmanaged_project_bootstrap_policy_module_stays_concise():
 def test_background_work_policy_module_stays_concise():
     words = (ROOT / "methodology" / "policy" / "20-background-work.md").read_text(encoding="utf-8").split()
 
-    assert len(words) <= 375
+    # Raised 375 -> 484 (+109 words, THIS lane's own measured delta) for item 83 PR1's four
+    # monitor-lifecycle rules and the re-invocation scoping sentence. These are the RCA's own
+    # controls, and each is one line: arming and stopping are one obligation, prefer the bounded
+    # form, anchor filters on producer-emitted markers, and harness-tracked work re-invokes while a
+    # detached run does not. The REASONING for each -- why an unbounded follow cannot report
+    # completion, why a bare-word filter reports the trouble it is reading about -- went into the
+    # background-monitoring skill reference, which costs no ratchet and no rendered-adapter
+    # corridor and loads on demand. A rule an agent meets and cannot read about is half a control;
+    # a rule whose full argument sits in every lane's startup context forever is a tax.
+    # Raised 484 -> 567 (+83 words, THIS lane's own measured delta) for item 83 PR2: the
+    # guard-activation sentence had to be REPLACED rather than trimmed -- it stated the opposite of
+    # what ships after this release -- plus the yield rule and the null-turn invariant. The
+    # reasoning stays in the background-monitoring skill reference, as PR1's rules do; what lands
+    # here is only what the policy must ASSERT, because policy contradicting shipped behaviour is
+    # the exact defect this item closes.
+    assert len(words) <= 567
 
 
 def test_session_journals_policy_module_stays_concise():
@@ -738,3 +774,83 @@ def test_migrated_canonical_markers_stay_out_of_validate_sh():
         and any(marker in line for marker in migrated_markers)
     ]
     assert offenders == []
+
+
+# --- the published rule must describe the gate that actually ships (item 101 T-E) ---------------
+#
+# PR-1 (#542) published the four-rule contract and, honestly at the time, recorded that the gate
+# did not yet enforce it. This PR makes part of that record false: the checks are now conditional
+# on an issue-backed backlog. Canonical policy and the skill reference it points at are the two
+# places an agent is SENT to read, so leaving either stale directs agents around a defect that was
+# just fixed -- the framework's own authority lying about its own behavior.
+#
+# These assert the REPLACEMENT positively. An absence-only test ("the old sentence is gone") is
+# satisfied by deleting the sentence and publishing nothing in its place.
+
+BOARD_CURRENCY_POLICY_MODULE = ROOT / "methodology" / "policy" / "10b-board-currency.md"
+BOARD_ITEM_UPDATES_REFERENCE = (
+    ROOT
+    / "plugins"
+    / "tautline-core"
+    / "skills"
+    / "board-item-updates"
+    / "references"
+    / "board-item-updates-policy.md"
+)
+
+
+def test_board_currency_policy_states_the_current_gate_behavior():
+    """The conditionality is the part that IS aligned, and it has to be stated where the rule is."""
+    text = BOARD_CURRENCY_POLICY_MODULE.read_text(encoding="utf-8")
+
+    assert "runs only where the backlog is issue-backed" in text
+    assert "`owner` and `projectNumber`" in text
+    # And the part that is NOT aligned stays declared, because a rule that overstates its own
+    # enforcement is how a lane learns the gate is decorative.
+    assert "that demand is unaligned" in text
+    assert "is not yet aligned with this contract" not in text
+
+
+def test_board_currency_policy_does_not_promise_pending_record_holds_the_claim():
+    """The pending-closeout record is lane-local and overwritable, so it cannot hold a settlement
+    claim across a promotion. Promising that it does is a guarantee nothing implements."""
+    text = BOARD_CURRENCY_POLICY_MODULE.read_text(encoding="utf-8")
+
+    assert "pending-closeout record holds the claim" not in text
+    assert "nothing tracks the claim until then" in text
+
+
+def test_board_item_updates_skill_reference_agrees_with_canonical_policy():
+    """The skill reference is the DETAILED surface generated adapters send agents to. If it keeps
+    the old claim, the correction above is contradicted at exactly the place agents are told to
+    look -- which is worse than not correcting it at all."""
+    text = BOARD_ITEM_UPDATES_REFERENCE.read_text(encoding="utf-8")
+
+    assert "The closing-reference gate is not yet aligned with this contract." not in text
+    assert "runs only where the backlog is actually issue-backed" in text
+    assert "`owner` and `projectNumber`" in text
+    # The remaining gap stays named here too, so the two surfaces cannot drift apart silently.
+    assert "What is NOT yet aligned" in text
+
+
+def test_migration_report_states_the_remaining_enforcement_gap(cli):
+    """The migration report is the adopter-facing disclosure. This release enforces PART of the
+    contract, and a report that lists only what it DID do lets an adopter believe the rest is
+    covered -- so the gap is stated positively and asserted here."""
+    report = cli.release_migration_report_data("0.76.0")
+    changes = " ".join(report["behaviorChanges"])
+
+    assert "NOT COVERED" in changes
+    # Each rule that remains unenforced is named, not gestured at.
+    assert "rule 1" in changes and "rule 3" in changes and "rule 4" in changes
+    assert "rule 2" in changes
+    # And the release must NOT claim WIP-safety it does not have. Recognizing more code forms is
+    # itself a behavior change: a body whose only closing reference sat inside a ~~~ fence or a
+    # double-backtick span was accepted at 0.75.0 and is refused now, because the blanker could
+    # not previously see those forms. An earlier version of this test asserted wipSafe is True and
+    # so pinned the wrong claim in place; Stage 2 R2 caught it.
+    assert report["wipSafe"] is False
+    assert "NOT WIP-SAFE" in changes
+    # The disclosure has to name the body shape that breaks and how to fix it, or it is a warning
+    # nobody can act on.
+    assert "double-backtick" in changes and "missing_closing_ref" in changes

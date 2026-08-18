@@ -135,9 +135,20 @@ promotion. Two consequences:
 
 ### The enforcement gap, and the wrong way around it
 
-The closing-reference gate is not yet aligned with this contract. It still
-demands a closing keyword from every non-exempt PR body, so an **advancing** PR
-that correctly carries none can be refused with `missing_closing_ref`.
+The closing-reference gate is only partly aligned with this contract, and the
+part that is aligned is the part about WHICH repositories it governs.
+
+It now runs only where the backlog is actually issue-backed -- an enabled
+provider or tracker that also carries `owner` and `projectNumber`, the same
+three fields that decide whether your generated adapter states this contract at
+all. A repository without that pin is no longer asked to bind an issue it does
+not have, at either the pre-push or the merge boundary.
+
+What is NOT yet aligned: where the gate DOES apply, it still demands a closing
+keyword from every non-exempt PR body, so an **advancing** PR that correctly
+carries none can still be refused with `missing_closing_ref`. Making the demand
+conditional on the PR being bound is tracked as its own work, together with the
+title check and the advisories.
 
 The sanctioned resolutions are to bind the item, or to use an exemption that is
 actually true of the lane: `allowRepoOnlyGoals` for work that legitimately has

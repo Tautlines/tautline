@@ -10,6 +10,8 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+from .chat import webhook_env_value
+
 from .paths import configured_path as default_configured_path
 
 
@@ -428,14 +430,18 @@ def deployment_notification_identity_hash(
     return hashlib.sha256(identity.encode("utf-8")).hexdigest()
 
 
-def deployment_notification_webhook_url(webhook_env: str, *, dry_run: bool, environ=None) -> str:
-    if environ is None:
-        environ = os.environ
-    webhook_url = environ.get(webhook_env, "").strip()
+def deployment_notification_webhook_url(
+    webhook_env: str, *, dry_run: bool, environ=None, value: str | None = None
+) -> str:
+    webhook_url = value.strip() if value else webhook_env_value(webhook_env, environ)
     if not webhook_url and dry_run:
         webhook_url = "https://example.invalid/google-chat-webhook"
     if not webhook_url:
-        raise SystemExit(f"deployment notification Google Chat webhook env var is missing: {webhook_env}")
+        raise SystemExit(
+            f"deployment notification Google Chat webhook env var is missing: {webhook_env}. "
+            f"Check the persisted secrets store with `tautline secret-status --name {webhook_env}` "
+            "and re-run through the lane env before treating this as a blocker."
+        )
     if not webhook_url.startswith("https://"):
         raise SystemExit(f"deployment notification Google Chat webhook env var must contain an https URL: {webhook_env}")
     return webhook_url

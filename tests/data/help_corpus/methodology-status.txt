@@ -1,12 +1,18 @@
 usage: tautline methodology-status [-h] [--project PROJECT] [--target TARGET]
-                                   [--no-remote] [--fail-on-drift] [--strict]
-                                   [--posture] [--enter-remediation-on-debt]
+                                   [--no-remote] [--allow-non-main]
+                                   [--fail-on-drift] [--strict] [--posture]
+                                   [--enter-remediation-on-debt]
 
 options:
   -h, --help            show this help message and exit
   --project PROJECT
   --target TARGET
   --no-remote
+  --allow-non-main      Allow a non-release-branch methodology checkout for
+                        this run, matching lane-start's flag of the same name
+                        (one-shot deviation;
+                        MINERVIT_METHODOLOGY_ALLOW_NON_MAIN=1 is the
+                        environment equivalent).
   --fail-on-drift       Exit 0 clean, 1 integrity (adapter drift or an
                         unsupported runtime; refuses to start), or 2 debt-only
                         (agent-fixable lane debt). Prints

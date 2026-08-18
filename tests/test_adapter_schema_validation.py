@@ -608,3 +608,87 @@ def test_validate_adapter_rejects_malformed_test_evidence_block(cli):
         "an enum the enforcement layer does not implement must be refused at the schema, not "
         "silently normalized to a weaker mode"
     )
+
+
+# --- the schema cache must not outlive the file it cached ---------------------------------------
+#
+# `adapter_schema` memoizes by resolved Path for the life of the process, with no invalidation. That
+# is invisible in a short CLI run that reads one schema once, and wrong everywhere else: a
+# long-lived
+# process -- a hook, a daemon, or the test suite -- can read a path, watch its contents change, and
+# keep serving the first read forever.
+#
+# The suite found it the hard way. pytest numbers a test's tmp_path off the directories that already
+# exist, so once per-test reclaim started deleting them, two tests whose names share a truncated
+# prefix landed on the SAME absolute path with different schema contents -- and the second test was
+# handed the first one's schema.
+
+
+def test_adapter_schema_reflects_a_rewritten_file_at_the_same_path(cli, tmp_path):
+    adapter = cli.adapter_module()
+    schema_path = tmp_path / "adapter-schema.json"
+
+    schema_path.write_text(
+        json.dumps({"type": "object", "properties": {"first": {"type": "string"}}}),
+        encoding="utf-8",
+    )
+    assert set(adapter.adapter_schema(schema_path)["properties"]) == {"first"}
+
+    schema_path.write_text(
+        json.dumps(
+            {
+                "type": "object",
+                "properties": {"second": {"type": "string"}, "third": {"type": "integer"}},
+            }
+        ),
+        encoding="utf-8",
+    )
+    assert set(adapter.adapter_schema(schema_path)["properties"]) == {"second", "third"}
+
+
+def test_adapter_schema_recovers_when_an_unreadable_schema_becomes_readable(cli, tmp_path):
+    """The fail-open empty result is cached too, so a transient read error must not be permanent."""
+    adapter = cli.adapter_module()
+    schema_path = tmp_path / "adapter-schema.json"
+
+    schema_path.write_text("{ not json", encoding="utf-8")
+    assert adapter.adapter_schema(schema_path) is None
+
+    schema_path.write_text(
+        json.dumps({"type": "object", "properties": {"recovered": {"type": "string"}}}),
+        encoding="utf-8",
+    )
+    assert set(adapter.adapter_schema(schema_path)["properties"]) == {"recovered"}
+
+
+def test_adapter_schema_cache_holds_one_entry_per_path_not_one_per_revision(cli, tmp_path):
+    """Correctness must not be bought with unbounded growth.
+
+    Keying the memo on the file's identity fixes the stale-read, but if each revision ADDS an entry
+    then a long-lived process watching a schema that changes often leaks one dict per rewrite. The
+    memo must stay bounded by the number of distinct paths, exactly as the path-keyed version was.
+    """
+    adapter = cli.adapter_module()
+    schema_path = tmp_path / "adapter-schema.json"
+
+    for index in range(12):
+        schema_path.write_text(
+            json.dumps({"type": "object", "properties": {f"key{index}": {"type": "string"}}}),
+            encoding="utf-8",
+        )
+        assert set(adapter.adapter_schema(schema_path)["properties"]) == {f"key{index}"}
+
+    # Match THIS test's resolved path, not the basename: every test in this file writes its own
+    # `adapter-schema.json` under its own tmp_path, so a basename filter counts their entries
+    # too and
+    # the assertion stops being about revisions at all.
+    #
+    # Shape-agnostic on the key so the failure is about the COUNT whether the key is a bare
+    # path or a
+    # tuple carrying an identity.
+    def _path_of(key):
+        return Path(key[0] if isinstance(key, tuple) else key)
+
+    mine = schema_path.resolve()
+    entries = [key for key in adapter._ADAPTER_SCHEMA_CACHE if _path_of(key) == mine]
+    assert len(entries) == 1, f"one entry per revision leaks; got {len(entries)}"

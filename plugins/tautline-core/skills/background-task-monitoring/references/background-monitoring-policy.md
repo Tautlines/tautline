@@ -160,3 +160,55 @@ When the current PR tip is frozen, review is clean, and final preflight is runni
   before continuing implementation on the next item.
 - A status-only update that says preflight is running or that the agent will
   push when it finishes is a passive monitor stop.
+
+## Monitor lifecycle — why each rule exists
+
+The canonical rules state these obligations in one line each. The reasoning lives here, where it
+costs no ratchet and no rendered-adapter corridor, and loads on demand.
+
+**Arming and stopping are one obligation.** A monitor armed for a terminal verdict and never
+stopped keeps firing after the question it asked has been answered. The session-level metric is
+simply: *monitors armed == monitors stopped, minus at most one deliberately live.* A
+`[Monitor timed out]` for a subject that already reported is a leak by definition — nothing was
+learned, and the notification competes for attention with the work.
+
+**One live verdict-monitor at a time**, in a single-threaded run. Stop the previous by id before
+arming the next; two monitors racing on one subject produce interleaved notifications that read as
+progress and are not.
+
+**Prefer the bounded form.** For a one-shot *"tell me when this finishes"*, use
+`tautline background-run` and call `monitor-status` at the checkpoints. An unbounded follow such as
+`tail -F` cannot report completion: it never exits, so a quiet stream means *finished* or *wedged*
+and the watcher cannot tell which. That ambiguity is the stale-monitor failure in one sentence.
+Reserve streaming follows for streams whose intermediate lines are genuinely acted on.
+
+**Anchor on producer-emitted markers.** A filter matching a bare word finds that word inside the
+diffs and logs under review, so a monitor watching for trouble reports the trouble it is reading
+about. Anchor on `^`-prefixed markers only the producing process writes — `background-run` emits
+`[tautline] finished: exit=<n> ...` at the start of a line for exactly this purpose.
+
+**Escape the brackets.** As a regex, `^[tautline]` is a CHARACTER CLASS matching one of those
+letters, so it matches almost every line. Write `^\[tautline\] finished:` — or use `grep -F` on the
+literal. A guidance document about anchoring markers is the worst possible place to print a pattern
+that silently matches everything.
+
+**Namespace it as well as anchor it.** Your log will contain other tools' transcripts, so a marker
+like `^exit=` is anchored and still spoofable — a captured command's own output supplies it. The
+strongest form needs no text at all: `monitor-status` classifies on the recorded `exitCode`, which
+nothing in a log can forge.
+
+**Liveness checks must observe their subject.** Probing a harness task id where pass and fail print
+identically is not a liveness check; it is a coin flip that always reports heads.
+
+## Re-invocation, scoped at the point of use
+
+Harness-tracked background work re-invokes the agent when it completes — that is what makes it safe
+to start something and continue.
+
+**A detached `tautline background-run` does not.** It writes to a log and updates its meta record;
+nothing wakes anyone. `monitor-status` is a *polling instrument*: it reports when it is called and
+at no other time.
+
+Treating the second as if it were the first is how a finished run waits unnoticed, and how a wedged
+one reads as patience. When a turn's next step depends on a detached run, either poll it at a named
+checkpoint or state plainly that the result is not yet known.

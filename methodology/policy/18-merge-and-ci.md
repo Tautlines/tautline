@@ -2,7 +2,7 @@
 
 - Local pre-merge validation is required before push/queue: main green, fast/full preflight, and test-environment gates. GitHub Actions do not replace local gates.
 - Routine merge is merge queue or auto-merge, never admin merge. `--admin` is break-glass only with documented reason. Standing approval recorded in a source-of-truth plan, execution packet, backlog/follow-up row, PR body/comment, project adapter, or human-approved closure criterion counts as approval. Standing approval recorded in a source-of-truth artifact counts only when the named conditions match.
-- Final preflight latency is usable work time once PR tip is frozen and review is clean; use it for planning/polling, not edits or next-item implementation.
+- Final preflight latency is usable once the PR tip is frozen; plan, poll, or start the next item in a SEPARATE worktree, never touching the proving diff.
 - After enabling auto-merge or queueing, record the PR reference, advance ledger, remove the clean queued PR from active attention, and continue.
 - A queued, auto-merge-enabled, merged, or closed PR branch is inactive. Do not run more review rounds, commits, pushes, reverts, or tactical subagents against the inactive branch. After methodology status, run the adapter's main-health/smoke gate, open-PR health check, current-branch liveness check, and merge-conflict check, then continue from source-of-truth work.
 - Clean queued PRs are asynchronous external gates. Do not wait on GitHub Actions, merge queue, deploy, or post-merge smoke after clean local gates/review. In-session queue checks are allowed only for a known failure/degraded signal, explicit request, or dependency on merged main.

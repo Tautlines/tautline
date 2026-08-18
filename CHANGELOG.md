@@ -22,6 +22,554 @@ that file is not present in a published copy). This file starts at 0.7.0.
 
 ### Changed
 
+## [0.111.0] - 2026-08-18
+
+### Changed
+- **Preflight latency may now be spent on the next item, in a separate worktree.** The
+  frozen-tip preflight rule previously confined a lane waiting on the gate to
+  "planning/polling, not edits or next-item implementation". Paired with a pre-push gate that
+  runs for the better part of an hour, that wording structurally produced an idle lane: the
+  only two permitted activities were planning and polling, so a lane supervising a long
+  preflight had nothing else it was allowed to do. Observed live on an adopter project, where
+  a lane sat on a **~70 minute** gate with no authorized work available to it. The concern the
+  old wording protected is isolation, not idleness — nothing about starting the next item
+  endangers the proving diff when that work happens in a separate worktree. The rule now
+  permits it and states the isolation requirement explicitly. Background-work supervision is
+  untouched and still applies to the running gate: starting parallel work is not licence to
+  stop supervising it. Expressed within the existing budgets rather than by raising them — the
+  replacement occupies the bytes the old rule did, and the merge-and-ci module stays under its
+  word cap.
+
+  The rule itself landed on the integration branch in the previous release's span without a
+  version of its own. This release is that missing boundary, cut so the change has a version,
+  a changelog line, and a migration report like every other behaviour change. Nothing about
+  the rule's text changes here; only its release record.
+
+## [0.110.0] - 2026-08-17
+
+### Fixed
+- **The test suite filled the disk, because pytest's tmp reclaim only runs at a clean exit.**
+  `$TMPDIR/pytest-of-<user>` reached **17 GB** across 13 sessions and took a 228 GB volume to
+  642 MB free. pytest registers its numbered-dir cleanup as a program-exit callback, so an
+  interrupted run reclaims nothing, and the next run will not touch the leftovers either: a stale
+  lock still reads as alive for `LOCK_TIMEOUT`, three days. The suite now reclaims each tmp tree as
+  soon as its test passes (`tmp_path_retention_policy = "failed"`), so an interrupted run costs
+  almost nothing. A failing test keeps its tree, and keeps the permission **modes** it failed with
+  — restoring write bits is itself destructive to evidence, so every unseal is gated on pytest
+  actually reclaiming that tree. Measured on one heavy pair of test files: 325 MB left behind
+  before, 0 B after.
+- **A read-only tree defeated the reclaim silently.** The installer and snapshot store seal what
+  they publish (0o555 dirs, 0o444 files) by design, and pytest reclaims with
+  `shutil.rmtree(ignore_errors=True)`, which cannot unlink a child of a 0o555 directory and does
+  not report that it could not — so a leak was indistinguishable from a clean reclaim. The sealing
+  is unchanged; the harness now restores the owner write bits first, for both per-test trees and
+  the `tmp_path_factory` trees no per-test sweep can see.
+- **The adapter schema cache served stale schemas for the life of a process.**
+  `_ADAPTER_SCHEMA_CACHE` was keyed by path with no invalidation, so a long-lived reader — a hook,
+  a daemon, the test suite — that read a schema and then saw that path rewritten kept serving the
+  first read forever. The fail-open empty result was cached the same way, so a briefly unreadable
+  schema stayed "unavailable" permanently. Both failures were silent. The memo now compares the
+  bytes it parsed: exact rather than a stat heuristic, one entry per path rather than one per
+  revision, and no window between checking and reading for a rewrite to slip through.
+- **Three `background-run` tests raced the marker they assert on.** The completion receipt is
+  written before the `[tautline] finished:` line is appended, and those tests awaited the receipt
+  then read the log immediately. Microseconds on an idle machine, lost once under concurrent
+  suites. They now await the artifact under assertion.
+
+## [0.109.0] - 2026-08-17
+
+### Fixed
+- **A round-record test raced the plan rewrite it depends on.** No adopter-visible behaviour
+  changed; this is test-suite hygiene. `write_plan_review_manifest` upserts the Cross-Model
+  Review Evidence section back **into the plan file** as its last act, so after a review round
+  the plan's mtime is only milliseconds old. The round-record suite's digestless-floor import
+  then made its imported log "current" with a bare `touch()` — a margin measured at **27ms** —
+  and `record-plan-review` correctly refuses a log older than the plan. On CI that gap inverted
+  and the suite went red for clock reasons rather than for anything the diff did. The setup now
+  pins the ordering explicitly with `os.utime`, the idiom the rest of that file already uses, so
+  the scenario under test is the digestless floor rather than the runner's timestamp behaviour.
+
+## [0.108.0] - 2026-08-17
+
+### Changed
+- **The release valve proves its carried list (item 108 WS5).** The valve shipped at 0.100.0 with
+  an honest limitation written into every capped record — `carried_findings_basis:
+  "caller-asserted"` — because it counted reviewer invocations but could not prove those rounds
+  were ever classified. With the durable round record (0.104.0), the record-backed budget reader
+  (0.105.0) and one authoritative lineage resolver (0.107.0) in place, that disclosure now
+  closes: when **every round the authoritative resolver counts** carries a `round-classification`
+  record, the basis upgrades to a verified token and the finalize states what was verified. When
+  it cannot, the basis stays `caller-asserted` and the disclosure **names the specific rounds
+  that lack classification**, so a lane can act on the gap rather than merely be told one exists.
+  Pre-record history, imported or unverified classifications, and members whose spend is unknown
+  or whose lineage walk truncated are printed as floors and can never satisfy the upgrade.
+  The verified token is written only when the justifying record is actually on disk: the
+  classification is appended **before** the basis is derived, and a failed append forces
+  `caller-asserted` and names the failed write rather than claiming a proof that does not exist.
+
+## [0.107.0] - 2026-08-17
+
+### Changed
+- **One lineage resolver (item 108 WS3).** Plan-review lineage is resolved once, from the union
+  of declared predecessor edges (an explicit `--predecessor` always binds and is never
+  overridden by inference), `-vN` name-shape matches found by **enumerating existing** manifests,
+  round records and metas rather than generating candidate names (so `admin-v34` finds
+  `admin-v1`, and a date-like `-v20260815` suffix neither hangs nor allocates millions of
+  strings), and shared work-item references. The advisory chain display and the authoritative
+  budget now consume the same resolver output, so one launch can never record two different
+  lineages; a depth-capped or cyclic walk prints `plan_review_lineage_walk_truncated` and labels
+  its summary a floor, never a silent standalone plan on a fresh budget. Closes the two
+  remaining confirmed defects from the retired lineage-cap branch.
+
+## [0.106.0] - 2026-08-17
+
+### Fixed
+- **Deriving a release migration report no longer costs `2**depth`.** Every release block asked
+  its predecessor for a report twice — once for `wipSafe`, once for `requiredMigrations` — so the
+  ladder doubled in cost with every release ever added. Measured before the fix: 31.8s at 0.99.0,
+  64.0s at 0.100.0, 127.4s at 0.101.0, extrapolating to roughly an hour for one derivation a few
+  releases later. After: well under a second. This is why the repository test gate and CI appeared
+  to hang with no failing test — the suite was spinning inside the ladder at 100% CPU. Reports are
+  byte-identical; only the derivation cost changed, and the cache hands every caller its own copy
+  so no caller's mutation can reach another's report.
+- **Two occupancy-lease tests no longer rot with the calendar.** They compared a fixture pinned to
+  the test module's clock against the real wall clock, so once elapsed time passed the lease TTL
+  the fixture read expired, the liveness guard answered first, and the ownership assertions they
+  exist to make failed for an unrelated reason. They now compare on the clock their fixture is
+  built on. No product behaviour changes.
+
+## [0.105.0] - 2026-08-16
+
+### Changed
+- **Every plan-review budget decision reads the durable record (item 108 WS2, PR2).** Round
+  launch, the runtime cap, the release valve's spend derivation, and precheck's capped
+  re-derivation now consume cumulative per-member counts from the committed round records:
+  `spend = baseline floor (raise-only corrections included) + charged invocation records (run
+  or imported)`, deduped against lane metas on the log digest, with an unrecorded post-cutover
+  meta surfaced as a write-path-bug warning rather than silently counted. A fresh worktree's
+  finalize can no longer shrink the durable lineage count (the confirmed refill defect this
+  program exists to close), and out-of-order finalization never decrements cumulative member
+  counts. A member with no baseline reads at the pre-record floor exactly as before —
+  additivity begins at the first record write, so pre-record history is never double-counted
+  and never treated as an alternative to new records. The manifest's lane-local
+  `observed_successful_runs` is demoted to display plus the no-baseline floor.
+
+## [0.104.0] - 2026-08-15
+
+### Added
+- **The durable per-round plan-review record — write path (item 108 WS1, PR1).** Every reviewer
+  invocation appends one committed, append-only record under
+  `<plans-root>/.plan-reviews/rounds/<identity>/`: a one-time `baseline` capturing pre-record
+  history (its enumerated digest set is the durable cutover marker — set membership, never
+  timestamps), a `reviewer-invocation` record for every run including failures (`charged` iff
+  the wrapper exited 0; `source: run|imported`), a `round-classification` appended at bind time
+  referencing the invocation by nonce + log digest, and raise-only `correction` records via
+  `record-plan-review --correct`. The baseline is written before the current run's meta is
+  absorbable, so the first post-cutover run counts exactly once; imports follow one
+  deterministic rule (recorded digest → bind; in-baseline-set → pre-record, uncharged;
+  otherwise → charged imported invocation). Dual-write only: no budget reader consumes the
+  record in this release — that is PR2 — so no gate changes its verdict. A repository-wide grep
+  guard pins that no recovery guidance prescribes overwriting a record or the manifest. This is
+  the foundation under the valve's `carried_findings_basis: caller-asserted` disclosure
+  (0.100.0), whose verified upgrade lands later in this program.
+
+## [0.103.0] - 2026-08-15
+
+### Added
+- **A build-ready plan must ship its goal prompt (item 107 WS4 PR B).**
+  `plan-finalization-precheck` now requires the goal-prompt artifact for a build-ready plan,
+  enforced at all four knob levels (block refuses with a goal-assignment-specific remedy that
+  persists via `--out`; advise warns on the pass path; observe/off stay silent) and wired into
+  the standalone verb, the ExitPlanMode hook, and goal-status readiness. Binding uses 0.101.0's
+  clause-parsing matching logic, so a sibling plan's goal can never satisfy this plan's
+  requirement. Deliberately NOT wired into `goal-assignment`'s own gate — that would deadlock
+  the tool that creates the artifact (the ExitPlanMode deadlock found and fixed in the
+  decomposed 0.89.0 lineage's final confirming round rides along). Second half of the 0.89.0
+  decomposition; hard predecessor 0.101.0 (PR A) is merged.
+
+## [0.102.0] - 2026-08-15
+
+### Added
+- **Every composed goal says to parallelise (item 106 WS2-B).** `tautline goal-assignment` now
+  writes the parallel directive into every composed goal's tail: dispatch independent tasks to
+  concurrent subagents in a single batch, give each its own worktree when they would otherwise
+  touch the same files, and route each by its `model-tier` tag. The directive lives in the tail,
+  so every budget site that measures the tail — the 4000-char core-too-large refusal, the
+  first-criterion floor, the criteria-fitting loop, and the milestone budget — counts it
+  automatically. Also clarifies the goal-assignment skill's omission-reporting wording. This is
+  the second half of superseded draft PR #553 (the extractor half landed as 0.95.0/#555); #553's
+  round-cap decomposition is disclosed in its body and it closes with this release as its named
+  successor.
+
+## [0.101.0] - 2026-08-15
+
+### Added
+- **The matching logic for a build-ready plan's goal-prompt artifact (item 107 WS4 PR A).**
+  `plan_authoring` can now decide whether a candidate goal file is bound to a given plan: binding
+  happens only through the composer's own ``from the finalized plan `<ref>` `` clause, captured
+  backtick-delimited and compared exactly — mentioning a plan elsewhere in a goal's text does not
+  bind it, and punctuation in a filename cannot falsely collide. Includes the target-wide
+  `.ai-work/goal.txt` fallback matched against the full plan reference. Matching only: no
+  enforcement gate consumes this logic in this release — the `plan-finalization-precheck` wiring
+  ships separately (PR B), so no gate changes its verdict here. Payload-only re-cut of the
+  decomposed 0.89.0 lineage's matching half onto the merged 0.100.0 tip; the re-cut lineage
+  carries its own fresh review ladder.
+
+## [0.100.0] - 2026-08-15
+
+### Changed
+- **The plan-review round cap releases into the build: `finalize-plan-review` no longer refuses
+  at the hard cap (item 86 WS1, spec decision D2 — the release valve).** A finalize at the
+  4-round cap carrying unresolved Critical/P1 now exits 0 with the derived verdict
+  `capped-with-open-findings`; every unresolved blocker is recorded at its honest severity as
+  `status: carried` with a unique focus id, and becomes a BINDING implementation-review focus
+  item reported by `plan-finalization-precheck`, `review-evidence-check` and
+  `finalize-implementation-review`. `plan-finalization-precheck` accepts the capped manifest, so
+  no state of that gate refuses every exit — the direct lesson of the 2026-07-14 plan-review
+  deadlock. The spend is re-derived from on-disk run metadata, never from the `--round` label
+  (a label cannot buy the valve); a capped record requires `asserted_verdict: blocked` (an
+  allowlist of one), and a clean assertion at the cap is refused before the manifest is written.
+  The capped verdict is scoped to plan-review telemetry only. The succession-chain advisory's
+  split remedy is suppressed on the capped finalize, which just told the lane to build.
+  **Disclosed limitation, by decision:** the valve counts successful reviewer invocations and
+  carries the caller's classification of the bound round's log; it cannot prove earlier counted
+  rounds were ever classified — that takes a durable per-round record, which is the
+  round-accounting workstream's artifact. The capped manifest therefore records
+  `carried_findings_basis: caller-asserted` and the finalize prints a matching
+  `plan_review_capped_disclosure:` line, instead of implying a completeness it cannot verify.
+  This is the code half of item 86 WS1; the canonical-rules/policy prose half lands in its own
+  stacked PR. Fourth derivation of this boundary (0.84.0 → 0.87.0 → 0.97.0 → 0.100.0), chained
+  from the merged 0.99.0.
+
+## [0.99.0] - 2026-08-15
+
+### Changed
+- **Plan-review finalize no longer prescribes decomposition as the cap exit on the sequential
+  path.** The finalize-time hard-cap and round-3-stall messages (`finalize_trusted_plan_review`)
+  used to say "the split is mandatory: decompose this plan into smaller source-of-truth plans" --
+  a new plan file is a new round budget, so this instruction was itself the budget-refill loop the
+  item exists to close. The remedy now says to carry every unresolved Critical/P1 into the
+  implementation-review focus list by hand and proceed to the build, never a successor plan; an
+  automatic `capped-with-open-findings` finalize ships in a separate PR (item 106 WS1) and this
+  text is deliberately still true once that lands. Mirrored in the generated adapter's
+  `## Autonomy And Planning` guidance (net adapter bytes: -4). A grep-based guard pins the removal
+  against regression. Verified end to end: driving one plan through R1-R4 naturally, this is the
+  only cap-state message a lane reads, and it names the build.
+  **Scoped, not closed:** `plan_review_hard_cap_refusal` (the round-LAUNCH refusal, a different
+  function) still names the split. It is reachable only as a backstop, and only when three
+  conditions hold at once -- a plan already at its per-file hard cap, with unresolved blockers,
+  AND no bound `capped-with-open-findings`-eligible evidence to finalize instead -- which requires
+  an agent to have already received and disregarded the build-carry remedy above. Its wording is
+  pinned to `methodology/canonical-rules.md`'s Planning section by
+  `test_the_process_authority_states_the_shipped_hard_cap_remedy`, and that paragraph is item 106
+  WS1's wholesale-rewrite seam; closing this residual is deferred to avoid a collision with that
+  in-flight release-valve PR.
+  **Also scoped:** the message stops instructing decomposition, but "proceed to the build" is not
+  yet mechanically enabled end to end for a Claude Code lane: `ExitPlanMode`'s
+  `plan_finalization_hook` reruns `plan_finalization_precheck_errors`, which only accepts a
+  `clean`/`clean-with-deferrals` verdict, so the hook still blocks on the `blocked` manifest this
+  path writes. Making the capped exit actually pass that gate is exactly WS1's `capped-with-open-
+  findings` verdict (D2); until it lands, this text names the correct direction and a lane
+  bypassing ExitPlanMode (or working outside a Claude Code hook-enforced environment) can act on
+  it today, but a hook-enforced lane will still be blocked and needs WS1.
+- **`milestone-advance --event pr-merged` reports cumulative lineage review rounds.** When the
+  milestone ledger's recorded source plan resolves, the merge prints
+  `plan_review_lineage_rounds_at_merge:` with the chain's total recorded rounds (honesty-marked
+  `exact`/floor `>=`), reusing the existing `plan_review_round`/`plan_review_clean`/`plan_review_blocked`
+  v1 telemetry vocabulary -- no enum change, no T0 re-approval gate.
+  **Known residual (P2, deferred):** `plan_review_member_recorded_rounds` takes the larger of
+  run-metas-on-disk and the finalized manifest's own count, which fixes the common undercount
+  (metas pruned, manifest remembers more) but not every mixed history: if the manifest's OWN
+  bound meta was pruned AND a later successful meta survives, both sources can independently read
+  the same smaller number and the true total (sum, not max) is silently undercounted while still
+  labeled `exact`. Narrow and cosmetic to the advisory report only -- no gate or verdict reads
+  this number -- documented rather than chased further this round.
+
+## [0.95.0] - 2026-08-15
+
+### Added
+- **A composed goal now states the plan's own acceptance criteria.** `tautline goal-assignment
+  --plan <plan>` reads the plan's `Acceptance criteria` section (falling back to
+  `Completion definition`) and leads the `Done when:` clause with it. Before this, the clause was
+  built solely from the adapter's definition of done, so every goal composed from every plan
+  carried the same generic process bar and the plan's own criteria appeared nowhere. The
+  definition-of-done floor is **retained** behind the criteria — it is what closes the measured
+  stop at 90-95% — and criteria are elastic content that degrades the way the milestone list
+  already does: shortened, then summarised with a count, never silently dropped. A plan with no
+  named criteria still composes, with the generic bar alone.
+- `goal-assignment` reports `goal_assignment_acceptance_criteria: <n> of <total> included`,
+  naming the heading the criteria were read from, or saying no such section was found — so
+  `0 of 0` never conflates a plan that names none with a section that could not be read.
+
+## [0.86.0] - 2026-08-15
+
+### Added
+- **Two Stop-boundary state gates that do not need a live goal.** One refuses a turn ending on a
+  live detached background run, or on a finished run whose terminal summary was never read; the
+  other refuses a turn ending with pending work on record — read from *all four* queues (goal
+  ledger, `NEXT_SESSION` next action, execution packet, milestone ledger). The
+  summary-as-stop-signal incident had the goal ledger auto-cleared on SUCCESS, so every guard
+  gated on a live goal was already unarmed by the time the incident configuration existed.
+  **Both ship warn-only** until the fourth PR of the wave-3 stop chain flips the posture once, on
+  evidence.
+- **`monitor-status` writes a read receipt** (`<log>.read.json`) on every path that prints a
+  status, including a failed or stale one — a receipt written only on success would leave a lane
+  that correctly diagnosed a failure unable to end its turn. It records *which* completion it
+  observed, so a relaunch under the same log name cannot be cleared by the previous run's receipt.
+- A checkout may declare itself a subagent worktree (`.ai-work/WORKTREE_ROLE.json`), which exempts
+  it from **inherited** arming only. A run it launched itself still counts.
+
+### Changed
+- **The `stop_hook_active` one-shot bypass is gone.** It returned 0 above adapter-root resolution,
+  so a single block was the entire guard. The state gates now survive two consecutive retries and
+  then fail open with a logged event; the counter resets on any non-retry evaluation, because
+  resetting only on a clean stand-down would leave it at the limit after one blocked turn.
+- The refusal **renders** its "queue enumerated empty (…)" clause from the same registry the reader
+  iterates, so the claim cannot outrun the gate.
+- Canonical policy 20's guard-activation sentence said the guard is active *only* with a live goal
+  ledger — the behaviour that caused the incident. Replaced, not appended to.
+
+### Fixed
+- `stop-guard-aggregate` was reporting **+0.0 for an arm it never ran**: the harness enumerates the
+  boundary's arms explicitly, so the new gates contributed zero because nothing called them. Wired
+  in and proven by mutation.
+- The wave-3 warn-only clamp sat below `if mechanism != "phrase"` and was **unreachable for state
+  checks** — the mechanism every remaining PR in the chain uses. The posture the chain depends on
+  was announced and not implemented.
+
+## [0.83.0] - 2026-08-14
+
+### Added
+- **`tautline secret-status --name <VAR>`** reports *where* a named secret is reachable from —
+  process environment, installed config env, or the operator secrets file — and **never what it
+  is**. Exit 0 means reachable; exit 1 means absent from all three — the only answer that justifies
+  an operator escalation — and exit 2 means a layer *exists but could not be read*, so absence was
+  never established -- and it prints `secret_source: indeterminate`, never the `absent` marker the
+  policy names as the escalation predicate. Those two are kept apart deliberately: `user_config_env_value` returns `""`
+  on `OSError`, so an unreadable secrets file otherwise looks exactly like one that does not hold
+  the value, and the answer it produces is the one that pages a human. Both rebrand spellings are probed in both directions, because a
+  probe that checked only the name it was handed would report `absent` for a value sitting under its
+  sibling.
+
+### Changed
+- **Every missing-webhook refusal now names that probe.** They previously said the secret was
+  missing and sent the lane straight to a human, when the usual cause is a value that *is* persisted
+  and merely unreachable from this process — a session started outside the lane env, or a value
+  written under the `MINERVIT_` spelling while the resolver prefers its `TAUTLINE_` alias. Seven
+  sites, swept as a class, with a test that fails on any eighth.
+- Canonical policy 03 and 23 state the rule: a missing `MINERVIT_`/`TAUTLINE_`/webhook secret is not
+  a true blocker until `secret-status` has been run and the command retried through the lane
+  environment. Re-asking for a value already in the store is permission theater.
+
+## [0.82.0] - 2026-08-14
+
+### Changed
+- **`background-run` now records whether the work finished, and how.** A detached reaper owns the
+  command and waits on it, writing a real `exitCode` and `finishedAt` and appending an anchored
+  `[tautline] finished: exit=<n>` line to the log. Nothing in the tree called `wait()` before, so a
+  monitor could only infer from a dead pid — and *"the pid is gone"* and *"the pid never started"*
+  are the same observation, which is why a stalled run read exactly like a finished one.
+- **The printed `monitor:` line no longer recommends `tail -F`.** That form never exits, so it
+  cannot report completion: a lane following it watches a stream that goes quiet whether the work
+  finished or wedged. It now names `tautline monitor-status`, which reads the reaper's receipts.
+- **A log written outside the lane's configured `runsDir` says so.** The turn-end yield gate scans
+  that directory, and an advisory that is wrong in the reassuring direction is worse than none.
+
+### Added
+- Four monitor-lifecycle rules in canonical policy 20. The reasoning behind them lives in the
+  background-monitoring skill reference, which costs neither the policy ratchet nor the rendered
+  adapter corridor; only the rules themselves are canonical.
+
+## [0.81.0] - 2026-08-14
+
+### Added
+- **An escape-hatch env var now names the functions allowed to read it.** `ESCAPE_HATCH_READERS`
+  declares the reader set of every variable that stands a subsystem down — maintainer mode, snapshot
+  exec, auto-rescue, the update policy and pins, trust signers, the main-branch requirement — and
+  `tests/test_escape_hatch_reader_sets.py` re-derives that set from source on every run. A function
+  that starts reading one of these without declaring it fails the suite, which is the obligation the
+  2026-07-22 trust-pin RCA asked for: the problem was never that the hatches existed, it was that
+  nothing could enumerate who obeyed them.
+- The reader sets are **measured, not hand-listed**. The walk resolves two indirections a call-site
+  scan cannot see — a key passed as a helper's own parameter, and a key computed by string surgery
+  from a constant — because a scan for `resolve_env("<name>")` finds *zero* readers for two of these
+  variables while both are read constantly. A declaration that no longer resolves is also a failure,
+  so a relocation cannot leave the registry quietly naming a function that is gone.
+
+## [0.80.0] - 2026-08-14
+
+### Added
+- New adapter key `goLiveReadiness` and canonical policy section **16a Go-Live Readiness Gate**. A
+  lane that declares `profile: live-tenant` is held to six gates — customer-outcome health contract,
+  detection baseline + branch protection, required-runtime-secret registry, CI test gate,
+  critical-journey ratchet + flaky quarantine, and open-remediation obligation ledger — each of which
+  must reach **its own satisfying state**, or carry a recorded decline naming the control and a
+  reason. That state is not uniform: some controls take `enforcement: block`, others are satisfied by
+  populating what they measure, and adding an `enforcement` key to a control that has none makes the
+  adapter schema-invalid. `methodology-status` names the specific state each unsatisfied control
+  needs.
+
+### Changed
+- **`runtimeConfig.requiredSecrets` no longer reports `block` for a registry nothing checks.** With
+  secrets registered but neither `bootAssertionCommand` nor `secretParityCommand` set, the posture
+  row now reports `empty`: naming the secrets is half the gate, and without an assertion command
+  nothing on the lane ever verifies one of them. It reads as a missing input rather than as weak
+  enforcement, because the enforcement string is not what is absent.
+- **A `goLiveReadiness` block with an unknown key is refused by name**, not merged over the
+  defaults. A misspelled key such as `profil` used to read as un-opted and enforce nothing while the
+  lane that wrote it believed it was covered.
+- **An opted-in lane sees why a gate is unmet without passing `--posture`.** Detail is limited to
+  the six go-live controls, so the default surface's noise budget is unchanged elsewhere.
+- **A lane that has not opted in gets one advisory line and no exit-code change**, at any flag
+  combination including `--strict` and `--fail-on-drift`. That boundary is chosen against a measured
+  constraint: `methodology-status --fail-on-drift` is the mandated lane-start command rendered into
+  every generated adapter, and a shipped adapter already carries a milestone-close deployment target,
+  so a drift failure here would have redded every live-surface lane at session start on upgrade —
+  the adapter-removal 0.6.115 class.
+- The forcing function is a shipped switch rather than silence: `goLiveReadiness.enforcement`
+  (`warn` | `block`, **default `warn`**) makes the un-opted live-surface case drift when a lane sets
+  it. Flipping the default is a separate release gated on adoption.
+- A decline is a declaration, not a loophole: it names the control and states a reason of at least
+  twelve characters. A control that is off with no decline is an undeclared gap, and the refusal
+  names it **and carries the posture row's own detail** — `criticalJourneys` is an array with no
+  enforcement field, so "set enforcement block" alone would be a dead end for exactly the controls an
+  adopter most needs to fix.
+
+### Upgrade safety
+- **Not WIP-safe for a jump upgrade across 0.79.0.** This release's own change is advisory-only for
+  a lane that has not opted in, but it *carries* 0.79.0's migrations forward — and 0.79.0's
+  checkout-contradiction migration can newly make startup exit 2. A jump upgrade reads only the
+  newest report, so the classification composes down from the predecessor rather than describing
+  this diff alone.
+
+### Rollback
+- Adopters must remove `goLiveReadiness` from the source adapter and re-render **before** repinning
+  below 0.80.0: the older schema sets root `additionalProperties: false` and rejects the unknown key,
+  so lane startup wedges. A lane that never adopted it rolls back with no action.
+
+## [0.79.0] - 2026-08-14
+
+### Added
+- `lane-start` and `methodology-status` now print `framework_checkout_reconciliation: <state>` and,
+  when the state is **required**, `methodology-status --fail-on-drift` exits 2 as agent-fixable debt
+  instead of printing a warning and exiting 0. RCA 2026-07-22 control 5: that incident persisted for
+  weeks precisely because a channel/branch contradiction was reported as a bare warning and carried
+  forward.
+
+### Changed
+- **The arming condition is narrow, and the narrowing is the design.** `required` fires only on a
+  *contradiction* — the checkout sits on **another channel's** release branch — where all three
+  enumerated resolutions are real. Every other non-release branch (feature branch, detached HEAD) is
+  **advisory** and exits 0. An any-non-release-branch rule was written first and rejected against
+  measurement: it would have made every framework session on a feature branch exit-2 debt whose only
+  durable escape is a machine-wide maintainer-mode standdown, and a fail-closed control whose
+  cheapest exit is a global gate standdown teaches the bypass this cluster exists to delete.
+- The check is evaluated **outside** the "no pending update" branch the old warning lived in. The
+  incident state *had* a pending update — that is what made the sync refuse — so a check evaluated
+  only when no update is pending goes silent in exactly the situation it exists for.
+- Two deliberate behaviour flips, both pinned by test, because the old warning hardcoded `main`
+  instead of resolving the release branch from the channel: channel `experimental` with the checkout
+  on `main` is a real contradiction and was silent — now `required`; channel `experimental` on
+  `experimental` is correct and warned — now silent.
+- `methodology_checkout_hygiene_warning` keeps only its dirty-checkout condition under its existing
+  prefix. The two conditions have different owners and remedies.
+
+## [0.78.0] - 2026-08-14
+
+### Added
+- `finalize-implementation-review` now reconciles the recorded unresolved counts against the review
+  log the manifest pins and **prints** any divergence it finds. It is **report-only** — it does not
+  refuse. The incident it addresses: a round whose log carried **3 Critical and 22 Important**
+  findings was finalized at 0 unresolved Critical / 0 unresolved P1, and nothing on this path read
+  the log to notice. The detector is not new; it has caught exactly this on the plan-review path for
+  releases. It was simply never wired into this consumer.
+- Two helpers for the successor that will enforce this: `classified_findings_all_blockers_resolved`
+  (every recorded blocker disposed of, not merely one) and `classified_findings_cover_blocker_classes`
+  (the classification must account for every blocker *class* the log shows, closing the case where
+  blockers are omitted from the record entirely rather than left unresolved). The shipped any-one
+  helper is untouched, so the three plan-review call sites are byte-for-byte unaffected.
+
+### Changed
+- The cross-check reads the **reviewer's answer**, not the raw log. An implementation review log is
+  the whole `codex review` CLI transcript and carries no `## Findings` heading — that heading is a
+  contract of the plan-review wrapper's prompt. Measured on a real 751,076-byte log, the findings
+  section is 0 characters and the raw fallback is all 751,076.
+
+### Known gaps
+- **Enforcement is not claimed.** `review_log_verdict_errors` was built for a structured findings
+  section, where a line mentioning Critical *is* a finding; this path feeds it free-form prose, where
+  "The critical retry path is covered by tests." reads as blocker evidence. Enforcement waits on a
+  reviewer-side structured findings contract.
+- **`P0` and `High` are invisible to this scan.** A widened alias set was written and removed: under
+  a bare-word match, "the tests provide high confidence" reads as a P1 finding.
+
+## [0.77.0] - 2026-08-13
+
+### Added
+- A PreToolUse hook on `AskUserQuestion` now evaluates a question payload for the continue-vs-stop
+  / pick-path menu shape and **logs** what it finds. It ships **advisory** and denies nothing by
+  default; `responseGuard.questionGuard: "blocking"` opts a lane into the denial. The menu control
+  is therefore **not closed** by this release and is not claimed to be: three consecutive review
+  rounds each found a fresh false positive in the classifier, ending with a genuine operator-owned
+  approval question being denied — which can deadlock exactly the work whose only legal next step is
+  requesting approval. The shape is measured instead, and the promotion is its own item. The
+  prohibition on pick-path menus already existed in canonical rule; what did not exist was any
+  enforcement that could see it. The Stop guard reads text and such a menu is payload-shaped, so the
+  exact pattern the free-text detector was built to catch was invisible to every guard — and because
+  that tool blocks the turn waiting for a human, the Stop hook may never fire at all. Guided
+  onboarding's sanctioned use, questions asked between goals, an explicit user stop, product-dev
+  mode, and any single-object true-blocker question (which credential, which scope, which approval
+  condition) all pass, each pinned by a test. Demote with `responseGuard.questionGuard: "advisory"`.
+- `tautline stop-guard-aggregate` measures the **aggregate** stop-blocking rate across the whole
+  Stop boundary over a frozen corpus, and compares it with a committed baseline. Four separate plans
+  add blocking conditions to that one boundary; each measured its own false-positive rate in
+  isolation and nobody owned the total, with the named risk being a lane that cannot end a turn at
+  all. The ceiling is +2 percentage points across all four combined. The corpus digest is pinned
+  into the baseline so the number cannot be brought back under the ceiling by deleting the entries
+  that started failing.
+- `responseGuard.highPrecisionPhraseChecks` (default `blocking`) introduces a high-precision phrase
+  tier. Plain phrase checks default to advisory and no shipped adapter overrides them, so a new
+  Stop-seam check in the standard tier is telemetry-only in every real lane. Admission is narrow by
+  rule: only a check whose false-positive surface is structurally bounded, with independent
+  carve-outs each pinned by a negative test.
+
+### Changed
+- Two new Stop-boundary checks — `stop.announce_and_stop` (a final turn asserting an in-progress or
+  next action with no evidence after the announcement) and `stop.standing_authorization_reask`
+  (re-asking break-glass or admin-merge authorization a source-of-truth artifact already grants) —
+  ship **warn-only** and block nothing in this release. They log guard events so the shapes stay
+  visible and measurable. Every check in this four-PR chain stays warn-only until the fourth lands
+  and the aggregate is re-measured a final time.
+- The Stop-hook flattener now walks an `AskUserQuestion` tool record's questions and options.
+  Targeted, never generic: a plain `input` key would pour every `Write` tool's entire file body into
+  every Stop-guard scan.
+
+## [0.76.0] - 2026-08-13
+
+### Changed
+- The closing-reference checks now run only where the backlog is ISSUE-BACKED — an
+  enabled `goalTracker` or `backlogProvider` that also carries `owner` and
+  `projectNumber`, the same fields that decide whether the generated adapter states
+  the PR-reference contract at all. The merge boundary previously had no provider
+  guard, so it demanded a closing keyword from repositories with no issue backlog,
+  and the compliant-looking way out of that refusal was to invent a reference —
+  the exact harm the contract forbids. Both boundaries now read one predicate.
+- The fence/inline-code blanker both closing-reference scanners share follows
+  GitHub's actual rules: `~~~` fences are code, a fence closes on a run of at least
+  its opening length, an inline span needs an exactly equal run, an unclosed fence
+  is code through end of input, and a span may contain line endings. Previously
+  `~~~` fences and double-backtick spans were invisible to it, which cut both ways —
+  a PR body quoting a bad example was refused for quoting it, and a real closing
+  reference hidden in one of those forms passed while GitHub closed nothing.
+- Canonical policy and the `board-item-updates` skill reference now describe the
+  gate that actually ships, including what remains unenforced.
+- **Not WIP-safe.** Recognizing more code forms is itself a behavior change: a PR
+  body whose ONLY closing reference sat inside a `~~~` fence or double-backtick
+  span was accepted at 0.75.0 — the blanker could not see those forms, so the
+  reference read as live text — and is now correctly treated as quoted example
+  text, so that body binds nothing and `missing_closing_ref` refuses the next push
+  or merge. Move the reference out of the code span before upgrading.
+
 ## [0.75.0] - 2026-08-13
 
 ### Changed

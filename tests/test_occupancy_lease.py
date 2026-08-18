@@ -1152,12 +1152,18 @@ def test_an_explicit_owner_wins_over_the_session(cli) -> None:
 
 
 def test_two_runs_of_one_session_are_different_owners(cli) -> None:
-    """The distinctness that motivates the field at all."""
-    from datetime import datetime, timezone
+    """The distinctness that motivates the field at all.
 
+    The comparison clock is this module's pinned NOW, not the wall clock: `_lease()` stamps
+    `renewed_at` at NOW, so judging it against `datetime.now()` made the fixture read EXPIRED
+    once real time drifted past its TTL, `occupancy_lease_foreignness` short-circuited on the
+    liveness guard, and this owner assertion failed for a reason that has nothing to do with
+    owners. It passed when written and rotted with the calendar -- the same hardcoded-constant
+    class as a test that pins a future version as its "newer release".
+    """
     from tautline_methodology.occupancy import occupancy_lease_foreignness
 
-    now = datetime.now(timezone.utc)
+    now = NOW
     held = _lease(session_id="s1")
     held["owner"] = "review-run-1"
 
@@ -1172,12 +1178,15 @@ def test_two_runs_of_one_session_are_different_owners(cli) -> None:
 
 
 def test_a_lane_lease_still_compares_by_session(cli) -> None:
-    """No lane behaviour moves: with no owner on either side, this is the pre-PR4 comparison."""
-    from datetime import datetime, timezone
+    """No lane behaviour moves: with no owner on either side, this is the pre-PR4 comparison.
 
+    Pinned to this module's NOW for the same reason as the test above: the fixture lease is
+    stamped at NOW, so a wall-clock comparison expires it and the liveness guard answers before
+    the ownership comparison this test exists to make.
+    """
     from tautline_methodology.occupancy import occupancy_lease_foreignness
 
-    now = datetime.now(timezone.utc)
+    now = NOW
     held = _lease(session_id="s1")
 
     assert occupancy_lease_foreignness(held, now, {"session_id": "s1"})[0] is False

@@ -1123,6 +1123,15 @@
     "timestamp",
     "artifact growth"
   ],
+  "RESPONSE_GUARD_NAMED_DEFAULT_MARKERS": [
+    "safe default",
+    "defensible default",
+    "the default is",
+    "my recommendation is",
+    "i recommend",
+    "recommended path",
+    "the safe path is"
+  ],
   "RESPONSE_GUARD_OPT_IN_ACTION_VERBS": [
     "start",
     "begin",
@@ -1377,6 +1386,16 @@
     "journal pending",
     "journal published",
     "pending session journal"
+  ],
+  "RESPONSE_GUARD_STANDING_AUTH_OBJECTS": [
+    "break-glass",
+    "break glass",
+    "admin merge",
+    "--admin",
+    "--no-verify",
+    "force push",
+    "bypass the gate",
+    "standing approval"
   ],
   "RESPONSE_GUARD_STATUS_PROMPT_MARKERS": [
     "are you still",

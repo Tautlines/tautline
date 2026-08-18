@@ -11,6 +11,8 @@ question, or stop for approval.
 Read `references/risk-tier-policy.md` before classifying risk, handling
 operator approval, estimating work, applying tech-stack defaults, interpreting
 permission theater, or deciding whether deployment/closeout is agent-owned.
+Read `references/stop-guard-evasion-shapes.md` when a stop-guard or
+question-guard check refuses: what fires it, the legal exit, and the knob.
 
 ## Fast Path
 

@@ -5,6 +5,7 @@ import re
 import shutil
 import subprocess
 import sys
+import time
 from argparse import Namespace
 from pathlib import Path
 
@@ -399,7 +400,15 @@ def test_wip_patch_auto_requires_wip_safe_report(cli, tmp_path, monkeypatch):
     assert allowed["action"] == "update"
 
 
-def test_checkout_hygiene_warning_flags_non_main_checkout(cli, monkeypatch):
+def test_checkout_hygiene_warning_no_longer_owns_the_branch_condition(cli, monkeypatch):
+    """Item 70 WS1 moved the BRANCH condition to `framework_checkout_reconciliation`.
+
+    This function hardcoded `main` as the expected branch, so it warned a lane on channel
+    `experimental` sitting on `experimental` (correct) and stayed silent for one sitting on `main`
+    (the actual contradiction). The reconciliation resolves the release branch from the CHANNEL.
+    This arm keeps only the dirty-checkout condition, which has a different owner and remedy.
+    """
+
     def fake_run_git(_target, args):
         if args == ["rev-parse", "--is-inside-work-tree"]:
             return "true"
@@ -412,10 +421,12 @@ def test_checkout_hygiene_warning_flags_non_main_checkout(cli, monkeypatch):
     monkeypatch.setattr(cli, "run_git", fake_run_git)
     monkeypatch.delenv("MINERVIT_METHODOLOGY_ALLOW_NON_MAIN", raising=False)
 
-    warning = cli.methodology_checkout_hygiene_warning()
-
-    assert "feature/open-source-readiness" in warning
-    assert "will not auto-rescue" in warning
+    assert cli.methodology_checkout_hygiene_warning() == ""
+    # ...and the condition still has an owner: it is now reported, with resolutions, by the
+    # reconciliation. A moved check that nobody re-homed is how a control goes quiet.
+    state, line = cli.framework_checkout_reconciliation("stable", "main")
+    assert state == "advisory"
+    assert "feature/open-source-readiness" in line
 
 
 def test_checkout_hygiene_warning_flags_dirty_checkout(cli, monkeypatch):
@@ -2006,7 +2017,15 @@ def test_release_migration_report_0_16_0_and_ceiling_gap_guards(cli):
     # stopped emitting env rows). Assert the env surfaces are present AND match the warned-env
     # inventory exactly before checking removeAfter, mirroring the non-vacuous cli-surface any().
     assert env_surfaces, r16["deprecatedSurfaces"]
-    assert len(env_surfaces) == len(cli.SUNSET_WARNED_ENV_NAMES)
+    # Names introduced AFTER the report's own release are version-scoped out of it, so a frozen
+    # report keeps its bytes. Both the builder and this assertion read one map rather than a
+    # version literal each -- that is how the two would drift.
+    late = {
+        name
+        for name, introduced in cli.SUNSET_ENV_NAMES_INTRODUCED_AT.items()
+        if cli.version_tuple("0.16.0") < cli.version_tuple(introduced)
+    }
+    assert len(env_surfaces) == len(cli.SUNSET_WARNED_ENV_NAMES) - len(late)
     assert all(s["removeAfter"] == "1.0.0" for s in env_surfaces)
 
     # 0.18.0 (Plan-Authoring Standard) is declared: additive plan-shape surface, NOT WIP-safe
@@ -4074,3 +4093,45 @@ def test_release_commit_subjects_name_the_version_they_ship(cli):
         f"these commits no longer drift and must be removed from KNOWN_RELEASE_SUBJECT_DRIFT: "
         f"{corrected}. The allowlist has to shrink, or it stops describing anything."
     )
+
+
+def test_the_release_ladder_memoizes_instead_of_recomputing_predecessors(cli):
+    """Each release block derives its predecessor's report TWICE -- once for `wipSafe`, once for
+    `requiredMigrations` -- so an unmemoized ladder costs 2**depth.
+
+    Measured on the tip that introduced this test, before the fix: 0.99.0 31.8s, 0.100.0 64.0s,
+    0.101.0 127.4s. That is an exact doubling per release, extrapolating to ~68 minutes for a
+    SINGLE 0.106.0 derivation. Seven releases landed in one day multiplied it by 128 and turned
+    `scripts/test.sh` and CI's `ci-python-full` into apparent hangs (5h20m against 1h02m on a
+    quiet box), which was misdiagnosed as machine contention for hours.
+
+    The memo is a correctness-preserving cache: callers still receive their own dict, so a caller
+    that mutates the result cannot poison another's. Both halves are asserted here, and the cache
+    is cleared first so the timing measures a genuine cold derivation.
+    """
+    cache = getattr(cli, "_RELEASE_MIGRATION_REPORT_CACHE", None)
+    assert cache is not None, (
+        "release_migration_report_data must memoize; every release block derives its predecessor "
+        "twice, so an unmemoized ladder is 2**depth and becomes unusable within a few releases"
+    )
+    cache.clear()
+
+    version = (Path(__file__).resolve().parents[1] / "VERSION").read_text(encoding="utf-8").strip()
+    started = time.perf_counter()
+    first = cli.release_migration_report_data(version)
+    cold_seconds = time.perf_counter() - started
+    assert cold_seconds < 30.0, (
+        f"a cold release-report derivation for {version} took {cold_seconds:.1f}s; the ladder is "
+        "recomputing predecessors exponentially again"
+    )
+
+    second = cli.release_migration_report_data(version)
+    assert second == first, "the memo must return an equal report"
+    assert second is not first, (
+        "the memo must hand each caller its OWN dict; several callers mutate the result and a "
+        "shared object would let one caller's edit leak into another's report"
+    )
+    first["requiredMigrations"].append({"id": "mutation-probe"})
+    assert len(cli.release_migration_report_data(version)["requiredMigrations"]) == len(
+        second["requiredMigrations"]
+    ), "a caller's mutation must not reach the cached report"

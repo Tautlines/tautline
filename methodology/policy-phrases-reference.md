@@ -1,6 +1,6 @@
 # Guard Phrase Vocabulary (GENERATED — do not edit by hand)
 
-Generated from the CLI guard constants via `minervit-methodology dump-policy-phrases --write` (89 lists, 1354 phrases). This is the human-readable projection of `methodology/policy-phrases.json`; both derive from one CLI source. Edit the CLI constants, then regenerate.
+Generated from the CLI guard constants via `minervit-methodology dump-policy-phrases --write` (91 lists, 1369 phrases). This is the human-readable projection of `methodology/policy-phrases.json`; both derive from one CLI source. Edit the CLI constants, then regenerate.
 
 ## BACKGROUND_COMMAND_FAKE_MONITOR_PATTERNS (4)
 - `\buntil\b[\s\S]{0,800}\bdo\b[\s\S]{0,800}\bsleep\b`
@@ -1126,6 +1126,15 @@ Generated from the CLI guard constants via `minervit-methodology dump-policy-phr
 - `timestamp`
 - `artifact growth`
 
+## RESPONSE_GUARD_NAMED_DEFAULT_MARKERS (7)
+- `safe default`
+- `defensible default`
+- `the default is`
+- `my recommendation is`
+- `i recommend`
+- `recommended path`
+- `the safe path is`
+
 ## RESPONSE_GUARD_OPT_IN_ACTION_VERBS (34)
 - `start`
 - `begin`
@@ -1380,6 +1389,16 @@ Generated from the CLI guard constants via `minervit-methodology dump-policy-phr
 - `journal pending`
 - `journal published`
 - `pending session journal`
+
+## RESPONSE_GUARD_STANDING_AUTH_OBJECTS (8)
+- `break-glass`
+- `break glass`
+- `admin merge`
+- `--admin`
+- `--no-verify`
+- `force push`
+- `bypass the gate`
+- `standing approval`
 
 ## RESPONSE_GUARD_STATUS_PROMPT_MARKERS (2)
 - `are you still`

@@ -1,0 +1,14 @@
+{
+  "aggregateStopBlockingRatePct": 0.0,
+  "blockedLegitimateIds": [],
+  "blockedLegitimateTurns": 0,
+  "ceilingPoints": 2.0,
+  "corpusSha256": "4f24bbe89e5370e20c8acccbf83042c7ce5b977a27d553ca7a199428307631aa",
+  "detectedEvasionTurns": 12,
+  "evasionTurns": 12,
+  "legitimateTurns": 46,
+  "missedEvasionIds": [],
+  "note": "Aggregate stop-blocking rate over the frozen corpus at maximum enforcement. Items 83, 84 and 79 WS3 re-measure on their own rebased tip and state the number in the PR body; never carry this number forward.",
+  "recordedAtRelease": "0.77.0",
+  "sensitivityPct": 100.0
+}

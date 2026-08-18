@@ -78,7 +78,19 @@ def test_response_guard_config_load_error_defaults_phrase_checks_blocking(cli, t
     root.mkdir()
     (root / ".minervit-ai-delivery.json").write_text("{bad json", encoding="utf-8")
 
-    assert cli.response_guard_config_for_root(root) == {"phraseChecks": "blocking"}
+    # A broken adapter is a broken lane state, not an absent one. Asserting the WHOLE config rather
+    # than one key is what stops a new mode from quietly failing open here.
+    config = cli.response_guard_config_for_root(root)
+    assert set(config) == {"phraseChecks", "highPrecisionPhraseChecks", "questionGuard"}
+    # The two enforcement tiers fail toward blocking: refusing to loosen enforcement for a lane we
+    # cannot read is the safe direction.
+    assert config["phraseChecks"] == "blocking"
+    assert config["highPrecisionPhraseChecks"] == "blocking"
+    # `questionGuard` fails to its SHIPPED default instead, and the asymmetry is deliberate. For
+    # that check "blocking" is not a safer state -- it is a classifier three review rounds found
+    # false positives in, including one that denies a genuine operator-owned approval question.
+    # Applying it to the most degraded lanes on the fleet would be the opposite of a fail-safe.
+    assert config["questionGuard"] == "advisory"
 
 
 def test_stop_hook_allows_explicit_user_stop(run_cli, cli, tmp_path):

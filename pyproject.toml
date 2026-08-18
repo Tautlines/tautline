@@ -63,3 +63,14 @@ disable_error_code = [
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 addopts = "-ra -q"
+# Reclaim a passing test's tmp tree as soon as it passes; keep a failing one as evidence.
+#
+# The default ("all") defers every reclaim to pytest's numbered-dir GC, which runs only at CLEAN
+# interpreter exit and then honours a stale lock for LOCK_TIMEOUT (3 days). An interrupted run --
+# routine in agent sessions -- therefore leaks its entire basetemp, and the next run will not touch
+# it for three days. At roughly 1.3 GB per full-suite run that reached 17 GB and filled the disk on
+# 2026-08-16. Per-test reclaim makes an interrupted run cost almost nothing.
+#
+# This setting only works because tests/_tmp_unseal.py unseals read-only trees first: pytest
+# reclaims with shutil.rmtree(ignore_errors=True), which fails silently on a sealed tree.
+tmp_path_retention_policy = "failed"

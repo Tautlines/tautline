@@ -37,6 +37,21 @@ True blockers are decisions that change approved scope, unresolved explicit appr
 
 Credentials or served-origin access are true blockers only after checking the project adapter's declared env, secret, cloud identity, seeded-account, deploy/status, and lane evidence paths. If those checks prove a missing credential/config, ask one exact blocker question or state the exact setup action. Do not present a menu.
 
+For a `MINERVIT_*` / `TAUTLINE_*` / `*_WEBHOOK` secret that a `tautline` command reports missing, that
+check has a name and a command: run `tautline secret-status --name <VAR>` and retry the failing
+command through the lane environment. Only `secret_source: absent` — meaning absent from the
+process environment, the installed config env, and the operator secrets store alike — is an
+operator escalation. `secret_source: indeterminate` (exit 2) is NOT: it means a layer exists and
+could not be read, so absence was never established, and escalating on it is acting on a
+measurement nothing took. Fix the permissions and probe again. When the probe reports a FILE
+layer, the value is persisted but not exported into this process — source that file (the probe
+prints the command) rather than re-running through `lane-run`, which builds its child environment
+from the current process and cannot expose it. The usual cause is not a missing value
+but an unreachable one: a session started outside the lane env, or a value persisted under the
+legacy `MINERVIT_` spelling while the resolver prefers its `TAUTLINE_` alias. Re-asking for a value
+that is already in the store is permission theater, and the probe never prints the value, so running
+it is safe in any log.
+
 Never offer to ship, push, merge, deploy, release, or implement unverified work as a choice when verification is required by the adapter, source-of-truth plan, goal ledger, milestone ledger, or review gate. If verification cannot run, keep the work unmerged/uncomplete, record the exact verification blocker, and continue any safe parallel work.
 
 Transient model/provider outages are not true blockers until recovery has been attempted through a concrete loop. Anthropic/Claude/Codex/GitHub/API overloads, API errors, 429/500/502/503/504/529 responses, rate limits, websocket/network failures, service-degraded messages, and "try again" failures require `ScheduleWakeup` or host self-wakeup at <=5 minutes initially, capped at <=15 minutes, plus retry until recovery or a non-transient blocker appears. Do not ask whether to wait, and do not stop for the night because the provider is temporarily down.

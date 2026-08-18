@@ -7,6 +7,7 @@ usage: tautline install-hooks [-h] [--settings SETTINGS] [--command COMMAND]
                               [--context-rotation-heartbeat-command CONTEXT_ROTATION_HEARTBEAT_COMMAND]
                               [--plan-review-pending-command PLAN_REVIEW_PENDING_COMMAND]
                               [--fleet-guard-command FLEET_GUARD_COMMAND]
+                              [--question-guard-command QUESTION_GUARD_COMMAND]
                               [--session-start-directive-command SESSION_START_DIRECTIVE_COMMAND]
                               [--target TARGET]
 
@@ -22,6 +23,7 @@ options:
   --context-rotation-heartbeat-command CONTEXT_ROTATION_HEARTBEAT_COMMAND
   --plan-review-pending-command PLAN_REVIEW_PENDING_COMMAND
   --fleet-guard-command FLEET_GUARD_COMMAND
+  --question-guard-command QUESTION_GUARD_COMMAND
   --session-start-directive-command SESSION_START_DIRECTIVE_COMMAND
   --target TARGET       Adapter-backed lane path where Git branch-liveness
                         hooks should be installed.

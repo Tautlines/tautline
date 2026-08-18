@@ -233,7 +233,78 @@ def test_canonical_policy_size_ratchet(cli):
     # 76395 -> 76666 (+271) at implementation review R1, for the cross-repo qualified-reference
     # clause: a bare `#N` resolves against the PR's own repository, so a provider-backed item
     # living in another repo needs `owner/repo#N` in both the title and the closing keyword.
-    assert len(assembled.encode("utf-8")) <= 76666
+    # 76666 -> 76921 (+256, THIS lane's own measured delta, re-measured on the 0.76.0 tip and not
+    # carried from any predecessor) for item 82's two enforcement pointers: the encoding-independent
+    # clause on the pick-path prohibition in 04-autonomy-and-status.md, and the
+    # `stop.announce_and_stop` pointer in 09-delivery-summaries.md. Both are one sentence added
+    # a rule that already existed -- this cluster is prose describing enforcement that never
+    # existed,
+    # and what the bytes buy is the pointer FROM the rule TO the check that now enforces it. A
+    # control lanes cannot read about is half a control.
+    #
+    # Operational detail deliberately did NOT come here, per the close-out corridor decision: the
+    # three check ids, their recovery actions, the advisory-vs-blocking split and the demotion knob
+    # all live in the `stop-guard-evasion-shapes` reference under the risk-tier-autonomy skill,
+    # which costs no ratchet and no rendered-adapter corridor.
+    #
+    # MEASURED rendered-adapter corridor for this release: CLAUDE.md 16,116 -> 16,116 and
+    # AGENTS.md 16,057 -> 16,057, byte-identical, so this release spends ZERO of the 202 free bytes
+    # and every later claimant still has all 202. Measured by rendering example-saas on this
+    # branch's tip, never by reading a PR body.
+    #
+    # The first number written here was 76935, measured BEFORE policy 04's sentence was tightened
+    # to fit a conciseness cap. Shipping it would have granted the next lane 14 bytes it never
+    # earned -- the stale-carried-raise failure this program names explicitly, in the small. The
+    # number below is re-measured on the final tree.
+    # Raised 76921 -> 78377 (+1456, THIS lane's own measured delta on the rebased 0.79.0 tip) for
+    # item 74 PR-C's policy module 16a-go-live-readiness.md. A whole section rather than a
+    # sentence, and it earns that: both member RCAs' Fix Proposals ask for exactly a canonical
+    # Go-Live section, and the gate this release ships REFUSES by naming a control -- a refusal a
+    # lane meets and cannot read about is a dead end by another name.
+    #
+    # Re-measured after the module's gate wording was aligned to the GO_LIVE_GATES table; a first
+    # reading of +1103 was taken before that alignment, and carrying it would have granted the next
+    # lane 34 bytes it never earned.
+    #
+    # MEASURED rendered-adapter corridor: CLAUDE.md and AGENTS.md byte-identical, so ZERO of the
+    # 202 free bytes -- the module renders into canonical-rules.md, which has no such cap.
+    #
+    # Raised 78377 -> 79339 (+962) for item 83 PR1's four monitor-lifecycle rules in policy 20 and
+    # the goal-clear hand-back in policy 04. RE-MEASURED on this rebased 0.81.0 tip by regenerating
+    # canonical-rules.md, not carried: the branch's own note called its earlier 77883 provisional
+    # precisely because item 74 PR-C was ahead of it in the ratchet queue. The delta happens to be
+    # the same 962 as on the old base, which is a fact to state rather than a reason to skip the
+    # measurement -- an unchanged delta and a stale number look identical in a diff.
+    #
+    # The REASONING for those four rules lives in the background-monitoring skill reference, which
+    # costs neither this ratchet nor the corridor. Only the rules themselves are here.
+    # Raised 79339 -> 80074 (+735) for item 85 WS3: one bullet in policy 23 naming where operator
+    # secrets persist and the probe that checks them, and one clause extending policy 03's
+    # true-blocker sentence.
+    #
+    # RE-MEASURED on this rebased 0.82.0 tip by regenerating canonical-rules.md, not carried. The
+    # earlier reading of +735 was taken on the 0.81.0 base while item 83 PR1 held the ratchet queue
+    # ahead of this branch, and its own note called it provisional for exactly that reason. The
+    # delta is unchanged, which is a fact to state rather than a licence to skip the measurement:
+    # an unchanged delta and a stale number look identical in a diff.
+    #
+    # MEASURED rendered-adapter corridor: byte-identical, so ZERO of the 202 free bytes. The rule
+    # lands in policy modules and a skill reference, both of which render into canonical-rules.md
+    # rather than the generated adapter.
+    # 80074 -> 80246 (+172) after Codex R1: policy 23 must distinguish `indeterminate` from
+    # `absent`, because the rule names `absent` as the escalation predicate and the probe was
+    # printing that exact marker for a result it had NOT measured. Re-measured, not adjusted by
+    # the diff's line count.
+    # Raised 80246 -> 80744 (+498) for item 83 PR2 WS4: the corrected guard-activation sentence in
+    # policy 20 -- the shipped one asserted the guard is active only with a live goal ledger, which
+    # is the hole this release closes -- plus the yield rule and the null-turn invariant.
+    #
+    # RE-MEASURED against the MERGED 0.83.0 base, and the number MOVED: the same three edits
+    # measured +690 against 0.82.0. 0.83.0's own policy-23 additions changed what this text costs,
+    # so carrying the earlier reading forward would have claimed 192 bytes this lane did not spend.
+    # That is the whole reason the rule is re-measure-never-carry, and this is the first time in
+    # this program the delta actually differed rather than merely being re-derived.
+    assert len(assembled.encode("utf-8")) <= 80744
 
 
 def test_canonical_policy_keeps_ops_provider_detail_out_of_core_modules(cli):

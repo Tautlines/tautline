@@ -166,6 +166,76 @@ def _hook_context(stdout: str) -> str:
     return payload["hookSpecificOutput"]["additionalContext"]
 
 
+def _write_reviewed_compliant_plan(run_cli, target: Path, rel: Path) -> Path:
+    """Like `_write_reviewed_plan`, but shape-compliant (Workstreams/model-tier/decision-record)
+    so a `block`-enforcement test exercises ONLY the goal-prompt check, not the pre-existing
+    plan-authoring shape check `plan_finalization_precheck_errors` already applies under `block`."""
+    path = _write_reviewed_plan(run_cli, target, rel)
+    path.write_text(
+        path.read_text(encoding="utf-8")
+        + "\n## Workstreams\n"
+        "WS1 is a hard predecessor for WS2; WS2 is parallel-safe (no shared files).\n\n"
+        "### Task 1  model-tier: standard\n"
+        "Use best judgment while executing; record non-obvious calls with "
+        "`tautline decision-record`.\n",
+        encoding="utf-8",
+    )
+    reviewed = run_cli(
+        "run-plan-review", "--target", str(target), "--plan", rel.as_posix(),
+        "--round", "R1", "--model", "codex-test", "--verdict", "clean",
+        "--unresolved-critical-count", "0", "--unresolved-p1-count", "0",
+    )
+    assert reviewed.returncode == 0, reviewed.stderr
+    return path
+
+
+def _set_planning_enforcement(target: Path, level: str) -> None:
+    """Edit the RENDERED lane-local adapter (`.tautline.json`) directly. Safe here because the
+    hook loads it with the plain `load_project` (no source-checksum verification) -- unlike
+    `lane_project`, which strict CLI verbs use and which does check `sourceAdapterSha256`
+    against a copied/edited lane adapter."""
+    marker = target / ".tautline.json"
+    data = json.loads(marker.read_text(encoding="utf-8"))
+    data["planning"] = {"authoringStandard": {"enforcement": level}}
+    marker.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def test_hook_never_blocks_exitplanmode_on_a_missing_goal_prompt(run_cli, tmp_path):
+    """Codex R1 (final confirming round) P1: a goal-prompt-missing finding must NEVER refuse
+    ExitPlanMode, even under `block` -- Claude is still in read-only plan mode here, and the only
+    remedy (`goal-assignment --out`) WRITES a file. A hook that blocks the exit a write needs to
+    run is an unconditional deadlock: the plan can never leave read-only mode to create the
+    artifact that would let it pass. Advisory-only here; `plan-finalization-precheck` (which runs
+    AFTER plan mode is left) still enforces `block` in full."""
+    target = _prepare_target(run_cli, tmp_path)
+    source_plan = _write_reviewed_compliant_plan(run_cli, target, SOURCE_ROOT / "test-plan.md")
+    _set_planning_enforcement(target, "block")
+
+    result = run_cli("plan-finalization-hook", stdin=_event(target, plan_file=str(source_plan)))
+
+    assert result.returncode == 0
+    assert "ExitPlanMode blocked" not in result.stdout
+    context = _hook_context(result.stdout)
+    assert "goal-prompt" in context.lower()
+    assert "does not block exitplanmode" in context.lower() or "does not block" in context.lower()
+    assert "goal-assignment" in context
+
+
+def test_hook_stays_silent_once_a_goal_prompt_is_shipped(run_cli, tmp_path):
+    target = _prepare_target(run_cli, tmp_path)
+    source_plan = _write_reviewed_compliant_plan(run_cli, target, SOURCE_ROOT / "test-plan.md")
+    _set_planning_enforcement(target, "block")
+    source_plan.parent.joinpath("goal-ws1.txt").write_text(
+        f"/goal from the finalized plan `{(SOURCE_ROOT / 'test-plan.md').as_posix()}`\n",
+        encoding="utf-8",
+    )
+
+    result = run_cli("plan-finalization-hook", stdin=_event(target, plan_file=str(source_plan)))
+
+    assert result.returncode == 0
+    assert result.stdout.strip() == ""
+
+
 def test_hook_resolves_configured_scratch_path_by_content_hash(run_cli, tmp_path):
     target = _prepare_target(run_cli, tmp_path)
     source_plan = _write_reviewed_plan(run_cli, target, SOURCE_ROOT / "test-plan.md")
@@ -397,3 +467,46 @@ def test_hook_ignores_archive_reference_when_resolving_random_scratch_path(run_c
     assert result.returncode == 0
     assert "ExitPlanMode blocked" not in result.stdout
     assert "Minervit plan-mode scratch escape" in _hook_context(result.stdout)
+
+
+def test_both_advisories_emit_one_parsable_hook_response(run_cli, tmp_path):
+    """Codex R1 P2 (this lineage): when the goal-prompt advisory AND the goal-ledger nudge both
+    fire in one hook evaluation, they must arrive as ONE JSON response — hook consumers parse a
+    single object, and two concatenated objects make both advisories unreadable."""
+    target = _prepare_target(run_cli, tmp_path)
+    source_plan = _write_reviewed_compliant_plan(run_cli, target, SOURCE_ROOT / "test-plan.md")
+    _set_planning_enforcement(target, "block")
+    # No goal-prompt artifact exists (fires the goal-prompt advisory), and the EVENT's inline
+    # plan text reads substantial (fires the goal-ledger nudge via extra_reference_text; no
+    # goal ledger exists in a fresh target). The reviewed file itself stays untouched, so the
+    # hook reaches the advisory path rather than the stale-evidence refusal.
+    result = run_cli(
+        "plan-finalization-hook",
+        stdin=_event(
+            target,
+            plan_file=str(source_plan),
+            plan="This is a multi-PR effort delivered across milestones.",
+        ),
+    )
+
+    assert result.returncode == 0
+    # _stdout_json raises if stdout is not exactly one JSON document.
+    context = _hook_context(result.stdout)
+    assert "Minervit goal-prompt check:" in context
+    assert "Minervit goal-ledger check:" in context
+
+
+def test_advise_level_missing_goal_prompt_still_reaches_the_hook_advisory(run_cli, tmp_path):
+    """Codex R2 P2 (this lineage): at `advise` — the DEFAULT — the goal-prompt report returns
+    warnings, not errors, and the hook used to discard them entirely: default lanes got no hook
+    advisory for a missing goal prompt. The warning path must reach the same single advisory."""
+    target = _prepare_target(run_cli, tmp_path)
+    source_plan = _write_reviewed_compliant_plan(run_cli, target, SOURCE_ROOT / "test-plan.md")
+    _set_planning_enforcement(target, "advise")
+
+    result = run_cli("plan-finalization-hook", stdin=_event(target, plan_file=str(source_plan)))
+
+    assert result.returncode == 0
+    context = _hook_context(result.stdout)
+    assert "Minervit goal-prompt check:" in context
+    assert "does NOT block ExitPlanMode" in context

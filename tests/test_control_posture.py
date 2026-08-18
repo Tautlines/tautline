@@ -58,7 +58,13 @@ def all_block_adapter() -> dict:
             "fullPreflight": "make preflight && playwright test",
         },
         "criticalJourneys": [{"name": "checkout", "featurePath": "app/checkout"}],
-        "runtimeConfig": {"enforcement": "block", "requiredSecrets": ["STRIPE_KEY"]},
+        "runtimeConfig": {
+            "enforcement": "block",
+            "requiredSecrets": ["STRIPE_KEY"],
+            # Enforcing "everything" now includes actually asserting the registered secrets:
+            # a registry with no assertion command records an intention, not a check.
+            "bootAssertionCommand": "./scripts/assert-secrets.sh",
+        },
         "flakyQuarantine": {"enforcement": "block", "maxMarkers": 0, "scanPath": "tests"},
         "readiness": {
             "enforcement": "block",
@@ -180,8 +186,11 @@ def test_a_json_null_is_an_absent_value_not_the_word_none(cli):
     # An empty binding preflight is unreachable; a null one must not read as configured.
     assert rows["bindingPreflight"]["state"] == "unreachable"
     assert "empty" in rows["bindingPreflight"]["detail"]
-    for control in ("uiEvidence", "healthContract", "runtimeConfig.requiredSecrets"):
+    for control in ("uiEvidence", "healthContract"):
         assert rows[control]["state"] == "off", control
+    # Secrets registered, no assertion command: a MISSING INPUT, not weak enforcement -- the
+    # enforcement string is not what is absent, so this reads `empty` rather than `off`.
+    assert rows["runtimeConfig.requiredSecrets"]["state"] == "empty"
     assert rows["flakyQuarantine"]["state"] == "empty"
     assert "None" not in cli.control_posture_summary_line(cli.control_posture_rows(nulled))
 
@@ -506,3 +515,35 @@ def test_audit_prints_posture_on_clean_repo_and_keeps_legacy_line(tmp_path, run_
     assert [line for line in lines if line.startswith("control_posture_row: ")], result.stdout
     # Posture never sets exit 1 -- a clean repo with a fully advisory adapter still exits 0.
     assert "drift=none" not in result.stdout
+
+
+def test_an_active_go_live_profile_prints_its_gate_detail_without_the_flag(tmp_path, run_cli):
+    """Codex R2: a lane held to the six gates must not need `--posture` to see WHY one is unmet.
+
+    A validly declined control emits no issue line either -- declines suppress those by design --
+    so without this the only route to the row's actionable detail is knowing to re-run with a flag
+    the refusal never mentions. Scoped to GO_LIVE_CONTROLS: opting in buys these rows, not the
+    whole posture dump, so the noise budget the default surface protects is unchanged for the rows
+    the profile does not govern.
+    """
+    target = _lane(
+        tmp_path,
+        run_cli,
+        lambda data: data.update({"goLiveReadiness": {"profile": "live-tenant"}}),
+    )
+    result = _status(run_cli, target)
+    detail = [
+        line for line in result.stdout.splitlines()
+        if line.startswith("control_posture_warn: ")
+    ]
+    assert detail, result.stdout
+    governed = set(_cli_module().GO_LIVE_CONTROLS)
+    for line in detail:
+        control = line.split("control_posture_warn: ", 1)[1].split(" ", 1)[0].strip()
+        assert control in governed, f"un-governed control leaked into the default surface: {line}"
+
+
+def _cli_module():
+    import tautline_methodology.cli as module
+
+    return module

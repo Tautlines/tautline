@@ -8,6 +8,15 @@ from pathlib import Path
 
 import pytest
 
+# Autouse fixture, registered by importing its name here: it restores the write bits on anything a
+# test sealed read-only, so pytest's own tmp_path finalizer can actually reclaim the tree instead of
+# silently leaving it on disk. See tests/_tmp_unseal.py for why that silence was expensive.
+from _tmp_unseal import (  # noqa: F401
+    _unseal_tmp_path_for_reclaim,
+    pytest_runtest_makereport,
+    pytest_sessionfinish,
+)
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SRC_ROOT = REPO_ROOT / "src"
 if SRC_ROOT.is_dir():

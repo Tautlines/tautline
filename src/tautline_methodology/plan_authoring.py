@@ -8,9 +8,22 @@ SSOT (which collects only non-empty list[str]); see policy.policy_phrase_constan
 from __future__ import annotations
 
 import re
+import shlex
+from pathlib import Path
 
 PLAN_AUTHORING_ENFORCEMENT_CHOICES: tuple[str, ...] = ("off", "observe", "advise", "block")
 DEFAULT_PLANNING_AUTHORING_STANDARD: dict = {"enforcement": "advise"}
+
+# The convention every hand-authored goal in this repo already follows (see
+# ready/*/goal-*.txt in the backlog): a goal prompt sits beside its plan, named
+# `goal-<something>.txt`. Existence-only -- content is `goal-assignment --check`'s job.
+GOAL_PROMPT_ARTIFACT_GLOB = "goal*.txt"
+
+# The `goal-assignment` skill's OWN documented Fast Path (`--out .ai-work/goal.txt`) writes a
+# fixed, target-relative path rather than one beside the plan. Codex R1 P2: without this, the
+# sanctioned workflow never clears `block` enforcement. Checked in addition to, never instead
+# of, the beside-the-plan glob.
+GOAL_PROMPT_FALLBACK_RELATIVE_PATH = ".ai-work/goal.txt"
 
 # The three-part marker contract (authoritative; shared with skill + canonical rule).
 _WORKSTREAMS_HEADING = re.compile(r"(?im)^#{1,3}\s+workstreams?\b")
@@ -42,6 +55,8 @@ STANDING_PLAN_AUTHORING_STANDARD_CORE: str = (
     "judgment, record non-obvious decisions with `tautline decision-record`, do not "
     "stop for permission mid-task, and if blocked work exhaustively on the rest.\n"
     "- Each task ends with an independently testable deliverable and a review gate.\n"
+    "- A build-ready plan ships its goal prompt alongside it (`goal*.txt`, composed "
+    "with `tautline goal-assignment --out`).\n"
 )
 
 
@@ -83,6 +98,125 @@ def plan_authoring_standard_issues(plan_text: str) -> list[str]:
             "and a `decision-record` reference) in the task text."
         )
     return issues
+
+
+def plan_missing_goal_prompt_issue(
+    plan_path: Path, *, target: Path | None = None, plan_ref: str | None = None
+) -> str | None:
+    """None if a goal-prompt artifact exists AND names this plan; otherwise the issue message.
+
+    Candidates are every `GOAL_PROMPT_ARTIFACT_GLOB` file beside the plan, plus
+    `<target>/GOAL_PROMPT_FALLBACK_RELATIVE_PATH` when `target` is given (the
+    `goal-assignment` skill's own documented Fast Path writes there, not beside the plan --
+    Codex R1 P2).
+
+    BOUND to this plan, not just present: a candidate must contain the plan's own filename
+    (every composed goal states its plan path verbatim -- "from the finalized plan `<ref>`" --
+    so this is the same signal the composer already writes). Codex R1 P1: without this, the
+    FIRST plan in a directory to get a goal silently satisfies `block` enforcement for every
+    OTHER plan sharing that directory, which is exactly this repo's own flat
+    `docs/superpowers/plans/` layout.
+
+    Content is otherwise unexamined -- whether a bound candidate is a VALID goal (within the
+    char cap, states the handoff bar) is `goal-assignment --check`'s job, not this one's.
+
+    `plan_ref` is the string a caller would pass to `--plan` (target-relative, or the
+    `<root>:...` form for an externally-rooted plan) -- used only in the printed remedy command,
+    which otherwise (Codex R1 P2) suggests the plan's bare filename and fails when copy-pasted
+    for any plan not sitting at the target root. Callers with no target context may omit it.
+    """
+    plan_name = plan_path.name
+
+    # Codex R1 (this round) P2: matching ANY occurrence of the plan's name/ref anywhere in the
+    # candidate's text is too loose once two plans can legitimately be mentioned in the same
+    # goal prompt for reasons other than binding (a milestone note, a "see also"). The composer
+    # (`compose_goal_assignment`) always states the bound plan in exactly one place -- the
+    # source-plan clause "... from the finalized plan `<plan_ref>`." -- so parse THAT clause and
+    # compare its captured reference, instead of approximating "looks like a delimited path"
+    # against the whole text (which a punctuation-containing filename, e.g. "my plan.md", could
+    # also satisfy by accident; a backtick-delimited exact capture has no such approximation).
+    _SOURCE_PLAN_CLAUSE = re.compile(r"from the finalized plan `([^`]*)`")
+
+    def _fallback_ref_proves_this_plan(bound_ref: str) -> bool:
+        # Codex R1 P2 (this lineage): the TARGET-WIDE fallback is one file for the whole target,
+        # so the bare-basename degradation would let a goal naming `ready/item-a/plan.md`
+        # satisfy `ready/item-b/plan.md` -- the documented basename-collision class. Without a
+        # caller-supplied `plan_ref`, the fallback binds only on proof: a directory-carrying
+        # bound ref must RESOLVE (target-relative) to this very plan file; a bare ref (the
+        # sanctioned Fast Path writes just the basename) keeps the basename rule, whose
+        # ambiguity is scoped to same-named plans the composer itself could not tell apart.
+        if "/" not in bound_ref:
+            return bound_ref == plan_name
+        if target is None:
+            return False
+        try:
+            return (target / bound_ref).resolve() == plan_path.resolve()
+        except OSError:
+            return False
+
+    def _binds_this_plan(text: str, *, fallback_candidate: bool = False) -> bool:
+        for match in _SOURCE_PLAN_CLAUSE.finditer(text):
+            bound_ref = match.group(1)
+            if fallback_candidate and not plan_ref:
+                if _fallback_ref_proves_this_plan(bound_ref):
+                    return True
+                continue
+            if plan_ref:
+                # Codex R1 (third + final confirming rounds) P1/P2, still true for an exact
+                # compare: a caller-supplied `plan_ref` is the full reference the composer was
+                # given, so only an exact match binds -- no suffix/substring leniency needed
+                # now that we are comparing the parsed clause, not scanning raw text.
+                if bound_ref == plan_ref:
+                    return True
+            else:
+                # Codex R1 (second confirming round) P1: no `plan_ref` context (caller has none
+                # to give) degrades to the bare-basename signal -- the bound ref must END with
+                # this basename, at a real path boundary (start of the ref, or immediately after
+                # `/`), not merely contain it as a substring (which is what let "long-plan.md"
+                # falsely satisfy "plan.md" before, and would let "my plan.md" falsely satisfy
+                # "plan.md" via naive delimiter-approximation).
+                if bound_ref == plan_name or bound_ref.endswith("/" + plan_name):
+                    return True
+        return False
+
+    candidates: list[Path] = []
+    try:
+        candidates.extend(sorted(plan_path.parent.glob(GOAL_PROMPT_ARTIFACT_GLOB)))
+    except OSError:
+        pass
+    fallback: Path | None = None
+    if target is not None:
+        fallback = target / GOAL_PROMPT_FALLBACK_RELATIVE_PATH
+        if fallback not in candidates and fallback.is_file():
+            candidates.append(fallback)
+    for candidate in candidates:
+        try:
+            text = candidate.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        if _binds_this_plan(text, fallback_candidate=candidate == fallback):
+            return None
+    ref = plan_ref if plan_ref is not None else plan_name
+    # Codex R1 (confirming round) P3: an unquoted plan reference containing whitespace or shell
+    # metacharacters (e.g. a path with a space) breaks the copy-pasted remedy command into the
+    # wrong number of arguments. shlex.quote makes the printed command runnable verbatim.
+    compose_hint = (
+        "compose one with `tautline goal-assignment --plan "
+        f"{shlex.quote(ref)} --out <dir>/goal-<name>.txt`"
+    )
+    if candidates:
+        names = ", ".join(dict.fromkeys(c.name for c in candidates))
+        return (
+            f"a goal prompt artifact exists ({names}) but none of them names this plan "
+            f"('{plan_name}' does not appear in its text); a build-ready plan's goal prompt must "
+            f"reference ITS OWN plan, not a sibling's -- {compose_hint}"
+        )
+    return (
+        f"no goal prompt artifact ({GOAL_PROMPT_ARTIFACT_GLOB}, or "
+        f"{GOAL_PROMPT_FALLBACK_RELATIVE_PATH} under the lane target) found for {plan_name}; a "
+        f"build-ready plan ships one so a builder lane is not asked for it by hand -- "
+        f"{compose_hint}"
+    )
 
 
 def normalize_planning_authoring_standard(data: dict) -> dict:

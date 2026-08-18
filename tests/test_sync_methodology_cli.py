@@ -12,6 +12,17 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 # a literal minor series breaks every one of them on the next release bump (it already had
 # to be patched 0.14 -> 0.16 once; this removes the recurrence rather than the symptom).
 RUNNING_VERSION = (REPO_ROOT / "VERSION").read_text(encoding="utf-8").strip()
+# A version GUARANTEED above RUNNING_VERSION, for tests that simulate "a newer release exists
+# upstream". Codex R1 P1: a hardcoded "0.99.0" collided with RUNNING_VERSION itself once this
+# repo's own VERSION reached 0.99.0 -- _advance_remote_version(source, RUNNING_VERSION) is a
+# no-op (no file content changes), so the `git commit` inside it exits 1 and the calling test
+# fails deterministically. DERIVED, like RUNNING_VERSION above, so this cannot recur. Bumps the
+# MINOR component (not patch): the assertions below expect `change=minor` from
+# semver_change_kind, which classifies on the middle component specifically.
+_next_parts = [int(part) for part in RUNNING_VERSION.split(".")]
+_next_parts[1] += 1
+_next_parts[2] = 0
+NEXT_VERSION = ".".join(str(part) for part in _next_parts)
 CLI_PATH = REPO_ROOT / "bin" / "tautline"
 EXAMPLE_ADAPTER = REPO_ROOT / "adapters" / "projects" / "example-saas.json"
 PLUGIN_MANIFEST = REPO_ROOT / "plugins" / "tautline-core" / ".codex-plugin" / "plugin.json"
@@ -187,7 +198,7 @@ def _methodology_status(binary: Path, clone: Path, lane: Path, *extra, env=None)
 def test_lane_start_offers_update_and_runs_exactly_one_ls_remote(tmp_path):
     source, clone, lane = _make_methodology_fixture(tmp_path)
     binary = clone / "bin" / "tautline"
-    _advance_remote_version(source, "0.99.0")
+    _advance_remote_version(source, NEXT_VERSION)
     # Bring the candidate object local WITHOUT advancing HEAD (the real post-fetch launch shape):
     # the probe resolves VERSION fetch-free, and the launch itself never fetches.
     _git(clone, "fetch", "-q", "origin", "main")
@@ -197,13 +208,13 @@ def test_lane_start_offers_update_and_runs_exactly_one_ls_remote(tmp_path):
 
     assert started.returncode == 0, started.stderr
     assert (
-        "framework_update_available: version=0.99.0 change=minor (running "
+        f"framework_update_available: version={NEXT_VERSION} change=minor (running "
         in started.stdout
     )
     assert started.stdout.count("framework_update_available:") == 1
     assert (
-        "framework_update_offer: 0.99.0 is available; stable-channel updates need trust set "
-        "and the release pinned first: tautline install-cli --update-policy pinned, then: "
+        f"framework_update_offer: {NEXT_VERSION} is available; stable-channel updates need trust "
+        "set and the release pinned first: tautline install-cli --update-policy pinned, then: "
         "tautline update-repin, then: tautline sync-methodology --target ."
     ) in started.stdout
     assert "framework_remote_status: remote differs" in started.stdout
@@ -256,7 +267,7 @@ def test_lane_start_offline_is_byte_identical_to_today_single_ls_remote(tmp_path
 def test_lane_start_non_local_candidate_facts_only_zero_fetch_then_status_full_version(tmp_path):
     source, clone, lane = _make_methodology_fixture(tmp_path)
     binary = clone / "bin" / "tautline"
-    _advance_remote_version(source, "0.99.0")  # remote ahead, object NOT brought local
+    _advance_remote_version(source, NEXT_VERSION)  # remote ahead, object NOT brought local
     shim_dir, log = _make_git_shim(tmp_path)
 
     started = _lane_start(binary, clone, lane, tmp_path, env=_shim_env(shim_dir))
@@ -272,8 +283,8 @@ def test_lane_start_non_local_candidate_facts_only_zero_fetch_then_status_full_v
     # The status surface (fetch allowed) upgrades the sha-only cache to the full version + offer.
     status = _methodology_status(binary, clone, lane)
     assert status.returncode == 0, status.stderr
-    assert "framework_update_available: version=0.99.0 change=minor (running " in status.stdout
-    assert "framework_update_offer: 0.99.0 is available;" in status.stdout
+    assert f"framework_update_available: version={NEXT_VERSION} change=minor (running " in status.stdout
+    assert f"framework_update_offer: {NEXT_VERSION} is available;" in status.stdout
 
 
 def test_methodology_status_metadata_failure_renders_remote_differs_no_offer(tmp_path):
@@ -294,7 +305,7 @@ def test_methodology_status_metadata_failure_renders_remote_differs_no_offer(tmp
 def test_methodology_status_no_remote_is_byte_identical_with_zero_probe_io(tmp_path):
     source, clone, lane = _make_methodology_fixture(tmp_path)
     binary = clone / "bin" / "tautline"
-    _advance_remote_version(source, "0.99.0")  # newer release exists; --no-remote must ignore it
+    _advance_remote_version(source, NEXT_VERSION)  # newer release exists; --no-remote must ignore it
     shim_dir, log = _make_git_shim(tmp_path)
 
     probe_on = _methodology_status(binary, clone, lane, "--no-remote", env=_shim_env(shim_dir))

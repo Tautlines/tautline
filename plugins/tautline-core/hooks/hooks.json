@@ -47,6 +47,15 @@
             "command": "tautline fleet-guard-hook"
           }
         ]
+      },
+      {
+        "matcher": "AskUserQuestion",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "tautline question-guard-hook"
+          }
+        ]
       }
     ],
     "Stop": [
