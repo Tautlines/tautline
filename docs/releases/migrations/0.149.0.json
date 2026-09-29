@@ -11,7 +11,7 @@
     {
       "id": "share-work-through-git",
       "surface": "project-adapter",
-      "description": "Set workCoordination to an object with backend=git. Optionally choose a named remote and dedicated branch. Repository readers can see declared intent; normal Git write permissions govern publication. Render the adapter and run tautline work sync."
+      "description": "Set workCoordination to an object with backend=git. Optionally choose a named remote and dedicated branch. Repository readers can see declared intent; normal Git write permissions govern publication. Run tautline work sync; the CLI reads this setting directly."
     }
   ],
   "deprecatedSurfaces": [],

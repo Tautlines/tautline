@@ -55,7 +55,7 @@ not proof of current execution, exclusive ownership, completed tests, or a merge
 
 ## Coordination across computers and people
 
-Set `workCoordination` in the project's `.tautline.json`, then render the adapter:
+Set `workCoordination` in the project's `.tautline.json`:
 
 ```json
 "workCoordination": {
@@ -68,10 +68,10 @@ Set `workCoordination` in the project's `.tautline.json`, then render the adapte
 ```
 
 ```sh
-tautline render-adapters --target .
 tautline work sync
 ```
 
+The CLI reads this setting directly; no render step is required.
 Only `backend` is required; the example shows every default. Commit the adapter so the team
 uses the same setting. Each clone's named remote must point at the same repository. The
 dedicated metadata branch carries manifests separately from source branches; it does not need
@@ -136,7 +136,10 @@ the peer view as current. An unavailable remote is not evidence that nobody else
 
 New `tautline init` projects enable a short lifecycle instruction in generated adapters. Use
 `tautline init --no-work-coordination` to omit it. Existing lean projects opt in by adding
-`"workCoordination": true` to `.tautline.json` and running `tautline render-adapters --target .`.
+`"workCoordination": true` to `.tautline.json`. To refresh generated agent instructions, run
+`tautline slim --target .`. Handwritten instructions are preserved; incorporate the work lifecycle
+line from any `.lean-proposed` file if needed. Changing local mode to the Git object takes effect
+immediately and does not require regenerating instructions.
 
 The boolean controls adapter guidance and keeps storage local. The Git object both enables
 guidance and selects shared storage. An explicit declaration remains visible at startup and
