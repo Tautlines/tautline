@@ -2,7 +2,7 @@
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "tautline-core",
   "displayName": "Tautline AI Delivery",
-  "version": "0.148.1",
+  "version": "0.149.0",
   "description": "Claude Code package for lean project instructions, shared-work context, goal prompts, handoffs, and scoped builder controls.",
   "author": {
     "name": "Minervit",

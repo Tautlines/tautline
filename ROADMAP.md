@@ -12,7 +12,7 @@ Future items are proposals, not delivery commitments.
 
 - Small project setup and generated Claude Code / Codex instructions.
 - Local queue, GitHub issues, and Jira backlog providers; optional continuity handoffs.
-- Shared local work manifests and a fleet view for sibling worktrees, with scope, dependencies,
+- Shared work manifests and a fleet view for sibling worktrees, with an optional Git metadata branch across clones and computers, scope, dependencies,
   blockers, stale records, and overlap advisories.
 - Optional command evidence tied to code identity; local health and explicitly requested
   GitHub facts.

@@ -291,6 +291,41 @@ def is_lean_config(data: object) -> bool:
     return isinstance(data, dict) and data.get("schemaVersion") == LEAN_SCHEMA_VERSION
 
 
+WORK_REMOTE_PATTERN = r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}"
+WORK_BRANCH_PATTERN = (
+    r"^(?!@$)(?![-/])(?!.*\.\.)(?!.*@\{)(?!.*//)(?!.*(?:^|/)\.)"
+    r"(?!.*\.lock(?:/|$))[^\x00-\x20\x7f~^:?*\[\\]+(?<![/.])$"
+)
+
+
+def work_coordination_errors(value: object) -> list[str]:
+    """Validate the opt-in transport without Git, network access, or rewriting user settings."""
+    if isinstance(value, bool):
+        return []
+    if not isinstance(value, dict):
+        # Retain the original diagnostic for older consumers validating a boolean setting.
+        return ["workCoordination: expected boolean"]
+    errors: list[str] = []
+    allowed = {"backend", "remote", "branch", "syncIntervalSeconds", "timeoutSeconds"}
+    for key in sorted(set(value) - allowed):
+        errors.append(f"workCoordination: unknown property {key!r}")
+    if value.get("backend") != "git":
+        errors.append("workCoordination.backend: expected 'git'")
+    remote = value.get("remote", "origin")
+    if not isinstance(remote, str) or not re.fullmatch(WORK_REMOTE_PATTERN, remote):
+        errors.append("workCoordination.remote: expected a Git remote name, not a URL or path")
+    branch = value.get("branch", "tautline/work")
+    if not isinstance(branch, str) or not re.fullmatch(WORK_BRANCH_PATTERN, branch):
+        errors.append("workCoordination.branch: expected a valid Git branch name")
+    interval = value.get("syncIntervalSeconds", 60)
+    if type(interval) is not int or not 10 <= interval <= 3600:
+        errors.append("workCoordination.syncIntervalSeconds: expected integer 10..3600")
+    timeout = value.get("timeoutSeconds", 2)
+    if type(timeout) not in (int, float) or not 0.25 <= timeout <= 10:
+        errors.append("workCoordination.timeoutSeconds: expected number 0.25..10")
+    return errors
+
+
 def lean_config_errors(data: object) -> list[str]:
     """Validate a lean adapter. Stdlib only -- the CLI has no third-party runtime dependency, and a
     contract this small does not earn one.
@@ -386,8 +421,8 @@ def lean_config_errors(data: object) -> list[str]:
             )
     if "laneStatus" in data and data["laneStatus"] != "advisory":
         errors.append("laneStatus: the only accepted value is 'advisory' -- it never blocks")
-    if "workCoordination" in data and not isinstance(data["workCoordination"], bool):
-        errors.append("workCoordination: expected boolean")
+    if "workCoordination" in data:
+        errors.extend(work_coordination_errors(data["workCoordination"]))
     if "handoffs" in data and not isinstance(data["handoffs"], bool):
         errors.append("handoffs: expected boolean")
     if "projectRules" in data:
@@ -584,7 +619,10 @@ def _adapter_body(cfg: dict, agent: str, *, rules: list[str], dropped: int) -> s
             continue
         lines.append(f"- {norm}")
     lines.extend(f"- {line}" for line in WORKING_STYLE_LINES)
-    if cfg.get("workCoordination") is True:
+    coordination = cfg.get("workCoordination")
+    if coordination is True or (
+        isinstance(coordination, dict) and coordination.get("backend") == "git"
+    ):
         lines.append(f"- {WORK_COORDINATION_LINE}")
     if cfg.get("handoffs") is True:
         lines.extend(f"- {line}" for line in HANDOFF_PROCESS_LINES)
@@ -1719,7 +1757,7 @@ def _run_interview(target: Path, flags: argparse.Namespace, existing: dict | Non
             "Continuity handoffs on?", bool((existing or {}).get("handoffs", False)), yes=yes
         )
     print(
-        "Local work declarations are advisory; `tautline work status` shows peer scope. "
+        "Work declarations are advisory; `tautline work status` shows peer scope. "
         "New projects enable this guidance; --no-work-coordination disables it."
     )
     if flags.rules is not None:

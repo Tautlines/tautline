@@ -5862,6 +5862,7 @@ RELEASE_ARTIFACT_PATHS = [
     "src/tautline_methodology/health.py",
     "src/tautline_methodology/operator_inbox.py",
     "src/tautline_methodology/work.py",
+    "src/tautline_methodology/work_git.py",
     "src/tautline_methodology/runtime_capabilities.py",
     "src/tautline_methodology/cli.py",
     "src/tautline_methodology/gitutil.py",
@@ -14697,7 +14698,7 @@ def _register_builder_guard_1(sub) -> None:
 def _register_work_1(sub) -> None:
     from tautline_methodology import work
 
-    work_p = sub.add_parser("work", help="Declare work and see peers across local Git worktrees (advisory).")
+    work_p = sub.add_parser("work", help="Declare work and see local or Git-shared peers (advisory).")
     work.configure(work_p)
     work_p.set_defaults(func=work.command)
 

@@ -1,14 +1,14 @@
-usage: tautline work [-h] [--target TARGET] [--lane LANE] [--all] [--json]
-                     [--goal GOAL] [--pr PR] [--path PATHS]
+usage: tautline work [-h] [--target TARGET] [--lane LANE] [--no-sync] [--all]
+                     [--json] [--goal GOAL] [--pr PR] [--path PATHS]
                      [--interface INTERFACES] [--depends-on DEPENDS_ON]
                      [--item ITEM] [--status {active,blocked}]
                      [--blocker BLOCKER] [--expires-hours EXPIRES_HOURS]
                      [--clear-paths] [--clear-interfaces]
                      [--clear-dependencies]
-                     {declare,status,update,finish,abandon} [description]
+                     {declare,status,sync,update,finish,abandon} [description]
 
 positional arguments:
-  {declare,status,update,finish,abandon}
+  {declare,status,sync,update,finish,abandon}
   description           The goal for declare.
 
 options:
@@ -16,6 +16,8 @@ options:
   --target TARGET
   --lane LANE           Stable agent ID; default is this worktree (or
                         TAUTLINE_WORK_LANE).
+  --no-sync             Use cached shared state only; writes remain pending
+                        until sync.
   --all                 Include completed and abandoned declarations in
                         status.
   --json                Machine-readable status.

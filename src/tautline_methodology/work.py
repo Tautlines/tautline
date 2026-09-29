@@ -1,7 +1,7 @@
-"""Local, advisory work declarations shared by sibling Git worktrees.
+"""Advisory work declarations: local by default, optionally shared through Git.
 
-No daemon, network call, review, lease, or permission gate. One atomic JSON record per lane in
-Git's common directory gives peers immediate visibility without committing scratch state.
+The local store stays authoritative for this clone. Opt-in remote synchronization publishes
+portable intent on a metadata branch without checking out or locking application work.
 """
 from __future__ import annotations
 
@@ -149,7 +149,7 @@ def _overlap(left: str, right: str) -> bool:
     )
 
 
-def snapshot(target: Path, lane: str | None = None) -> dict:
+def _local_snapshot(target: Path, lane: str | None = None) -> dict:
     current = identity(target, lane)
     store = Path(current["store"])
     records = []
@@ -186,7 +186,12 @@ def snapshot(target: Path, lane: str | None = None) -> dict:
             records.append(record)
         except (OSError, ValueError, TypeError, RuntimeError) as exc:
             records.append({"lane": _safe(path.stem, 64), "state": "UNKNOWN", "reason": _safe(exc)})
-    records.sort(key=lambda record: record["lane"])
+    return result
+
+
+def _find_overlaps(result: dict) -> dict:
+    records = result["records"]
+    records.sort(key=lambda record: record.get("id", record["lane"]))
     overlap_deadline = time.monotonic() + 0.2
     active = [r for r in records if r["state"] in {"ACTIVE", "BLOCKED"}]
     for index, first in enumerate(active):
@@ -199,19 +204,102 @@ def snapshot(target: Path, lane: str | None = None) -> dict:
             same_item = first["item"] and first["item"] == second["item"]
             if paths or interfaces or same_item:
                 result["overlaps"].append({
-                    "lanes": [first["lane"], second["lane"]],
+                    "lanes": [first.get("id", first["lane"]), second.get("id", second["lane"])],
                     "paths": paths, "interfaces": interfaces, "item": first["item"] if same_item else "",
                 })
     return result
 
 
+def _coordination_config(root: Path, cfg: dict | None) -> object:
+    if cfg is not None:
+        return cfg.get("workCoordination", False)
+    try:
+        fd = os.open(root / ".tautline.json", os.O_RDONLY | os.O_NONBLOCK | os.O_NOFOLLOW)
+    except FileNotFoundError:
+        return False
+    with os.fdopen(fd, "rb") as stream:
+        if not stat.S_ISREG(os.fstat(stream.fileno()).st_mode):
+            raise WorkError("project adapter is not a regular file")
+        raw = stream.read(262_145)
+    if len(raw) > 262_144:
+        raise WorkError("project adapter exceeds size limit")
+    data = json.loads(raw)
+    if not isinstance(data, dict):
+        raise WorkError("project adapter must be an object")
+    return data.get("workCoordination", False)
+
+
+def snapshot(target: Path, lane: str | None = None, *, cfg: dict | None = None,
+             refresh: bool = True, publish: bool = False, force: bool = False) -> dict:
+    result = _local_snapshot(target, lane)
+    result["backend"] = "local"
+    try:
+        configured = _coordination_config(Path(result["worktree"]), cfg)
+        if isinstance(configured, bool):
+            return _find_overlaps(result)
+        from tautline_methodology import lean, work_git
+        errors = lean.work_coordination_errors(configured)
+        if errors:
+            raise WorkError("; ".join(errors))
+        configured = {"remote": "origin", "branch": "tautline/work",
+                      "syncIntervalSeconds": 60, "timeoutSeconds": 2, **configured}
+        result["backend"] = "git"
+        local = [record for record in result["records"] if record.get("schema") == SCHEMA]
+        def load_local():
+            return [record for record in _local_snapshot(target, lane)["records"]
+                    if record.get("schema") == SCHEMA]
+        shared = work_git.sync(target, configured, local, publish=publish, force=force,
+                               refresh=refresh, load_local=load_local)
+        # Another local agent may have updated while this call fetched/pushed. Do not hide its
+        # current declaration beneath the earlier snapshot when merging the shared view.
+        result["records"] = _local_snapshot(target, lane)["records"]
+        result["namespace"] = shared["namespace"]
+        result["sync"] = shared["sync"]
+        result["id"] = shared["namespace"] + "/" + result["lane"]
+        local_lanes = {record["lane"] for record in result["records"]}
+        for record in result["records"]:
+            record.update(namespace=shared["namespace"], id=shared["namespace"] + "/" + record["lane"], source="local")
+        now = time.time()
+        for remote in shared["records"]:
+            if remote["namespace"] == shared["namespace"] and remote["lane"] in local_lanes:
+                continue
+            record = dict(remote)
+            age = now - record["updatedAt"]
+            state, reason = record["status"].upper(), ""
+            if age < 0:
+                state, reason = "UNKNOWN", "timestamp is in the future"
+            elif record["status"] not in TERMINAL and age > record["expiresHours"] * 3600:
+                state, reason = "STALE", "declaration expired; owner may have stopped"
+            record.update(id=record["namespace"] + "/" + record["lane"], source="remote",
+                          state=state, reason=reason, ageHours=round(max(0, age) / 3600, 1))
+            result["records"].append(record)
+    except (OSError, ValueError, TypeError, RuntimeError) as exc:
+        result["sync"] = {"state": "unknown", "lastSuccess": None, "pending": publish,
+                          "error": _safe(exc)}
+    return _find_overlaps(result)
+
+
 def render(state: dict, *, all_records: bool = False, compact: bool = False) -> list[str]:
     records = [r for r in state["records"] if all_records or r["state"].lower() not in TERMINAL]
-    lines = ["WORK (local, advisory): " + (f"{len(records)} declaration(s)" if records else "none declared")]
+    shared = state.get("backend") == "git" or "sync" in state
+    label = "shared Git" if shared else "local"
+    empty = "no declarations in this view" if shared else "none declared"
+    lines = [f"WORK ({label}, advisory): " + (f"{len(records)} declaration(s)" if records else empty)]
+    if shared:
+        sync = state.get("sync", {})
+        last = sync.get("lastSuccess")
+        age = f"{max(0, time.time() - last):.0f}s ago" if last else "never"
+        lines.append(f"  Remote {sync.get('state', 'unknown').upper()}; last successful sync {age}" +
+                     ("; local publication pending" if sync.get("pending") else ""))
+        if sync.get("error"):
+            lines.append("  " + _safe(sync["error"]))
+        if not last or sync.get("state") not in {"fresh", "cached"}:
+            lines.append("  Remote work may be missing or outdated; an empty view does not mean nobody is working.")
     for record in records[:6] if compact else records:
-        marker = " (you)" if record["lane"] == state["lane"] else ""
+        marker = " (you)" if record.get("id", record["lane"]) == state.get("id", state["lane"]) else ""
         age = f" {record['ageHours']:g}h" if "ageHours" in record else ""
-        lines.append(f"  {record['lane']}{marker} {record['state']}{age}: {_safe(record.get('goal') or record.get('reason'))}")
+        identity_label = (record["namespace"][:8] + "/" if record.get("namespace") else "") + record["lane"]
+        lines.append(f"  {identity_label}{marker} {record['state']}{age}: {_safe(record.get('goal') or record.get('reason'))}")
         details = []
         for label, key in (("branch", "branch"), ("item", "item"), ("paths", "paths"), ("interfaces", "interfaces"), ("depends", "dependsOn"), ("blocked", "blocker"), ("PR", "pr")):
             value = record.get(key)
@@ -236,8 +324,8 @@ def render(state: dict, *, all_records: bool = False, compact: bool = False) -> 
 def advisory_lines(target: Path, cfg: dict | None = None) -> list[str]:
     """Silent for existing projects until enabled or somebody declares work; never raises."""
     try:
-        state = snapshot(target)
-        if not state["records"] and not (cfg or {}).get("workCoordination"):
+        state = snapshot(target, cfg=cfg)
+        if "sync" not in state and not state["records"] and not (cfg or {}).get("workCoordination"):
             return []
         return render(state, compact=True)
     except Exception as exc:
@@ -269,8 +357,9 @@ def command(args: argparse.Namespace) -> int:
         if args.action == "declare" and not args.goal:
             raise WorkError("declare requires a goal")
         target = args.target.resolve()
-        state = snapshot(target, args.lane)
-        if args.action == "status":
+        state = _local_snapshot(target, args.lane)
+        if args.action in {"status", "sync"}:
+            state = snapshot(target, args.lane, refresh=not args.no_sync, force=args.action == "sync")
             if args.json:
                 print(json.dumps(state, indent=2, sort_keys=True))
             else:
@@ -315,10 +404,10 @@ def command(args: argparse.Namespace) -> int:
         _validate(record, state["lane"])
         _write(store, record)
         print(f"work {args.action}: {state['lane']} {record['status']} — {_safe(record['goal'])}")
-        print("\n".join(render(snapshot(target, args.lane))))
+        print("\n".join(render(snapshot(target, args.lane, publish=True, refresh=not args.no_sync))))
         return 0
     except (OSError, ValueError, TypeError, RuntimeError) as exc:
-        if args.action == "status":
+        if args.action in {"status", "sync"}:
             if args.json:
                 print(json.dumps({"schema": SCHEMA, "records": [{"state": "UNKNOWN", "reason": _safe(exc)}], "overlaps": []}))
             else:
@@ -329,10 +418,11 @@ def command(args: argparse.Namespace) -> int:
 
 
 def configure(parser) -> None:
-    parser.add_argument("action", choices=("declare", "status", "update", "finish", "abandon"))
+    parser.add_argument("action", choices=("declare", "status", "sync", "update", "finish", "abandon"))
     parser.add_argument("description", nargs="?", help="The goal for declare.")
     parser.add_argument("--target", type=Path, default=Path("."))
     parser.add_argument("--lane", help="Stable agent ID; default is this worktree (or TAUTLINE_WORK_LANE).")
+    parser.add_argument("--no-sync", action="store_true", help="Use cached shared state only; writes remain pending until sync.")
     parser.add_argument("--all", action="store_true", help="Include completed and abandoned declarations in status.")
     parser.add_argument("--json", action="store_true", help="Machine-readable status.")
     parser.add_argument("--goal", help="Replace the declaration's goal.")

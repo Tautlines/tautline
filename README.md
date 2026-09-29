@@ -13,9 +13,10 @@ completion hooks. Your project's tests and CI remain the quality boundary.
 
 ## What you get
 
-- **Shared work intent.** Local sibling worktrees share manifests of goals, scope,
-  dependencies, blockers, and progress. Agents see peer work at startup and when taking a
-  backlog item; the fleet view highlights stale declarations and possible overlaps.
+- **Shared work intent.** Share manifests of goals, scope, dependencies, blockers, and
+  progress across local worktrees, or opt into a Git metadata branch across computers and
+  teammates. Agents see peer work at startup and when taking a backlog item; the fleet view
+  highlights stale declarations and possible overlaps.
 - **Evidence you can inspect.** Wrap an existing test command with `tautline evidence run`
   to keep its exit status and code identity. `tautline health` shows current local facts;
   `--remote` adds on-demand GitHub facts. Unknown stays unknown.
@@ -24,8 +25,9 @@ completion hooks. Your project's tests and CI remain the quality boundary.
   Optional handoffs preserve the next step across a restart.
 - **One small project setup.** `tautline init` renders instructions for Claude Code and
   Codex. Choose a local queue, GitHub issues, or Jira for your backlog.
-- **Local records, no analytics.** Coordination and evidence stay on your machine.
-  Network access comes from the integrations you use; see [Privacy](PRIVACY.md).
+- **Local by default, no analytics.** Evidence stays local. Work declarations stay local
+  unless the project opts into sharing them through Git. Network access comes from the
+  integrations you use; see [Privacy](PRIVACY.md).
 
 ## Quickstart
 
@@ -91,8 +93,11 @@ Declare and refresh work at meaningful boundaries, not on a timer. Read peer wor
 or resuming a session and before picking the next item. Mark the declaration complete or
 abandoned when it ends. A stale or overlapping declaration is information to act on, not a lock.
 
-Manifests coordinate worktrees sharing one local Git repository. They do not synchronize
-independent clones or machines, reserve files, or guarantee that two agents cannot collide.
+Manifests coordinate local worktrees by default. Set `"workCoordination": {"backend": "git"}`
+in the project adapter to share them across clones and machines through `origin`'s dedicated
+`tautline/work` branch. Reads use a cache, sync is bounded, and offline work keeps moving;
+[shared work](docs/reference/work.md) explains configuration and visibility. Manifests do
+not reserve files or guarantee that two agents cannot collide.
 Evidence records what a command reported; it does not certify that a feature works or a
 deployment is healthy. Inbox answers are delivered for an agent to interpret, not executed as
 commands.

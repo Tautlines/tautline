@@ -18,6 +18,11 @@ that file is not present in a published copy). This file starts at 0.7.0.
 
 ## [Unreleased]
 
+## [0.149.0] - 2026-09-29
+
+### Added
+- Opt-in Git-branch work manifests coordinate independent clones, machines and repository collaborators. Configure `workCoordination` with `backend: git`; cached, bounded synchronization publishes portable declarations without touching application branches. Offline updates remain local and pending, and `work sync` retries them. The existing local default is unchanged.
+
 ## [0.148.1] - 2026-09-29
 
 Fast agent teamwork, with an intentional compatibility break from public 0.111.0. This

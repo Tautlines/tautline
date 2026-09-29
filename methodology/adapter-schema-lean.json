@@ -98,9 +98,45 @@
       }
     },
     "workCoordination": {
-      "type": "boolean",
       "default": false,
-      "description": "Advisory shared-local work declarations. Adds wake/resume, new-work, scope-change and finish guidance. init enables it for new projects; existing projects opt in. Explicit declarations are visible across sibling Git worktrees regardless of this setting. Never blocks work or contacts a server."
+      "description": "Advisory work declarations. true enables local guidance; false or absent keeps explicit local declarations usable without guidance. The git object opts into sharing declarations through a dedicated remote branch, using existing Git permissions. Sync is bounded and fail-open; no edit/review/merge gates. Declared text is visible to repository readers, including the public for a public repository.",
+      "oneOf": [
+        { "type": "boolean" },
+        {
+          "type": "object",
+          "required": ["backend"],
+          "additionalProperties": false,
+          "properties": {
+            "backend": { "const": "git" },
+            "remote": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}(?![\\s\\S])",
+              "default": "origin",
+              "description": "An existing Git remote name, never a URL, path, or credential."
+            },
+            "branch": {
+              "type": "string",
+              "pattern": "^(?!@$)(?![-/])(?!.*\\.\\.)(?!.*@\\{)(?!.*//)(?!.*(?:^|/)\\.)(?!.*\\.lock(?:/|$))[^\\x00-\\x20\\x7f~^:?*\\[\\\\]+(?<![/.])(?![\\s\\S])",
+              "default": "tautline/work",
+              "description": "Dedicated metadata branch; do not use a source or integration branch."
+            },
+            "syncIntervalSeconds": {
+              "type": "integer",
+              "minimum": 10,
+              "maximum": 3600,
+              "default": 60,
+              "description": "Minimum interval between automatic refresh attempts during status/startup/work pickup. No background polling."
+            },
+            "timeoutSeconds": {
+              "type": "number",
+              "minimum": 0.25,
+              "maximum": 10,
+              "default": 2,
+              "description": "Bounded sync time budget. Offline or failed sync reports uncertainty and retains local work."
+            }
+          }
+        }
+      ]
     },
     "laneStatus": {
       "const": "advisory",

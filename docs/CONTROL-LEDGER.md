@@ -32,7 +32,7 @@ not yet been collected; it is not a reason to block a session, PR, or release.
 | `doctor` — branch-liveness, framework-staleness, skip-lint, and monitor-liveness advisory checks (Tier-1 reclaim) | 0.147.0 (2026-08-30) | — | pending first review |
 | `red-green-check` — mutates a named symbol, confirms the given test command kills it, restores the original (Tier-1 reclaim) | 0.147.0 (2026-08-30) | — | pending first review |
 | PR<->backlog reference check — `scripts/check_pr_backlog_ref.py`, active only when a backlog provider is configured | 0.148.0 | Framework config now enables the existing check; no additional review step | observe real use |
-| Shared work declarations — advisory, local, no edit or merge lock | 0.148.0 | Sibling-worktree discovery, overlap, stale/crash handling verified; duplicated effort avoided still to measure | observe real use |
+| Shared work declarations — advisory, local by default, optional Git sharing, no edit or merge lock | 0.148.0 | Sibling-worktree and independent-clone discovery, concurrent pushes, offline recovery, overlap, stale/crash handling verified; duplicated effort avoided still to measure | observe real use |
 | Optional execution receipts and health reports | 0.148.0 | Fresh/stale/interrupted results and unknown health are distinguished; never an extra merge gate | observe real use |
 
 0.147.0 landed on the development channel in August. The next public release carries the lean

@@ -2,7 +2,7 @@
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "tautline-ops",
   "displayName": "Tautline Delivery Ops",
-  "version": "0.148.1",
+  "version": "0.149.0",
   "description": "Claude Code package for database migration collision repair, with iteration-review rendering assets.",
   "author": {
     "name": "Minervit",

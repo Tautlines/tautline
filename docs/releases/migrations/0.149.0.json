@@ -1,0 +1,22 @@
+{
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.149.0",
+  "wipSafe": true,
+  "behaviorChanges": [
+    "Projects may opt into a shared Git metadata branch for work declarations across independent clones, computers, and repository collaborators. Existing boolean settings keep local behavior.",
+    "Opted-in status/startup/work pickup uses bounded cached synchronization. Offline publication stays pending and never gates editing, backlog pickup, or merging."
+  ],
+  "requiredMigrations": [],
+  "optionalMigrations": [
+    {
+      "id": "share-work-through-git",
+      "surface": "project-adapter",
+      "description": "Set workCoordination to an object with backend=git. Optionally choose a named remote and dedicated branch. Repository readers can see declared intent; normal Git write permissions govern publication. Render the adapter and run tautline work sync."
+    }
+  ],
+  "deprecatedSurfaces": [],
+  "productsTested": [],
+  "rollbackNotes": [
+    "Set workCoordination back to true before downgrading to an older runtime; older adapter validators accept boolean settings only. The metadata branch remains as shared history; no source branch migration occurs."
+  ]
+}

@@ -126,7 +126,7 @@ positional arguments:
                         no-op for humans: it engages only when
                         builder_role_active() says builder, and the default is
                         human.
-    work                Declare work and see peers across local Git worktrees
+    work                Declare work and see local or Git-shared peers
                         (advisory).
     evidence            Record an explicit command once or inspect its
                         receipt. No gates.
