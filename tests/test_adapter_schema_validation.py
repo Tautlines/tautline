@@ -7,6 +7,8 @@ same check as a self-serve lint command.
 import json
 from pathlib import Path
 
+import pytest
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
 EXAMPLE = REPO_ROOT / "adapters" / "projects" / "example-saas.json"
 
@@ -389,9 +391,16 @@ def test_product_development_defaults_to_empty_surfaces(cli, tmp_path):
     assert normalized["productDevelopment"]["surfaces"] == []
 
 
-def test_committed_example_and_self_adapter_stay_valid(cli):
+def test_committed_public_example_adapter_stays_valid(cli):
     # The example adapter declares no PM surface (opt-in default empty).
     assert cli.load_project(EXAMPLE)["productDevelopment"]["surfaces"] == []
+
+
+@pytest.mark.skipif(
+    (REPO_ROOT / ".minervit-public-release-export.json").exists(),
+    reason="private self-adapter is intentionally excluded from public exports",
+)
+def test_committed_private_self_adapter_stays_valid():
     # The repo's own adapter is lean-1 since the framework repo migrated itself onto the lean
     # profile; it must stay valid against the authoritative lean validator, not the 1.x loader.
     from tautline_methodology import lean

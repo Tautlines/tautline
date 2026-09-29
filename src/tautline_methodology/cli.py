@@ -6364,7 +6364,7 @@ def public_contract_manifest_data() -> dict:
             "patch": "stable bugfixes only; WIP-safe by default when release report declares wipSafe=true",
             "minor": "additive or deprecating only; no removals",
             "major": "breaking removals only after deprecation window and migration path",
-            "recoveryException": "0.148.0 is an intentional compatibility break from public 0.111.0 for the lean workflow reset; see its explicit migration report (wipSafe=false). This is not an additive-only upgrade.",
+            "recoveryException": "0.148.1 is an intentional compatibility break from public 0.111.0 for the lean workflow reset; see its explicit migration report (wipSafe=false). This is not an additive-only upgrade.",
             "securityException": "a stable surface CONFIRMED to expose adopter data to a remote MAY be hard-disabled ahead of the normal deprecation window in any release, with a REQUIRED migration note and a named replacement; the surface's REMOVAL still follows the normal major-release window",
         },
         "commands": [

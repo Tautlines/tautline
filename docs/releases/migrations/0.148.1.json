@@ -1,0 +1,31 @@
+{
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.148.1",
+  "wipSafe": false,
+  "behaviorChanges": [
+    "The public upgrade from 0.111.0 removes the former review-round, Stop/completion, board/goal synchronization, and mandatory journal machinery. One adversarial review and the project test gate remain.",
+    "Shared work declarations and overlap reports are local and advisory. Evidence receipts wrap explicit verification; no startup hook reruns tests. Inbox answers remain until acknowledged.",
+    "New init configurations enable workCoordination. Existing projects opt in or begin declaring work. No cross-machine coordination or automatic answer execution is claimed."
+  ],
+  "requiredMigrations": [
+    {
+      "id": "migrate-pre-lean-projects",
+      "surface": "project-adapter",
+      "command": "tautline slim --target . --dry-run",
+      "description": "For projects using the old workflow, preview then apply slim. It archives process artifacts and removes obsolete framework hooks while preserving handwritten instructions. Update handwritten references to removed lane/review commands; use lane-status and work status. Do not rely on the removed gates."
+    }
+  ],
+  "optionalMigrations": [
+    {
+      "id": "enable-shared-work",
+      "surface": "project-adapter",
+      "description": "Set workCoordination=true in a lean project and regenerate its adapters, or start with tautline work declare. This adds local advisory context, not an enforcement gate."
+    }
+  ],
+  "deprecatedSurfaces": [],
+  "productsTested": [],
+  "rollbackNotes": [
+    "Keep the slim migration archive. Downgrading the CLI does not automatically restore old project adapters or hooks; restore the archived configuration deliberately. New work/answer/receipt state is ignored by older versions.",
+    "The release test suite exercises installation, upgrade and rollback from public version 0.111.0. This does not restore old gate enforcement after a project has intentionally migrated to lean."
+  ]
+}

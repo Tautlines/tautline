@@ -14,6 +14,8 @@ forcing function is a shipped, tested switch rather than silence.
 
 from pathlib import Path
 
+import pytest
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -40,7 +42,26 @@ LIVE_SURFACE = {"deploymentTargets": [{"name": "web", "milestoneClose": True}]}
 # --- Codex R1: a crash, a deadlock, and a safety classification that would have been false --------
 
 
-def test_the_adoption_checklist_exists_and_names_every_live_adapter(cli):
+def _live_adapter_names():
+    return [
+        path.name
+        for path in sorted((REPO_ROOT / "adapters" / "projects").glob("*.json"))
+        if "milestoneClose" in path.read_text(encoding="utf-8")
+    ]
+
+
+def test_the_public_example_remains_a_live_surface_fixture(cli):
+    example = REPO_ROOT / "adapters" / "projects" / "example-saas.json"
+    data = cli.load_project(example)
+    assert any(target.get("milestoneClose") is True for target in data["deploymentTargets"])
+    assert example.name in _live_adapter_names()
+
+
+@pytest.mark.skipif(
+    (REPO_ROOT / ".minervit-public-release-export.json").exists(),
+    reason="private adoption checklist is intentionally excluded from public exports",
+)
+def test_the_adoption_checklist_exists_and_names_every_live_adapter():
     """Codex R4. "Gated on adoption" is a sentence unless the gate has a written criterion.
 
     The release claims the default flip to `block` is gated on adoption. Without a checklist there
@@ -61,12 +82,7 @@ def test_the_adoption_checklist_exists_and_names_every_live_adapter(cli):
     assert "grep -ln milestoneClose adapters/projects/*.json" in checklist
     assert "zero open rows" in checklist
     # ...and the command it names must actually find the live lanes.
-    live = [
-        path.name
-        for path in sorted((REPO_ROOT / "adapters" / "projects").glob("*.json"))
-        if "milestoneClose" in path.read_text(encoding="utf-8")
-    ]
-    assert live, "the enumeration command finds nothing; the checklist would be vacuous"
+    assert _live_adapter_names(), "the enumeration command finds nothing; the checklist would be vacuous"
 
 
 # --- Codex R2: three more ways a control can look satisfied while asserting nothing --------------

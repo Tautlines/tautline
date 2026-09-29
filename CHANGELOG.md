@@ -18,7 +18,7 @@ that file is not present in a published copy). This file starts at 0.7.0.
 
 ## [Unreleased]
 
-## [0.148.0] - 2026-09-29
+## [0.148.1] - 2026-09-29
 
 Fast agent teamwork, with an intentional compatibility break from public 0.111.0. This
 pre-1.0 recovery is an explicit exception to the normal additive-only minor-release policy;
@@ -47,6 +47,7 @@ evidence return without required plans, review rounds, extra test runs, or new m
   decision readers, diagnostics, and the optional builder identity/tools added since 0.111.0.
 
 ### Fixed
+- Public CI validates the sanitized repository without requiring private adapters, backlog files, or archives. Version 0.148.0 was tagged for validation but was not published to package registries.
 - Runner cleanup preserves auto-updated executables and live logs, preventing online runners from silently losing their ability to start jobs.
 - Builder tests no longer inherit operator roles/credentials or write the operator's token cache.
 - Upgrade/rollback verification exercises the public 0.111.0 baseline at the integration tip.
@@ -93,6 +94,12 @@ evidence return without required plans, review rounds, extra test runs, or new m
   not by this framework; Workflows write is optional and should stay unset).
 
 ### Changed
+
+## [0.148.0] - 2026-09-29
+
+Tagged validation candidate for the recovery release. Public CI exposed private-fixture
+assumptions in three tests, so package publication was held. The tag remains unchanged;
+0.148.1 contains the corrected public release and its complete upgrade notes above.
 
 ## [0.147.0] - 2026-08-30
 

@@ -36,15 +36,20 @@ CLI = REPO_ROOT / "bin" / "tautline"
 # --help` exited non-zero -- which is exactly what a DELETED command does. The guard that exists to
 # catch "an operator following the docs gets 'unrecognized argument'" was therefore silent on
 # precisely that case: 89 documented invocations turned into skips overnight without one failure.
-INSTRUCTIONAL_DOCS = [
-    REPO_ROOT / "README.md",
-    REPO_ROOT / "CONTRIBUTING.md",
-    *sorted((REPO_ROOT / "docs" / "reference").glob("*.md")),
-]
-HISTORICAL_DOCS = [
-    REPO_ROOT / "CHANGELOG.md",
-    *sorted((REPO_ROOT / "docs" / "releases" / "migrations").glob("*.json")),
-]
+def _discover_docs(root: Path) -> tuple[list[Path], list[Path]]:
+    instructional = [
+        root / "README.md",
+        root / "CONTRIBUTING.md",
+        *sorted((root / "docs" / "reference").glob("*.md")),
+    ]
+    historical = [
+        root / "CHANGELOG.md",
+        *sorted((root / "docs" / "releases" / "migrations").glob("*.json")),
+    ]
+    return instructional, historical
+
+
+INSTRUCTIONAL_DOCS, HISTORICAL_DOCS = _discover_docs(REPO_ROOT)
 # docs/archive/ is NOT in either list, and that is a discovery decision rather than a checking one.
 # Everything under it is a superseded plan or a retired manual -- a record of what a past release
 # did, which no operator is meant to follow. Scanning it produced pairs that could only ever be
@@ -165,7 +170,30 @@ def test_the_archive_is_not_in_the_discovery_corpus():
         f"docs/archive/ entered the scanned corpus ({archived[:3]}); every pair it contributes is "
         "unactionable, and silencing them is what previously silenced the real checks too"
     )
+
+
+@pytest.mark.skipif(
+    (REPO_ROOT / ".minervit-public-release-export.json").exists(),
+    reason="private process archive is intentionally excluded from public exports",
+)
+def test_the_private_archive_exclusion_still_points_at_the_archive():
     assert ARCHIVE_ROOT.is_dir(), "the archive moved; this exclusion now points at nothing"
+
+
+@pytest.mark.parametrize("with_archive", [False, True])
+def test_discovery_preserves_public_docs_with_or_without_private_archive(tmp_path, with_archive):
+    reference = tmp_path / "docs/reference/guide.md"
+    migration = tmp_path / "docs/releases/migrations/example.json"
+    archived = tmp_path / "docs/archive/retired.md"
+    for path in [reference, migration, *([archived] if with_archive else [])]:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("fixture\n", encoding="utf-8")
+
+    instructional, historical = _discover_docs(tmp_path)
+
+    assert reference in instructional
+    assert migration in historical
+    assert archived not in instructional + historical
 
 
 def test_historical_records_are_still_checked_for_commands_that_exist():
