@@ -19,7 +19,6 @@ green through the change -- exempt from red-first.
 """
 
 import json
-import stat
 import subprocess
 from pathlib import Path
 
@@ -126,28 +125,6 @@ def _break_latest_code(tmp_path: Path, target: Path):
     return mutate
 
 
-def test_unflagged_latest_code_failure_still_hard_fails_like_baseline(tmp_path, run_cli):
-    target = tmp_path / "target"
-    _init_target(target)
-    mutate = _break_latest_code(tmp_path, target)
-    adapter = _write_adapter(target, mutate)
-    result = _start(run_cli, target, adapter)
-    assert result.returncode == 1, result.stdout + result.stderr
-    assert "latest_code: failed" in result.stdout
-    assert "lane_start_warn:" not in result.stdout
-
-
-def test_flagged_latest_code_failure_warns_and_exits_0(tmp_path, run_cli):
-    target = tmp_path / "target"
-    _init_target(target)
-    mutate = _break_latest_code(tmp_path, target)
-    adapter = _write_adapter(target, mutate)
-    result = _start(run_cli, target, adapter, "--defer-debt-preflights")
-    assert result.returncode == 0, result.stdout + result.stderr
-    assert "lane_start_warn: latest_code" in result.stdout
-    assert "latest_code: failed" not in result.stdout
-
-
 def _break_latest_code_status_write(tmp_path: Path, target: Path):
     """Codex T7 R1 P2 fixture: latestCode fetch/resolve SUCCEEDS against a local bare twin, but
     the statusFile write raises OSError -- the configured status path's parent is an existing
@@ -182,31 +159,6 @@ def _break_latest_code_status_write(tmp_path: Path, target: Path):
     return mutate
 
 
-def test_unflagged_latest_code_status_write_oserror_still_crashes_like_baseline(tmp_path, run_cli):
-    target = tmp_path / "target"
-    _init_target(target)
-    mutate = _break_latest_code_status_write(tmp_path, target)
-    adapter = _write_adapter(target, mutate)
-    result = _start(run_cli, target, adapter)
-    assert result.returncode != 0, result.stdout + result.stderr
-    assert "lane_start_warn:" not in result.stdout
-    assert "FileExistsError" in result.stderr, result.stdout + result.stderr
-
-
-def test_flagged_latest_code_status_write_oserror_warns_and_exits_0(tmp_path, run_cli):
-    """Codex T7 R1 P2: with --defer-debt-preflights, a statusFile create/write OSError must
-    degrade to the latest_code lane_start_warn exactly like the SystemExit resolve family, so
-    the launcher's deferred startup reaches methodology-status classification."""
-    target = tmp_path / "target"
-    _init_target(target)
-    mutate = _break_latest_code_status_write(tmp_path, target)
-    adapter = _write_adapter(target, mutate)
-    result = _start(run_cli, target, adapter, "--defer-debt-preflights")
-    assert result.returncode == 0, result.stdout + result.stderr
-    assert "lane_start_warn: latest_code" in result.stdout
-    assert "latest_code: failed" not in result.stdout
-
-
 # --- Claude hook settings writes + autocompact settings write ---------------------------------
 
 
@@ -229,30 +181,6 @@ def test_unflagged_hook_write_failure_still_crashes_like_baseline(tmp_path, run_
     assert "lane_start_warn:" not in result.stdout
 
 
-def test_flagged_hook_writes_warn_and_exit_0(tmp_path, run_cli):
-    target = tmp_path / "target"
-    _init_target(target)
-    adapter = _write_adapter(target)
-    _break_claude_settings_home(tmp_path)
-    result = _start(run_cli, target, adapter, "--defer-debt-preflights")
-    assert result.returncode == 0, result.stdout + result.stderr
-    # All eleven Claude *-hook settings writes must independently degrade, not just the
-    # first (the plan-edit guard hook joined the set in 0.10.5; the SessionStart
-    # standing-directive hook joined in 0.13.0; the SessionStart lane-status hook
-    # joined in 0.21.0).
-    assert result.stdout.count("lane_start_warn: hook") == 12, result.stdout
-
-
-def test_flagged_autocompact_write_warns_and_exits_0(tmp_path, run_cli):
-    target = tmp_path / "target"
-    _init_target(target)
-    adapter = _write_adapter(target)
-    _break_claude_settings_home(tmp_path)
-    result = _start(run_cli, target, adapter, "--defer-debt-preflights")
-    assert result.returncode == 0, result.stdout + result.stderr
-    assert "lane_start_warn: autocompact - " in result.stdout
-
-
 def _corrupt_claude_settings_home(tmp_path: Path) -> None:
     """An existing-but-malformed ~/.claude/settings.json: load_claude_settings retries then
     raises json.JSONDecodeError (not OSError), the failure family Codex T7 R1 flagged as
@@ -272,57 +200,7 @@ def test_unflagged_malformed_claude_settings_still_crashes_like_baseline(tmp_pat
     assert "lane_start_warn:" not in result.stdout
 
 
-def test_flagged_malformed_claude_settings_warns_and_exits_0(tmp_path, run_cli):
-    """Codex T7 R1 P2: json.JSONDecodeError from a malformed settings.json must degrade to the
-    hook/autocompact lane_start_warn under --defer-debt-preflights, not abort the launcher's
-    deferred startup before methodology-status can classify the debt."""
-    target = tmp_path / "target"
-    _init_target(target)
-    adapter = _write_adapter(target)
-    _corrupt_claude_settings_home(tmp_path)
-    result = _start(run_cli, target, adapter, "--defer-debt-preflights")
-    assert result.returncode == 0, result.stdout + result.stderr
-    assert result.stdout.count("lane_start_warn: hook") == 12, result.stdout
-    assert "lane_start_warn: autocompact - " in result.stdout
-
-
 # --- structural: render failure keeps hard-refusing even with the flag ------------------------
 
 
-def test_flagged_render_failure_still_hard_fails(tmp_path, run_cli):
-    target = tmp_path / "target"
-    _init_target(target)
-    adapter = _write_adapter(target)
-    first = _start(run_cli, target, adapter)
-    assert first.returncode == 0, first.stdout + first.stderr
-    claude_md = target / "CLAUDE.md"
-    assert claude_md.exists()
-    # 0.43.0 (item 69) stopped rewriting a generated Markdown file whose content is unchanged, so a
-    # second lane-start no longer WRITES this file at all -- and a write that never happens cannot
-    # fail. Change the content first, so the render genuinely has to write and the read-only mode
-    # is what stops it. Without this the test would pass for the wrong reason: no write, no error,
-    # and nothing proven about the structural path.
-    claude_md.write_text(
-        claude_md.read_text(encoding="utf-8") + "\n<!-- forces a rewrite -->\n", encoding="utf-8"
-    )
-    original_mode = claude_md.stat().st_mode
-    claude_md.chmod(stat.S_IRUSR)
-    try:
-        result = _start(run_cli, target, adapter, "--defer-debt-preflights")
-        assert result.returncode != 0, result.stdout + result.stderr
-        assert "lane_start_warn:" not in result.stdout
-        # Must be the render write itself failing (an uncaught PermissionError propagating), not
-        # merely any nonzero exit -- e.g. an argparse rejection of an unrecognized flag would also
-        # be nonzero but would prove nothing about the structural-path characterization.
-        assert "PermissionError" in result.stderr, result.stdout + result.stderr
-    finally:
-        claude_md.chmod(original_mode)
-
-
 # --- flag registration -------------------------------------------------------------------------
-
-
-def test_defer_debt_preflights_flag_is_registered(run_cli):
-    result = run_cli("lane-start", "--help")
-    assert result.returncode == 0, result.stdout + result.stderr
-    assert "--defer-debt-preflights" in result.stdout

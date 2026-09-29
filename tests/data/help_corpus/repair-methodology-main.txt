@@ -1,5 +1,0 @@
-usage: tautline repair-methodology-main [-h] [--no-remote]
-
-options:
-  -h, --help   show this help message and exit
-  --no-remote

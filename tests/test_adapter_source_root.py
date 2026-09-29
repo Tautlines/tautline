@@ -5,7 +5,6 @@ canonical source adapters; everything else (ad-hoc/lane-local JSON) is still rej
 """
 
 import argparse
-import hashlib
 import json
 import shutil
 import subprocess
@@ -59,50 +58,6 @@ def _init_example_saas_repo(tmp_path):
     subprocess.run(["git", "-C", str(target), "commit", "-qm", "init"], check=True)
     subprocess.run(["git", "-C", str(target), "push", "-q", "-u", "origin", "main"], check=True)
     return target
-
-
-def test_repo_local_adapter_migration_starts_lane_without_rewriting_source_absolute(cli, run_cli, tmp_path):
-    target = _init_example_saas_repo(tmp_path)
-    source = target / ".tautline" / "adapter.json"
-
-    migrated = run_cli(
-        "migrate-adapter",
-        str(cli.REPO_ROOT / "adapters/projects/example-saas.json"),
-        "--adopter-target",
-        str(target),
-        "--write",
-    )
-    assert migrated.returncode == 0, migrated.stderr
-    assert source.exists()
-
-    rendered = run_cli(
-        "render-adapters",
-        "--project",
-        str(source),
-        "--target",
-        str(target),
-        "--write",
-        "--json-only",
-    )
-    assert rendered.returncode == 0, rendered.stderr
-    generated = json.loads((target / ".tautline.json").read_text(encoding="utf-8"))
-    assert generated["_generated"]["sourceAdapter"] == ".tautline/adapter.json"
-    assert generated["_generated"]["sourceAdapterSha256"] == hashlib.sha256(source.read_bytes()).hexdigest()
-
-    subprocess.run(["git", "-C", str(target), "add", "."], check=True)
-    subprocess.run(["git", "-C", str(target), "commit", "-qm", "repo-local adapter"], check=True)
-    subprocess.run(["git", "-C", str(target), "push", "-q"], check=True)
-
-    started = run_cli("lane-start", "--target", str(target), "--skip-update")
-    assert started.returncode == 0, started.stderr
-    combined = started.stdout + started.stderr
-    assert "sourceAdapter is missing" not in combined
-    assert "sourceAdapter does not point at a trusted source adapter" not in combined
-    assert "sourceAdapterSha256 does not match" not in combined
-
-    after_start = json.loads((target / ".tautline.json").read_text(encoding="utf-8"))
-    assert after_start["_generated"]["sourceAdapter"] == ".tautline/adapter.json"
-    assert after_start["_generated"]["sourceAdapterSha256"] == hashlib.sha256(source.read_bytes()).hexdigest()
 
 
 def test_init_project_adapter_defaults_to_repo_local_adapter(cli, run_cli, tmp_path):

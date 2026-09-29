@@ -1,8 +1,0 @@
-usage: tautline guard-report [-h] [--target TARGET] [--since SINCE] [--json]
-
-options:
-  -h, --help       show this help message and exit
-  --target TARGET
-  --since SINCE    Only include guard events at or after this ISO-8601
-                   timestamp.
-  --json           Print machine-readable JSON.

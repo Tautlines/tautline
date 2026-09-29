@@ -1,0 +1,36 @@
+usage: tautline work [-h] [--target TARGET] [--lane LANE] [--all] [--json]
+                     [--goal GOAL] [--pr PR] [--path PATHS]
+                     [--interface INTERFACES] [--depends-on DEPENDS_ON]
+                     [--item ITEM] [--status {active,blocked}]
+                     [--blocker BLOCKER] [--expires-hours EXPIRES_HOURS]
+                     [--clear-paths] [--clear-interfaces]
+                     [--clear-dependencies]
+                     {declare,status,update,finish,abandon} [description]
+
+positional arguments:
+  {declare,status,update,finish,abandon}
+  description           The goal for declare.
+
+options:
+  -h, --help            show this help message and exit
+  --target TARGET
+  --lane LANE           Stable agent ID; default is this worktree (or
+                        TAUTLINE_WORK_LANE).
+  --all                 Include completed and abandoned declarations in
+                        status.
+  --json                Machine-readable status.
+  --goal GOAL           Replace the declaration's goal.
+  --pr PR               Related PR URL; empty string clears it.
+  --path PATHS          Repo-relative file/directory; repeat to replace scope.
+  --interface INTERFACES
+                        Shared interface/contract name; repeatable.
+  --depends-on DEPENDS_ON
+                        Lane or external dependency; repeatable.
+  --item ITEM           Backlog item ID.
+  --status {active,blocked}
+  --blocker BLOCKER     What is needed; empty string clears it.
+  --expires-hours EXPIRES_HOURS
+                        Freshness lifetime, 1-168 hours (default 24).
+  --clear-paths
+  --clear-interfaces
+  --clear-dependencies

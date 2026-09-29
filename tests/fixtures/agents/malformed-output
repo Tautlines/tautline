@@ -1,0 +1,18 @@
+#!/usr/bin/env python3
+"""NON-conforming agent: writes truncated JSON and exits 0.
+
+The failure mode that matters most, because it LOOKS like success: exit 0 with an unreadable
+result. The parser must refuse this rather than treat an unparseable file as no findings."""
+import json
+import os
+import sys
+
+AGENT_ID = os.environ.get("TAUTLINE_REVIEW_AGENT_ID", "fixture-malformed")
+path = os.environ.get("TAUTLINE_REVIEW_RESULT_PATH")
+if not path:
+    print("no TAUTLINE_REVIEW_RESULT_PATH supplied", file=sys.stderr)
+    raise SystemExit(2)  # transport failure: the framework did not hold up its end
+
+with open(path, "w", encoding="utf-8") as handle:
+    handle.write('{"schema": "tautline-agent-review-result/v1", "verdict":')
+raise SystemExit(0)

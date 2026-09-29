@@ -223,6 +223,36 @@ def user_config_env_value(name: str, config_env: Path) -> str:
     return ""
 
 
+def flatten_printable(text: object, limit: int = 0, *, keep_newlines: bool = False) -> str:
+    """Text from somewhere else, made safe to PRINT: no control characters, optionally bounded.
+
+    ONE definition, in the module both the backlog seam and the Jira client already depend on,
+    because this has now been the same finding twice. Collapsing whitespace is not enough on its
+    own -- ESC and BEL are not whitespace, so a string carrying `\\x1b[2K` can erase the line a
+    report just wrote and forge a different one in its place. Any text a remote system controls (an
+    issue title, an API error body, a workflow transition name) goes through here before it reaches
+    a terminal.
+
+    `keep_newlines` is for text THIS codebase composed -- a multi-line validation report, where the
+    newlines are ours and the only risk is a control character that arrived inside an interpolated
+    value. Remote text always uses the default, which flattens newlines too: a response body that
+    can add lines can paint a convincing fake status line without needing an escape sequence.
+    """
+    raw = str(text)
+    if keep_newlines:
+        cleaned = "\n".join(
+            " ".join("".join(c if c.isprintable() else " " for c in line).split())
+            for line in raw.splitlines()
+        )
+    else:
+        cleaned = " ".join(
+            "".join(c if c.isprintable() else " " for c in " ".join(raw.split())).split()
+        )
+    if limit and len(cleaned) > limit:
+        return cleaned[: limit - 3] + "..."
+    return cleaned
+
+
 def resolve_env(name: str, default: str = "", environ: Mapping[str, str] | None = None) -> str:
     """Read env var `name`, preferring its TAUTLINE_ alias over the MINERVIT_ name.
 

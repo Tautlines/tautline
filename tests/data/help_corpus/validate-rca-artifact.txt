@@ -1,5 +1,0 @@
-usage: tautline validate-rca-artifact [-h] --file FILE
-
-options:
-  -h, --help   show this help message and exit
-  --file FILE

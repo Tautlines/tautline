@@ -1,0 +1,18 @@
+usage: tautline builder-guard [-h] [--target TARGET] [--hook] [--argv]
+                              [--shim-dir] [--report]
+                              ...
+
+positional arguments:
+  command
+
+options:
+  -h, --help       show this help message and exit
+  --target TARGET
+  --hook           Read a PreToolUse payload on stdin; exit 2 (deny, reason on
+                   stderr) or 0 (allow).
+  --argv           Judge an already-split argv after `--`; exit 2 or 0. The
+                   `gh` shim's entry point.
+  --shim-dir       Create/refresh the `gh` shim directory and print its path,
+                   for lanes without hooks.
+  --report         Print how many denials this lane's event log holds, and the
+                   last 20 of them.

@@ -1,0 +1,22 @@
+{
+  "schema": "tautline-runtime-capabilities/v1",
+  "capabilities": {
+    "hook.lane-status": {
+      "kind": "carrier",
+      "hook": "tautline lane-status --hook",
+      "event": "SessionStart"
+    },
+    "hook.builder-guard": {
+      "kind": "gate",
+      "hook": "tautline builder-guard --hook",
+      "event": "PreToolUse"
+    }
+  },
+  "runtimes": {
+    "claude-code": [
+      "hook.builder-guard",
+      "hook.lane-status"
+    ],
+    "codex": []
+  }
+}

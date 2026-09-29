@@ -319,8 +319,30 @@ case "$1 $2" in
     printf '{"owner":{"login":"example-org"},"name":"example-saas"}\\n'
     ;;
   "api graphql")
-    printf '%s%s\\n' '{"data":{"repository":{"pullRequest":' \\
-      '{"isInMergeQueue":false,"mergeQueueEntry":null}}}}'
+    # Board READS are hand-written GraphQL now (they cost ~100x less than the `gh project`
+    # subcommands), so this fake answers them here. Each branch keys on a token unique to one
+    # query: only field-list selects ProjectV2IterationField, only item-list selects
+    # ProjectV2ItemFieldTextValue, only project view selects shortDescription.
+    case "$*" in
+      *ProjectV2IterationField*)
+        printf '%s%s%s\\n' '{"data":{"repositoryOwner":{"projectV2":{"fields":{"totalCount":1,' \\
+          '"nodes":[{"__typename":"ProjectV2SingleSelectField","id":"PVTSSF_1","name":"Status",' \\
+          '"options":[{"id":"o1","name":"Ready"},{"id":"o2","name":"In Progress"},' \\
+          '{"id":"o3","name":"Done"},{"id":"o4","name":"Blocked"}]}]}}}}}'
+        ;;
+      *ProjectV2ItemFieldTextValue*)
+        printf '%s%s\\n' '{"data":{"repositoryOwner":{"projectV2":{"items":{"totalCount":0,' \\
+          '"pageInfo":{"hasNextPage":false,"endCursor":null},"nodes":[]}}}}}'
+        ;;
+      *shortDescription*)
+        printf '%s%s\\n' '{"data":{"repositoryOwner":{"projectV2":' \\
+          '{"id":"PVT_1","number":1,"title":"Board"}}}}'
+        ;;
+      *)
+        printf '%s%s\\n' '{"data":{"repository":{"pullRequest":' \\
+          '{"isInMergeQueue":false,"mergeQueueEntry":null}}}}'
+        ;;
+    esac
     ;;
   "auth status")
     printf 'Token scopes: gist, read:org, read:project, project, repo, workflow\\n'

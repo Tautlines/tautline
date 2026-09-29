@@ -1,9 +1,0 @@
-usage: tautline lane-run [-h] [--project PROJECT] [--target TARGET] ...
-
-positional arguments:
-  command
-
-options:
-  -h, --help         show this help message and exit
-  --project PROJECT
-  --target TARGET

@@ -62,19 +62,3 @@ def test_backlog_provider_completion_unit_validates_and_mirrors(cli):
 
     with pytest.raises(SystemExit):
         _normalize(cli, {"completionUnit": "issue"})
-
-
-def test_board_feature_series_selects_provider_when_enabled(cli):
-    data = {
-        "backlogProvider": {"enabled": True, "featureSeries": {"field": "Feature", "pattern": "F-\\d+"}},
-        "goalTracker": {"enabled": False, "featureSeries": {}},
-    }
-    assert cli.board_feature_series(data) == {"field": "Feature", "pattern": "F-\\d+"}
-    # Falls back to the tracker when the provider is disabled.
-    data2 = {
-        "backlogProvider": {"enabled": False, "featureSeries": {}},
-        "goalTracker": {"enabled": True, "featureSeries": {"field": "Feat"}},
-    }
-    assert cli.board_feature_series(data2) == {"field": "Feat"}
-    # Unset everywhere -> {}.
-    assert cli.board_feature_series({"backlogProvider": {"enabled": False}, "goalTracker": {}}) == {}

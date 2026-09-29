@@ -1,4 +1,0 @@
-usage: tautline plan-review-pending-hook [-h]
-
-options:
-  -h, --help  show this help message and exit

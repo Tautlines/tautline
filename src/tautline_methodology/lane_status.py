@@ -41,7 +41,6 @@ LANE_STATUS_FINDING_ORDER: tuple[str, ...] = (
     "SQUATTED",
     "DIRTY",
     "UNCLAIMED",
-    "BASELINE-MOVED",
     "UNVERIFIED",
 )
 
@@ -50,7 +49,7 @@ LANE_STATUS_FINDING_ORDER: tuple[str, ...] = (
 # fetch cannot move it), UNCLAIMED (no command here creates a claim-source match) and UNVERIFIED
 # (no mechanical remedy) cannot, so instructing a rerun on them alone loops forever.
 LANE_STATUS_RESOLVING_FINDINGS = frozenset(
-    {"DETACHED", "ORPHANED", "MERGED", "STALE", "BASELINE-MOVED"}
+    {"DETACHED", "ORPHANED", "MERGED", "STALE"}
 )
 
 # Findings whose remedy is branch replacement -- but only when the lane has no unique commits to
@@ -183,13 +182,6 @@ def compute_lane_status_findings(facts: dict) -> list[dict]:
             "info",
             f"no item under {facts.get('claim_source') or 'the configured claim source'} "
             "declares this branch",
-        )
-
-    if facts.get("baseline_moved"):
-        add(
-            "BASELINE-MOVED",
-            "info",
-            "the integration branch advanced since the latest-code baseline was written",
         )
 
     unverified = [str(reason) for reason in (facts.get("unverified") or []) if str(reason)]
@@ -338,9 +330,6 @@ def lane_status_remedies(target: object, facts: dict, findings: list[dict]) -> l
             f"declares {_q(branch or 'this branch')}. Claim the item in the backlog "
             "(or rename this lane to match the claimed item) before recording work against it."
         )
-    if "BASELINE-MOVED" in ids:
-        lines.append(f"tautline latest-code-status --target {_q(target)} --write")
-
     return lines
 
 

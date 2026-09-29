@@ -1,7 +1,7 @@
 usage: tautline decisions-report [-h] [--target TARGET] [--since SINCE]
-                                 [--until UNTIL] [--since-seq SINCE_SEQ]
-                                 [--until-seq UNTIL_SEQ] [--goal GOAL]
-                                 [--json]
+                                 [--until UNTIL]
+                                 [--reversibility {reversible,hard-to-reverse}]
+                                 [--grep GREP] [--goal GOAL] [--json]
 
 options:
   -h, --help            show this help message and exit
@@ -11,12 +11,11 @@ options:
                         or ISO-8601; zone-less = UTC.
   --until UNTIL         Upper time bound (inclusive): an ISO-8601 timestamp;
                         zone-less = UTC.
-  --since-seq SINCE_SEQ
-                        Lower seq bound (exclusive); non-negative; requires
-                        exactly one --target.
-  --until-seq UNTIL_SEQ
-                        Upper seq bound (inclusive); non-negative; requires
-                        exactly one --target.
+  --reversibility {reversible,hard-to-reverse}
+                        Only decisions recorded with this --reversibility.
+  --grep GREP           Case-insensitive substring match over summary,
+                        rationale, alternatives, surfaces, next, goal,
+                        milestone, pr.
   --goal GOAL           Only decisions whose recorded goal equals this value.
   --json                Emit one tautline-decisions-report/v1 envelope object
-                        instead of human output.
+                        instead of a table.

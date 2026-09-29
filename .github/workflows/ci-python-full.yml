@@ -318,31 +318,35 @@ jobs:
           tautline methodology-status --target . --no-remote | tee "$RUNNER_TEMP/status.log"
           grep -Fx "adapter_drift: clean" "$RUNNER_TEMP/status.log"
 
-          # The lane-hook surface: the README quickstart's own lane verb.
-          tautline lane-start --target .
-
-          # Hooks LAND: all ten Claude hooks reference the wheel's console script...
-          settings="$HOME/.claude/settings.json"
-          for hook in plan-finalization-hook branch-liveness-hook response-guard-hook \
-              tool-rejection-hook background-command-hook latest-code-hook \
-              context-rotation-heartbeat-hook plan-review-pending-hook \
-              fleet-guard-hook; do
-            grep -F "tautline $hook" "$settings" > /dev/null \
-              || { echo "missing Claude hook: $hook in $settings" >&2; exit 1; }
-          done
-          # ...including the SessionStart standing-directive hook, whose command is a
-          # fail-open shell wrapper, not a bare `tautline <verb>`, so assert its exact
-          # autonomy-directive invocation lands (a packaged lane-start omitting it goes red).
-          grep -F "autonomy-directive --hook" "$settings" > /dev/null \
-            || { echo "missing Claude SessionStart directive hook in $settings" >&2; exit 1; }
-          # ...and the git branch-liveness hooks landed in the scratch repo.
-          for git_hook in pre-commit pre-push; do
-            test -x ".git/hooks/$git_hook"
-            grep -q "MINERVIT-BRANCH-LIVENESS-HOOK" ".git/hooks/$git_hook"
-          done
-
-          # Hooks EXECUTE from the installed wheel: run one exactly as installed.
-          echo '{}' | tautline tool-rejection-hook
+          # The packaged hook payload, asserted two ways. After the 2026-08-28 demolition
+          # `lane-status --hook` is the only hook the framework ships; the nine gate hooks
+          # and the lane-start verb that installed them are gone. The property this step
+          # has always guarded is unchanged -- a wheel that omits or breaks the hook payload
+          # must turn the job red -- but RUNNING the hook alone cannot prove it: lane-status
+          # is contained and always exits 0 by contract, so a broken one would pass. So:
+          #
+          #   1. the payload's CONTENT is read out of the INSTALLED tree (the old step's
+          #      `grep -F "tautline $hook" settings.json` checks were the content assertion;
+          #      nothing replaced them when lane-start went away), and
+          #   2. the hook is invoked as a harness invokes it -- payload on stdin -- and must
+          #      produce a report, because empty output is what a broken hook looks like.
+          pkg_root="$("$RUNNER_TEMP/venv/bin/python" -c \
+            'import os, tautline; print(os.path.dirname(os.path.abspath(tautline.__file__)))')"
+          python3 - "$pkg_root/_dist/plugins/tautline-core/hooks/hooks.json" <<'HOOKS'
+          import json, sys
+          payload = json.load(open(sys.argv[1]))
+          commands = [
+              hook["command"]
+              for matchers in payload["hooks"].values()
+              for matcher in matchers
+              for hook in matcher["hooks"]
+          ]
+          missing = [c for c in ["tautline lane-status --hook"] if not any(c in x for x in commands)]
+          assert not missing, f"installed hook payload is missing {missing}; it has {commands}"
+          HOOKS
+          echo '{}' | tautline lane-status --hook --target . | tee "$RUNNER_TEMP/hook.log"
+          test -s "$RUNNER_TEMP/hook.log" \
+            || { echo "the shipped hook produced no output" >&2; exit 1; }
 
       # File canaries inside the INSTALLED tree, not the build directory: hatchling
       # only ships what its config includes, pip only installs what the wheel

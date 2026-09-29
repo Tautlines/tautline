@@ -1,8 +1,0 @@
-usage: tautline dump-policy-phrases [-h] [--write] [--check] [--output OUTPUT]
-
-options:
-  -h, --help       show this help message and exit
-  --write          Write the file in place.
-  --check          Fail if the committed file is stale (generated-equals-
-                   source).
-  --output OUTPUT  Write to a path other than the default.

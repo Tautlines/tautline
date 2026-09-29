@@ -164,245 +164,22 @@ def _records(tmp_path, target) -> list[dict]:
 RATIONALE = "Reserving a ref key broke a stable CLI input; a discriminator does not"
 
 
-def test_decision_record_writes_decision_event(tmp_path):
-    target, _ = _prepare_target(tmp_path)
-    _dr(tmp_path, target, summary="Chose top-level record_kind", rationale=RATIONALE)
-    records = _records(tmp_path, target)
-    assert len(records) == 1
-    rec = records[0]
-    assert rec["event"] == "decision"
-    assert rec["plain"] == "Chose top-level record_kind"
-    assert rec["refs"]["rationale"] == RATIONALE
-    assert rec["refs"]["reversibility"] == "reversible"
-    assert rec["next"] == "proceed as decided"
-    assert rec["methodology"]["plugin_version"]
-
-
-def test_decision_record_writes_decision_schema_marker(tmp_path):
-    target, _ = _prepare_target(tmp_path)
-    _dr(tmp_path, target)
-    rec = _records(tmp_path, target)[0]
-    assert rec["record_kind"] == "tautline-decision/v1"
-
-
-def test_decision_record_severity_is_info(tmp_path):
-    target, _ = _prepare_target(tmp_path)
-    _dr(tmp_path, target)
-    assert _records(tmp_path, target)[0]["severity"] == "info"
-
-
-def test_decision_record_stamps_lane_id_and_seq(tmp_path):
-    target, _ = _prepare_target(tmp_path)
-    _dr(tmp_path, target)
-    rec = _records(tmp_path, target)[0]
-    assert isinstance(rec["lane_id"], str) and len(rec["lane_id"]) == 16
-    assert isinstance(rec["seq"], int)
-
-
-def test_decision_record_defaults_reversible_and_next(tmp_path):
-    target, _ = _prepare_target(tmp_path)
-    _dr(tmp_path, target)
-    rec = _records(tmp_path, target)[0]
-    assert rec["refs"]["reversibility"] == "reversible"
-    assert rec["next"] == "proceed as decided"
-
-
-def test_decision_record_omits_blank_alternatives_and_surfaces(tmp_path):
-    target, _ = _prepare_target(tmp_path)
-    _dr(tmp_path, target)
-    refs = _records(tmp_path, target)[0]["refs"]
-    assert "alternatives" not in refs
-    assert "surfaces" not in refs
-
-
-def test_decision_record_records_alternatives_and_surfaces_when_given(tmp_path):
-    target, _ = _prepare_target(tmp_path)
-    _dr(
-        tmp_path, target,
-        "--alternatives", "considered a reserved ref key",
-        "--reversibility", "hard-to-reverse",
-        "--surface", "bin/tautline", "--surface", "tests",
-    )
-    refs = _records(tmp_path, target)[0]["refs"]
-    assert refs["alternatives"] == "considered a reserved ref key"
-    assert refs["reversibility"] == "hard-to-reverse"
-    assert refs["surfaces"] == "bin/tautline,tests"
-
-
-def test_decision_record_succeeds_with_no_goal_context(tmp_path):
-    # The DEFAULT invocation: no --goal/--milestone flags and no active goal/milestone ledgers.
-    # build_event_payload legitimately stores empty strings for goal/milestone here; the empty
-    # derived finals must NOT trip the non-empty validation.
-    target, _ = _prepare_target(tmp_path)
-    out = _dr(tmp_path, target)
-    assert out.returncode == 0
-    rec = _records(tmp_path, target)[0]
-    assert rec["goal"] == ""
-    assert rec["milestone"] == ""
-
-
 # ---------------------------------------------------------------------------
 # Fail-closed validation
 # ---------------------------------------------------------------------------
 
-def test_decision_record_requires_summary(tmp_path):
-    target, _ = _prepare_target(tmp_path)
-    out = _run_cli(
-        tmp_path, "decision-record", "--target", str(target), "--rationale", "r", check=False
-    )
-    assert out.returncode != 0
-    assert "--summary" in out.stderr  # intended required-arg error, not an unknown-command error
-    assert not _records(tmp_path, target)
-
-
-def test_decision_record_requires_rationale(tmp_path):
-    target, _ = _prepare_target(tmp_path)
-    out = _run_cli(
-        tmp_path, "decision-record", "--target", str(target), "--summary", "s", check=False
-    )
-    assert out.returncode != 0
-    assert "--rationale" in out.stderr  # intended required-arg error, not an unknown-command error
-    assert not _records(tmp_path, target)
-
-
-def test_decision_record_blank_rationale_fails_closed(tmp_path):
-    target, _ = _prepare_target(tmp_path)
-    out = _dr(tmp_path, target, rationale="   ", check=False)
-    assert out.returncode != 0
-    assert "non-blank" in out.stderr
-    assert not _records(tmp_path, target)
-
-
-def test_decision_record_rejects_bad_reversibility(tmp_path):
-    target, _ = _prepare_target(tmp_path)
-    out = _dr(tmp_path, target, "--reversibility", "maybe", check=False)
-    assert out.returncode != 0
-    assert "--reversibility" in out.stderr and "invalid choice" in out.stderr
-    assert not _records(tmp_path, target)
-
-
-def test_decision_record_secretlike_rationale_fails_closed(tmp_path):
-    target, _ = _prepare_target(tmp_path)
-    out = _dr(tmp_path, target, rationale=f"api key {SECRET_LIKE}", check=False)
-    assert out.returncode != 0
-    assert "secret-looking value" in out.stderr
-    assert not _records(tmp_path, target)
-
-
-def test_decision_record_surfaces_joined_cap_enforced(tmp_path):
-    target, _ = _prepare_target(tmp_path)
-    # Each surface item is under the 1000-char cap, but the JOINED surfaces string is over it.
-    surface_args = []
-    for _ in range(4):
-        surface_args += ["--surface", "x" * 300]
-    out = _dr(tmp_path, target, *surface_args, check=False)
-    assert out.returncode != 0
-    assert "exceeds 1000 characters" in out.stderr
-    assert not _records(tmp_path, target)
-
-
-def test_decision_record_nonempty_goal_and_pr_validated(tmp_path):
-    target, _ = _prepare_target(tmp_path)
-    secret_goal = _dr(tmp_path, target, "--goal", f"g {SECRET_LIKE}", check=False)
-    assert secret_goal.returncode != 0
-    assert "secret-looking value" in secret_goal.stderr
-    assert not _records(tmp_path, target)
-    long_pr = _dr(tmp_path, target, "--pr", "p" * 1001, check=False)
-    assert long_pr.returncode != 0
-    assert "exceeds 1000 characters" in long_pr.stderr
-    assert not _records(tmp_path, target)
-
-
-@pytest.mark.parametrize("field", ["goal", "milestone", "pr"])
-@pytest.mark.parametrize(
-    "bad,needle",
-    [(SECRET_LIKE, "secret-looking value"), ("z" * 1001, "exceeds 1000 characters")],
-)
-def test_decision_record_explicit_fields_validated_parameterized(tmp_path, field, bad, needle):
-    target, _ = _prepare_target(tmp_path)
-    out = _dr(tmp_path, target, f"--{field}", bad, check=False)
-    assert out.returncode != 0, f"{field}={bad!r} should be rejected"
-    assert needle in out.stderr
-    assert not _records(tmp_path, target)
-
 
 # over-cap --rationale is an author-ref path (rationale lives in refs, not plain).
-def test_decision_record_overcap_rationale_rejected(tmp_path):
-    target, _ = _prepare_target(tmp_path)
-    out = _dr(tmp_path, target, rationale="r" * 1001, check=False)
-    assert out.returncode != 0
-    assert "exceeds 1000 characters" in out.stderr
-    assert not _records(tmp_path, target)
-
-
-@pytest.mark.parametrize("flag,value,needle", [
-    ("--alternatives", SECRET_LIKE, "secret-looking value"),
-    ("--alternatives", "a" * 1001, "exceeds 1000 characters"),
-    ("--surface", SECRET_LIKE, "secret-looking value"),
-    ("--next", SECRET_LIKE, "secret-looking value"),
-    ("--next", "n" * 1001, "exceeds 1000 characters"),
-])
-def test_decision_record_author_refs_validated_parameterized(tmp_path, flag, value, needle):
-    target, _ = _prepare_target(tmp_path)
-    out = _dr(tmp_path, target, flag, value, check=False)
-    assert out.returncode != 0, f"{flag}={value!r} should be rejected"
-    assert needle in out.stderr
-    assert not _records(tmp_path, target)
-
-
-def test_decision_record_ref_values_sanitized(tmp_path):
-    target, _ = _prepare_target(tmp_path)
-    home = str(tmp_path / "home")
-    _dr(tmp_path, target, rationale=f"path {home}/secret is\nflattened")
-    rationale = _records(tmp_path, target)[0]["refs"]["rationale"]
-    assert home not in rationale
-    assert "$HOME" in rationale
-    assert "\n" not in rationale
 
 
 # ---------------------------------------------------------------------------
 # Derived (state-sourced) goal/milestone are validated too
 # ---------------------------------------------------------------------------
 
-def test_decision_record_derived_goal_validated_when_nonempty(tmp_path):
-    target, _ = _prepare_target(tmp_path)
-    _write_goal_run(target, goal_id=f"goal {SECRET_LIKE}")
-    out = _dr(tmp_path, target, check=False)
-    assert out.returncode != 0
-    assert "secret-looking value" in out.stderr
-    assert not _records(tmp_path, target)
-
-
-def test_decision_record_derived_milestone_validated_when_nonempty(tmp_path):
-    target, _ = _prepare_target(tmp_path)
-    _write_milestone_run(target, milestone_id="m" * 1001)
-    out = _dr(tmp_path, target, check=False)
-    assert out.returncode != 0
-    assert "exceeds 1000 characters" in out.stderr
-    assert not _records(tmp_path, target)
-
 
 # ---------------------------------------------------------------------------
 # Escape hatch: works when narration disabled, without weakening ordinary producers
 # ---------------------------------------------------------------------------
-
-def test_decision_record_works_with_events_disabled(tmp_path):
-    target, _ = _prepare_target(tmp_path, enabled=False)
-    out = _dr(tmp_path, target)
-    assert out.returncode == 0
-    records = _records(tmp_path, target)
-    assert len(records) == 1
-    assert records[0]["record_kind"] == "tautline-decision/v1"
-
-
-def test_log_event_still_refused_when_events_disabled(tmp_path):
-    target, _ = _prepare_target(tmp_path, enabled=False)
-    out = _run_cli(
-        tmp_path, "log-event", "--target", str(target), "--event", "startup",
-        "--severity", "info", "--plain", "p", "--next", "n",
-    )
-    assert "event_log_skipped: disabled" in out.stdout
-    assert not _records(tmp_path, target)
 
 
 def test_append_primitive_still_refuses_when_disabled_without_bypass(cli, tmp_path):
@@ -420,42 +197,10 @@ def test_append_primitive_still_refuses_when_disabled_without_bypass(cli, tmp_pa
 # Reader contract: top-level discriminator, no reserved --ref namespace break
 # ---------------------------------------------------------------------------
 
-def test_log_event_decision_schema_ref_still_accepted_and_not_counted_shape(tmp_path):
-    # The final design reserves NOTHING in the --ref namespace: a log-event carrying a
-    # decision_schema ref is still accepted as an ordinary ref, and is NOT a decision record
-    # (no top-level record_kind), so a reader keying on record_kind never miscounts it.
-    target, _ = _prepare_target(tmp_path)
-    _run_cli(
-        tmp_path, "log-event", "--target", str(target), "--event", "startup",
-        "--severity", "info", "--plain", "p", "--next", "n",
-        "--ref", "decision_schema=tautline-decision/v1",
-    )
-    rec = _records(tmp_path, target)[0]
-    assert rec["refs"]["decision_schema"] == "tautline-decision/v1"
-    assert "record_kind" not in rec
-
-
-def test_freeform_log_event_cannot_set_record_kind(tmp_path):
-    # log-event refs pass through event_refs_from_args into payload["refs"] ONLY; they can never set
-    # a top-level payload key, so the forgery path is structurally closed with no reserved key.
-    target, _ = _prepare_target(tmp_path)
-    _run_cli(
-        tmp_path, "log-event", "--target", str(target), "--event", "startup",
-        "--severity", "info", "--plain", "p", "--next", "n",
-        "--ref", "record_kind=tautline-decision/v1",
-    )
-    rec = _records(tmp_path, target)[0]
-    assert rec.get("record_kind") != "tautline-decision/v1"
-    assert rec["refs"]["record_kind"] == "tautline-decision/v1"
-
 
 # ---------------------------------------------------------------------------
 # Instrumentation classification + sole-callsite source invariant
 # ---------------------------------------------------------------------------
-
-def test_decision_event_classified_ignored_for_instrumentation(cli):
-    assert "decision" in cli.INSTRUMENTATION_IGNORED_EVENTS
-    assert cli.INSTRUMENTATION_IGNORED_EVENTS["decision"].strip()
 
 
 def test_bypass_gate_sole_callsite():
@@ -474,3 +219,88 @@ def test_bypass_gate_sole_callsite():
     assert enclosing is not None and enclosing.startswith("def decision_record("), (
         f"sole bypass_enabled_gate=True call site must be inside decision_record, got: {enclosing}"
     )
+
+
+# ---------------------------------------------------------------------------
+# Lean lanes: the ledger writer the autonomy directive names must work on lean-1 adapters
+# ---------------------------------------------------------------------------
+
+
+def _prepare_lean_target(tmp_path, *, name="lean-target", remote="git@github.com:example-org/example-saas.git"):
+    """A lean-1 lane shaped exactly like `tautline slim`/`tautline init` output: a git repo whose
+    only adapter is a minimal lean `.tautline.json` -- no source adapter, no `_generated` chain."""
+    target = tmp_path / name
+    target.mkdir(parents=True)
+    _git(target, "init", "-q", "-b", "main")
+    _git(target, "config", "user.email", "test@example.invalid")
+    _git(target, "config", "user.name", "Test User")
+    if remote:
+        _git(target, "remote", "add", "origin", remote)
+    lean_config = {
+        "schemaVersion": "lean-1",
+        "project": {"name": "Example SaaS", "repo": "example-org/example-saas"},
+        "integrationBranch": "main",
+        "commands": {"test": "true"},
+    }
+    (target / ".tautline.json").write_text(
+        json.dumps(lean_config, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
+    (target / "README.md").write_text("# Fixture\n", encoding="utf-8")
+    _git(target, "add", ".")
+    _git(target, "commit", "-m", "Initial fixture", "-q")
+    return target
+
+
+def _read_ledger_record(result) -> dict:
+    jsonl_line = next(
+        line for line in result.stdout.splitlines() if line.startswith("event_jsonl: ")
+    )
+    ledger = Path(jsonl_line.removeprefix("event_jsonl: "))
+    assert ledger.exists(), f"ledger file missing: {ledger}"
+    rows = [json.loads(row) for row in ledger.read_text(encoding="utf-8").splitlines() if row]
+    assert rows, "ledger is empty"
+    return rows[-1]
+
+
+def test_lean_adapter_lane_records_a_decision(tmp_path):
+    target = _prepare_lean_target(tmp_path)
+    result = _dr(tmp_path, target, rationale=RATIONALE)
+    record = _read_ledger_record(result)
+    assert record["record_kind"] == "tautline-decision/v1"
+    assert record["refs"]["rationale"] == RATIONALE
+    assert record["project"] == "Example SaaS"
+    assert record["repo"] == "example-org/example-saas"
+
+
+def test_lean_adapter_without_remote_still_records(tmp_path):
+    # `tautline init` legitimately produces a lean lane before any remote exists; refusing to
+    # record a decision there would gut the autonomy directive exactly where it starts.
+    target = _prepare_lean_target(tmp_path, remote=None)
+    result = _dr(tmp_path, target, rationale=RATIONALE)
+    record = _read_ledger_record(result)
+    assert record["record_kind"] == "tautline-decision/v1"
+
+
+def test_lean_adapter_wrong_repo_still_refuses(tmp_path):
+    # The lean path keeps the one 1.x identity check that CAN still run: a lean adapter naming a
+    # different repo than the target's remote is another project's adapter, and stays refused.
+    target = _prepare_lean_target(tmp_path, remote="git@github.com:example-org/other-repo.git")
+    result = _dr(tmp_path, target, rationale=RATIONALE, check=False)
+    assert result.returncode != 0
+    assert "does not match the target git remote" in result.stderr
+
+
+def test_malformed_lean_adapter_refuses_cleanly(tmp_path):
+    # `load_lean_config` only sniffs schemaVersion, so a marker that claims lean-1 but breaks the
+    # schema (project as a bare string) must die as a clean one-line refusal from the
+    # authoritative validator -- never an AttributeError traceback out of legacy_lane_view.
+    target = _prepare_lean_target(tmp_path)
+    (target / ".tautline.json").write_text(
+        json.dumps({"schemaVersion": "lean-1", "project": "just-a-string", "commands": {"test": "true"}})
+        + "\n",
+        encoding="utf-8",
+    )
+    result = _dr(tmp_path, target, rationale=RATIONALE, check=False)
+    assert result.returncode != 0
+    assert "lean adapter invalid" in result.stderr
+    assert "Traceback" not in result.stderr

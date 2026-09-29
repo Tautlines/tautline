@@ -1,8 +1,0 @@
-usage: tautline emit-iteration-review-workflow [-h] [--project PROJECT]
-                                               [--target TARGET] [--write]
-
-options:
-  -h, --help         show this help message and exit
-  --project PROJECT
-  --target TARGET
-  --write

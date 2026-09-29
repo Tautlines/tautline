@@ -115,14 +115,24 @@ REFUSAL_BUILDERS = {
     # by name. Without this entry the print sites read as passthroughs and the override would be
     # unchecked no matter what it said.
     "generated_downgrade_refusal",
-    "plan_review_round_cap_errors",
-    "plan_review_hard_cap_refusal",
-    "implementation_review_round_cap_errors",
-    # The in-flight lease refusal reaches stderr through the `plan_review_run_error: {}`
-    # passthrough print, which `_is_passthrough` skips by construction, so the walk can only
-    # see this message where it is BUILT.
-    "plan_review_acquire_inflight_lease",
+    # The trust gate's refusal and the pin remedy it composes. Registered because both once told a
+    # blocked operator to run `update-repin`, a verb the 2026-08-28 demolition deleted -- and the
+    # walk could not see them: `gate_methodology_upstream_advance` assembles its text from pieces,
+    # so the message exists nowhere as one literal. This is the fail-closed half of sec-trust-exec-1,
+    # reached on a real `sync-methodology`, which makes a dead remedy here worse than most.
+    "gate_methodology_upstream_advance",
+    "_generic_pinned_advance_remedy",
+    # The four plan-review / implementation-review round-cap and in-flight-lease builders that
+    # used to be listed here went with the review-round economy on 2026-08-28. Named entries that
+    # resolve to nothing are how a registry rots quietly, so they are removed rather than left.
 }
+
+
+# The walk's own floor. This instrument has TWO layers -- discovery (which refusal messages it
+# finds) and checking (what it asserts about them) -- and only the second is visible when it
+# passes. The demolition cut discovery from a large corpus to a handful, which is legitimate; a
+# cut to ZERO would make every check below pass while measuring nothing, and would look identical.
+MINIMUM_DISCOVERED_REFUSALS = 2
 
 
 # --- Collection ---------------------------------------------------------------------------------
@@ -256,6 +266,15 @@ REFUSALS = _collect()
 CHECKED = [(site, text) for site, text in REFUSALS if not _is_passthrough(text)]
 
 
+def test_the_walk_still_discovers_refusals():
+    """Discovery, asserted separately from every check that consumes it."""
+    assert len(REFUSALS) >= MINIMUM_DISCOVERED_REFUSALS, (
+        f"the refusal walk found {len(REFUSALS)} messages (floor {MINIMUM_DISCOVERED_REFUSALS}); "
+        "every check below would pass vacuously -- the walk has stopped recognising refusal sites"
+    )
+    assert CHECKED, "every discovered refusal was classified as a passthrough"
+
+
 # --- Check 1: no human handoff ------------------------------------------------------------------
 
 # Phrases that hand the decision to a person. Deliberately narrow and literal: the check has to be
@@ -345,6 +364,12 @@ CONTINUATIONS = (
     ("flag", re.compile(r"(?<![\w-])--[a-z][a-z0-9-]+")),
     # An adapter/config key to edit.
     ("config", re.compile(r"\b(?:adapter|review)\.[a-zA-Z][a-zA-Z0-9.]+")),
+    # An environment variable or config file to set. As actionable as a flag or an adapter key, and
+    # for the trust gate it is the ONLY shape available: signature trust and the pin allowlist are
+    # machine state, not repository state, so no verb and no adapter key can express them. Added
+    # when the signed-policy refusal -- which has named its env var since sec-trust-exec-1 -- was
+    # found to score as "names nothing the lane can do next".
+    ("environment", re.compile(r"\b(?:MINERVIT|TAUTLINE)_[A-Z0-9_]{4,}\b")),
     # A named action a lane can take alone.
     (
         "action",
@@ -357,15 +382,18 @@ CONTINUATIONS = (
 )
 
 CONTINUATION_ALLOWLIST: dict[str, str] = {
-    "an unfinalized successful run already matches the current plan content": (
-        "The continuation IS present, but it is computed at runtime: the trailing interpolation is "
-        "`finalizable_command`, the exact `finalize-plan-review` invocation for the unbound run "
-        "that matches the current plan hash. A static walk can only ever see `{}` there. The "
-        "runtime shape -- that the refusal carries a real, runnable command whenever one exists -- "
-        "is asserted in tests/test_plan_review_runtime_guard.py, which pins both "
-        "`finalize-plan-review` and its `--log` flag in the rendered message."
+    "refusing to advance methodology checkout to unverified upstream": (
+        "The continuation IS present, but it is composed at runtime: this refusal concatenates a "
+        "`recovery` string chosen by the ACTIVE trust policy -- the signer guidance under `signed`, "
+        "the pin-surface remedy under `pinned` -- so a static walk can only ever see the `{}` "
+        "prefix. Both branches are rendered and asserted to carry a real continuation in "
+        "test_the_trust_gate_refusal_names_a_real_continuation below, which is in this file rather "
+        "than a distant one so the exemption and its proof cannot drift apart."
     ),
 }
+# The plan-review finalization entry that used to sit here went with the plan-review machinery on
+# 2026-08-28, and it named tests/test_plan_review_runtime_guard.py -- a file deleted in the same
+# change. An allowlist entry whose refusal AND whose proof are both gone is a licence for nothing.
 
 
 def _policy_refusals() -> list[tuple[str, str]]:
@@ -472,23 +500,6 @@ def test_refusals_never_show_a_framework_verb_as_a_bare_command(
     )
 
 
-@pytest.mark.parametrize(
-    ("command", "flag"), sorted(NAMED_INVOCATIONS), ids=lambda value: str(value)
-)
-def test_commands_named_in_refusals_are_runnable(command: str, flag: str) -> None:
-    accepted = _accepted_flags(command)
-    where = ", ".join(sorted(set(NAMED_INVOCATIONS[(command, flag)])))
-    assert accepted, (
-        f"{where} refuses and points the lane at `tautline {command}`, which is not a CLI "
-        "subcommand. The remedy dies with 'invalid choice'. Name a real verb."
-    )
-    assert flag in accepted, (
-        f"{where} refuses and points the lane at `tautline {command} {flag}`, but that command "
-        f"does not accept {flag} (it accepts {', '.join(sorted(accepted))}). The remedy dies with "
-        "'unrecognized argument', which is a dead end with extra steps."
-    )
-
-
 INVOCATION_COMMANDS = sorted({command for command, _flag in NAMED_INVOCATIONS})
 
 REQUIRED_FLAG_ALLOWLIST: dict[str, str] = {
@@ -524,32 +535,6 @@ def test_a_named_remedy_carries_the_verbs_required_arguments(command: str) -> No
 # --- Guards on the test itself ------------------------------------------------------------------
 
 
-def test_the_walk_finds_refusals() -> None:
-    """A static collector that silently stops matching passes every other test in this file."""
-    # Raised 40 -> 47 with item 69: the walk found 46 before that item and 48 after it added the
-    # render_adapters_error: prefix plus the codex-run adapter-dirt refusal. A ratchet that never
-    # moves cannot tell "a prefix was renamed" from "coverage was added".
-    #
-    # Raised 47 -> 55 with item 68 PR2: MEASURED 48 before the occupancy prefixes and 56 after, so
-    # the four occupancy_* prefixes brought 8 messages onto this surface. The floor moves by the
-    # measured delta and no further -- a floor set above what was counted is a ratchet that fails
-    # the next honest change, and one set below it is a ratchet that has stopped ratcheting.
-    assert len(CHECKED) >= 55, (
-        f"the refusal walk found only {len(CHECKED)} messages on the review/gate surface; it used "
-        "to find 48+. Either a prefix in REVIEW_GATE_PREFIXES was renamed, or the emit shape "
-        "changed. Fix the walk before trusting the greens above."
-    )
-    assert len(POLICY_REFUSALS) >= 20, (
-        f"only {len(POLICY_REFUSALS)} refusals classified as policy; the continuation check is "
-        "close to vacuous. Check whether VALIDATION grew a pattern that swallows policy refusals."
-    )
-    assert NAMED_INVOCATIONS, "no refusal names a `tautline` invocation; check 3 is vacuous"
-    assert len(CLI_VERBS) > 50, (
-        f"only {len(CLI_VERBS)} CLI verbs parsed from `tautline --help`; the bare-verb check "
-        "cannot recognise a subcommand it does not know about, so it would pass silently"
-    )
-
-
 @pytest.mark.parametrize(
     "allowlist",
     [HUMAN_HANDOFF_ALLOWLIST, CONTINUATION_ALLOWLIST, BARE_VERB_ALLOWLIST],
@@ -574,13 +559,79 @@ def test_allowlist_entries_carry_a_reason(allowlist: dict[str, str]) -> None:
         )
 
 
-def test_allowlist_entries_still_match_a_refusal() -> None:
-    """An entry that no longer matches anything is a stale suppression waiting to excuse something
-    it was never written for."""
-    for allowlist in (HUMAN_HANDOFF_ALLOWLIST, CONTINUATION_ALLOWLIST):
-        for fragment in allowlist:
-            assert any(fragment in text for _, text in REFUSALS), (
-                f"allowlist fragment {fragment!r} matches no refusal on the review/gate surface "
-                "any more. The message it excused was reworded or removed: delete the entry, or "
-                "re-point it at the current wording."
-            )
+# --- every verb a refusal offers must be one the CLI still has -----------------------------------
+#
+# The same check the rendered adapter gets (test_generated_adapter_contract), applied to the other
+# text a lane reads under pressure. It is the gap that let two refusals keep pointing at
+# `update-repin` through the whole demolition: `_required_flags` below validates the ARGUMENTS of a
+# named verb and silently does nothing when the verb itself is gone, and the bare-verb check above
+# asks the opposite question (is this a subcommand shown as an executable). Nothing asked whether a
+# verb offered as `tautline <verb>` still exists.
+
+
+def _registered_verbs() -> set[str]:
+    out = subprocess.run(
+        [sys.executable, str(CLI), "--help"], capture_output=True, text=True, check=False
+    ).stdout
+    return {v.strip() for v in out.partition("{")[2].partition("}")[0].split(",") if v.strip()}
+
+
+def test_the_registered_verb_list_was_actually_read():
+    """Discovery for the check below: an empty parse would compare against nothing."""
+    verbs = _registered_verbs()
+    assert {"sync-methodology", "render-adapters"} <= verbs
+    assert 5 < len(verbs) < 60, f"the --help choices parse returned {len(verbs)} entries"
+
+
+def test_every_refusal_offers_only_verbs_the_cli_still_has():
+    registered = _registered_verbs()
+    offenders = []
+    for site, text in CHECKED:
+        for verb in {v for v, _tail in INVOCATION.findall(text)} - registered:
+            offenders.append((site, verb, " ".join(text.split())))
+    assert not offenders, "\n\n".join(
+        f"{site} tells a blocked lane to run `tautline {verb}`, which the CLI refuses with "
+        f"'invalid choice'. A remedy that cannot be run leaves the lane blocked with no way "
+        f"forward.\n  {text}"
+        for site, verb, text in offenders
+    )
+
+
+def test_the_refusal_verb_scan_would_catch_a_retired_verb():
+    """The checking layer, proven against a planted defect rather than assumed."""
+    planted = "advance the trusted pin with `tautline update-repin --channel experimental`"
+    assert {v for v, _t in INVOCATION.findall(planted)} == {"update-repin"}
+    assert "update-repin" not in _registered_verbs()
+
+
+
+def test_the_trust_gate_refusal_names_a_real_continuation(monkeypatch):
+    """The proof behind this file's one CONTINUATION_ALLOWLIST entry.
+
+    `gate_methodology_upstream_advance` composes its message from a policy-dependent `recovery`
+    string, so the static walk sees only the prefix and the exemption above lets that pass. The
+    exemption is only honest if the COMPOSED message is checked, and it has to be checked on both
+    branches: the `pinned` half is the one that told a blocked operator, for the entire life of the
+    demolition, to run a verb the CLI had deleted.
+    """
+    import importlib
+
+    cli = importlib.import_module("tautline_methodology.cli")
+    registered = _registered_verbs()
+    head = "abc123abc123abc123abc123abc123abc123abcd"
+
+    monkeypatch.setattr(cli, "verify_upstream_trust", lambda _h: (False, "refused for this test"))
+    for policy in ("pinned", "signed"):
+        monkeypatch.setattr(cli, "methodology_update_policy", lambda _p=policy: _p)
+        message = cli.gate_methodology_upstream_advance(head)
+        assert message, f"the {policy} branch produced no refusal"
+        # Something to DO, not just a reason it stopped.
+        assert any(
+            pattern.search(message) for _, pattern in CONTINUATIONS
+        ), f"the {policy} refusal names no continuation:\n  {message}"
+        # And nothing it names may be a verb the CLI refuses.
+        dead = {verb for verb, _tail in INVOCATION.findall(message)} - registered
+        assert not dead, (
+            f"the {policy} refusal offers {sorted(dead)}, which `tautline` rejects with "
+            f"'invalid choice':\n  {message}"
+        )

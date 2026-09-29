@@ -96,8 +96,6 @@ def test_validate_and_pytest_gates_stay_paired():
     test_sh = TEST_SH.read_text(encoding="utf-8")
     ci_python = CI_PYTHON_WORKFLOW.read_text(encoding="utf-8")
     validate = VALIDATE_WORKFLOW.read_text(encoding="utf-8")
-    pull_request_template = PULL_REQUEST_TEMPLATE.read_text(encoding="utf-8")
-    contributing = CONTRIBUTING.read_text(encoding="utf-8")
 
     assert "pull_request:" in ci_python
     assert "pull_request:" in validate
@@ -107,11 +105,6 @@ def test_validate_and_pytest_gates_stay_paired():
     assert "pytest tests/" not in test_sh
     assert "scripts/test.sh" in ci_python
     assert "scripts/validate.sh" in validate
-    assert "- [ ] `scripts/test.sh`" in pull_request_template
-    assert "- [ ] `scripts/validate.sh`" in pull_request_template
-    assert "branch protection must require the Python behavior gate" in contributing
-    assert "`ci-python` workflow matrix" in contributing
-    assert "frozen 5-line alias" in contributing
 
 
 def test_xdist_preflight_probe_matches_the_pytest_actually_in_use():

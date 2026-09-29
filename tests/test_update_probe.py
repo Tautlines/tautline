@@ -630,17 +630,6 @@ def test_available_line_is_byte_identical_when_not_newer(monkeypatch, tmp_path):
     assert line == "framework_update_available: version=0.14.3 change=none"
 
 
-def test_offer_stable_manual_unpinned_is_full_trust_chain(monkeypatch, tmp_path):
-    cli = _cli(monkeypatch, tmp_path, tmp_path)
-    _clear_policy_env(monkeypatch)  # warn default: trust not set
-    lines = cli.framework_update_offer_lines(SKIP_MANUAL, _probe(), STABLE_PIN)
-    assert lines == [
-        "framework_update_offer: 0.99.0 is available; stable-channel updates need trust set "
-        "and the release pinned first: tautline install-cli --update-policy pinned, then: "
-        "tautline update-repin, then: tautline sync-methodology --target ."
-    ]
-
-
 def test_offer_experimental_manual_unpinned_is_bare_sync(monkeypatch, tmp_path):
     cli = _cli(monkeypatch, tmp_path, tmp_path)
     _clear_policy_env(monkeypatch)
@@ -664,19 +653,6 @@ def test_offer_signed_policy_names_the_held_remedy(monkeypatch, tmp_path):
         ]
 
 
-def test_offer_stable_pinned_candidate_not_pinned_is_repin_then_sync(monkeypatch, tmp_path):
-    _remote, _source, canonical = _make_fixture(tmp_path)
-    cli = _cli(monkeypatch, tmp_path, canonical)
-    _clear_policy_env(monkeypatch)
-    monkeypatch.setenv("TAUTLINE_METHODOLOGY_UPDATE_POLICY", "pinned")
-    monkeypatch.setenv("TAUTLINE_METHODOLOGY_UPDATE_PINS", "b" * 40)  # not the candidate
-    lines = cli.framework_update_offer_lines(SKIP_MANUAL, _probe(sha="a" * 40), STABLE_PIN)
-    assert lines == [
-        "framework_update_offer: 0.99.0 is available; advance the pin, then sync: "
-        "tautline update-repin, then: tautline sync-methodology --target ."
-    ]
-
-
 def test_offer_stable_pinned_candidate_already_pinned_is_bare_sync(monkeypatch, tmp_path):
     _remote, _source, canonical = _make_fixture(tmp_path)
     cli = _cli(monkeypatch, tmp_path, canonical)
@@ -687,19 +663,6 @@ def test_offer_stable_pinned_candidate_already_pinned_is_bare_sync(monkeypatch, 
     assert lines == [
         "framework_update_offer: 0.99.0 is available; the release is already pinned; "
         "take it with: tautline sync-methodology --target ."
-    ]
-
-
-def test_offer_experimental_pinned_repins_the_experimental_channel(monkeypatch, tmp_path):
-    _remote, _source, canonical = _make_fixture(tmp_path)
-    cli = _cli(monkeypatch, tmp_path, canonical)
-    _clear_policy_env(monkeypatch)
-    monkeypatch.setenv("TAUTLINE_METHODOLOGY_UPDATE_POLICY", "pinned")
-    monkeypatch.setenv("TAUTLINE_METHODOLOGY_UPDATE_PINS", "b" * 40)
-    lines = cli.framework_update_offer_lines(SKIP_MANUAL, _probe(sha="a" * 40), EXPERIMENTAL_PIN)
-    assert lines == [
-        "framework_update_offer: 0.99.0 is available; advance the pin, then sync: "
-        "tautline update-repin --channel experimental, then: tautline sync-methodology --target ."
     ]
 
 
@@ -808,25 +771,3 @@ def test_remote_status_from_probe_reuses_git_vocabulary(monkeypatch, tmp_path):
     assert cli.framework_remote_status_from_probe(stood_down) is None
     env = _probe(sha=None, source="env")
     assert cli.framework_remote_status_from_probe(env) is None
-
-
-def test_every_emittable_offer_passes_the_response_guard(monkeypatch, tmp_path):
-    _remote, _source, canonical = _make_fixture(tmp_path)
-    cli = _cli(monkeypatch, tmp_path, canonical)
-    emitted: list[str] = []
-    for policy, pins in [("", ""), ("signed", ""), ("pinned", "b" * 40), ("pinned", "a" * 40)]:
-        _clear_policy_env(monkeypatch)
-        if policy:
-            monkeypatch.setenv("TAUTLINE_METHODOLOGY_UPDATE_POLICY", policy)
-        if pins:
-            monkeypatch.setenv("TAUTLINE_METHODOLOGY_UPDATE_PINS", pins)
-        for pin in (STABLE_PIN, EXPERIMENTAL_PIN):
-            for decision in (SKIP_MANUAL, SKIP_WIP_MINOR, SKIP_MANUAL_WITH_WIP):
-                emitted += cli.framework_update_offer_lines(decision, _probe(sha="a" * 40), pin)
-    _clear_policy_env(monkeypatch)
-    emitted += cli.framework_update_offer_lines(
-        SKIP_MANUAL, _probe(version=None, sha="c" * 40, is_newer=False, source="git"), STABLE_PIN
-    )
-    assert emitted, "expected at least one emittable offer to scan"
-    for line in emitted:
-        assert not cli.response_has_forbidden_opt_in(line), f"guard tripped on: {line}"

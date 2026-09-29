@@ -9,7 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def test_cli_module_loads(cli):
     # The `cli` fixture imports the extension-less executable in-process.
-    assert hasattr(cli, "response_guard_errors")
+    assert hasattr(cli, "load_project")
     assert hasattr(cli, "main")
 
 

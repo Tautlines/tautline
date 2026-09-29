@@ -1,0 +1,3 @@
+# slim re-emits *.lean-proposed on every run for hand-authored repos
+
+Running `tautline slim` on an already-lean repo whose CLAUDE.md/AGENTS.md are hand-authored re-writes CLAUDE.md.lean-proposed/AGENTS.md.lean-proposed on every invocation, even after the operator reviewed and rejected them (the framework repo now PINS their absence via test_methodology_repo_bootstraps_stay_handwritten, so a slim run leaves the lane dirty and locally red). slim needs a memory of a reviewed proposal decision, or a flag, or it should only propose when the rendered content differs from the last proposal. Observed 2026-08-31 on the framework repo right after the PR 626 merge.

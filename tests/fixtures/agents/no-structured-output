@@ -1,0 +1,28 @@
+#!/usr/bin/env python3
+"""LEGACY agent: writes no result file, only a transcript.
+
+The migration path. It prints a transcript ending with a bare speaker line and its answer
+beneath. With `transcriptMarker` declared this resolves `declared-marker`; with no marker it
+must resolve `unlocatable`.
+
+NO `## Findings` HEADING ANYWHERE, and that absence is load-bearing rather than incidental:
+this one fixture has to reach BOTH legacy paths depending only on whether a marker is
+declared, and a heading here would make the no-marker case fall through to `findings-section`
+instead -- so the unlocatable test would assert the wrong source and R2's documented fail-open
+would go uncovered while appearing tested."""
+import json
+import os
+import sys
+
+AGENT_ID = os.environ.get("TAUTLINE_REVIEW_AGENT_ID", "fixture-legacy")
+path = os.environ.get("TAUTLINE_REVIEW_RESULT_PATH")
+if not path:
+    print("no TAUTLINE_REVIEW_RESULT_PATH supplied", file=sys.stderr)
+    raise SystemExit(2)  # transport failure: the framework did not hold up its end
+
+print("user")
+print("please review the diff")
+print()
+print("fixture-legacy")
+print("No blockers found in this change.")
+raise SystemExit(0)

@@ -1,8 +1,0 @@
-usage: tautline validate-iteration-review [-h] [--project PROJECT]
-                                          [--target TARGET] --file FILE
-
-options:
-  -h, --help         show this help message and exit
-  --project PROJECT
-  --target TARGET
-  --file FILE

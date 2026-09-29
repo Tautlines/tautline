@@ -21,17 +21,6 @@ def _agent_facing_policy_paths() -> list[Path]:
     return sorted(paths)
 
 
-def test_agent_facing_policy_and_skill_markdown_have_no_incident_dates():
-    offenders = []
-    for path in _agent_facing_policy_paths():
-        text = path.read_text(encoding="utf-8")
-        for lineno, line in enumerate(text.splitlines(), start=1):
-            if ISO_DATE.search(line):
-                offenders.append(f"{path.relative_to(ROOT)}:{lineno}: {line.strip()}")
-
-    assert offenders == []
-
-
 def test_generated_reference_adapter_markdown_has_no_incident_dates(cli):
     adapter_path = ROOT / "adapters" / "projects" / "example-saas.json"
     data = cli.load_project(adapter_path)

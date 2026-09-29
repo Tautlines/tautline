@@ -1,0 +1,40 @@
+#!/usr/bin/env python3
+"""NON-conforming agent: writes a clean result, THEN fails.
+
+The pairing the seams have to get right. `nonzero-exit` fails cleanly and writes nothing, which
+is easy; this one leaves a well-formed `review-result.json` behind and then exits non-zero, which
+is what a wrapper that dies mid-run actually looks like -- the file is written before the failure
+and describes a review that never finished.
+
+Per the contract a non-zero exit means the wrapper COULD NOT RUN, so the result is stale by
+definition and must not be read. A seam that reads the file first and checks the exit code
+afterwards will bind structured evidence from a review that reported it could not complete.
+"""
+import json
+import os
+import sys
+
+AGENT_ID = os.environ.get("TAUTLINE_REVIEW_AGENT_ID", "fixture-nonzero-with-result")
+print("reviewing:", " ".join(sys.argv[1:]))
+print("## Findings")
+print()
+print("No blockers found.")
+
+path = os.environ.get("TAUTLINE_REVIEW_RESULT_PATH")
+if not path:
+    print("no TAUTLINE_REVIEW_RESULT_PATH supplied", file=sys.stderr)
+    raise SystemExit(2)
+
+with open(path, "w", encoding="utf-8") as handle:
+    json.dump(
+        {
+            "schema": "tautline-agent-review-result/v1",
+            "agent": AGENT_ID,
+            "verdict": "clean",
+            "findings": [],
+        },
+        handle,
+    )
+
+print("wrapper lost the connection after writing its result", file=sys.stderr)
+raise SystemExit(3)

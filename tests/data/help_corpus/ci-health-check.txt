@@ -1,9 +1,0 @@
-usage: tautline ci-health-check [-h] [--project PROJECT] [--target TARGET]
-                                [--strict]
-
-options:
-  -h, --help         show this help message and exit
-  --project PROJECT
-  --target TARGET
-  --strict           Treat a missing CI test gate as blocking even when
-                     ciTestGate.enforcement is 'warn'.

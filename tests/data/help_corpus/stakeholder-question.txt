@@ -1,0 +1,32 @@
+usage: tautline stakeholder-question [-h] --issue ISSUE [--repo REPO]
+                                     [--question QUESTION] [--why WHY]
+                                     [--needed-for NEEDED_FOR]
+                                     [--stakeholder STAKEHOLDER]
+                                     [--question-id QUESTION_ID]
+                                     {ask,list}
+
+positional arguments:
+  {ask,list}            ask: post a new tagged question on --issue. list:
+                        report every tagged question on --issue as open or
+                        answered. Answered = the first comment, anywhere after
+                        the tagged one, posted by someone OTHER than whoever
+                        posted the tagged comment -- a positional check, not a
+                        read of what the reply says.
+
+options:
+  -h, --help            show this help message and exit
+  --issue ISSUE         Issue/PR number (requires --repo) or a full github.com
+                        issue/PR URL.
+  --repo REPO           owner/name. Required when --issue is a bare number;
+                        must agree with --issue when --issue is a URL.
+  --question QUESTION   ask: the question text (required for ask).
+  --why WHY             ask: why it matters (optional).
+  --needed-for NEEDED_FOR
+                        ask: what the answer unblocks (optional).
+  --stakeholder STAKEHOLDER
+                        ask: who to @-mention in the comment (optional; no
+                        mention if omitted).
+  --question-id QUESTION_ID
+                        ask: explicit tag id (default: derived from
+                        --issue/--question/--needed-for). Reposting the same
+                        id is a no-op.

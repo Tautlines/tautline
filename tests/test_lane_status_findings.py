@@ -31,7 +31,6 @@ def _facts(**overrides):
         "squatted_path": None,
         "claim_state": "matched",
         "claim_source": "",
-        "baseline_moved": False,
         "unverified": [],
     }
     base.update(overrides)
@@ -47,7 +46,7 @@ def test_finding_order_is_a_tuple_and_complete():
     assert isinstance(LANE_STATUS_FINDING_ORDER, tuple)
     assert set(LANE_STATUS_FINDING_ORDER) == {
         "CONCURRENT", "DETACHED", "ORPHANED", "MERGED", "STALE", "SQUATTED",
-        "DIRTY", "UNCLAIMED", "BASELINE-MOVED", "UNVERIFIED",
+        "DIRTY", "UNCLAIMED", "UNVERIFIED",
     }
     assert LANE_STATUS_FINDING_ORDER[0] == "CONCURRENT", (
         "another session in this worktree destroys identity harder than anything below it: every "
@@ -137,9 +136,11 @@ def test_squatted_is_informational_and_names_the_trusted_ref():
     assert "origin/experimental" in findings[0]["detail"]
 
 
-def test_dirty_and_baseline_moved_are_reported_as_info():
+def test_dirty_is_reported_as_info():
+    # BASELINE-MOVED went with the latest-code baseline in the 2026-08-28 demolition: no command
+    # writes that file any more, so the finding could only ever have fired on a stale one and its
+    # remedy named a verb the CLI no longer has.
     assert _ids(_facts(dirty=True)) == ["DIRTY"]
-    assert _ids(_facts(baseline_moved=True)) == ["BASELINE-MOVED"]
 
 
 def test_unverified_reasons_surface_as_a_finding():

@@ -352,6 +352,11 @@ def evidence_check(
         lambda data, base=None: {"origin/experimental"},
     )
     monkeypatch.setattr(cli, "implementation_review_ledger_errors", lambda *a, **k: [])
+    # Same reason as the line above: this lane is a tmp_path, not a git repo, so the
+    # tracked/clean half of the evidence gate cannot pass here and is not what these tests
+    # are about. The real gate still runs both; the round-history tracked bar is pinned in a
+    # REAL repo by test_rounds_errors_flags_an_untracked_history.
+    monkeypatch.setattr(cli, "implementation_review_rounds_errors", lambda *a, **k: [])
     args = argparse.Namespace(
         project=None,
         target=subject.target,

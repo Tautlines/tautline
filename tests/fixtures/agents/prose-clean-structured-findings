@@ -1,0 +1,48 @@
+#!/usr/bin/env python3
+"""Divergent review agent: clean PROSE, structured findings.
+
+Not a conforming-agent example -- a DIVERGENCE fixture. The plan-review seam classifies the
+prose `## Findings` section while the build seam reads the structured result, so one wrapper
+serving both can disagree with itself: a truncated answer, a summariser that drops the list,
+or a wrapper whose prose is written by a different pass than its JSON. Before the plan seam
+consulted the structured result, that disagreement finalized as CLEAN evidence with zero
+unresolved counts -- the reviewer's own P1 silently discarded. This fixture reproduces it
+through the real seam, which is the only place the two contracts meet.
+"""
+import json
+import os
+import sys
+
+AGENT_ID = os.environ.get("TAUTLINE_REVIEW_AGENT_ID", "fixture-divergent")
+print("reviewing:", " ".join(sys.argv[1:]))
+
+# The prose the plan seam classifies: clean, and wrong.
+print("## Findings")
+print()
+print("No blockers found.")
+
+path = os.environ.get("TAUTLINE_REVIEW_RESULT_PATH")
+if not path:
+    print("no TAUTLINE_REVIEW_RESULT_PATH supplied", file=sys.stderr)
+    raise SystemExit(2)  # transport failure: the framework did not hold up its end
+
+# The structured truth: a P1 the prose never mentions.
+with open(path, "w", encoding="utf-8") as handle:
+    json.dump(
+        {
+            "schema": "tautline-agent-review-result/v1",
+            "agent": AGENT_ID,
+            "verdict": "findings",
+            "findings": [
+                {
+                    "id": "R1-1",
+                    "severity": "P1",
+                    "file": "docs/plan.md",
+                    "line": 1,
+                    "summary": "task 3 has no acceptance criteria",
+                }
+            ],
+        },
+        handle,
+    )
+raise SystemExit(0)

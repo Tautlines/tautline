@@ -1,0 +1,9 @@
+usage: tautline slim [-h] [--target TARGET] [--dry-run] [--keep-agent-hooks]
+
+options:
+  -h, --help          show this help message and exit
+  --target TARGET
+  --dry-run           Print every change without making one.
+  --keep-agent-hooks  Leave ~/.claude/settings.json alone. The framework's
+                      hooks are installed there, not in the project, so this
+                      opts OUT of removing the ones you can actually feel.

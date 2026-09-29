@@ -1,50 +1,21 @@
-## What & Why
+## What changed and why
 
-<!-- What does this change do, and why does it need to happen? -->
+Describe the problem, resulting behavior, and any migration impact.
 
-Linked issue: #
-
-## Change Type
-
-- [ ] Fix
-- [ ] Feature
-- [ ] Docs
-- [ ] Adapter
-- [ ] Example
-
-## Problem Or Evidence
-
-
-## Proposed Methodology Change
-
-
-## Adapter Or Project Impact
-
-
-## Migration Impact
-
+Backlog: <item-id>
 
 ## Validation
 
-- [ ] `scripts/test.sh`
-- [ ] `scripts/validate.sh`
-- [ ] `python3 -m py_compile bin/tautline`
-- [ ] `git diff --check`
+- [ ] `scripts/test.sh` passed on this change (it already includes lint and types).
+- [ ] `git diff --check` passed.
+- [ ] One adversarial review completed; Critical/P1 findings resolved.
 
-## Contributor Checklist
+`scripts/validate.sh` aliases the same suite; do not run both for duplicate evidence.
+Note material limitations or useful follow-ups here.
 
-- [ ] `scripts/test.sh` is green locally, on this exact diff.
-- [ ] Every commit is DCO signed off (`git commit -s`).
-- [ ] AI assistance is disclosed per [`AI_CONTRIBUTION_POLICY.md`](AI_CONTRIBUTION_POLICY.md)
-      (an `Assisted-by:` trailer on substantially AI-generated commits).
-- [ ] No unrelated diffs are bundled into this change.
+## Contribution
 
-## Review Status
+- [ ] Commits are DCO signed off (`git commit -s`).
+- [ ] AI assistance is disclosed with an `Assisted-by:` trailer where applicable.
 
-- [ ] Cross-model/adversarial review completed or explicitly not required with reason.
-- [ ] Critical/P1 findings resolved.
-
----
-
-Reminder: non-trivial features need a discussed issue first — see the "Before you build"
-section of [`CONTRIBUTING.md`](../CONTRIBUTING.md).
+See [CONTRIBUTING.md](../CONTRIBUTING.md) for the development and release workflow.

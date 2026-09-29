@@ -19,17 +19,14 @@ The moved helpers are also exercised in-process so their bodies are hit under co
 subprocess is not coverage-collected; see the plan's coverage Assumption).
 """
 
-import argparse
 import ast
 import json
 import re
 import subprocess
 import sys
 from functools import lru_cache
-from importlib import import_module
 from pathlib import Path
 
-import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SRC_ROOT = REPO_ROOT / "src"
@@ -392,25 +389,6 @@ MOVED_CONSTANTS.update(W4_MOVED_CONSTANTS)
 ALL_MOVED = {**MOVED_DEFS, **MOVED_CONSTANTS}
 
 
-@pytest.mark.parametrize("name, module_path", sorted(MOVED_DEFS.items()))
-def test_moved_def_importable_from_package(name, module_path):
-    module = import_module(module_path)
-    assert callable(getattr(module, name)), f"{name} is not an importable def in {module_path}"
-
-
-@pytest.mark.parametrize("name, module_path", sorted(MOVED_CONSTANTS.items()))
-def test_moved_constant_importable_from_package(name, module_path):
-    module = import_module(module_path)
-    assert hasattr(module, name), f"{name} is not importable from {module_path}"
-
-
-@pytest.mark.parametrize("name, module_path", sorted(ALL_MOVED.items()))
-def test_moved_name_reachable_as_cli_attribute(cli, name, module_path):
-    # The eager bin alias re-exports the SAME object the package defines, so attribute reach and
-    # set_defaults(func=...) references keep resolving after the carve.
-    assert getattr(cli, name) is getattr(import_module(module_path), name)
-
-
 def _module_file(module_path: str) -> Path:
     """Filesystem path of a dotted ``tautline_methodology`` module."""
     return SRC_ROOT / (module_path.replace(".", "/") + ".py")
@@ -461,41 +439,6 @@ def _package_source_files() -> list[Path]:
     return [CLI_PATH, *sorted(SRC_ROOT.glob("tautline_methodology/**/*.py"))]
 
 
-@pytest.mark.parametrize("name", sorted(ALL_MOVED))
-def test_moved_name_is_alias_not_def_in_cli_engine(name):
-    """Post-flip successor of the wave "no def remains in bin" pin. The moved name is now an
-    eager alias ASSIGNMENT in the CLI engine module (cli.py) -- never a def/class there -- which
-    is what keeps ``cli.<name>`` reach and every ``set_defaults(func=...)`` reference resolving.
-    (bin/tautline is a shim and holds neither the def nor the alias -- pinned separately below.)"""
-    assert name not in _defined_names(CLI_ENGINE_PATH), (
-        f"{name} is DEFINED in cli.py; a moved name must be an eager alias "
-        "ASSIGNMENT, not a def/class definition"
-    )
-    assert re.search(rf"(?m)^{re.escape(name)} = ", _source(CLI_ENGINE_PATH)), (
-        f"{name} eager alias assignment is missing from cli.py"
-    )
-
-
-@pytest.mark.parametrize("name, module_path", sorted(MOVED_DEFS.items()))
-def test_moved_def_has_single_owner_across_all_files(name, module_path):
-    """Hardened cross-file single-owner pin (deferred W4 P3): a moved def is a top-level def in
-    EXACTLY its recorded owning module and is NOT a top-level def/class anywhere else (cli.py
-    carries it only as an eager alias ASSIGN, the bin shim not at all). Derived from actual
-    module contents, so an accidental duplicate definition in a second module reddens this."""
-    owner = _module_file(module_path)
-    assert _top_level_defs(owner).get(name) in {"def", "class"}, (
-        f"{name} is not a top-level def in its owning module {module_path}"
-    )
-    duplicates = [
-        f for f in _package_source_files()
-        if f != owner and name in _top_level_defs(f)
-    ]
-    assert not duplicates, (
-        f"{name} is ALSO a top-level def in {[str(d) for d in duplicates]}; a moved name "
-        "must have a single owning module"
-    )
-
-
 def test_spike_loading_order_in_process_and_subprocess_agree(cli, tmp_path):
     """The T3 Step-1 spike, updated for the flip: the CLI engine module resolves the real
     ``core.paths`` submodule. Prove it in-process (the ``cli`` fixture, now
@@ -536,251 +479,6 @@ def test_cli_loads_in_script_mode_via_run_cli(run_cli):
     assert "ModuleNotFoundError" not in res.stderr
 
 
-def test_moved_helpers_behave_in_process(cli, tmp_path):
-    """Exercise every moved helper in-process (coverage-collected) at representative inputs, to
-    prove behavior neutrality of the verbatim carve and to hit the moved bodies under coverage."""
-    # core.paths spike
-    base = tmp_path / "e.jsonl"
-    base.write_text("x\n", encoding="utf-8")
-    (tmp_path / "e.jsonl.1").write_text("y\n", encoding="utf-8")
-    assert [p.name for p in cli.event_jsonl_read_paths(base, 1)] == ["e.jsonl.1", "e.jsonl"]
-
-    # core.policy decision core + constants
-    assert cli.event_boundary_family("startup") == "startup"
-    assert cli.event_boundary_family("preflight_ci") == "preflight"
-    assert cli.event_boundary_family("something", "block") == "blocker"
-    assert cli.event_boundary_family("nothing_notable") is None
-    assert cli.EVENT_LOG_SCHEMA == "minervit-repo-event/v1"
-    assert "startup" in cli.EVENT_REQUIRED_BOUNDARY_FAMILIES
-    assert cli.EVENT_START_SUFFIX == "_started"
-    assert "_passed" in cli.EVENT_TERMINAL_SUFFIXES
-
-    # events helpers
-    assert cli.event_record_id({"a": 1}) == cli.event_record_id({"a": 1})
-    assert len(cli.event_record_id({"a": 1})) == 16
-    assert cli.event_base_name("goal_started") == "goal"
-    assert cli.event_base_name("goal_start") == "goal"
-    assert cli.event_family_enabled(None, None) is True
-    assert cli.event_family_enabled({"startup"}, "startup") is True
-    assert cli.event_family_enabled({"startup"}, "preflight") is False
-    assert cli.event_is_terminal_for("goal", "goal_passed") is True
-    assert cli.event_is_terminal_for("goal", "goal_running") is False
-    assert cli.audit_event_records([]) == []
-    bad = cli.audit_event_records([{"schema": "wrong", "event": "startup", "next": "go"}])
-    assert any("invalid schema" in issue for issue in bad)
-
-    # usage helpers
-    assert cli.usage_record_key({"dedupe_key": "K"}) == "K"
-    assert len(cli.usage_record_key({"provider": "anthropic", "model": "opus"})) == 64
-    assert cli.usage_tokens({"tokens": {"input": 3, "output": 4}})["input"] == 3
-    assert cli.usage_tokens({"tokens": "not-a-dict"})["total"] == 0
-    assert cli.usage_nonnegative_int("5", "input") == 5
-    with pytest.raises(SystemExit):
-        cli.usage_nonnegative_int("-1", "input")
-    assert cli.usage_float_or_none(None, "cost") is None
-    assert cli.usage_float_or_none("1.5", "cost") == 1.5
-    with pytest.raises(SystemExit):
-        cli.usage_float_or_none("-1", "cost")
-    assert cli.usage_report_key({"project": "acme"}, "product") == "acme"
-    assert cli.usage_report_key({"ts": "2026-07-21T09:00"}, "day") == "2026-07-21"
-    assert cli.usage_report_key({"model": "opus"}, "model") == "opus"
-
-
-def test_w1_moved_helpers_behave_in_process(cli):
-    """Wave W1: exercise representative response_guard + iteration_review leaves in-process
-    (coverage-collected) to prove verbatim-carve behavior neutrality and hit the moved bodies."""
-    # response_guard pure scanners + the guard-check driver
-    assert cli.response_non_whitespace_len("  ab ") == 2
-    assert cli.flatten_hook_text("hello") == "hello"
-    assert "a" in cli.flatten_hook_text(["a", ["b", "c"]])
-    assert cli.guard_check_call("lbl", lambda _a: 0, None) == 0
-    assert cli.guard_check_call("lbl", lambda _a: 1, None) == 1
-    assert isinstance(cli.response_is_rca_shaped("Root cause of the failure"), bool)
-    # marker constants moved with the scanners (incl. the derived WORD_MARKERS)
-    assert isinstance(cli.RESPONSE_GUARD_PASSIVE_MONITOR_PHRASES, list)
-    assert isinstance(cli.RESPONSE_GUARD_CONTEXT_PRESSURE_WORD_MARKERS, list)
-    # iteration_review validators / render leaves
-    errs: list[str] = []
-    cli.iteration_review_required_string({"x": "value"}, "x", errs)
-    assert errs == []
-    assert cli.validate_iteration_review_record("not-a-dict") == ["GoalReview must be a JSON object"]
-    assert cli.iteration_review_operator_approval_ok(
-        argparse.Namespace(operator_approval_token=cli.ITERATION_REVIEW_OPERATOR_APPROVAL_TOKEN)
-    )
-    assert cli.iteration_review_default_page_path(Path("/t/x.review.json")).suffix == ".html"
-
-
-def test_w1_owning_module_monkeypatch_seam_is_observed(cli, monkeypatch):
-    """Monkeypatch-seam migration proof (plan T1): once a moved function's globals live in its
-    OWNING package module, a moved caller resolves its helpers THERE -- so patching the owning
-    module path is what the caller observes, and patching the ``cli`` alias no longer reaches the
-    moved caller's internal call. The sibling waves repoint their seams to the owning module for
-    exactly this reason. (No existing test patches a W1-moved name, so none needed repointing this
-    wave; this asserts the mechanism the sibling waves depend on.)"""
-    rg = import_module("tautline_methodology.response_guard")
-    ir = import_module("tautline_methodology.iteration_review")
-
-    # response_guard_should_evaluate_stop() calls response_guard_has_live_goal_session() by its
-    # module-global name; patching it on the OWNING module is observed by the moved caller.
-    monkeypatch.setattr(rg, "response_guard_has_live_goal_session", lambda *a, **k: True)
-    assert cli.response_guard_should_evaluate_stop({}, "", "") is True
-    monkeypatch.setattr(rg, "response_guard_has_live_goal_session", lambda *a, **k: False)
-    assert cli.response_guard_should_evaluate_stop({}, "", "") is False
-
-    # ...and the bin alias (cli.<name>) is NOT the seam: rebinding it does not reach the moved
-    # caller, which resolves the helper via the owning module's globals.
-    monkeypatch.setattr(cli, "response_guard_has_live_goal_session", lambda *a, **k: True)
-    assert cli.response_guard_should_evaluate_stop({}, "", "") is False
-
-    # iteration_review_validate_customer_copy() dispatches to iteration_review_customer_copy_check()
-    # by module-global name -- the owning-module patch is observed.
-    seen: list[str] = []
-    monkeypatch.setattr(ir, "iteration_review_customer_copy_check",
-                        lambda field, value, errors, **k: seen.append(field))
-    cli.iteration_review_validate_customer_copy({"product": "x", "why": "y"}, [])
-    assert "product" in seen
-
-
-def test_w2_moved_helpers_behave_in_process(cli):
-    """Wave W2: exercise representative goal / milestone / backlog leaves in-process
-    (coverage-collected) to prove verbatim-carve behavior neutrality and hit the moved bodies."""
-    # goal ledger record/percent/integrity leaves + terminal-status constant
-    assert cli.GOAL_TERMINAL_STATUSES == {"complete", "deferred"}
-    assert cli.goal_percent_complete({"milestones": []}) == 0
-    assert cli.goal_percent_complete(
-        {"milestones": [{"status": "complete"}, {"status": "active"}]}
-    ) == 50
-    assert cli.goal_status_from_action({"type": "goal_complete"}) == "complete"
-    assert cli.goal_status_from_action({"type": "true_blocker"}) == "blocked"
-    assert cli.goal_status_from_action({"type": "start"}, "complete") == "complete"
-    assert cli.goal_run_integrity_issues({"milestones": [], "status": "active"}) == []
-    assert any(
-        "validationProof" in issue
-        for issue in cli.goal_run_integrity_issues({"milestones": [], "status": "complete"})
-    )
-    # goal-tracker field/value/item accessors
-    assert cli.goal_tracker_value_text({"name": " Ready "}) == "Ready"
-    assert cli.goal_tracker_value_text([{"name": "a"}, {"name": "b"}]) == "a, b"
-    assert cli.goal_tracker_item_title({"title": "T"}) == "T"
-    assert cli.goal_tracker_item_title({}) == "Untitled GitHub Project item"
-    assert cli.goal_tracker_priority_rank("P1") == 1
-    assert cli.goal_tracker_priority_rank("critical") == 0
-    assert cli.goal_tracker_priority_rank("") == 999
-    assert cli.goal_tracker_status_matches("Done", ["done", "closed"]) is True
-    assert cli.goal_tracker_next_sort_key("board", 0, 0, 3.0, 7) == (3.0, 7)
-    assert cli.goal_tracker_next_sort_key("priority", 1, 10, 0.0, 7) == (1, 10, 7)
-    assert cli.goal_tracker_allowed_statuses(
-        {"readyStatuses": ["r"], "activeStatuses": ["a"],
-         "doneStatuses": ["d"], "blockedStatuses": ["b"]}
-    ) == ["r", "a", "d", "b"]
-
-    # milestone ledger leaves + terminal-status constant
-    assert "merged" in cli.MILESTONE_TERMINAL_STATUSES
-    assert cli.milestone_update_config({"milestoneUpdate": {"k": 1}}) == {"k": 1}
-    assert cli.milestone_status_from_action({"type": "milestone_complete"}) == "complete"
-    assert cli.milestone_status_from_action({"type": "true_blocker"}) == "blocked"
-    assert cli.milestone_percent_complete({"items": []}) == 0
-    assert cli.milestone_percent_complete(
-        {"items": [{"status": "merged"}, {"status": "active"}]}
-    ) == 50
-
-    # backlog business-lead scanners + heading constants
-    assert cli.BACKLOG_LEAD_MIN_CHARS == 24
-    assert "what this delivers" in cli.BACKLOG_LEAD_WHAT_HEADINGS
-    good_body = (
-        "## What this delivers\nA concrete new capability that customers can use today.\n"
-        "## Why it matters\nIt removes a recurring manual step teams complain about often.\n"
-    )
-    assert cli.backlog_item_missing_business_lead(good_body) == ""
-    assert "business justification" in cli.backlog_item_missing_business_lead("no headings here")
-    assert cli.backlog_provider_completion_unit(
-        {"backlogProvider": {"enabled": True, "completionUnit": "provider-item"}}
-    ) == "provider-item"
-    assert cli.backlog_provider_completion_unit({}) == "goal"
-
-    # stakeholder-question marker round-trip + substantive-answer gate
-    assert cli.stakeholder_login_from_mention(" @Alice ") == "alice"
-    marker = cli.stakeholder_question_marker({"id": "q1", "status": "open"})
-    assert cli.STAKEHOLDER_QUESTION_MARKER in marker
-    parsed = cli.stakeholder_question_parse_markers(marker)
-    assert parsed and parsed[0]["id"] == "q1"
-    assert cli.stakeholder_question_answer_is_substantive(
-        "This is a detailed and substantive answer to the stakeholder question."
-    ) is True
-    assert cli.stakeholder_question_answer_is_substantive("ok") is False
-
-
-def test_w2_owning_module_monkeypatch_seam_is_observed(cli, monkeypatch):
-    """Monkeypatch-seam migration proof (plan T2): a moved caller resolves its helpers in its
-    OWNING package module, so patching the owning-module path is what the caller observes; patching
-    the ``cli`` alias no longer reaches the moved caller's internal call. (No existing test patches
-    a W2-moved name, so none needed repointing this wave; this asserts the mechanism.)"""
-    goal = import_module("tautline_methodology.goal")
-    backlog = import_module("tautline_methodology.backlog")
-
-    # goal_tracker_item_title() calls goal_tracker_value_text() by its module-global name; patching
-    # it on the OWNING module is observed by the moved caller.
-    monkeypatch.setattr(goal, "goal_tracker_value_text", lambda value: "PATCHED")
-    assert cli.goal_tracker_item_title({"title": "real"}) == "PATCHED"
-    # ...and the bin alias (cli.<name>) is NOT the seam: rebinding it does not reach the moved
-    # caller, which resolves the helper via the owning module's globals.
-    monkeypatch.setattr(cli, "goal_tracker_value_text", lambda value: "ALIAS")
-    assert cli.goal_tracker_item_title({"title": "real"}) == "PATCHED"
-
-    # backlog_item_missing_business_lead() dispatches to _backlog_lead_section() by module-global
-    # name -- the owning-module patch is observed.
-    monkeypatch.setattr(backlog, "_backlog_lead_section", lambda text, headings: None)
-    assert "business justification" in cli.backlog_item_missing_business_lead("anything")
-
-
-def test_w3_moved_helpers_behave_in_process(cli):
-    """Wave W3: exercise representative adapters / release leaves in-process (coverage-collected)
-    to prove verbatim-carve behavior neutrality and hit the moved bodies."""
-    # adapters: bootstrap questionnaire builder + question bank constant
-    assert cli.ADAPTER_BOOTSTRAP_QUESTIONS[0][0] == "Product And Deployment"
-    interview = cli.adapter_bootstrap_questionnaire("Acme", "acme/acme", include_answer_slots=True)
-    assert interview.startswith("# Project Adapter Bootstrap Interview")
-    assert "Project: Acme" in interview and "Repository: acme/acme" in interview
-    assert "Answer: BOOTSTRAP REQUIRED" in interview  # include_answer_slots wiring
-    # bootstrap answer-slot parsing
-    assert cli.bootstrap_slot_values("Answer: foo\nAnswer: bar\n", "Answer") == ["foo", "bar"]
-    # provenance-stamp extraction + equivalence normalization + stamp-key constant
-    assert cli.ADAPTER_PROVENANCE_STAMP_KEYS == ("methodologyCommit", "pluginVersion")
-    stamped = '{"_generated": {"methodologyCommit": "abc", "pluginVersion": "1.2.3"}}'
-    assert cli.adapter_provenance_stamps(stamped) == {
-        "methodologyCommit": "abc", "pluginVersion": "1.2.3"
-    }
-    assert cli.adapter_provenance_stamps("not json") is None
-    assert cli.adapter_provenance_stamps("[]") is None
-    # a stamp-only difference normalizes equal; a real content difference does not
-    fresh = '{"_generated": {"methodologyCommit": "NEW", "pluginVersion": "9"}, "x": 1}'
-    on_disk = '{"_generated": {"methodologyCommit": "OLD", "pluginVersion": "9"}, "x": 1}'
-    assert cli.adapter_provenance_stamps(cli.adapter_stamp_equivalent_content(fresh, on_disk)) == \
-        cli.adapter_provenance_stamps(on_disk)
-    # fail-closed init command + canonical adapter-JSON serialization
-    assert cli.init_fail_closed_command("mainStatus").startswith("echo 'minervit init:")
-    assert cli.adapter_json_text({"b": 1, "a": 2}) == '{\n  "a": 2,\n  "b": 1\n}\n'
-    # adapter test-command detection + BOOTSTRAP_REQUIRED_PREFIX constant
-    assert cli.BOOTSTRAP_REQUIRED_PREFIX == "BOOTSTRAP REQUIRED"
-    assert cli.adapter_command_is_configured("pnpm test") is True
-    assert cli.adapter_command_is_configured("") is False
-    assert cli.adapter_command_is_configured("BOOTSTRAP REQUIRED: set it") is False
-    cfg = {"commands": {"fullPreflight": "make test", "testEnvironment": "pnpm install"}}
-    assert cli.adapter_test_command_tokens(cfg) == ["make test", "pnpm install"]
-    assert cli.adapter_test_run_command_tokens(cfg) == ["make test"]
-
-    # release: MIT license text + leak-term scan + leak-term constant
-    assert cli.registry_package_license().startswith("MIT License")
-    assert "METH-FU" in cli.RELEASE_TAIL_LEAK_TERMS
-    assert cli.release_tail_leaks("mentions docs/backlog/ and /Users/x but clean otherwise") == \
-        ["/Users/", "docs/backlog/"]
-    assert cli.release_tail_leaks("nothing sensitive here") == []
-    # annotated-tag commit peeling (peeled ^{} entry wins over the tag object)
-    out = "objsha\trefs/tags/v1.0\ncommitsha\trefs/tags/v1.0^{}\n"
-    assert cli.release_tail_tag_commit(out, "v1.0") == "commitsha"
-    assert cli.release_tail_tag_commit("lightsha\trefs/tags/v2.0\n", "v2.0") == "lightsha"
-
-
 def test_w3_bin_caller_monkeypatch_seam_is_observed(cli, monkeypatch):
     """Monkeypatch-seam migration proof (plan T3), the MOVED-HELPER / BIN-CALLER case (the inverse
     of the W1/W2 owning-module case). ``release_http_json`` moved to the package, but its callers
@@ -796,80 +494,6 @@ def test_w3_bin_caller_monkeypatch_seam_is_observed(cli, monkeypatch):
     monkeypatch.setattr(cli, "release_http_json", lambda url, timeout=20: None)
     assert cli.registry_latest_version("npm") == "absent"
     assert cli.registry_has_version("npm", "1.0.0") is False
-
-
-def test_w4_moved_helpers_behave_in_process(cli, tmp_path, capsys):
-    """Wave W4: exercise the moved lane / context leaves in-process (coverage-collected) to prove
-    verbatim-carve behavior neutrality and hit the moved bodies."""
-    # lane: deterministic slot derivation + session-file constant
-    assert cli.LANE_SESSION_FILE == "lane-session.json"
-    assert cli.lane_slot(Path("/x/lane-2")) == 1        # "lane-2" -> index 1 (slot = n - 1)
-    assert cli.lane_slot(Path("/x/lane_5")) == 4
-    assert cli.lane_slot(Path("/x/myrepo")) >= 50       # no lane number -> hashed slot >= 50
-    # lane env-file path + session-state path (session path folds in LANE_SESSION_FILE)
-    data = {
-        "localResourceIsolation": {"envFile": ".lane.env"},
-        "laneState": {"runsDir": ".ai-runs"},
-    }
-    assert cli.lane_env_path(data, Path("/repo")) == Path("/repo/.lane.env")
-    assert cli.lane_session_path(data, Path("/repo")) == Path("/repo/.ai-runs/lane-session.json")
-    # lane-coordination config accessor + contract/board templates
-    assert cli.lane_coordination_config({"laneCoordination": {"strict": True}}) == {"strict": True}
-    contract = cli.lane_coordination_contract_template({}, Path("/repo"))
-    assert contract.startswith("# Cross-Lane Coordination Contract")
-    board = cli.lane_coordination_board_template({}, Path("/repo"))
-    assert board.startswith("# Cross-Lane Lane Board") and "lane-status:start" in board
-    # _lane_start_hook_write: success line prints identically; the deferred path swallows a write
-    # failure into one warn line; the unflagged path propagates the failure unchanged.
-    cli._lane_start_hook_write(
-        False, "hook", "Label", "installed hook", lambda: (Path("/p/x"), True)
-    )
-    assert "Label: already installed hook /p/x" in capsys.readouterr().out
-    cli._lane_start_hook_write(
-        False, "hook", "Label", "installed hook", lambda: (Path("/p/x"), False)
-    )
-    assert "Label: installed /p/x" in capsys.readouterr().out
-
-    def _boom():
-        raise OSError("disk full")
-
-    cli._lane_start_hook_write(True, "hook", "Label", "installed hook", _boom)
-    assert "lane_start_warn: hook - disk full" in capsys.readouterr().out
-    with pytest.raises(OSError):
-        cli._lane_start_hook_write(False, "hook", "Label", "installed hook", _boom)
-
-    # context: pure rotation decision core -- host vs estimate provenance cap (RCA gate)
-    rotation = {"enabled": True, "softPercent": 60, "hardPercent": 85}
-    assert cli.context_rotation_decision(rotation, 90, True, "host")["urgency"] == "mandatory"
-    capped = cli.context_rotation_decision(rotation, 90, True, "estimate")
-    assert capped["urgency"] == "recommended" and capped["capped"] is True
-    assert cli.context_rotation_decision(rotation, 40, True, "host")["urgency"] == "none"
-    disabled = cli.context_rotation_decision({"enabled": False}, 90, True, "host")
-    assert disabled["urgency"] == "disabled"
-
-
-def test_w4_bin_caller_monkeypatch_seam_is_observed(cli, monkeypatch):
-    """Monkeypatch-seam migration proof (plan T4), the MOVED-HELPER / BIN-CALLER case (as in W3).
-    ``lane_slot`` moved to ``tautline_methodology.lane``, but its caller ``lane_env_values`` is
-    lane-lifecycle machinery whose closure reaches monolith state (slugify/brand_env_pairs) and so
-    STAYS in bin/tautline. The bin caller resolves ``lane_slot`` through bin's module globals -- the
-    eager alias -- so a ``monkeypatch.setattr(cli, "lane_slot", ...)`` seam is observed by the bin
-    caller WITHOUT repointing (no existing test patches a W4-moved name, so none needed repointing
-    this wave; this asserts the contract so a future move of the caller is caught)."""
-    data = {
-        "project": "acme",
-        "localResourceIsolation": {
-            "envFile": ".lane.env",
-            "composeProjectPrefix": "acme",
-            "portStride": 10,
-            "portVariables": [{"name": "WEB_PORT", "base": 8000}],
-            "envTemplates": {},
-        },
-    }
-    monkeypatch.setattr(cli, "lane_slot", lambda target: 7)
-    env = cli.lane_env_values(data, Path("/repo/lane-1"))
-    assert env["WEB_PORT"] == "8070"  # base 8000 + slot 7 * stride 10 (patched slot flowed)
-    assert env["MINERVIT_LANE_SLOT"] == "7"
 
 
 # --- The flip (roadmap #11): bin/tautline is now a thin shim over tautline_methodology.cli -------

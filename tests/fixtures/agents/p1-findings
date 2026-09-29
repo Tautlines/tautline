@@ -1,0 +1,48 @@
+#!/usr/bin/env python3
+"""Conforming review agent: one P1 finding.
+
+Exit 0. Findings are signalled in the RESULT, never in the exit code -- a non-zero exit
+means the wrapper could not run, which is a different thing from a clean run that found a bug."""
+import json
+import os
+import sys
+
+AGENT_ID = os.environ.get("TAUTLINE_REVIEW_AGENT_ID", "fixture-p1")
+# Echo the invocation. A real reviewer's transcript names what it reviewed, and the
+# plan-review finalize gate REQUIRES the output to reference the reviewed plan path or
+# content hash -- evidence that never says what it looked at cannot be bound to it.
+print("reviewing:", " ".join(sys.argv[1:]))
+
+# The PLAN-review seam has a prose contract of its own: the response must carry a
+# `## Findings` section, and finalize refuses without one, calling it a reviewer-format
+# error rather than a verdict. A conforming agent emits both -- the structured result
+# for the build seam, this section for the plan seam -- because one wrapper serves both
+# and cannot tell which invoked it.
+print("## Findings")
+print()
+print("- [P1] unbounded retry loop -- src/x.py:42")
+
+path = os.environ.get("TAUTLINE_REVIEW_RESULT_PATH")
+if not path:
+    print("no TAUTLINE_REVIEW_RESULT_PATH supplied", file=sys.stderr)
+    raise SystemExit(2)  # transport failure: the framework did not hold up its end
+
+with open(path, "w", encoding="utf-8") as handle:
+    json.dump(
+        {
+            "schema": "tautline-agent-review-result/v1",
+            "agent": AGENT_ID,
+            "verdict": "findings",
+            "findings": [
+                {
+                    "id": "R1-1",
+                    "severity": "P1",
+                    "file": "src/x.py",
+                    "line": 42,
+                    "summary": "unbounded retry loop",
+                }
+            ],
+        },
+        handle,
+    )
+raise SystemExit(0)

@@ -5,4 +5,4 @@ options:
   -h, --help         show this help message and exit
   --project PROJECT
   --target TARGET
-  --force
+  --force            Rotate regardless of current size.

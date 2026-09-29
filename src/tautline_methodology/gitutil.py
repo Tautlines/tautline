@@ -58,6 +58,32 @@ def run_git(target: Path, args: list[str]) -> str:
     return proc.stdout.strip() if proc.returncode == 0 else "unavailable"
 
 
+def run_git_status(target: Path, args: list[str]) -> tuple[int, str]:
+    """`git` exit status plus its stdout, decoded LOSSLESSLY -- nothing stripped, nothing collapsed.
+
+    `run_git` above answers "what did git say", and for almost every caller that is the right
+    question. It is the wrong one whenever git's output is a set of PATHS: it reports failure with
+    the in-band sentinel `"unavailable"`, which is itself a legal filename, and it strips
+    surrounding whitespace, which is legal in a filename too. A caller that must not confuse a
+    failed command with a file literally named `unavailable` -- or two files named `foo` and
+    `foo ` -- needs the exit status out of band and the bytes untouched.
+
+    BYTES, NOT TEXT. `text=True` applies universal-newline translation, so legal paths differing
+    only as `foo\r` and `foo\n` both arrive as `foo\n`; `errors="replace"` likewise collapses
+    distinct non-UTF-8 names onto one. Either merges two different files into one identity, and a
+    caller comparing path sets would then FABRICATE an overlap -- the failure that blocks unrelated
+    work rather than merely missing something. Captured raw and decoded with `surrogateescape`,
+    which round-trips any byte sequence.
+    """
+    proc = subprocess.run(
+        ["git", "-C", str(target), *args],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        check=False,
+    )
+    return proc.returncode, proc.stdout.decode("utf-8", errors="surrogateescape")
+
+
 def current_branch_name(target: Path) -> str:
     branch = run_git(target, ["branch", "--show-current"])
     return "" if branch == "unavailable" else branch.strip()

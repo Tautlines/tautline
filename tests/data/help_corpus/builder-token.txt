@@ -1,0 +1,11 @@
+usage: tautline builder-token [-h] [--target TARGET] [--print | --status]
+
+options:
+  -h, --help       show this help message and exit
+  --target TARGET
+  --print          Write ONLY the token to stdout. For `GH_TOKEN="$(tautline
+                   builder-token --print)"`.
+  --status         Print the identity WITHOUT the token: source, app id,
+                   installation id, bot login, expiry, and the permissions
+                   GitHub granted -- which is how an operator proves Projects
+                   is read-only for builder lanes.

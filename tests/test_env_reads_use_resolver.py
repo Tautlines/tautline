@@ -97,15 +97,6 @@ UNPROVABLE_KEY_SITES = {
         "src/tautline_methodology/util.py",
         "resolve_env",
     ): "this IS the resolver: its key is the caller's parameter",
-    (
-        "src/tautline_methodology/cli.py",
-        "brand_env_pairs",
-    ): "this IS the aliaser: it mirrors each MINERVIT_ key of the mapping to its TAUTLINE_ "
-    "spelling, so its key is a loop variable over that mapping's own keys, not a setting it read",
-    (
-        "src/tautline_methodology/deploy.py",
-        "deployment_notification_ci_detected",
-    ): "reads a caller-injected mapping; the keys are third-party CI markers (GITHUB_ACTIONS, ...)",
 }
 
 # .get/.pop/.setdefault all READ the value; a bare subscript in Load context does too. A subscript
@@ -621,7 +612,11 @@ def test_the_guard_actually_reads_the_shipped_sources():
     )
 
 
-_EXPECTED_ENV_READS = 21
+# Lowered from 21 in the 2026-08-28 process-bankruptcy demolition, which deleted the sources
+# carrying four of those reads outright (deploy.py and the launcher/shell-handoff family). The
+# floor is still tight against the actual count, which is the property that matters: it must fail
+# if reads start disappearing into a form the scanner no longer recognises.
+_EXPECTED_ENV_READS = 17
 
 # An independent, deliberately stupid oracle: a regex that knows nothing about the AST. It exists to
 # catch the exact failure that shipped once already -- a scanner that resolves KEYS rigorously and
@@ -648,12 +643,19 @@ def test_no_source_names_the_environment_without_the_guard_seeing_a_read():
 
 
 def test_exempt_env_names_are_declared_as_constants_in_bin():
-    """An exemption that names nothing real is a licence nobody asked for."""
-    text = (ROOT / "src/tautline_methodology/cli.py").read_text(encoding="utf-8")
+    """An exemption that names nothing real is a licence nobody asked for.
+
+    Searches every POLICED source rather than cli.py alone: the constants live wherever their
+    reader does, and the 2026-08-28 demolition moved one of them (the shell->Python sunset handoff)
+    out of cli.py into util.py. Pinning the file rather than the declaration would have failed for
+    a constant that is still declared, still read, and still correctly exempt.
+    """
+    sources = {path: path.read_text(encoding="utf-8") for path in POLICED_SOURCES}
     for name in EXEMPT_DIRECT_READS:
         pattern = rf"^[A-Z0-9_]+ = \"{name}\"$"
-        assert re.search(pattern, text, re.MULTILINE), (
-            f"{name} is exempted from the resolver but is not defined in the CLI engine (cli.py)"
+        assert any(re.search(pattern, text, re.MULTILINE) for text in sources.values()), (
+            f"{name} is exempted from the resolver but is not declared as a constant in any "
+            "policed source"
         )
 
 
@@ -675,15 +677,27 @@ def test_exempt_env_names_never_pass_through_the_resolver():
     """The exemption is a prohibition, not a loophole: these must never be aliased.
 
     Resolving one would let a TAUTLINE_-spelled shell variable override an inherited file
-    descriptor, an exec token, or the session's exec root -- see EXEMPT_DIRECT_READS.
+    descriptor, an exec token, or the session's exec root -- see EXEMPT_DIRECT_READS. Checked
+    across every policed source, for the same reason the declaration test is: a constant that
+    moved file must still be prohibited, and it must be prohibited in the file it moved TO.
     """
-    text = (ROOT / "src/tautline_methodology/cli.py").read_text(encoding="utf-8")
+    sources = {path: path.read_text(encoding="utf-8") for path in POLICED_SOURCES}
     for name in EXEMPT_DIRECT_READS:
-        match = re.search(rf"^([A-Z0-9_]+) = \"{name}\"$", text, re.MULTILINE)
-        assert match is not None
-        constant = match.group(1)
-        for call in (f'resolve_env("{name}"', f"resolve_env('{name}'", f"resolve_env({constant}"):
-            assert call not in text, f"{name} must not be read through resolve_env"
+        declared = [
+            match
+            for text in sources.values()
+            if (match := re.search(rf"^([A-Z0-9_]+) = \"{name}\"$", text, re.MULTILINE))
+        ]
+        assert declared, f"{name} is exempted but declared nowhere"
+        for match in declared:
+            constant = match.group(1)
+            for text in sources.values():
+                for call in (
+                    f'resolve_env("{name}"',
+                    f"resolve_env('{name}'",
+                    f"resolve_env({constant}",
+                ):
+                    assert call not in text, f"{name} must not be read through resolve_env"
 
 
 def test_unprovable_key_sites_are_real_and_still_needed():

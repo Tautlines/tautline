@@ -37,19 +37,22 @@ def _quickstart_section(text: str) -> str:
     return text[start:end]
 
 
-def test_readme_quickstart_names_the_floor_and_cutover():
-    """A README-following fresh user must learn the Python floor before cloning and
-    must run the launcher cutover the tool itself demands (the unconditional
-    next_step_required banner) — the docs finally agree with the tool."""
+def test_readme_quickstart_names_the_floor_and_the_first_real_step():
+    """A README-following fresh user must learn the Python floor before cloning, and the
+    Quickstart must carry them past install-cli to a rendered project.
+
+    The launcher-cutover step this used to pin went with `install-claude-launcher` in the
+    2026-08-28 process-bankruptcy demolition. The property that mattered survives: the
+    Quickstart's steps are ORDERED the way a new user must run them, install first."""
     quickstart = _quickstart_section(README.read_text(encoding="utf-8"))
     assert "Python 3.12+" in quickstart, "the Quickstart must state the Python 3.12+ prerequisite"
     assert "git" in quickstart.lower(), "the Quickstart prerequisites must name git"
-    assert "tautline install-claude-launcher --force" in quickstart, (
-        "the MANDATORY launcher cutover step must be in the Quickstart, after install-cli"
+    assert "tautline render-adapters" in quickstart, (
+        "the Quickstart must carry a new user as far as a rendered project"
     )
-    assert quickstart.index("install-cli") < quickstart.index(
-        "tautline install-claude-launcher --force"
-    ), "the cutover step comes after install-cli, matching the tool's own banner order"
+    assert quickstart.index("install-cli") < quickstart.index("tautline render-adapters"), (
+        "rendering comes after install-cli, matching the order a new user must run them"
+    )
 
 
 def test_readme_has_pypi_install_subsection():
@@ -77,19 +80,4 @@ def test_floor_rationale_is_truthful():
     )
     assert SHARED_FLOOR_RATIONALE in contributing, (
         "CONTRIBUTING.md must carry the same verified floor rationale, byte-identical"
-    )
-
-
-def test_setup_runtime_documents_package_mode():
-    """setup-runtime.md documents the installed package as a real install mode:
-    the manifest identity that keys package-mode behavior, the update channel,
-    and the no-launcher-auto-update boundary."""
-    text = SETUP_RUNTIME.read_text(encoding="utf-8")
-    assert "installKind" in text, (
-        "package mode is keyed on the manifest's installKind; the docs must name it"
-    )
-    assert "pipx upgrade tautline" in text, "the pipx update channel must be documented"
-    assert "pip install -U tautline" in text, "the plain-venv update channel must be documented"
-    assert "does not auto-update" in text, (
-        "the no-launcher-auto-update boundary must be stated plainly"
     )

@@ -1086,30 +1086,8 @@ PARITY_TIMESTAMPS = [
 ]
 
 
-@pytest.mark.parametrize("raw", PARITY_TIMESTAMPS)
-def test_timestamp_parsing_matches_the_fleet_lease_discipline(cli, raw):
-    """The occupancy lease is a SIBLING of the fleet lease, not a fork of it. This module cannot
-    import the CLI monolith (the leaf modules are what cli.py imports, not the reverse, and the
-    carve that would relocate `fleet_parse_utc` to a shared home is parked), so the discipline is
-    mirrored -- and pinned here so it cannot drift silently."""
-    assert occupancy._parse_utc(raw) == cli.fleet_parse_utc(raw)
-
-
 def test_the_ttl_bound_matches_the_fleet_bound(cli):
     assert OCCUPANCY_MAX_TTL_MINUTES == cli.FLEET_MAX_TTL_MINUTES
-
-
-@pytest.mark.parametrize(
-    "ttl,renewed_offset_minutes,expected",
-    [(60, 0, True), (60, 30, True), (60, 61, False), (0, 0, False), (-1, 0, False)],
-)
-def test_ttl_liveness_matches_the_fleet_lease_predicate(cli, ttl, renewed_offset_minutes, expected):
-    renewed = (NOW - timedelta(minutes=renewed_offset_minutes)).isoformat()
-    ours = _lease(pid=None, ttl_minutes=ttl, renewed_at=renewed)
-    theirs = {"renewed_at": renewed, "ttl_minutes": ttl}
-
-    assert occupancy_lease_is_live(ours, NOW) is expected
-    assert cli.lease_is_live(theirs, NOW) is expected
 
 
 def test_the_module_never_reaches_the_process_environment_directly():

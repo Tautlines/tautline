@@ -64,11 +64,17 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 def write_adapter(lane: Path, **lane_status: object) -> None:
     """A generated adapter marker so `find_adapter_root` and `load_project` both resolve this lane.
 
-    Built from THIS repository's own generated adapter rather than hand-rolled: `load_project`
-    requires a dozen domains, and a hand-built stub drifts the moment the contract grows. Only the
-    fields this control reads are overridden.
+    Built from a FROZEN copy of this repository's last 1.x generated adapter
+    (tests/data/lane_status_1x_adapter.json) rather than hand-rolled: `load_project` requires a
+    dozen domains, and a hand-built stub drifts the moment the contract grows. It stopped being
+    the repo's live `.tautline.json` when the framework repo migrated itself to the lean profile
+    -- but deployed 1.x adopters remain, and these controls exercise the 1.x `latestCode` path,
+    so the fixture pins a representative 1.x shape. Only the fields this control reads are
+    overridden.
     """
-    payload: dict = json.loads((REPO_ROOT / ".tautline.json").read_text(encoding="utf-8"))
+    payload: dict = json.loads(
+        (REPO_ROOT / "tests" / "data" / "lane_status_1x_adapter.json").read_text(encoding="utf-8")
+    )
     # `project` is left as the source adapter's: load_project cross-validates it against
     # bootstrapEvidence.project, so renaming one without the other is rejected.
     payload["latestCode"] = dict(

@@ -1,4 +1,0 @@
-usage: tautline fleet-guard-hook [-h]
-
-options:
-  -h, --help  show this help message and exit

@@ -18,7 +18,6 @@ Property 2 has a trap that this file pins deliberately (`test_publish_collision_
 child needs write permission on its 0555 parent), and with `ignore_errors=True` it fails
 *silently*. Every cleanup path that can run after that point must therefore use `_rmtree_force`.
 """
-import argparse
 import errno
 import importlib.machinery
 import importlib.util
@@ -27,7 +26,6 @@ import os
 import re
 import stat
 import subprocess
-import sys
 import tarfile
 import time
 from datetime import datetime, timedelta, timezone
@@ -502,42 +500,6 @@ def test_store_unreadable_warning_prints_to_stderr(cli, capsys):
 # --- verbs -------------------------------------------------------------------------------------
 
 
-def test_snapshot_verbs_are_registered_and_classified(cli):
-    registered = set(cli.registered_subcommand_names())
-    assert {"snapshot-status", "snapshot-prune", "snapshot-pin"} <= registered
-    allowed = set(cli.STARTUP_REMEDIATION_ALLOWED_COMMANDS)
-    blocked = set(cli.STARTUP_REMEDIATION_BLOCKED_COMMANDS)
-    # snapshot-pin is invoked by the launcher during startup; snapshot-status is a read-only
-    # diagnostic. snapshot-prune deletes trees and has no startup role.
-    assert {"snapshot-pin", "snapshot-status"} <= allowed
-    assert "snapshot-prune" in blocked
-    assert not ({"snapshot-pin", "snapshot-status"} & blocked)
-    assert "snapshot-prune" not in allowed
-
-
-def test_snapshot_status_reports_store_current_and_pins(cli, five_snapshots, tmp_path, capsys):
-    store, snaps = five_snapshots
-    cli.swap_methodology_snapshot_current(snaps[4])
-    cli.write_methodology_snapshot_pin(tmp_path / "lane-a", snaps[0])
-
-    assert cli.snapshot_status(argparse.Namespace()) == 0
-
-    out = capsys.readouterr().out
-    assert f"snapshot_store_root: {store}" in out
-    assert "snapshot_store_enabled: true" in out
-    assert f"snapshot_store_current: {snaps[4].name}" in out
-    assert f"snapshot: {snaps[0].name}" in out
-    assert "version=0.0.10" in out
-    assert f"snapshot_pin: {cli.instrumentation_lane_id(tmp_path / 'lane-a')} -> {snaps[0].name}" in out
-
-
-def test_snapshot_status_on_disabled_store_exits_zero(cli, capsys):
-    assert cli.snapshot_status(argparse.Namespace()) == 0
-    out = capsys.readouterr().out
-    assert "snapshot_store_enabled: false" in out
-    assert "snapshot_store_current: none" in out
-
-
 # --- heal reports the outcome it actually got --------------------------------------------------
 #
 # heal_methodology_snapshot_current() IS the recovery mechanism for a store whose `current` is
@@ -755,39 +717,6 @@ def test_failed_git_archive_leaves_no_tar_behind(cli, fixture_repo, store, monke
     assert leaked == [], f"failed archive leaked {leaked}"
 
 
-def test_snapshot_prune_verb_prunes_and_reports(cli, five_snapshots, capsys):
-    store, snaps = five_snapshots
-    assert cli.snapshot_prune(argparse.Namespace(keep=1)) == 0
-    out = capsys.readouterr().out
-    assert "snapshot_pruned:" in out
-    assert snaps[4].exists()
-    assert not snaps[0].exists()
-
-
-def test_snapshot_pin_verb_pins_current_for_the_lane(cli, five_snapshots, tmp_path, capsys):
-    store, snaps = five_snapshots
-    cli.swap_methodology_snapshot_current(snaps[3])
-    lane = tmp_path / "lane-b"
-    lane.mkdir()
-
-    assert cli.snapshot_pin(argparse.Namespace(target=lane)) == 0
-
-    out = capsys.readouterr().out
-    pin = store / "pins" / f"{cli.instrumentation_lane_id(lane)}.pin"
-    assert pin.is_file()
-    assert json.loads(pin.read_text(encoding="utf-8"))["snapshot"] == snaps[3].name
-    assert f"snapshot_pin: {pin}" in out
-    assert f"snapshot_pin_target: {snaps[3].name}" in out
-
-
-def test_snapshot_pin_without_current_exits_zero_with_a_note(cli, store, tmp_path, capsys):
-    """A launcher calls this on EVERY start. A store that is disabled, empty, or mid-bootstrap
-    must degrade to a note -- never a non-zero exit that fails the operator's session start."""
-    assert cli.snapshot_pin(argparse.Namespace(target=tmp_path)) == 0
-    out = capsys.readouterr().out
-    assert "snapshot_pin: skipped" in out
-
-
 # --- the pin must name the snapshot the SESSION is executing, not whatever `current` says now ---
 #
 # Session-stickiness is the entire point of the store: a session resolves ONE exec root (the
@@ -819,153 +748,3 @@ def _age_history(store: Path, seconds: float) -> None:
         entry["ts"] = stamp
         lines.append(json.dumps(entry))
     history.write_text("\n".join(lines) + "\n", encoding="utf-8")
-
-
-def test_snapshot_pin_pins_the_snapshot_the_session_is_executing(
-    cli, five_snapshots, tmp_path, monkeypatch, capsys
-):
-    """The race, run explicitly: resolve an exec root, let another lane swap `current`, then pin."""
-    store, snaps = five_snapshots
-    session_snapshot = snaps[3]
-    cli.swap_methodology_snapshot_current(session_snapshot)
-    # This process IS the snapshot: the launcher resolved `current` once and re-exec'd into it, so
-    # the running tree -- not the symlink -- is what this session executes.
-    monkeypatch.setattr(cli, "REPO_ROOT", session_snapshot)
-
-    # ...and now another lane's sync advances the store, mid-session.
-    cli.swap_methodology_snapshot_current(snaps[4])
-
-    lane = tmp_path / "lane-race"
-    lane.mkdir()
-    assert cli.snapshot_pin(argparse.Namespace(target=lane)) == 0
-
-    pin = store / "pins" / f"{cli.instrumentation_lane_id(lane)}.pin"
-    pinned = json.loads(pin.read_text(encoding="utf-8"))["snapshot"]
-    assert pinned == session_snapshot.name, (
-        f"pinned {pinned}, but this session executes {session_snapshot.name}"
-    )
-    assert f"snapshot_pin_target: {session_snapshot.name}" in capsys.readouterr().out
-
-
-def test_pinning_current_would_let_prune_delete_the_running_snapshot(
-    cli, five_snapshots, tmp_path, monkeypatch
-):
-    """The consequence the pin exists to prevent, asserted end to end."""
-    store, snaps = five_snapshots
-    session_snapshot = snaps[1]
-    cli.swap_methodology_snapshot_current(session_snapshot)
-    monkeypatch.setattr(cli, "REPO_ROOT", session_snapshot)
-    cli.swap_methodology_snapshot_current(snaps[4])
-
-    lane = tmp_path / "lane-long"
-    lane.mkdir()
-    assert cli.snapshot_pin(argparse.Namespace(target=lane)) == 0
-    # The session outlives the window in which a once-current snapshot is protected for free. From
-    # here on the pin is the ONLY thing standing between prune and the running code.
-    _age_history(store, 80 * 3600)
-
-    cli.prune_methodology_snapshots(keep=1)
-
-    assert session_snapshot.exists(), "prune collected the snapshot this session is executing"
-
-
-def test_snapshot_pin_honours_an_exported_session_exec_root(
-    cli, five_snapshots, tmp_path, monkeypatch
-):
-    """A launcher with MINERVIT_METHODOLOGY_CLI preset runs a CLI that is NOT the snapshot, while
-    its hooks all exec the exported root. The exported root is the session's truth; use it."""
-    store, snaps = five_snapshots
-    cli.swap_methodology_snapshot_current(snaps[4])
-    monkeypatch.setenv("MINERVIT_METHODOLOGY_EXEC_ROOT", str(snaps[2]))
-
-    lane = tmp_path / "lane-exported"
-    lane.mkdir()
-    assert cli.snapshot_pin(argparse.Namespace(target=lane)) == 0
-
-    pin = store / "pins" / f"{cli.instrumentation_lane_id(lane)}.pin"
-    assert json.loads(pin.read_text(encoding="utf-8"))["snapshot"] == snaps[2].name
-
-
-def test_snapshot_pin_ignores_an_exec_root_that_is_not_a_snapshot_of_this_store(
-    cli, five_snapshots, tmp_path, monkeypatch
-):
-    """A pruned, foreign, or stale exec root names nothing this store can protect. Pinning it would
-    write a pin that guards no snapshot at all -- worse than falling back to `current`."""
-    store, snaps = five_snapshots
-    cli.swap_methodology_snapshot_current(snaps[4])
-    foreign = tmp_path / "somewhere-else"
-    foreign.mkdir()
-    monkeypatch.setenv("MINERVIT_METHODOLOGY_EXEC_ROOT", str(foreign))
-
-    lane = tmp_path / "lane-foreign"
-    lane.mkdir()
-    assert cli.snapshot_pin(argparse.Namespace(target=lane)) == 0
-
-    pin = store / "pins" / f"{cli.instrumentation_lane_id(lane)}.pin"
-    assert json.loads(pin.read_text(encoding="utf-8"))["snapshot"] == snaps[4].name
-
-
-def test_refresh_re_stamps_the_session_snapshot_not_current(
-    cli, five_snapshots, tmp_path, monkeypatch
-):
-    """The pin heartbeat has the same duty as the pin: a long-lived lane whose relaunch re-stamps
-    the pin at `current` would hand its own protection to a snapshot it is not running."""
-    store, snaps = five_snapshots
-    session_snapshot = snaps[1]
-    cli.swap_methodology_snapshot_current(session_snapshot)
-    monkeypatch.setattr(cli, "REPO_ROOT", session_snapshot)
-    lane = tmp_path / "lane-heartbeat"
-    lane.mkdir()
-    assert cli.snapshot_pin(argparse.Namespace(target=lane)) == 0
-
-    cli.swap_methodology_snapshot_current(snaps[4])
-    cli.refresh_methodology_snapshot_pin(lane)
-
-    pin = store / "pins" / f"{cli.instrumentation_lane_id(lane)}.pin"
-    assert json.loads(pin.read_text(encoding="utf-8"))["snapshot"] == session_snapshot.name
-
-    _age_history(store, 80 * 3600)
-    cli.prune_methodology_snapshots(keep=1)
-    assert session_snapshot.exists()
-
-
-def test_refresh_pin_write_failure_degrades_loudly(
-    cli, five_snapshots, tmp_path, monkeypatch, capsys
-):
-    """The pin heartbeat runs on EVERY gated sync; a sealed pins/ dir must degrade LOUDLY.
-
-    Asserts the operation substring in out+err combined on purpose: the warning's prefix wording
-    and stream are the shared helper's contract, not this call site's, and must stay free to move.
-    """
-    store, snaps = five_snapshots
-    cli.swap_methodology_snapshot_current(snaps[4])
-    lane = tmp_path / "lane-sealed"
-    lane.mkdir()
-    assert cli.snapshot_pin(argparse.Namespace(target=lane)) == 0
-    capsys.readouterr()  # drop the pin verb's own report
-
-    monkeypatch.setattr(cli, "write_methodology_snapshot_pin", _raise_oserror)
-    cli.refresh_methodology_snapshot_pin(lane)  # the degrade contract: never raise
-
-    captured = capsys.readouterr()
-    combined = captured.out + captured.err
-    assert "cannot refresh pin" in combined
-    assert "injected failure" in combined
-    # Degrade leaves prior state intact: the pin still guards what it guarded before.
-    pin = store / "pins" / f"{cli.instrumentation_lane_id(lane)}.pin"
-    assert json.loads(pin.read_text(encoding="utf-8"))["snapshot"] == snaps[4].name
-
-
-def test_snapshot_status_runs_end_to_end(cli, five_snapshots, tmp_path):
-    """Proves the verb is really wired into the parser, not just callable as a function."""
-    store, snaps = five_snapshots
-    cli.swap_methodology_snapshot_current(snaps[4])
-    home = tmp_path / "home"
-    result = subprocess.run(
-        [sys.executable, str(CLI_PATH), "snapshot-status"],
-        env={"PATH": os.environ["PATH"], "HOME": str(home),
-             "MINERVIT_METHODOLOGY_SNAPSHOT_STORE": str(store)},
-        capture_output=True, text=True, timeout=60,
-    )
-    assert result.returncode == 0, result.stderr
-    assert f"snapshot_store_current: {snaps[4].name}" in result.stdout

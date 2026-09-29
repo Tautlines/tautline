@@ -356,49 +356,6 @@ def test_unreadable_store_never_blocks_launch(tmp_path, store):
     assert _git(clone, "rev-parse", "HEAD") == new_head
 
 
-def test_unreadable_store_never_blocks_snapshot_status(tmp_path, store):
-    """`snapshot-status` is what an operator runs BECAUSE the store looks broken. It has to survive
-    a broken store and report it -- every listing helper it calls (current, snapshots, pins) reads
-    the store, and each one used to be able to traceback on the way to saying so."""
-    _source, clone, lane = _make_methodology_fixture(tmp_path)
-    store.mkdir()
-
-    result = _run_cli(
-        clone / "bin" / "tautline",
-        "snapshot-status",
-        cwd=lane,
-        env=_eacces_store_env(tmp_path, store),
-    )
-
-    assert result.returncode == 0, result.stdout + result.stderr
-    assert "Traceback" not in result.stderr, result.stderr
-    assert "methodology_snapshot: store unreadable" in result.stderr
-    assert "snapshot_store_current: none" in result.stdout
-    assert "snapshot_store_count: 0" in result.stdout
-
-
-def test_unreadable_store_warning_goes_to_stderr_not_the_status_report(tmp_path, store):
-    """`snapshot-status` stdout is its machine-readable key:value report. The degrade warning is
-    an operator diagnostic, so it must ride stderr -- a warning line in the middle of the report
-    is exactly what a script parsing `snapshot_store_count:` would choke on."""
-    _source, clone, lane = _make_methodology_fixture(tmp_path)
-    store.mkdir()
-
-    result = _run_cli(
-        clone / "bin" / "tautline",
-        "snapshot-status",
-        cwd=lane,
-        env=_eacces_store_env(tmp_path, store),
-    )
-
-    assert result.returncode == 0, result.stdout + result.stderr
-    assert "methodology_snapshot: store unreadable" in result.stderr
-    assert "methodology_snapshot: store unreadable" not in result.stdout
-    for line in result.stdout.splitlines():
-        if line.strip():
-            assert ": " in line, f"non key:value line in the status report: {line!r}"
-
-
 def test_bootstrap_heal_rebuilds_current(tmp_path, store):
     """A dangling `current` with no advance in sight must heal, or the store is dead weight."""
     _source, clone, lane = _make_methodology_fixture(tmp_path)
@@ -815,39 +772,3 @@ def test_reexec_token_never_takes_the_fresh_stamp_skip(tmp_path, store):
     assert REEXEC_ACCEPTED in result.stdout, "the successor must consume its token"
     assert "methodology_release_guard:" in result.stdout, "the post-sync body must run"
     assert f"methodology_commit: {new_head[:12]}" in result.stdout
-
-
-def test_launcher_gate_refreshes_lane_pin(tmp_path, store):
-    """A relaunching lane keeps its pin alive: fresh mtime, and the snapshot it now executes."""
-    source, clone, lane = _make_methodology_fixture(tmp_path)
-    head = _bootstrap_store(clone, lane, store)
-    pinned = _run_cli(
-        clone / "bin" / "tautline",
-        "snapshot-pin",
-        "--target",
-        str(lane),
-        cwd=lane,
-        env=_env(store),
-    )
-    assert pinned.returncode == 0, pinned.stdout + pinned.stderr
-    pins = sorted((store / "pins").glob("*.pin"))
-    assert len(pins) == 1
-    pin = pins[0]
-    assert json.loads(pin.read_text(encoding="utf-8"))["snapshot"] == head[:12]
-    stale = time.time() - 36 * 3600  # older than nothing yet, but demonstrably not refreshed
-    os.utime(pin, (stale, stale))
-    new_head = _advance_remote_with_sentinel(source)
-
-    result = _run_cli(
-        clone / "bin" / "tautline",
-        "sync-methodology",
-        "--launcher-gate",
-        "--no-remote",
-        cwd=lane,
-        env=_env(store),
-    )
-
-    assert result.returncode == 0, result.stdout + result.stderr
-    assert SENTINEL in result.stdout
-    assert json.loads(pin.read_text(encoding="utf-8"))["snapshot"] == new_head[:12]
-    assert time.time() - pin.stat().st_mtime < 300, "the pin's heartbeat was not refreshed"

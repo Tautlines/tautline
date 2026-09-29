@@ -1,0 +1,23 @@
+usage: tautline board [-h] [--target TARGET] [--status NAME] [--type NAME]
+                      [--label NAME] [--text SUBSTR] [--all] [--json]
+                      [--fresh]
+                      {list,show,fields} [number]
+
+positional arguments:
+  {list,show,fields}  list: the board in its own position order. show: one
+                      card plus its issue body. fields: the LIVE Status/Item
+                      Type option names, so nothing has to guess a column.
+  number              The issue number, for `show`.
+
+options:
+  -h, --help          show this help message and exit
+  --target TARGET
+  --status NAME       Only this status (repeatable). Naming a hidden status
+                      also unhides it.
+  --type NAME         Only this Item Type.
+  --label NAME        Only cards carrying this issue label.
+  --text SUBSTR       Only titles containing this substring.
+  --all               Include the statuses `builderGithub.hiddenStatuses`
+                      hides (Done, by default).
+  --json              Emit a stable JSON envelope.
+  --fresh             Bypass the 5-minute board cache and re-read the project.

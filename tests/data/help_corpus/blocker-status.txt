@@ -1,5 +1,0 @@
-usage: tautline blocker-status [-h] [--target TARGET]
-
-options:
-  -h, --help       show this help message and exit
-  --target TARGET

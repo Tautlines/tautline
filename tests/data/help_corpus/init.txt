@@ -1,10 +1,44 @@
-usage: tautline init [-h] [--target TARGET] [--project-name PROJECT_NAME]
-                     [--repo REPO] [--continue]
+usage: tautline init [-h] [--target TARGET] [--name NAME] [--repo REPO]
+                     [--branch BRANCH] [--test-cmd TEST_CMD]
+                     [--backlog {local,github,jira}]
+                     [--backlog-path BACKLOG_PATH]
+                     [--backlog-repo BACKLOG_REPO]
+                     [--backlog-label BACKLOG_LABEL]
+                     [--backlog-site BACKLOG_SITE]
+                     [--backlog-project BACKLOG_PROJECT]
+                     [--backlog-board BACKLOG_BOARD]
+                     [--work-coordination | --no-work-coordination]
+                     [--handoffs] [--rule RULES] [--yes] [--force]
 
 options:
   -h, --help            show this help message and exit
   --target TARGET
-  --project-name PROJECT_NAME
-  --repo REPO
-  --continue            Continue after answering the bootstrap interview
-                        artifact.
+  --name NAME           Project name.
+  --repo REPO           owner/name. Empty string means no repo.
+  --branch BRANCH       Integration branch.
+  --test-cmd TEST_CMD   The gate command.
+  --backlog {local,github,jira}
+                        Where the backlog lives.
+  --backlog-path BACKLOG_PATH
+                        local provider: queue file path (default QUEUE.md).
+  --backlog-repo BACKLOG_REPO
+                        github provider: owner/name.
+  --backlog-label BACKLOG_LABEL
+                        github provider: issue label (default backlog).
+  --backlog-site BACKLOG_SITE
+                        jira provider: https://your-domain.atlassian.net
+  --backlog-project BACKLOG_PROJECT
+                        jira provider: project key.
+  --backlog-board BACKLOG_BOARD
+                        jira provider: board id, a positive number (optional).
+  --work-coordination, --no-work-coordination
+                        Advisory local work-manifest guidance. Default on for
+                        new projects.
+  --handoffs            Turn on continuity handoffs (.ai-
+                        continuity/HANDOFF.md). Default off.
+  --rule RULES          A project rule an agent would otherwise get wrong.
+                        Repeatable, up to 3.
+  --yes                 Non-interactive: accept the prefilled default for
+                        every question not given a flag.
+  --force               Overwrite an existing .tautline.json (or .minervit-ai-
+                        delivery.json) instead of refusing.

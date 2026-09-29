@@ -1,0 +1,27 @@
+usage: tautline issue [-h] [--target TARGET] [--last K] [--label L] [--text Q]
+                      [--state {open,closed,all}] [--body BODY]
+                      [--body-file BODY_FILE] [--json] [--fresh]
+                      {show,comments,find,comment} [number]
+
+positional arguments:
+  {show,comments,find,comment}
+                        show: body, state, labels, assignees and board status.
+                        comments: the thread, oldest first. find: issues by
+                        label and text. comment: post one stamped comment.
+  number                The issue number.
+
+options:
+  -h, --help            show this help message and exit
+  --target TARGET
+  --last K              comments: only the last K (K >= 1).
+  --label L             find: only issues carrying this label (repeatable,
+                        filtered server-side).
+  --text Q              find: case-insensitive substring over title and body,
+                        applied after the fetch.
+  --state {open,closed,all}
+                        find: which issues to fetch (default: open).
+  --body BODY           comment: the comment text.
+  --body-file BODY_FILE
+                        comment: a file holding the comment text.
+  --json                Emit a stable JSON envelope.
+  --fresh               Bypass the board cache when reading board status.

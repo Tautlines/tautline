@@ -1,32 +1,24 @@
-# Documentation Index
+# Documentation
 
-This is the map for the Tautline docs tree. The top-level [`README.md`](../README.md) is
-the public entrypoint — pitch, quickstart, comparison, FAQ. Everything here goes deeper for
-maintainers, advanced adopters, and anyone auditing how the framework's enforcement
-actually works.
+Start with the [quickstart](../README.md#quickstart). Then use the reference for the workflow
+you need; `tautline --help` is the current command inventory.
 
-## Reading path
+| Need | Reference |
+| --- | --- |
+| Understand the product | [Direction](product/positioning.md), [roadmap](../ROADMAP.md) |
+| Coordinate agents in sibling worktrees | [Shared work](reference/work.md) |
+| Select and finish backlog work | [Backlog](reference/backlog.md) |
+| Resume a session | [Handoffs](reference/handoffs.md) |
+| Inspect available plugins and commands | [Capability catalog](reference/plugin-capability-catalog.md) |
+| Migrate older project instructions | [Lean migration](reference/lean-migration.md) |
+| Configure restricted builder credentials | [Builder lanes](builder-lanes.md) |
+| Install, get support, or uninstall | [Support and removal](product/support-sla-model.md) |
+| Contribute or release | [Contributing](../CONTRIBUTING.md), [release procedure](reference/releases.md) |
+| Understand data and security | [Privacy](../PRIVACY.md), [security](../SECURITY.md) |
 
-1. **Quickstart** — start at the root [`README.md`](../README.md#quickstart) to clone,
-   install the CLI, and run `init --target` against a project.
-2. **Operating manual** — [`reference/operating-manual.md`](reference/operating-manual.md)
-   is the full reference for onboarding projects, running lanes, and the day-to-day
-   maintainer workflow.
-3. **Concepts** — [`product/positioning.md`](product/positioning.md) covers the
-   three-layer authority model (canonical policy, adapter, tool behavior), the
-   differentiated mechanisms, and the honest enforcement-tier split between Claude and
-   other runtimes.
-4. **Capability reference** —
-   [`reference/plugin-capability-catalog.md`](reference/plugin-capability-catalog.md)
-   lists what the plugin does end to end, and
-   [`reference/policy-module-index.md`](reference/policy-module-index.md) is the human
-   map of the modular canonical policy source.
-5. **Operations** — [`reference/operations/release-engineering.md`](reference/operations/release-engineering.md)
-   covers release gates, the public contract manifest, and how adopters pin the stable
-   or experimental framework channel.
+The repository's development process is in [CLAUDE.md](../CLAUDE.md). The lean reusable rules
+live in [methodology/canonical-rules.md](../methodology/canonical-rules.md).
 
-## Migrations
-
-[`releases/migrations/`](releases/migrations/) is machine-consumed deprecation tracking,
-not narrative documentation — one JSON file per release, read by the update tooling to
-decide whether a pinned channel needs an operator-visible migration note.
+`docs/archive/`, `docs/archive-prebankruptcy/`, and older productization designs are historical
+reference. They include removed commands and proposed behavior; they are not current process
+requirements. Release migration JSON under `releases/migrations/` is consumed by update tooling.

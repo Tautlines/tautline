@@ -355,29 +355,19 @@ def release_update_overdue_versions(repo_root: Path = REPO_ROOT) -> list[str]:
 
 
 def release_update_public_release_issues(repo_root: Path = REPO_ROOT) -> list[tuple[str, Path, str]]:
-    current = release_update_current_version(repo_root)
-    if not current:
-        return []
-    accounted = release_update_accounted_versions(repo_root)
-    delivery_file = release_update_delivery_file(repo_root)
-    issues: list[tuple[str, Path, str]] = []
-    for version in release_update_overdue_versions(repo_root):
-        issues.append(
-            (
-                "release-update-overdue",
-                delivery_file,
-                f"release {version} has release notes but no Google Chat delivery marker; run `minervit-methodology publish-release-update --version {version}` before public release",
-            )
-        )
-    if current not in accounted:
-        issues.append(
-            (
-                "release-update-current-missing",
-                delivery_file,
-                f"current release {current} has no Google Chat delivery marker; run `minervit-methodology publish-release-update --version {current}` before public release",
-            )
-        )
-    return issues
+    """No issues: the Google Chat delivery marker this used to demand can no longer be produced.
+
+    The 2026-08-28 process-bankruptcy demolition removed `publish-release-update`, the chat
+    transport behind it, and every other notify publisher. This function used to refuse a public
+    release whose versions carried no delivery marker, and its remedy named that verb. Left as it
+    was it would have become the worst kind of gate -- one that cannot be satisfied by any action
+    available to the operator, whose only escape is to bypass it.
+
+    Kept as a function rather than deleted because `public_release_issues` calls it and the delivery
+    ACCOUNTING below it (`release_update_status_summary`, the marker readers) is still meaningful
+    for the historical record. If a delivery seam returns, this is where its gate goes back.
+    """
+    return []
 
 
 def release_update_status_summary(

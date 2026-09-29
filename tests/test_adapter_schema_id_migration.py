@@ -1,7 +1,7 @@
 """Schema `$id` migration compatibility (deferred implementation-review finding, Track A).
 
 Flipping the canonical domain rewrites the `$id` of both JSON Schemas
-(`methodology/adapter-schema.json`, `methodology/bootstrap-legacy-allowlist-schema.json`)
+(`methodology/adapter-schema.json`)
 from the retired domain to minervit.ai. `$id` is a schema *identifier*, and nothing in this
 repository resolves or pins it:
 
@@ -23,11 +23,9 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 ADAPTER_SCHEMA = REPO_ROOT / "methodology" / "adapter-schema.json"
-ALLOWLIST_SCHEMA = REPO_ROOT / "methodology" / "bootstrap-legacy-allowlist-schema.json"
 EXAMPLE_ADAPTER = REPO_ROOT / "adapters" / "projects" / "example-saas.json"
 
 CANONICAL_ADAPTER_SCHEMA_ID = "https://minervit.ai/schemas/adapter/v1.json"
-CANONICAL_ALLOWLIST_SCHEMA_ID = "https://minervit.ai/schemas/bootstrap-legacy-allowlist/v1.json"
 RETIRED_ADAPTER_SCHEMA_ID = "https://minervit.com/schemas/adapter/v1.json"
 
 
@@ -36,8 +34,9 @@ def _schema(path: Path) -> dict:
 
 
 def test_schemas_declare_the_canonical_domain_id():
+    # The bootstrap-legacy-allowlist schema was deleted in the 2026-08-28 process-bankruptcy
+    # demolition (nothing loaded it); the adapter schema is the one shipped schema that remains.
     assert _schema(ADAPTER_SCHEMA)["$id"] == CANONICAL_ADAPTER_SCHEMA_ID
-    assert _schema(ALLOWLIST_SCHEMA)["$id"] == CANONICAL_ALLOWLIST_SCHEMA_ID
 
 
 def test_adapter_pinning_the_retired_schema_id_still_validates(cli):

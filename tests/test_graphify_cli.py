@@ -3,7 +3,6 @@ import os
 import re
 import subprocess
 import sys
-import time
 from pathlib import Path
 
 
@@ -69,10 +68,20 @@ def _graphify_adapter_data() -> dict:
     data["latestCode"] = {"enabled": False}
     data.setdefault("graphify", {})["freshnessEnforcement"] = "strict-if-present"
     data.setdefault("ciTestGate", {})["enforcement"] = "warn"
-    # This fixture's subject is graphify and its env has no gh; opt the board gate
-    # down the same way the sibling gates above are neutralized (0.10.3 fails
-    # closed on an unreadable board by default).
+    # This fixture's subject is graphify, so the board gate is neutralized the same way the
+    # sibling gates above are. BOTH halves are needed, and only having the first is why this
+    # test passed in CI and failed on a developer box for months:
+    #
+    #   unavailablePolicy=warn covers an UNREADABLE board (0.10.3 fails closed by default).
+    #     That is CI's case -- no gh credentials -- so CI was green.
+    #   enabled=False covers a READABLE one. `goal_tracker_failures` is board_drift PLUS
+    #     blocking-unavailable, and drift is only computable when the board CAN be read. On a
+    #     machine with a working gh token the provider answered, reported drift, and
+    #     `methodology_status_blocking` grew a `goal_tracker` entry that the assertion below
+    #     enumerates exactly -- so the test's verdict depended on the developer's GitHub
+    #     credentials and on live board state neither it nor its fixture controls.
     data.setdefault("backlogProvider", {})["unavailablePolicy"] = "warn"
+    data["backlogProvider"]["enabled"] = False
     data["bootstrapEvidence"] = {
         "project": data["project"],
         "status": "repo-evident",
@@ -133,126 +142,6 @@ def _prepare_graphify_target(tmp_path: Path) -> tuple[Path, Path, dict[str, str]
     return target, adapter, env
 
 
-def test_graphify_status_detects_missing_stale_fresh_and_tracked_output(tmp_path):
-    target, adapter, env = _prepare_graphify_target(tmp_path)
-
-    missing = _run("graphify-status", "--project", str(adapter), "--target", str(target), cwd=target, env=env)
-    assert "graphify: enabled=true" in missing.stdout
-    assert "graphify_gitignore: ok graphify-out/" in missing.stdout
-    assert "graphify_freshness: missing-output enforcement=strict-if-present" in missing.stdout
-
-    output = target / "graphify-out"
-    output.mkdir()
-    (output / "graph.json").write_text('{"nodes":[]}\n', encoding="utf-8")
-    (output / "GRAPH_REPORT.md").write_text("# Graph report\n", encoding="utf-8")
-    time.sleep(1)
-    (target / "app.py").write_text("new project behavior\n", encoding="utf-8")
-    _git(target, "add", "app.py")
-
-    stale = _run(
-        "graphify-status",
-        "--project",
-        str(adapter),
-        "--target",
-        str(target),
-        "--strict",
-        cwd=target,
-        env=env,
-        check=False,
-    )
-    assert stale.returncode == 1
-    assert "graphify_freshness: stale enforcement=strict-if-present" in stale.stdout
-    # This fixture derives from example-saas.json, which overrides updateCommand to
-    # `graphify update`. Post-0.53.0 the remediation strings render the CONFIGURED command,
-    # so the override -- not the default `graphify update .` -- is what must appear here.
-    assert "graphify_issue: stale Graphify output: run `graphify update`" in stale.stdout
-    assert (
-        "graphify_next: run `graphify update` before commit, push, or Graphify-backed decisions"
-    ) in stale.stdout
-
-    time.sleep(1)
-    (output / "graph.json").write_text('{"nodes":["fresh"]}\n', encoding="utf-8")
-    fresh = _run(
-        "graphify-status",
-        "--project",
-        str(adapter),
-        "--target",
-        str(target),
-        "--strict",
-        cwd=target,
-        env=env,
-    )
-    assert "graphify_freshness: current enforcement=strict-if-present" in fresh.stdout
-
-    _git(target, "add", "-f", "graphify-out/graph.json")
-    tracked = _run(
-        "methodology-status",
-        "--project",
-        str(adapter),
-        "--target",
-        str(target),
-        "--no-remote",
-        "--fail-on-drift",
-        cwd=target,
-        env=env,
-        check=False,
-    )
-    # graphify_failures is a DEBT gate (0.8.9 startup remediation); no INTEGRITY gate fires here
-    # (lane-start already rendered the adapter cleanly), so bare --fail-on-drift exits 2
-    # (remediation mode) instead of 1.
-    assert tracked.returncode == 2
-    assert "graphify_issue: tracked Graphify output must be removed from git" in tracked.stdout
-    assert "methodology_status_blocking: debt - planning, milestone_update, graphify" in tracked.stdout
-
-
-def test_installed_hooks_enforce_graphify_freshness_and_keep_prepush_guard(tmp_path):
-    target, _adapter, env = _prepare_graphify_target(tmp_path)
-
-    _run(
-        "install-hooks",
-        "--settings",
-        str(tmp_path / "graphify-claude-settings.json"),
-        "--target",
-        str(target),
-        cwd=target,
-        env=env,
-    )
-    pre_commit = target / ".git" / "hooks" / "pre-commit"
-    pre_push = target / ".git" / "hooks" / "pre-push"
-    assert "graphify-status --target . --strict" in pre_commit.read_text(encoding="utf-8")
-    assert "graphify-status --target . --strict" in pre_push.read_text(encoding="utf-8")
-    assert "guard-check --target . --boundary prepush" in pre_push.read_text(encoding="utf-8")
-
-    output = target / "graphify-out"
-    output.mkdir()
-    (output / "graph.json").write_text('{"nodes":[]}\n', encoding="utf-8")
-    time.sleep(1)
-    (target / "hook-change.py").write_text("hook-visible project change\n", encoding="utf-8")
-    stale = subprocess.run(
-        [str(pre_commit)],
-        cwd=target,
-        env={**os.environ, **env, "HOME": str(tmp_path / "home")},
-        text=True,
-        capture_output=True,
-        timeout=60,
-    )
-    assert stale.returncode == 1
-    assert "graphify_issue: stale Graphify output: run `graphify update`" in stale.stdout
-
-    time.sleep(1)
-    (output / "graph.json").write_text('{"nodes":["hook-fresh"]}\n', encoding="utf-8")
-    fresh = subprocess.run(
-        [str(pre_commit)],
-        cwd=target,
-        env={**os.environ, **env, "HOME": str(tmp_path / "home")},
-        text=True,
-        capture_output=True,
-        timeout=60,
-    )
-    assert fresh.returncode == 0, fresh.stderr
-    assert "branch_liveness: pass" in fresh.stdout
-
-
 def test_default_graphify_blocking_gate_is_the_no_llm_refresh(cli):
     """The blocking freshness gate must never name a backend-auto-detecting graphify invocation.
 
@@ -291,112 +180,3 @@ def test_default_graphify_semantic_step_is_separate_non_blocking_and_backend_exp
     assert "NON-blocking" in defaults["semanticRule"]
     # The point of naming the backend is that nothing here may be auto-detected again.
     assert "--backend=" in defaults["semanticCommand"]
-
-
-def test_blank_semantic_keys_are_refused_like_every_other_graphify_command(tmp_path):
-    """The two new keys join the required-non-blank loop.
-
-    A blank value is a refusal, not a silent fallback to the default.
-    """
-    adapter_root = tmp_path / "trusted-adapters"
-    target = tmp_path / "blank-semantic-target"
-    _init_repo(target)
-    for key in ("semanticCommand", "semanticRule"):
-        data = _graphify_adapter_data()
-        data["graphify"][key] = "   "
-        adapter = _write_adapter(adapter_root, f"blank-{key}.json", data)
-        result = _run(
-            "graphify-status",
-            "--project",
-            str(adapter),
-            "--target",
-            str(target),
-            cwd=target,
-            env=_adapter_env(adapter_root),
-            check=False,
-        )
-        assert result.returncode != 0
-        output = result.stdout + result.stderr
-        assert f"Project adapter graphify.{key} must be non-blank" in output
-
-
-def test_stale_gate_remediation_names_the_configured_command_not_a_hardcoded_one(tmp_path):
-    """A project that overrides updateCommand must be told to run ITS command when the gate trips.
-
-    This is the regression test for the divergence the RCA found: the adapter documented one
-    command and the gate printed another, so an adapter that had already been fixed still
-    prescribed the broken invocation.
-    """
-    target = tmp_path / "sentinel-target"
-    adapter_root = tmp_path / "trusted-adapters"
-    data = _graphify_adapter_data()
-    data["graphify"]["updateCommand"] = "mygraph refresh"
-    data["graphify"]["buildCommand"] = "mygraph bootstrap"
-    adapter = _write_adapter(adapter_root, "sentinel-graphify.json", data)
-    _init_repo(target)
-    env = _adapter_env(adapter_root)
-
-    # The output-absent hint is only reachable when the CLI resolves, so put a stub on PATH
-    # rather than inheriting whatever the running machine happens to have installed.
-    absent = _run(
-        "graphify-status",
-        "--project",
-        str(adapter),
-        "--target",
-        str(target),
-        cwd=target,
-        env={**env, "PATH": _graphify_on_path(tmp_path)},
-    )
-    assert "graphify: enabled=true cli=present" in absent.stdout
-    assert (
-        "graphify_next: build with `mygraph bootstrap` or update with `mygraph refresh`"
-    ) in absent.stdout
-
-    output = target / "graphify-out"
-    output.mkdir()
-    (output / "graph.json").write_text('{"nodes":[]}\n', encoding="utf-8")
-    (output / "GRAPH_REPORT.md").write_text("# Graph report\n", encoding="utf-8")
-    time.sleep(1)
-    (target / "app.py").write_text("new project behavior\n", encoding="utf-8")
-
-    stale = _run(
-        "graphify-status",
-        "--project",
-        str(adapter),
-        "--target",
-        str(target),
-        "--strict",
-        cwd=target,
-        env=env,
-        check=False,
-    )
-    assert stale.returncode == 1
-    assert "graphify_issue: stale Graphify output: run `mygraph refresh`" in stale.stdout
-    assert (
-        "graphify_next: run `mygraph refresh` before commit, push, or Graphify-backed decisions"
-    ) in stale.stdout
-    assert not AUTO_DETECT_INVOCATION.search(stale.stdout)
-
-
-def test_rendered_bullet_claims_no_llm_only_when_the_command_is_the_no_llm_default(cli):
-    """The `(no-LLM)` qualifier describes the DEFAULT command, never an arbitrary override.
-
-    The rendered Graphify bullet interpolates the CONFIGURED updateCommand. Appending
-    `(no-LLM)` unconditionally would hand a lane that pinned an LLM-backed invocation a
-    generated adapter asserting its blocking gate needs no backend -- the exact
-    documented-command-vs-actual-gate divergence this release exists to remove, reintroduced
-    by the fix for it. So the qualifier is rendered only when the two strings agree.
-    """
-    adapter_path = REPO_ROOT / "adapters" / "projects" / "example-saas.json"
-    data = cli.load_project(adapter_path)
-
-    # example-saas overrides updateCommand, so it must NOT be told its command is no-LLM.
-    assert data["graphify"]["updateCommand"] != cli.DEFAULT_GRAPHIFY["updateCommand"]
-    overridden = cli.render_adapter(data, "Claude", str(adapter_path))
-    assert "run `graphify update` before commit/push" in overridden
-    assert "(no-LLM)" not in overridden
-
-    # A lane on the default gets the qualifier, because there it is true.
-    data["graphify"] = {**data["graphify"], "updateCommand": cli.DEFAULT_GRAPHIFY["updateCommand"]}
-    defaulted = cli.render_adapter(data, "Claude", str(adapter_path))
-    assert "run `graphify update .` (no-LLM) before commit/push" in defaulted

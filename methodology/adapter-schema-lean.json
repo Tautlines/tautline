@@ -1,0 +1,152 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tautline.dev/schemas/adapter/lean-1.json",
+  "title": "Tautline Lean Project Adapter (lean-1)",
+  "description": "The post-bankruptcy project contract. It records project IDENTITY and the handful of facts an agent cannot infer -- name, repo, integration branch, how to run the tests, the project's own hard rules -- and nothing else. Process lives in prose in the generated adapter, not in configuration: there are no ceremony keys here because there is no ceremony left to configure. Written by `tautline slim`; validated by the stdlib validator in src/tautline_methodology/lean.py (no third-party runtime dependency).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "project",
+    "integrationBranch",
+    "commands"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "schemaVersion": {
+      "const": "lean-1",
+      "description": "Contract version. The literal string that tells every reader this is a lean adapter and not a 1.x ceremony adapter."
+    },
+    "project": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name"],
+      "description": "Project identity. Preserved verbatim across the migration from a 1.x adapter.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "repo": {
+          "type": "string",
+          "description": "owner/name, or a URL. Empty for a local-only repo."
+        }
+      }
+    },
+    "integrationBranch": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The branch feature branches and PRs are based on. Migrated from latestCode.base / laneStatus.integrationBranch."
+    },
+    "commands": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["test"],
+      "description": "The commands an agent cannot guess. `test` is THE gate.",
+      "properties": {
+        "test": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "review": {
+      "type": "string",
+      "description": "The review norm, as one sentence of prose. Not machinery: there is no round budget, ledger, manifest, or verdict to configure."
+    },
+    "security": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The checks that stay absolute. Toggles only -- there is no evidence file to produce.",
+      "properties": {
+        "secretScan": {
+          "type": "boolean"
+        },
+        "customerDataScan": {
+          "type": "boolean"
+        }
+      }
+    },
+    "release": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Release is a batched script run when there is something to ship, not a per-PR gate.",
+      "properties": {
+        "batched": {
+          "type": "boolean"
+        },
+        "upgradePathTest": {
+          "type": "string",
+          "description": "Path to the test that proves a deployed user survives the release. The one release gate that stays."
+        }
+      }
+    },
+    "handoffs": { "type": "boolean", "default": false },
+    "backlog": {
+      "type": "object",
+      "required": ["provider"],
+      "properties": {
+        "provider": { "enum": ["local", "github", "jira"] },
+        "path":    { "type": "string" },
+        "repo":    { "type": "string" },
+        "label":   { "type": "string" },
+        "site":    { "type": "string" },
+        "project": { "type": "string" },
+        "board":   { "type": "string" }
+      }
+    },
+    "workCoordination": {
+      "type": "boolean",
+      "default": false,
+      "description": "Advisory shared-local work declarations. Adds wake/resume, new-work, scope-change and finish guidance. init enables it for new projects; existing projects opt in. Explicit declarations are visible across sibling Git worktrees regardless of this setting. Never blocks work or contacts a server."
+    },
+    "laneStatus": {
+      "const": "advisory",
+      "description": "`tautline lane-status` reports; it never blocks. The only accepted value says so."
+    },
+    "handoffs": {
+      "type": "boolean",
+      "default": false,
+      "description": "Continuity handoffs. When true, the generated adapter gains two lines telling the agent to read `.ai-continuity/HANDOFF.md` at session start and refresh it at checkpoints. `tautline lane-status` reports the file's freshness either way, once it exists."
+    },
+    "backlog": {
+      "type": "object",
+      "required": ["provider"],
+      "additionalProperties": false,
+      "description": "Where this project's backlog lives. The configured provider is the SOURCE OF TRUTH and the project's exclusive backlog surface -- no BACKLOG.md, no TODO files, no local mirror. Moved only by `tautline backlog list|add|take|done`; nothing syncs. CREDENTIALS ARE NEVER IN THIS FILE, and `additionalProperties: false` is how the schema means it: github reads `gh` auth or GITHUB_TOKEN, jira reads JIRA_EMAIL + JIRA_API_TOKEN, and a `token` key here is refused rather than quietly accepted into a committed adapter. Absent means the local provider with QUEUE.md.",
+      "properties": {
+        "provider": { "enum": ["local", "github", "jira"] },
+        "path":    { "type": "string" },
+        "repo":    { "type": "string" },
+        "label":   { "type": "string" },
+        "site":    { "type": "string" },
+        "project": { "type": "string" },
+        "board":   { "type": "string" }
+      }
+    },
+    "projectRules": {
+      "type": "array",
+      "description": "Hard, project-specific facts an agent would otherwise get wrong -- one line each. Migrated from knownProjectRules and technologyStack.nonNegotiable. Facts about THIS project only; process norms belong in the generated adapter's prose.",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "builderGithub": {
+      "type": "object",
+      "required": ["owner", "projectNumber"],
+      "additionalProperties": false,
+      "description": "Opt-in for the builder-lane GitHub verbs (`tautline board|issue|debt`): the ONLY GitHub Projects/issues surface a builder lane has. Names the product board (a GitHub ProjectV2) whose issues live in `project.repo`. Humans are never bound by this block; a lane is a builder only when TAUTLINE_ROLE=builder or .ai-work/lane-role says so. CREDENTIALS ARE NEVER IN THIS FILE.",
+      "properties": {
+        "owner":          { "type": "string", "minLength": 1, "description": "ProjectV2 owner login (org or user)." },
+        "projectNumber":  { "type": "integer", "minimum": 1 },
+        "statusField":    { "type": "string", "default": "Status" },
+        "typeField":      { "type": "string", "default": "Item Type" },
+        "hiddenStatuses": { "type": "array", "items": { "type": "string" }, "default": ["Done"], "description": "Columns `board list` hides unless asked for by name." },
+        "debtLabel":      { "type": "string", "default": "tech-debt", "description": "The one label `debt file` applies. Off-board by construction." }
+      }
+    }
+  }
+}

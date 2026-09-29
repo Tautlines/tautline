@@ -28,3 +28,6 @@ adapters/projects/*.json
 
 # Minervit generated Graphify output
 graphify-out/
+
+# Editable-install build metadata (pip install -e .)
+*.egg-info/

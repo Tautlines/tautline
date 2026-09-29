@@ -1,8 +1,0 @@
-usage: tautline guard-check [-h] [--project PROJECT] [--target TARGET]
-                            --boundary {prepush,status,manual}
-
-options:
-  -h, --help            show this help message and exit
-  --project PROJECT
-  --target TARGET
-  --boundary {prepush,status,manual}

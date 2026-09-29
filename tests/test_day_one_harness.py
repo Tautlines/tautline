@@ -13,32 +13,6 @@ from pathlib import Path
 
 # --- the scaffolded harness files ----------------------------------------------------------------
 
-def test_harness_emits_runner_ci_smoke_and_proof(cli):
-    files = cli.scaffold_test_harness_files("acme")
-    assert set(files) == {
-        ".github/workflows/ci.yml",
-        "scripts/test.sh",
-        "tests/smoke_test.sh",
-        "docs/quality/gate-self-proof.md",
-    }
-
-
-def test_ci_workflow_is_blocking_and_runs_tests(cli):
-    ci = cli.scaffold_test_harness_files("acme")[".github/workflows/ci.yml"]
-    assert "continue-on-error: true" not in ci  # the FM1/FM3 anti-pattern must not be scaffolded
-    assert "pull_request" in ci and "push" in ci
-    assert "scripts/test.sh" in ci  # a recognized CI test-runner marker
-
-
-def test_self_proof_doc_requires_a_red_run(cli):
-    proof = cli.scaffold_test_harness_files("acme")["docs/quality/gate-self-proof.md"]
-    assert "failure" in proof.lower() and "conclusion" in proof.lower()
-
-
-def test_runner_fails_closed(cli):
-    runner = cli.scaffold_test_harness_files("acme")["scripts/test.sh"]
-    assert "set -euo pipefail" in runner
-
 
 # --- ci-test-gate block-by-default for NEW projects ----------------------------------------------
 

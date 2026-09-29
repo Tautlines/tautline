@@ -1,11 +1,29 @@
-import hashlib
+"""The framework repo's own adapter contract, lean era.
+
+Until 2026-08-30 this file pinned the 1.x self-adapter chain (.tautline/adapter.json ->
+render-adapters -> .tautline.json with _generated provenance). `tautline slim` migrated the
+framework repo itself onto the lean profile (the reviewed migration PR #626): the source adapter
+retired to docs/archive-prebankruptcy/, .tautline.json became a lean-1 config, and the render
+chain no longer applies to this repo. What still pays rent:
+
+* the committed lean config must stay valid against the authoritative lean validator and
+  public-safe (this repo dogfoods the profile it ships);
+* CLAUDE.md / AGENTS.md stay HAND-AUTHORED -- the migration deliberately kept them (they carry
+  repo facts the generated lean adapter does not render), and a generated header appearing on
+  either means someone re-rendered over that decision;
+* render-adapters behaviors that once used the self-adapter as a convenient 1.x fixture
+  (deprecation warnings, decode-error hints) are retargeted to the shipped example adapter --
+  1.x adopters still render, so the behaviors still matter.
+"""
+
 import json
-import shutil
 import subprocess
 import sys
 from pathlib import Path
 
 import pytest
+
+from tautline_methodology import lean
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -13,10 +31,10 @@ CLI_PATH = REPO_ROOT / "bin" / "tautline"
 PUBLIC_EXPORT_MARKER = REPO_ROOT / ".minervit-public-release-export.json"
 private_repo_only = pytest.mark.skipif(
     PUBLIC_EXPORT_MARKER.exists(),
-    reason="private-repo-context test; its subject files (self-adapter) are export-excluded",
+    reason="private-repo-context test; its subject files (self-adapter, bootstraps) are export-excluded",
 )
-SOURCE_ADAPTER = REPO_ROOT / ".tautline" / "adapter.json"
-GENERATED_ADAPTER = REPO_ROOT / ".tautline.json"
+LEAN_ADAPTER = REPO_ROOT / ".tautline.json"
+EXAMPLE_ADAPTER = REPO_ROOT / "adapters" / "projects" / "example-saas.json"
 
 
 def _run_cli(*args: str):
@@ -29,114 +47,67 @@ def _run_cli(*args: str):
 
 
 @private_repo_only
-def test_methodology_repo_source_adapter_is_public_safe_and_json_only():
-    raw_text = SOURCE_ADAPTER.read_text(encoding="utf-8")
+def test_methodology_repo_lean_adapter_is_valid_and_public_safe():
+    raw_text = LEAN_ADAPTER.read_text(encoding="utf-8")
     data = json.loads(raw_text)
 
+    assert lean.is_lean_config(data)
+    assert lean.lean_config_errors(data) == []
+    assert data["project"]["name"] == "Tautline"
+    assert data["project"]["repo"] == "tautlines/tautline-dev"
+    assert data["integrationBranch"] == "experimental"
+    assert data["commands"]["test"] == "scripts/test.sh"
     assert "BOOTSTRAP REQUIRED" not in raw_text
-    assert "goalTracker" not in data
-    assert data["project"] == "Minervit AI Delivery Methodology"
-    assert data["repo"] == "tautlines/tautline-dev"
-    assert data["productionDeployExists"] is False
-    assert data["_framework"]["channel"] == "stable"
-    assert data["_framework"]["updatePolicy"] == "manual"
-    assert data["generatedFiles"] == [".tautline.json"]
-    assert data["technologyStack"]["cloudProviderDefault"] == "none"
-    assert data["developmentEnvironment"]["windows"]["supportedRuntime"] == "wsl2"
-    assert data["review"]["codexWrapper"] == "codex review --base origin/experimental"
-    assert "--full-context" not in data["review"]["codexWrapper"]
-
-    evidence = data["bootstrapEvidence"]
-    assert evidence["status"] == "repo-evident"
-    for item in evidence["repoEvidence"]:
-        assert (REPO_ROOT / item["path"]).is_file(), item["path"]
+    # The five 1.x knownProjectRules survived the migration verbatim; an empty list here means a
+    # regeneration dropped them.
+    assert len(data.get("projectRules") or []) >= 5
 
 
 @private_repo_only
-def test_methodology_repo_generated_adapter_is_fresh_and_preserves_handwritten_bootstraps():
-    generated = json.loads(GENERATED_ADAPTER.read_text(encoding="utf-8"))
-
-    assert generated["_generated"]["sourceAdapter"] == ".tautline/adapter.json"
-    assert generated["_generated"]["sourceAdapterSha256"] == hashlib.sha256(SOURCE_ADAPTER.read_bytes()).hexdigest()
-    assert generated["_generated"]["methodologyCommit"] == "self-referential-methodology-repo"
-    assert generated["_generated"]["regenerate"].endswith("--write --json-only")
-    assert generated["generatedFiles"] == [".tautline.json"]
-
-    json_check = _run_cli(
-        "render-adapters",
-        "--project",
-        str(SOURCE_ADAPTER),
-        "--target",
-        str(REPO_ROOT),
-        "--check",
-        "--json-only",
-    )
-    assert json_check.returncode == 0, json_check.stdout + json_check.stderr
-    assert "goalTracker' is DEPRECATED" not in json_check.stderr
-
-    full_check = _run_cli(
-        "render-adapters",
-        "--project",
-        str(SOURCE_ADAPTER),
-        "--target",
-        str(REPO_ROOT),
-        "--check",
-    )
-    assert full_check.returncode == 1
-    assert "protected:" in full_check.stdout
-    assert str(REPO_ROOT / "AGENTS.md") in full_check.stdout
-    assert str(REPO_ROOT / "CLAUDE.md") in full_check.stdout
+def test_methodology_repo_bootstraps_stay_handwritten():
+    # The reviewed migration kept CLAUDE.md/AGENTS.md hand-authored (their own projectRule says
+    # so): they carry repo facts the generated lean adapter does not render (the Python 3.12
+    # gate constraint, the origin/HEAD-vs-experimental warning). slim marks its output with a
+    # GENERATED header, so the header appearing here means someone rendered over that decision.
+    for name in ("CLAUDE.md", "AGENTS.md"):
+        text = (REPO_ROOT / name).read_text(encoding="utf-8")
+        assert "<!-- GENERATED -->" not in text, f"{name} must stay hand-authored"
+    # And no un-adopted proposal files may linger at the repo root.
+    assert not (REPO_ROOT / "CLAUDE.md.lean-proposed").exists()
+    assert not (REPO_ROOT / "AGENTS.md.lean-proposed").exists()
 
 
-@private_repo_only
-def test_methodology_repo_self_adapter_marker_uses_target_checkout(cli, tmp_path):
-    target = tmp_path / "methodology-copy"
-    source = target / ".tautline" / "adapter.json"
-    source.parent.mkdir(parents=True)
-    shutil.copy2(SOURCE_ADAPTER, source)
-    shutil.copy2(GENERATED_ADAPTER, target / ".tautline.json")
-    shutil.copy2(REPO_ROOT / "AGENTS.md", target / "AGENTS.md")
-    shutil.copy2(REPO_ROOT / "CLAUDE.md", target / "CLAUDE.md")
-    scripts = target / "scripts"
-    scripts.mkdir()
-    shutil.copy2(REPO_ROOT / "scripts" / "test.sh", scripts / "test.sh")
-    shutil.copy2(REPO_ROOT / "scripts" / "validate.sh", scripts / "validate.sh")
-    subprocess.run(["git", "-C", str(target), "init", "-q"], check=True)
-    subprocess.run(
-        ["git", "-C", str(target), "remote", "add", "origin", "git@github.com:minervit/minervit-ai-delivery-methodology.git"],
-        check=True,
-    )
-
-    result = _run_cli(
-        "render-adapters",
-        "--project",
-        str(source),
-        "--target",
-        str(target),
-        "--check",
-        "--json-only",
-    )
-
-    assert result.returncode == 0, result.stdout + result.stderr
-
-    source_data = cli.load_project(source)
-    generated_data = cli.load_project(target / ".tautline.json")
-    assert cli.adapter_drift(source_data, source, target) == []
-    assert cli.adapter_drift(generated_data, target / ".tautline.json", target) == []
-
-
-@private_repo_only
-def test_render_goaltracker_deprecation_warning_uses_raw_source_adapter(tmp_path):
+def _example_render_fixture(tmp_path: Path) -> tuple[Path, Path]:
+    """A renderable 1.x lane built from the shipped example adapter (the retired self-adapter
+    used to play this fixture role)."""
     target = tmp_path / "repo"
     source = target / ".tautline" / "adapter.json"
     source.parent.mkdir(parents=True)
-    for rel in ("AGENTS.md", "CLAUDE.md"):
-        shutil.copy2(REPO_ROOT / rel, target / rel)
-    scripts = target / "scripts"
-    scripts.mkdir()
-    for rel in ("scripts/test.sh", "scripts/validate.sh"):
-        shutil.copy2(REPO_ROOT / rel, target / rel)
-    shutil.copy2(SOURCE_ADAPTER, source)
+    data = json.loads(EXAMPLE_ADAPTER.read_text(encoding="utf-8"))
+    evidence_dir = target / ".ai-work"
+    evidence_dir.mkdir()
+    (evidence_dir / "evidence-1.txt").write_text("one\n", encoding="utf-8")
+    (evidence_dir / "evidence-2.txt").write_text("two\n", encoding="utf-8")
+    data["bootstrapEvidence"] = {
+        "project": data["project"],
+        "status": "repo-evident",
+        "summary": "Pytest fixture for render-adapters behaviors.",
+        "repoEvidence": [
+            {"path": ".ai-work/evidence-1.txt", "fact": "evidence one exists"},
+            {"path": ".ai-work/evidence-2.txt", "fact": "evidence two exists"},
+        ],
+    }
+    source.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    subprocess.run(["git", "-C", str(target), "init", "-q"], check=True)
+    subprocess.run(
+        ["git", "-C", str(target), "remote", "add", "origin", "git@github.com:example-org/example-saas.git"],
+        check=True,
+    )
+    return target, source
+
+
+def test_render_goaltracker_deprecation_warning_uses_raw_source_adapter(tmp_path):
+    target, source = _example_render_fixture(tmp_path)
 
     clean = _run_cli(
         "render-adapters",

@@ -1,9 +1,0 @@
-usage: tautline context-status [-h] [--project PROJECT] [--target TARGET]
-                               [--strict] [--fail-on-drift]
-
-options:
-  -h, --help         show this help message and exit
-  --project PROJECT
-  --target TARGET
-  --strict
-  --fail-on-drift

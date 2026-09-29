@@ -32,7 +32,6 @@ from pathlib import Path
 # exist, so once per-test reclaim began deleting them, two tests sharing a truncated name prefix
 # reused one absolute path and the second was handed the first one's schema.
 _ADAPTER_SCHEMA_CACHE: dict[Path, tuple[bytes, dict]] = {}
-DEFAULT_RENDER_BUDGET = {"maxGeneratedBytes": 31000, "minGeneratedBytes": 15000, "enforcement": "warn"}
 
 
 def adapter_schema(schema_path: Path) -> dict | None:
@@ -399,7 +398,7 @@ def adapter_schema_skew_report_lines(classification: dict) -> tuple[str, ...]:
         adapter_file = classification.get("adapterFile") or ".tautline.json"
         return (
             head,
-            f"adapter_schema_version_skew_remedy: {cli} install-hooks --target .",
+            f"adapter_schema_version_skew_remedy: {cli} render-adapters --project <source-adapter> --target . --write",
             f"adapter_schema_version_skew_remedy: {cli} validate-adapter --project {adapter_file}",
         )
     return (
@@ -413,28 +412,3 @@ def adapter_schema_skew_report_lines(classification: dict) -> tuple[str, ...]:
         "Update it from the framework checkout itself -- not through this lane, because every verb "
         "here re-validates this adapter with the same stale schema and fails identically.",
     )
-
-
-def render_budget_for(data: dict) -> dict:
-    budget = dict(DEFAULT_RENDER_BUDGET)
-    configured = data.get("renderBudget")
-    if isinstance(configured, dict):
-        for key in ("maxGeneratedBytes", "minGeneratedBytes", "enforcement"):
-            if key in configured:
-                budget[key] = configured[key]
-    return budget
-
-
-def render_budget_errors(data: dict, expected: dict, *, generated_markdown_files: set[str]) -> list[str]:
-    """Validate adapter-tunable generated-file size budgets."""
-    budget = render_budget_for(data)
-    errors: list[str] = []
-    for rel, content in expected.items():
-        if posixpath.basename(rel) not in generated_markdown_files:
-            continue
-        size = len(content.encode("utf-8"))
-        if size > budget["maxGeneratedBytes"]:
-            errors.append(f"{rel} is {size} bytes, over renderBudget.maxGeneratedBytes {budget['maxGeneratedBytes']}")
-        elif size < budget["minGeneratedBytes"]:
-            errors.append(f"{rel} is {size} bytes, under renderBudget.minGeneratedBytes {budget['minGeneratedBytes']}")
-    return errors

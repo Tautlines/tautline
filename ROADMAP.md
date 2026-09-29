@@ -1,62 +1,51 @@
-# Tautline Roadmap
+# Tautline roadmap
 
-This is the public, directional roadmap for Tautline — the governor for AI
-coding agents. It exists so product direction is developed in the open, under
-community scrutiny.
+Tautline's direction is fast, coordinated AI development. Every addition should reduce the
+operator's or agents' total effort. Features are useful when they make work easier to pick up,
+share, verify, and finish; they do not need to block an action to justify their existence.
 
-It is directional, not a commitment: items can move, split, or be dropped as
-we learn. The work items below are tracked as issues on the public repository
-and backlinked here; **the issue is the source of truth for its status**, and
-this file is the map, not the tracker.
+This page describes the current source and direction. Public package availability is recorded
+in [GitHub releases](https://github.com/Tautlines/tautline/releases) and [CHANGELOG.md](CHANGELOG.md).
+Future items are proposals, not delivery commitments.
 
-## 0.9.x direction
+## Current foundation
 
-- [x] **Package split** — break the single-file CLI (`bin/tautline`) into an
-  importable package. Done across the seam + wave PRs and the terminal flip
-  (roadmap #11): `bin/tautline` is now a thin shim over
-  `tautline_methodology.cli`, with the verb families carved into
-  `tautline_methodology` modules; behavior-neutral throughout (the `--help`
-  corpus and dispatch-map goldens stayed byte-identical).
-  (0.10.0 proved it is not a prerequisite for the packaged install story.)
-  ([#11](https://github.com/Tautlines/tautline/issues/11))
-- [x] **Installable package** — `pipx install tautline` via a real
-  `[project.scripts]` entry point. Shipped in 0.10.0: a thin wrapper package
-  embeds the released tree, so it did not need the package split after all.
-  ([#13](https://github.com/Tautlines/tautline/issues/13))
-- [ ] **Guided onboarding** — when a session starts in a repository with no
-  adapter, offer to run the onboarding interview instead of requiring the
-  operator to know about `tautline init`. Guide, don't force.
-  ([#14](https://github.com/Tautlines/tautline/issues/14))
-- [ ] **Update prompts** — when a newer framework release is available,
-  surface it and offer the update path, rather than silently skipping under
-  the pinned update policy.
-  ([#15](https://github.com/Tautlines/tautline/issues/15))
-- [ ] **Compatibility sunset** — the `minervit-methodology` launcher name,
-  `MINERVIT_*` environment fallbacks, and the legacy
-  `.minervit-ai-delivery.json` marker remain supported through 0.x and are
-  removed in 1.0. New adopters should use the `tautline` names exclusively.
-  ([#16](https://github.com/Tautlines/tautline/issues/16))
+- Small project setup and generated Claude Code / Codex instructions.
+- Local queue, GitHub issues, and Jira backlog providers; optional continuity handoffs.
+- Shared local work manifests and a fleet view for sibling worktrees, with scope, dependencies,
+  blockers, stale records, and overlap advisories.
+- Optional command evidence tied to code identity; local health and explicitly requested
+  GitHub facts.
+- Operator decisions with persisted answers and acknowledgement.
+- Specialized builder GitHub controls, diagnostics, security checks, and batched releases.
 
-## Recently shipped
+Coordination is advisory and local. Evidence and health do not certify acceptance or deployment.
+The inbox does not execute answers. These boundaries matter more than an expansive feature list.
 
-- **0.9.2–0.9.5** — config-surface rebrand (`~/.config/tautline/tautline.env`, with the
-  legacy config path kept as a fallback), a brand-copy sweep across the reader-facing
-  docs, a Claude Code plugin marketplace manifest (`/plugin marketplace add
-  tautlines/tautline`), and a truth pass over the public documentation surface.
-- **0.9.1** — no dead ends at launch: a trust-policy hold on an available update reports
-  `held` and launch continues on the trusted retained checkout, with the repair command
-  printed alongside; generated Claude launchers print an exact executable remedy with
-  every gate failure. The checkout still never advances to unverified code.
-- **0.9.0** — sanitized instrumentation replaces narrative session-journal publication:
-  a closed-vocabulary instrumentation record with no product-information capacity is the
-  only session evidence that can reach a remote.
-- **0.8.0** — the Tautline rename: `tautline` CLI (with the legacy `minervit-methodology`
-  compatibility shim), `TAUTLINE_*` environment variables (with `MINERVIT_*`
-  fallback), `.tautline.json` marker (legacy marker still resolves), plugins
-  renamed to `tautline-core`/`tautline-ops`.
-- **0.7.0** — initial public (open-core) release.
+## Next: improve the complete workflow
 
-## How to influence this roadmap
+1. **Use and polish the local fleet workflow.** Measure duplicate work, collisions, stale
+   declarations, and time spent finding context. Improve startup, scope updates, and handoffs
+   from actual use before adding enforcement.
+2. **Make outcomes easier to inspect.** Connect existing test, PR, and deployment observations
+   where an integration can report them accurately. Keep unknown and stale distinct from passed.
+3. **Make operator decisions easy to resume.** Improve answer routing and clarity without
+   automatic execution of untrusted answer text.
+4. **Validate a focused next feature.** Choose between optional usage/cost attribution and a
+   scenario harness that exercises real coordination and recovery failures. Show limitations
+   and measured results before presenting scores.
 
-Open a discussion or an issue. Roadmap changes land as PRs to this file, so
-the reasoning stays reviewable.
+## Later, subject to evidence
+
+- Multi-machine coordination and a richer fleet UI.
+- Optional conflict reservations for teams with demonstrated collision problems.
+- Delivery economics with explicit exact, estimated, and unknown attribution.
+- Review-quality experiments and earned-autonomy suggestions grounded in reliable observations.
+- Opt-in delivery updates and recap publishing when there is demonstrated demand.
+
+These do not imply a return to required plans, repeated reviews, or a policy gate for every
+agent action. Keep one backlog authority and batch releases when there is something to ship.
+
+Open a [public issue](https://github.com/Tautlines/tautline/issues) with a concrete workflow,
+its current cost, and what would make it easier. The smallest useful improvement is a good
+starting point.

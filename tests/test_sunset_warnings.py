@@ -9,7 +9,6 @@ are suppressible under both spellings and byte-silent in hook-shaped invocations
 
 import importlib
 import os
-import re
 import subprocess
 import sys
 import urllib.parse
@@ -475,67 +474,6 @@ def _run_sh(script: str, env: dict) -> subprocess.CompletedProcess:
     return subprocess.run(["sh", "-c", script], capture_output=True, text=True, env=env, timeout=30)
 
 
-def test_launcher_content_reads_tautline_repo_first_and_warns(cli):
-    content = cli.claude_launcher_content(False)
-    assert "${TAUTLINE_METHODOLOGY_REPO:-${MINERVIT_METHODOLOGY_REPO:-}}" in content
-    assert (
-        "_tl_sunset_warn MINERVIT_METHODOLOGY_REPO TAUTLINE_METHODOLOGY_REPO "
-        "'env:MINERVIT_METHODOLOGY_REPO'"
-    ) in content
-    # hook launcher variants must never carry the warning helper
-    assert "_tl_sunset_warn" not in cli.git_branch_liveness_hook_content(Path("/x"), "pre-commit")
-
-
-def test_launcher_repo_precedence_only_tautline_is_silent(cli):
-    script = _repo_warn_harness(cli)
-    env = {"PATH": "/usr/bin:/bin", "TAUTLINE_METHODOLOGY_REPO": "/x"}
-    res = _run_sh(script, env)
-    assert res.returncode == 0, res.stderr
-    assert not _warn_lines(res.stderr)
-
-
-def test_launcher_repo_precedence_only_legacy_warns_once(cli):
-    script = _repo_warn_harness(cli)
-    env = {"PATH": "/usr/bin:/bin", "MINERVIT_METHODOLOGY_REPO": "/x"}
-    res = _run_sh(script, env)
-    assert res.returncode == 0, res.stderr
-    lines = _warn_lines(res.stderr)
-    assert lines == [
-        "deprecation_warning: MINERVIT_METHODOLOGY_REPO is deprecated and will be "
-        "removed in 1.0; use TAUTLINE_METHODOLOGY_REPO"
-    ]
-
-
-def test_launcher_repo_precedence_neither_is_silent(cli):
-    script = _repo_warn_harness(cli)
-    res = _run_sh(script, {"PATH": "/usr/bin:/bin"})
-    assert res.returncode == 0, res.stderr
-    assert not _warn_lines(res.stderr)
-
-
-def test_launcher_shell_suppression_silences(cli):
-    script = _repo_warn_harness(cli)
-    env = {
-        "PATH": "/usr/bin:/bin",
-        "MINERVIT_METHODOLOGY_REPO": "/x",
-        "MINERVIT_SUPPRESS_SUNSET_WARNINGS": "1",
-    }
-    res = _run_sh(script, env)
-    assert res.returncode == 0, res.stderr
-    assert not _warn_lines(res.stderr)
-
-
-def test_launcher_shell_exports_handoff_token(cli):
-    # The shell echo also records the surface in TAUTLINE_SUNSET_SHELL_WARNED so python never
-    # re-warns it; assert the harness exports the collision-safe token.
-    script = _repo_warn_harness(cli).replace(
-        "printf 'DONE\\n'", 'printf "HANDOFF=%s\\n" "${TAUTLINE_SUNSET_SHELL_WARNED:-}"'
-    )
-    env = {"PATH": "/usr/bin:/bin", "MINERVIT_METHODOLOGY_REPO": "/x"}
-    res = _run_sh(script, env)
-    assert "HANDOFF=env:MINERVIT_METHODOLOGY_REPO" in res.stdout, res.stdout
-
-
 # --- shell inventory: EVERY hand-wired _tl_sunset_warn surface, parameterized (not sampled) -----
 # The 10 legacy MINERVIT_ knobs the interactive launcher resolves TAUTLINE_-first (REPO is wired at
 # two call sites -- pre-source + post-source -- so 11 calls, 10 distinct knobs). Derived by reading
@@ -552,28 +490,6 @@ _SHELL_SUNSET_SURFACES = [
     "CLAUDE_AUTOCOMPACT_PCT",
     "NO_REPAIR_SESSION",
 ]
-
-
-def test_shell_sunset_inventory_is_complete(cli):
-    # Not a 1-of-N sample: every _tl_sunset_warn call in the rendered launcher must name one of the
-    # known 10 legacy knobs, and each known knob must appear. Add an 11th surface (or drop one)
-    # without updating _SHELL_SUNSET_SURFACES and this fails.
-    content = cli.claude_launcher_content(False)
-    found = set(re.findall(r"_tl_sunset_warn MINERVIT_(\S+) TAUTLINE_", content))
-    assert found == set(_SHELL_SUNSET_SURFACES)
-    # hook launcher variants must never carry any warning wiring
-    assert "_tl_sunset_warn" not in cli.git_branch_liveness_hook_content(Path("/x"), "pre-commit")
-
-
-@pytest.mark.parametrize("sfx", _SHELL_SUNSET_SURFACES)
-def test_shell_sunset_surface_reads_tautline_first_and_warns(cli, sfx):
-    content = cli.claude_launcher_content(False)
-    # (a) a TAUTLINE_-first read of this knob exists
-    assert f"${{TAUTLINE_{sfx}:-}}" in content
-    # (a') the warn only fires when the legacy spelling is the only one set
-    assert f'[ -n "${{MINERVIT_{sfx}:-}}" ]' in content
-    # (b) the exact once-only warn call: legacy env, tautline replacement, handoff token
-    assert f"_tl_sunset_warn MINERVIT_{sfx} TAUTLINE_{sfx} 'env:MINERVIT_{sfx}'" in content
 
 
 # --- R3 amendment (b): fresh-install-silent ---------------------------------------------------

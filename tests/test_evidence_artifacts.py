@@ -346,6 +346,7 @@ VALIDATE_GATE_IDS = (
     "compile-cli",
     "validate-sh-freeze",
     "whitespace",
+    "pr-backlog-ref",
 )
 
 

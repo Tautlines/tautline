@@ -1,9 +1,0 @@
-usage: tautline backlog-provider-board-check [-h] [--project PROJECT]
-                                             [--target TARGET] [--strict]
-
-options:
-  -h, --help         show this help message and exit
-  --project PROJECT
-  --target TARGET
-  --strict           Also fail when the board cannot be verified (provider
-                     unavailable / unauthenticated).

@@ -1,0 +1,45 @@
+#!/usr/bin/env python3
+"""Conforming review agent: clean verdict.
+
+THE WHOLE CONTRACT, and it is this short on purpose. If a twenty-line script can no longer
+pass `tautline agent-conformance`, the framework has re-coupled to something.
+
+  1. be invoked with the review inputs the framework already passes,
+  2. write review-result.json to $TAUTLINE_REVIEW_RESULT_PATH,
+  3. exit non-zero ONLY on transport failure, never to signal findings.
+"""
+import json
+import os
+import sys
+
+AGENT_ID = os.environ.get("TAUTLINE_REVIEW_AGENT_ID", "fixture-clean")
+# Echo the invocation. A real reviewer's transcript names what it reviewed, and the
+# plan-review finalize gate REQUIRES the output to reference the reviewed plan path or
+# content hash -- evidence that never says what it looked at cannot be bound to it.
+print("reviewing:", " ".join(sys.argv[1:]))
+
+# The PLAN-review seam has a prose contract of its own: the response must carry a
+# `## Findings` section, and finalize refuses without one, calling it a reviewer-format
+# error rather than a verdict. A conforming agent emits both -- the structured result
+# for the build seam, this section for the plan seam -- because one wrapper serves both
+# and cannot tell which invoked it.
+print("## Findings")
+print()
+print("No blockers found.")
+
+path = os.environ.get("TAUTLINE_REVIEW_RESULT_PATH")
+if not path:
+    print("no TAUTLINE_REVIEW_RESULT_PATH supplied", file=sys.stderr)
+    raise SystemExit(2)  # transport failure: the framework did not hold up its end
+
+with open(path, "w", encoding="utf-8") as handle:
+    json.dump(
+        {
+            "schema": "tautline-agent-review-result/v1",
+            "agent": AGENT_ID,
+            "verdict": "clean",
+            "findings": [],
+        },
+        handle,
+    )
+raise SystemExit(0)

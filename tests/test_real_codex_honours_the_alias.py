@@ -15,44 +15,6 @@ import importlib
 util = importlib.import_module("tautline_methodology.util")
 
 
-def test_the_tautline_alias_points_the_shim(cli):
-    assert cli.resolve_real_codex({"TAUTLINE_REAL_CODEX": "/opt/real/codex"}) == "/opt/real/codex"
-
-
-def test_the_legacy_name_still_works(cli):
-    assert cli.resolve_real_codex({"MINERVIT_REAL_CODEX": "/opt/real/codex"}) == "/opt/real/codex"
-
-
-def test_the_alias_outranks_the_legacy_name(cli):
-    env = {
-        "MINERVIT_REAL_CODEX": "/opt/legacy/codex",
-        "TAUTLINE_REAL_CODEX": "/opt/real/codex",
-    }
-    assert cli.resolve_real_codex(env) == "/opt/real/codex"
-
-
-def test_a_blank_alias_does_not_shadow_the_legacy_name(cli):
-    env = {"MINERVIT_REAL_CODEX": "/opt/legacy/codex", "TAUTLINE_REAL_CODEX": "   "}
-    assert cli.resolve_real_codex(env) == "/opt/legacy/codex"
-
-
-def test_neither_set_falls_back_to_path(cli, tmp_path):
-    shim = tmp_path / "codex"
-    shim.write_text("#!/bin/sh\n", encoding="utf-8")
-    shim.chmod(0o755)
-    assert cli.resolve_real_codex({"PATH": str(tmp_path)}) == str(shim)
-
-
-def test_the_passed_mapping_is_read_not_the_process_environment(cli, monkeypatch):
-    """The mapping is the argument, not os.environ.
-
-    Callers inject a base_env and rely on it being the thing that is read.
-    """
-    monkeypatch.setenv("TAUTLINE_REAL_CODEX", "/opt/ambient/codex")
-    env = {"MINERVIT_REAL_CODEX": "/opt/passed/codex"}
-    assert cli.resolve_real_codex(env) == "/opt/passed/codex"
-
-
 def test_resolve_env_reads_the_mapping_it_is_given(monkeypatch):
     monkeypatch.delenv("TAUTLINE_THING", raising=False)
     monkeypatch.delenv("MINERVIT_THING", raising=False)

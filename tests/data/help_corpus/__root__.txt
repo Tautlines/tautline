@@ -1,68 +1,23 @@
 usage: tautline [-h]
-                {version,github-budget-status,publish-release-update,release-update-status,install-cli,update-repin,uninstall-cli,install-claude-launcher,sync-methodology,snapshot-status,snapshot-prune,snapshot-pin,set-framework-channel,maintainer-mode,product-dev-mode,repair-methodology-main,render-adapters,validate-adapter,migrate-adapter,release-migration-report,public-contract,public-release-check,public-release-export,registry-package,release-tail,release-drift-check,canonical-policy,dump-policy-phrases,dump-instrumentation-schema,secret-status,cut-release,purge-archive,telemetry,guard-report,check-name-availability,pilot-report,init,init-project-adapter,scaffold-test-harness,adapter-bootstrap-questions,audit,readiness-review,background-run,monitor-status,lane-start,lock-methodology,unlock-methodology,methodology-status,context-bootstrap,context-status,behavior-spec-status,behavior-spec-delta-check,lane-coordination-bootstrap,lane-coordination-status,lane-coordination-note,graphify-status,graphify-install,context-rotation-check,remote-main-status,latest-code-status,log-event,decision-record,fleet-lease,decisions-report,autonomy-directive,plan-substance-check,plan-authoring-standard,lane-status,test-run,event-log-path,event-tail,event-viewer,event-audit,event-rotate,usage-log-path,usage-record,usage-import-claude,usage-report,usage-rotate,iteration-review-status,iteration-review-renderer-setup,validate-iteration-review,generate-iteration-review-page,publish-iteration-review,emit-iteration-review-workflow,iteration-review-delivery-check,milestone-update-status,publish-milestone-update,publish-product-note,deploy-health,deployment-notification-status,deployment-notification-pipeline-snippet,publish-deploy-ready-update,lane-run,codex-run,claude-review,claude-review-status,record-stage1-sweep,review-evidence-check,finalize-implementation-review,branch-liveness-check,done-check,work-profile-check,diff-coverage-check,flaky-quarantine-check,red-green-check,prepare-continuity,prepare-session-journal,prepare-instrumentation-record,publish-instrumentation-record,blocker-declare,blocker-clear,blocker-status,guard-check,goal-start,goal-status,goal-advance,ac-verify,ui-evidence-submit,goal-next,goal-condition,goal-assignment,goal-kickoff-prompt,goal-tracker-status,goal-tracker-next,goal-tracker-sync,goal-tracker-update,backlog-provider-status,backlog-provider-board-check,backlog-provider-closeout-check,backlog-provider-active-check,ci-health-check,merge,backlog-provider-next,backlog-provider-sync,backlog-provider-update,backlog-provider-migration-interview,backlog-provider-export,backlog-board-examine,backlog-board-adopt,stakeholder-question-ask,stakeholder-question-status,milestone-start,milestone-status,milestone-advance,milestone-next,milestone-watchdog,work-loop,run-plan-review,codex-plan-review,finalize-plan-review,record-plan-review,plan-finalization-precheck,plan-finalization-hook,plan-review-pending-hook,fleet-guard-hook,branch-liveness-hook,response-guard-hook,stop-guard-aggregate,question-guard-hook,background-command-hook,latest-code-hook,context-rotation-heartbeat-hook,tool-rejection-hook,install-hooks,response-guard,validate-rca-artifact,validate-feature-request-artifact,validate-grooming,validate-session-journal,validate-instrumentation-record,publish-rca-artifact,publish-feature-request-artifact,publish-session-journal,publish-pending-session-journals}
+                {version,install-cli,uninstall-cli,sync-methodology,render-adapters,validate-adapter,public-contract,public-release-check,public-release-export,registry-package,release-tail,release-drift-check,secret-status,cut-release,init-project-adapter,methodology-status,decision-record,lane-status,builder-token,lane-role,builder-env,github-budget-status,stakeholder-question,decisions-report,event-log-path,event-tail,event-rotate,inbox,slim,backlog,board,issue,debt,doctor,red-green-check,init,builder-guard,work,evidence,health}
                 ...
 
 Minervit AI Delivery Methodology CLI.
 
 positional arguments:
-  {version,github-budget-status,publish-release-update,release-update-status,install-cli,update-repin,uninstall-cli,install-claude-launcher,sync-methodology,snapshot-status,snapshot-prune,snapshot-pin,set-framework-channel,maintainer-mode,product-dev-mode,repair-methodology-main,render-adapters,validate-adapter,migrate-adapter,release-migration-report,public-contract,public-release-check,public-release-export,registry-package,release-tail,release-drift-check,canonical-policy,dump-policy-phrases,dump-instrumentation-schema,secret-status,cut-release,purge-archive,telemetry,guard-report,check-name-availability,pilot-report,init,init-project-adapter,scaffold-test-harness,adapter-bootstrap-questions,audit,readiness-review,background-run,monitor-status,lane-start,lock-methodology,unlock-methodology,methodology-status,context-bootstrap,context-status,behavior-spec-status,behavior-spec-delta-check,lane-coordination-bootstrap,lane-coordination-status,lane-coordination-note,graphify-status,graphify-install,context-rotation-check,remote-main-status,latest-code-status,log-event,decision-record,fleet-lease,decisions-report,autonomy-directive,plan-substance-check,plan-authoring-standard,lane-status,test-run,event-log-path,event-tail,event-viewer,event-audit,event-rotate,usage-log-path,usage-record,usage-import-claude,usage-report,usage-rotate,iteration-review-status,iteration-review-renderer-setup,validate-iteration-review,generate-iteration-review-page,publish-iteration-review,emit-iteration-review-workflow,iteration-review-delivery-check,milestone-update-status,publish-milestone-update,publish-product-note,deploy-health,deployment-notification-status,deployment-notification-pipeline-snippet,publish-deploy-ready-update,lane-run,codex-run,claude-review,claude-review-status,record-stage1-sweep,review-evidence-check,finalize-implementation-review,branch-liveness-check,done-check,work-profile-check,diff-coverage-check,flaky-quarantine-check,red-green-check,prepare-continuity,prepare-session-journal,prepare-instrumentation-record,publish-instrumentation-record,blocker-declare,blocker-clear,blocker-status,guard-check,goal-start,goal-status,goal-advance,ac-verify,ui-evidence-submit,goal-next,goal-condition,goal-assignment,goal-kickoff-prompt,goal-tracker-status,goal-tracker-next,goal-tracker-sync,goal-tracker-update,backlog-provider-status,backlog-provider-board-check,backlog-provider-closeout-check,backlog-provider-active-check,ci-health-check,merge,backlog-provider-next,backlog-provider-sync,backlog-provider-update,backlog-provider-migration-interview,backlog-provider-export,backlog-board-examine,backlog-board-adopt,stakeholder-question-ask,stakeholder-question-status,milestone-start,milestone-status,milestone-advance,milestone-next,milestone-watchdog,work-loop,run-plan-review,codex-plan-review,finalize-plan-review,record-plan-review,plan-finalization-precheck,plan-finalization-hook,plan-review-pending-hook,fleet-guard-hook,branch-liveness-hook,response-guard-hook,stop-guard-aggregate,question-guard-hook,background-command-hook,latest-code-hook,context-rotation-heartbeat-hook,tool-rejection-hook,install-hooks,response-guard,validate-rca-artifact,validate-feature-request-artifact,validate-grooming,validate-session-journal,validate-instrumentation-record,publish-rca-artifact,publish-feature-request-artifact,publish-session-journal,publish-pending-session-journals}
+  {version,install-cli,uninstall-cli,sync-methodology,render-adapters,validate-adapter,public-contract,public-release-check,public-release-export,registry-package,release-tail,release-drift-check,secret-status,cut-release,init-project-adapter,methodology-status,decision-record,lane-status,builder-token,lane-role,builder-env,github-budget-status,stakeholder-question,decisions-report,event-log-path,event-tail,event-rotate,inbox,slim,backlog,board,issue,debt,doctor,red-green-check,init,builder-guard,work,evidence,health}
     version             Print plugin version, methodology repo commit, and
                         local-vs-remote sync status.
-    github-budget-status
-                        Report GitHub REST/GraphQL rate budget and the
-                        methodology GitHub cache state.
-    publish-release-update
-                        Post per-version release-update cards to a Google Chat
-                        webhook and record the delivery.
-    release-update-status
-                        Report which shipped releases still lack a Google Chat
-                        delivery marker; exit 1 if any prior release is
-                        overdue.
     install-cli         Install the CLI shim + methodology.env; mutates
                         ~/.local/bin and ~/.config/minervit.
-    update-repin        Advance the pinned auto-update allowlist in
-                        methodology.env to current origin/<branch> HEAD after
-                        reviewing upstream.
     uninstall-cli       Remove the installed CLI shim and methodology.env
                         (reverses install-cli).
-    install-claude-launcher
-                        Install a managed Claude launcher that syncs
-                        methodology before startup.
     sync-methodology    Update the methodology repo (optional auto-rescue),
                         install guards, and report version/remote status.
-    snapshot-status     Report the methodology snapshot store: root, current
-                        target, published snapshots, and lane pins.
-    snapshot-prune      Delete superseded methodology snapshots, keeping the
-                        current target, live pins, recently-current snapshots,
-                        and the newest --keep.
-    snapshot-pin        Pin a lane to the current methodology snapshot so
-                        retention cannot delete the code it is executing.
-    set-framework-channel
-                        Select the stable or experimental framework channel.
-                        Defaults to writing .tautline/pin.json; use --source
-                        adapter to update _framework.channel in the repo-local
-                        adapter and re-render lane JSON.
-    maintainer-mode     Machine-scoped maintainer standdown: turn the
-                        methodology update gates off (on), restore stock
-                        behavior (off), or report the armed state (status).
-    product-dev-mode    Per-checkout product-dev standdown: relieve the
-                        shepherding agent nags for a human doing product-doc /
-                        backlog work (on), restore stock behavior (off), or
-                        report the mode and its remaining TTL (status).
-    repair-methodology-main
-                        Preserve accidental local methodology main commits and
-                        reset release main to origin/main.
     render-adapters     Render CLAUDE.md/AGENTS.md/lane config from a project
                         adapter (--write/--check) with drift guards.
     validate-adapter    Validate a project adapter JSON file against the
                         adapter schema (reports all violations).
-    migrate-adapter     Dry-run or apply deterministic adapter migrations,
-                        including framework pins and goalTracker ->
-                        backlogProvider.
-    release-migration-report
-                        Generate/check a release migration report with
-                        migrations, deprecated surfaces, behavior changes,
-                        tested products, and rollback notes.
     public-contract     Generate/check the public compatibility contract
                         manifest for commands, adapter keys, generated files,
                         skills, and policy modules.
@@ -83,413 +38,100 @@ positional arguments:
     release-drift-check
                         Report the repo, npm, and PyPI versions and fail when
                         any surface has drifted.
-    canonical-policy    Generate/check methodology/canonical-rules.md from
-                        modular methodology/policy sources.
-    dump-policy-phrases
-                        Generate methodology/policy-phrases.json (the SSOT
-                        projection of the guard phrase vocabulary) from the
-                        CLI constants.
-    dump-instrumentation-schema
-                        Generate methodology/instrumentation-schema.json
-                        (tautline-instrumentation/v1) from the in-code field
-                        rules.
     secret-status       Report WHERE a named secret is reachable from (process
                         env, config env, secrets file) without printing its
                         value; exit 1 only when it is absent from all three.
     cut-release         Build the release boundary for the current VERSION:
                         checksums manifest + the signed-tag command (no git
                         mutation by default).
-    purge-archive       Erase one project's/tenant's published artifacts from
-                        an archive dir + _index (GDPR/CCPA erasure).
-    telemetry           Inspect/clear the opt-in, local-first gate telemetry
-                        log (default OFF; never sent anywhere by this CLI).
-    guard-report        Summarize lane-local guard-fire telemetry.
-    check-name-availability
-                        Check npm + PyPI package-name availability for a
-                        candidate product name (trademark clearance aid).
-    pilot-report        Aggregate local gate-fire telemetry into the false-
-                        block proxy metrics an external-validity pilot needs.
-    init                Onboard an unmanaged repo through the bootstrap
-                        interview, repo-local adapter, render, and lane-start
-                        flow.
     init-project-adapter
                         Scaffold a new repo-local project adapter at
                         .tautline/adapter.json and print
                         bootstrap/render/start next steps.
-    scaffold-test-harness
-                        Emit a day-one test harness (runner + CI workflow +
-                        smoke + gate-self-proof) so a new repo blocks on tests
-                        from commit one (rec #10).
-    adapter-bootstrap-questions
-                        Generate the mandatory adapter bootstrap interview
-                        questionnaire (--write saves it + prints sha256).
-    audit               Scan target docs for known process-drift patterns and
-                        report findings (exit 1 if any found).
-    readiness-review    Query GitHub for a repo's default branch, readiness
-                        source files, and recent workflow runs.
-    background-run      Launch a command detached with logging, PID/meta
-                        tracking, timeout, and a runaway-cost guard.
-    monitor-status      Report liveness/staleness of a background run via its
-                        log, PID file, and meta.
-    lane-start          Start a lane: update/lock-check methodology, render
-                        generated files, validate bootstrap, set lane state.
-    lock-methodology    Pin the methodology repo at the current commit by
-                        writing a lock record (archiving any prior lock).
-    unlock-methodology  Remove the methodology lock by archiving the existing
-                        lock file.
     methodology-status  Report plugin version, lock state, adapter/plugin-
                         version drift, and lane state paths.
-    context-bootstrap   Create/update the document-context index, archive
-                        dirs, classification, and headers (--write).
-    context-status      Report document-context issues and adapter drift; exit
-                        1 under --strict/--fail-on-drift.
-    behavior-spec-status
-                        Report behavior-spec issues and effective enforcement;
-                        exit 1 if --strict and issues exist.
-    behavior-spec-delta-check
-                        Refuse inactive scenarios THIS change introduces
-                        without owner/un-pend metadata; pre-existing debt
-                        never blocks. Fail-open on git or read failures.
-    lane-coordination-bootstrap
-                        Create lane-coordination contract/board/status-dir
-                        artifacts for multi-lane work (--write).
-    lane-coordination-status
-                        Report lane-coordination status/issues; exit 1 under
-                        --strict enforcement.
-    lane-coordination-note
-                        Write (or dry-run) a per-lane coordination note with
-                        goal/branch/deps/blockers/PR fields.
-    graphify-status     Ensure graphify output is gitignored and report
-                        graphify status; exit 1 under --strict if issues.
-    graphify-install    Install Graphify CLI support without letting Graphify
-                        overwrite project adapter files.
-    context-rotation-check
-                        Decide whether to rotate context at a boundary from
-                        context percent; print action/urgency/handoff.
-    remote-main-status  Fetch the remote base branch and report local-vs-
-                        remote ahead/behind, dirty state, and path presence.
-    latest-code-status  Compute/report the latest-code baseline for the
-                        target, with recovery and strict drift gating.
-    log-event           Write an observability boundary event (human + JSONL)
-                        for the lane, skipping if events disabled.
     decision-record     Write a machine-local structured decision-ledger entry
                         (works with narration off).
-    fleet-lease         Claim/renew/release/takeover a cross-worktree working-
-                        set lease (Fleet Governor).
-    decisions-report    Read surface over the machine-local decision ledger:
-                        list decision records for one or more lanes (rotation-
-                        aware, retained rotations only).
-    autonomy-directive  Print the standing autonomy directive for this lane
-                        (--hook = hook-safe mode).
-    plan-substance-check
-                        Check a plan's substantive-content contract before
-                        spending a review round.
-    plan-authoring-standard
-                        Print the Tautline plan-authoring standard
-                        (parallel/tiered/autonomous plan shape).
     lane-status         Report lane currency (branch/upstream/version drift).
                         Report-only; never blocks.
-    test-run            Run the test command and record tautline-test-run/v1
-                        evidence of the execution.
+    builder-token       With --print, write the builder lane's GitHub token (a
+                        cached GitHub App installation token); with --status,
+                        prove its scope without printing it. One of the two is
+                        required -- there is no default, because the default
+                        would be a credential. Plain REST against
+                        api.github.com.
+    lane-role           Mark this checkout as a builder lane, return it to
+                        human, or report which marker decided the role. Writes
+                        .ai-work/lane-role; humans are never builders by
+                        default.
+    builder-env         Print the shell snippet a BUILDER lane evals to take
+                        on the builder role, token and guard shim. Prints
+                        only; a human never evals it. See docs/builder-
+                        lanes.md.
+    github-budget-status
+                        Report GitHub REST/GraphQL rate-limit budget, cache
+                        health, and (with --identity) this lane's identity.
+                        Plain REST, never Projects GraphQL. Always exits 0: an
+                        unreachable API is a printed finding, not a failure.
+    stakeholder-question
+                        Post (ask) or report (list) a tagged clarification
+                        question as a GitHub issue/PR comment. Plain REST, no
+                        project adapter. No board/label sync, no --strict, no
+                        answered write-back -- `list` infers open vs answered
+                        from later replies every time it runs, never stores
+                        the verdict.
+    decisions-report    Read surface over the decision ledger: filter by
+                        time/reversibility/text; table or --json (read-only).
     event-log-path      Print the human and JSONL event log paths plus the
                         event-tail command hint.
     event-tail          Print the last N lines of the lane's human-readable
                         event log.
-    event-viewer        Serve a localhost web UI to browse and live-refresh
-                        the lane's recent events.
-    event-audit         Audit recent events for missing required boundary
-                        events; exit non-zero on issues with --strict.
     event-rotate        Rotate the human and JSONL event logs when over size
                         (or always with --force).
-    usage-log-path      Print the usage JSONL log and rollup paths plus the
-                        usage-report command hint.
-    usage-record        Append one token/cost usage record for a
-                        provider/model/activity to the usage log and rollup.
-    usage-import-claude
-                        Import token usage from Claude JSONL transcript files,
-                        dedupe, and append new records.
-    usage-report        Summarize usage records since a window, grouped by
-                        product/day/etc., with token and cost totals.
-    usage-rotate        Rotate the usage JSONL log when over size (or always
-                        with --force) and rewrite the rollup.
-    iteration-review-status
-                        Print iteration-review config/readiness; block (exit 1
-                        with --strict) on issues like unset webhook.
-    iteration-review-renderer-setup
-                        Sync the iteration-review renderer kit into the user-
-                        state cache and install its npm dependencies.
-    validate-iteration-review
-                        Validate an iteration-review record file against the
-                        output contract and required fields.
-    generate-iteration-review-page
-                        Render the iteration-review HTML page from a record
-                        (print or --write under recordDir).
-    publish-iteration-review
-                        Upload the iteration-review record/page to hosting and
-                        post the Google Chat delivery card.
-    emit-iteration-review-workflow
-                        Emit a GitHub Actions workflow that publishes the
-                        iteration review after merge (print or --write).
-    iteration-review-delivery-check
-                        Verify the iteration-review delivery marker matches
-                        and required outputs/reasons are satisfied.
-    milestone-update-status
-                        Print milestone-update config/readiness; block (exit 1
-                        with --strict) on issues.
-    publish-milestone-update
-                        Validate milestone-update content and post it to
-                        Google Chat, deduping via a delivery marker.
-    publish-product-note
-                        Validate a product note (title + body) and post it to
-                        the product Google Chat space.
-    deploy-health       Check configured deployment workflow run history for
-                        failed or stale deploys.
-    deployment-notification-status
-                        Print deployment-notification config/readiness; block
-                        (exit 1 with --strict) on issues.
-    deployment-notification-pipeline-snippet
-                        Print a CI deploy-pipeline snippet that calls publish-
-                        deploy-ready-update after health checks.
-    publish-deploy-ready-update
-                        Validate and post a deploy-ready Google Chat update
-                        for an environment/URL, deduping via marker.
-    lane-run            Run a command in the lane env (writes lane env file,
-                        applies Codex fast-mode), returning its exit code.
-    codex-run           Run a Codex wrapper command, enforcing the
-                        implementation-review round budget for the risk tier.
-    claude-review       Run an evidence-packet Claude Stage 2 review with
-                        Claude tool use disabled.
-    claude-review-status
-                        Summarize recent Claude review artifacts and local
-                        Claude CLI availability.
-    record-stage1-sweep
-                        Record a Stage 1 implementation-review sweep manifest
-                        after enforcing derived-artifact freshness.
-    review-evidence-check
-                        Verify the outgoing diff has matching tracked Stage 2
-                        review evidence; --strict blocks on failure.
-    finalize-implementation-review
-                        Record verdict and unresolved Critical/P1 counts into
-                        the review manifest; mark push-eligible or blocked.
-    branch-liveness-check
-                        Check the current branch's GitHub PRs; block when no
-                        active/open PR exists for a non-base branch.
-    done-check          Report the definition of done against this lane,
-                        condition by condition (pass/fail/unknown/skipped).
-                        Exits 1 only on a fail; unknown never blocks.
-    work-profile-check  Classify the current diff for the active work profile;
-                        non-dev profiles allow docs/assets only.
-    diff-coverage-check
-                        Block a change whose NEW lines are exercised below
-                        coverageFloor.newCodeMinPct (diff-scoped, rec #7 Part
-                        2).
-    flaky-quarantine-check
-                        Block a diff that adds a flaky/skip/xfail marker
-                        without owner+due, or exceeds the marker ratchet (rec
-                        #14).
-    red-green-check     Mutate one symbol of a source file and require the
-                        test command to catch it -- proves the tests
-                        discriminate (rec #8).
-    prepare-continuity  Write a continuity handoff file from stdin/--content-
-                        file and record a continuity_written event.
-    prepare-session-journal
-                        Write and validate a timestamped session-journal
-                        markdown file under the lane runs dir.
-    prepare-instrumentation-record
-                        Write and validate the current-window sanitized
-                        instrumentation preview (single overwritten file)
-                        under the lane's .ai-runs/instrumentation/.
-    publish-instrumentation-record
-                        Recompute the sanitized instrumentation record from
-                        the local event log and publish it to the constant
-                        telemetry archive branch via the hardened push path
-                        (gated on instrumentation.enabled).
-    blocker-declare     Declare a fresh true blocker record for the active
-                        lane/goal.
-    blocker-clear       Clear the lane-local true blocker record.
-    blocker-status      Report the lane-local true blocker record and
-                        freshness.
-    guard-check         Run runtime-agnostic state guard checks at status,
-                        manual, or pre-push boundaries.
-    goal-start          Initialize or refresh the goal run ledger from a goal
-                        plan and sync the tracker.
-    goal-status         Print the goal run ledger state and report any goal-
-                        tracker drift issues.
-    goal-advance        Apply a goal/milestone transition event
-                        (start/complete/defer/block/goal-complete) to the
-                        ledger.
-    ac-verify           Print the AC pass/fail table skeleton for a backlog
-                        item from its written criteria.
-    ui-evidence-submit  Post a Playwright UI evidence manifest to a tracked
-                        GitHub issue/work item.
-    goal-next           Recompute and print the goal ledger's next action and
-                        percent-complete.
-    goal-condition      Print the goal completion condition and proof commands
-                        for the active goal.
-    goal-assignment     Emit the assignable goal for a finalized plan, hard-
-                        capped at the host's character limit; --check
-                        validates an already-authored goal instead.
-    goal-kickoff-prompt
-                        Emit the right goal kickoff prompt (active goal / next
-                        candidate / no adapter) for session startup.
-    goal-tracker-status
-                        Print GitHub Projects goal-tracker config and validate
-                        auth/field mapping; block on issues.
-    goal-tracker-next   Select and print the next ready GitHub Project goal
-                        item within scope; suggest sync.
-    goal-tracker-sync   Render a repo goal plan from a GitHub Project item,
-                        optionally writing it with --write.
-    goal-tracker-update
-                        Set a GitHub Project item's status field to an
-                        adapter-approved value via gh.
-    backlog-provider-status
-                        Print backlog provider (GitHub Projects) config and
-                        validate auth/field mapping; block on issues.
-    backlog-provider-board-check
-                        (internal) Board-currency gate for pre-
-                        push/boundaries; block on board drift, warn on
-                        provider-unavailable.
-    backlog-provider-closeout-check
-                        (internal) Post-merge closeout gate; block until every
-                        issue the merged PR closes is in a done status.
-    backlog-provider-active-check
-                        (internal) Early active-status gate for current board-
-                        backed work; block when active work is not in an
-                        active status.
-    ci-health-check     Verify CI actually runs the repo's tests on every
-                        PR/push; block when enforcement is block or --strict.
-    merge               Verify the PR's live checks, then merge. Refuses a red
-                        PR when mergeGate.enforcement=block.
-    backlog-provider-next
-                        Select and print the next ready GitHub Project item
-                        (optionally by type) within scope; suggest sync.
-    backlog-provider-sync
-                        Render a repo source-of-truth plan from a GitHub
-                        Project item, optionally writing it with --write.
-    backlog-provider-update
-                        Update a GitHub Project item's status (delegates to
-                        goal-tracker-update).
-    backlog-provider-migration-interview
-                        Generate a migration-interview doc of backlog
-                        candidates for human review; only export-marked items
-                        ship.
-    backlog-provider-export
-                        Export a customer-facing repo backlog item to the
-                        GitHub Projects board, enforcing justification rules.
-    backlog-board-examine
-                        (operator) Read board schema, print
-                        profile/assumptions/unknowns, and show proposed
-                        adapter diff; never writes.
-    backlog-board-adopt
-                        (operator) Apply board-aligned backlogProvider to the
-                        project adapter; requires --apply and all unknowns
-                        answered.
-    stakeholder-question-ask
-                        Post a labeled clarification question to a GitHub
-                        issue, tagging the stakeholder, and mark it open.
-    stakeholder-question-status
-                        List/sync open stakeholder questions on issues,
-                        counting open vs answered; --strict blocks while
-                        waiting.
-    milestone-start     Initialize or refresh the milestone ledger run from a
-                        plan and mark it active for the lane.
-    milestone-status    Load and print the current milestone ledger run for
-                        the lane.
-    milestone-advance   Record a milestone transition (startup, pr-
-                        queued/merged/abandoned, item-complete/blocked) in the
-                        ledger.
-    milestone-next      Recompute and print the milestone ledger's next action
-                        and percent-complete.
-    milestone-watchdog  Print recovery-visibility milestone diagnostics
-                        (current/blocked/queued items, pending journals).
-    work-loop           Emit the milestone next-action run record, or with
-                        --dry-run plan the execution packet's tactical queue.
-    run-plan-review     Run the Codex plan-review wrapper against a source-of-
-                        truth plan and write the timestamped review log.
-    codex-plan-review   Adapter-safe wrapper that binds --plan into a native
-                        Codex review prompt.
-    finalize-plan-review
-                        Classify an existing review log and record the trusted
-                        plan-review verdict into the manifest.
-    record-plan-review  Validate a Codex review log/findings against the plan
-                        and record the cross-model review in the manifest.
-    plan-finalization-precheck
-                        Check whether a plan passes finalization gates (review
-                        manifest, verdict) and print pass/repair pointer.
-    plan-finalization-hook
-                        (internal) ExitPlanMode hook: block plan exit unless
-                        the source-of-truth plan passes finalization precheck.
-    plan-review-pending-hook
-                        (internal) PreToolUse hook: block edits to a reviewed
-                        source-of-truth plan while a successful plan-review
-                        run awaits finalize-plan-review.
-    fleet-guard-hook    (internal) PreToolUse hook: block/advise/observe edits
-                        to paths leased by another fleet lane (Fleet
-                        Governor).
-    branch-liveness-hook
-                        (internal) Task-tool hook: block dispatching subagents
-                        unless the branch passes strict branch-liveness.
-    response-guard-hook
-                        (internal) Stop hook: block the stop when the final
-                        message violates response-guard rules.
-    stop-guard-aggregate
-                        Measure the AGGREGATE stop-blocking rate over the
-                        frozen corpus and compare it with the committed
-                        baseline (RCA program wave-3 false-positive budget).
-    question-guard-hook
-                        (internal) PreToolUse hook: deny an AskUserQuestion
-                        carrying a continue-vs-stop direction menu while a
-                        goal is unmet.
-    background-command-hook
-                        (internal) Bash hook: block fake shell monitor loops
-                        and point to background-run/monitor-status.
-    latest-code-hook    (internal) PreToolUse hook: auto-refresh or block
-                        tools until the latest-code baseline is fresh.
-    context-rotation-heartbeat-hook
-                        (internal) PostToolUse hook: inject a periodic
-                        context-rotation/compaction heartbeat during goal
-                        work.
-    tool-rejection-hook
-                        (internal) Hook: on a rejected/denied tool call,
-                        inject context forcing the next reply to acknowledge
-                        it.
-    install-hooks       Install methodology Claude settings hooks (plan-
-                        finalization, branch-liveness, response-guard, etc.).
-    response-guard      (internal) Scan response text from --stdin/--content-
-                        file and exit nonzero if it violates guard rules.
-    validate-rca-artifact
-                        Validate an RCA artifact file and exit nonzero on
-                        schema/content errors.
-    validate-feature-request-artifact
-                        Validate a methodology feature-request artifact file
-                        and exit nonzero on schema/content errors.
-    validate-grooming   Check backlog epic/feature items against the grooming
-                        Definition of Ready (read-only board scan).
-    validate-session-journal
-                        Validate a session journal file and exit nonzero on
-                        schema/content errors.
-    validate-instrumentation-record
-                        Validate a tautline-instrumentation/v1 record file and
-                        exit nonzero on parse/schema errors.
-    publish-rca-artifact
-                        Validate an RCA artifact, copy it into the methodology
-                        archive, and stage or commit/push to the RCA branch.
-    publish-feature-request-artifact
-                        Validate a methodology feature request, copy it into
-                        the archive, and stage or commit/push to the feature-
-                        request branch.
-    publish-session-journal
-                        DEPRECATED/DISABLED (0.9.0, removal >=1.0.0):
-                        narrative session journals can no longer be published
-                        to any remote in any mode; they stay LOCAL evidence
-                        (prepare-session-journal + validate-session-journal).
-                        Run publish-instrumentation-record for sanitized
-                        upstream signal.
-    publish-pending-session-journals
-                        DEPRECATED/DISABLED (0.9.0, removal >=1.0.0): pending
-                        narrative journals stay LOCAL; there is no remote
-                        publication path. Run publish-instrumentation-record
-                        for sanitized upstream signal.
+    inbox               Pending operator decisions, explicit answers, and
+                        resume acknowledgements.
+    slim                Migrate an adapted project to the lean profile:
+                        archive its process artifacts, remove the framework's
+                        hooks, rewrite its config to lean-1, and render the
+                        thin adapter. Never deletes; --dry-run shows the plan.
+    backlog             Read and move this project's backlog:
+                        list|add|take|done, against the provider its config
+                        names (local queue file, GitHub issues, or Jira).
+                        Nothing syncs.
+    board               Read the product board (GitHub Projects):
+                        list|show|fields. Read-only -- there is no verb here
+                        that moves a card, because the board's order is the
+                        director's statement.
+    issue               Read and comment on the board repo's issues:
+                        show|comments|find|comment. The only writes are
+                        comments -- never a label, a state or an assignee.
+    debt                File technical debt as a labelled issue -- and NOTHING
+                        else: no assignee, no milestone, and never on the
+                        product board.
+    doctor              Four advisory checks -- branch-liveness, framework-
+                        staleness, skip-lint, and --watch'd monitor-liveness:
+                        each prints OK, FINDING, or UNKNOWN(reason). Always
+                        exits 0; a finding is reported, never enforced.
+    red-green-check     Mutate one symbol of --file and run --test-command
+                        against it: report killed/survived/inconclusive. The
+                        file is always restored. Report-only -- always exits
+                        0.
+    init                Interactive setup interview (<=8 questions; every
+                        question also has a flag) that writes a lean
+                        .tautline.json, validates it, and renders
+                        CLAUDE.md/AGENTS.md. Refuses to overwrite an existing
+                        config without --force.
+    builder-guard       Keep BUILD AGENTS off GitHub issues and the project
+                        board except through `tautline board|issue|debt`. A
+                        no-op for humans: it engages only when
+                        builder_role_active() says builder, and the default is
+                        human.
+    work                Declare work and see peers across local Git worktrees
+                        (advisory).
+    evidence            Record an explicit command once or inspect its
+                        receipt. No gates.
+    health              Advisory integration and CI snapshot; local unless
+                        --remote is given.
 
 options:
   -h, --help            show this help message and exit

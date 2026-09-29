@@ -3,7 +3,7 @@
     "name": "Minervit",
     "url": "https://github.com/tautlines"
   },
-  "description": "Tautline delivery operations skills for iteration reviews, milestone updates, runtime evidence, session journals, usage accounting, and migration repair.",
+  "description": "Optional database migration collision skill with iteration-review renderer and page assets.",
   "homepage": "https://github.com/tautlines/tautline",
   "interface": {
     "brandColor": "#2563EB",
@@ -13,30 +13,26 @@
     ],
     "category": "Productivity",
     "defaultPrompt": [
-      "Prepare an iteration review from a delivered goal.",
-      "Publish a milestone update through the configured delivery channel.",
-      "Prepare or publish a session journal.",
-      "Record or report local usage evidence.",
       "Resolve a database migration collision."
     ],
     "developerName": "Minervit",
     "displayName": "Tautline Delivery Ops",
-    "longDescription": "Packages Minervit's optional delivery operations workflows separately from the reusable methodology core. Use it for adapter-enabled iteration reviews, milestone updates, product delivery communications, runtime event evidence, session journals, usage accounting, and database migration collision repair.",
+    "longDescription": "A focused skill for resolving database migration collisions during parallel development. The repository also includes iteration-review renderer and page assets; automatic recap publishing, milestone messaging, journals, and usage collection are not included.",
     "privacyPolicyURL": "https://github.com/tautlines/tautline/blob/main/PRIVACY.md",
-    "shortDescription": "Optional delivery ops workflows for Tautline methodology lanes.",
+    "shortDescription": "Database migration collision repair for parallel work.",
     "termsOfServiceURL": "https://github.com/tautlines/tautline/blob/main/TERMS.md",
     "websiteURL": "https://github.com/tautlines/tautline"
   },
   "keywords": [
     "ai-delivery",
-    "delivery-ops",
-    "review",
-    "codex",
-    "claude"
+    "database-migrations",
+    "coordination",
+    "claude",
+    "codex"
   ],
   "license": "MIT",
   "name": "tautline-ops",
   "repository": "https://github.com/tautlines/tautline",
   "skills": "./skills/",
-  "version": "0.111.0"
+  "version": "0.148.0"
 }

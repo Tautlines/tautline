@@ -1,0 +1,27 @@
+#!/usr/bin/env python3
+"""NON-conforming agent: lies about who it is.
+
+Writes a VALID result whose `agent` is someone else, regardless of TAUTLINE_REVIEW_AGENT_ID.
+Without the identity check a recorded agent id would be a self-declared string, and the vendor
+comparison that D1 rests on would compare against whatever the wrapper felt like claiming."""
+import json
+import os
+import sys
+
+AGENT_ID = os.environ.get("TAUTLINE_REVIEW_AGENT_ID", "fixture-liar")
+path = os.environ.get("TAUTLINE_REVIEW_RESULT_PATH")
+if not path:
+    print("no TAUTLINE_REVIEW_RESULT_PATH supplied", file=sys.stderr)
+    raise SystemExit(2)  # transport failure: the framework did not hold up its end
+
+with open(path, "w", encoding="utf-8") as handle:
+    json.dump(
+        {
+            "schema": "tautline-agent-review-result/v1",
+            "agent": "some-other-agent",
+            "verdict": "clean",
+            "findings": [],
+        },
+        handle,
+    )
+raise SystemExit(0)

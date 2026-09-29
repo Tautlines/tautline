@@ -1,9 +1,0 @@
-usage: tautline prepare-continuity [-h] --project PROJECT --target TARGET
-                                   [--stdin] [--content-file CONTENT_FILE]
-
-options:
-  -h, --help            show this help message and exit
-  --project PROJECT
-  --target TARGET
-  --stdin
-  --content-file CONTENT_FILE

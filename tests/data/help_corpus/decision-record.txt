@@ -3,8 +3,8 @@ usage: tautline decision-record [-h] [--project PROJECT] [--target TARGET]
                                 [--alternatives ALTERNATIVES]
                                 [--reversibility {reversible,hard-to-reverse}]
                                 [--surface SURFACE] [--next NEXT]
-                                [--goal GOAL] [--milestone MILESTONE]
-                                [--pr PR]
+                                [--awaiting-operator] [--goal GOAL]
+                                [--milestone MILESTONE] [--pr PR]
 
 options:
   -h, --help            show this help message and exit
@@ -18,6 +18,9 @@ options:
   --reversibility {reversible,hard-to-reverse}
   --surface SURFACE     A surface this decision touches; repeatable.
   --next NEXT           Next action after the decision.
+  --awaiting-operator   Mark this decision as explicitly awaiting an operator
+                        answer -- the authoritative signal `tautline inbox`
+                        reads, independent of how --next is phrased.
   --goal GOAL
   --milestone MILESTONE
   --pr PR

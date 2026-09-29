@@ -1,10 +1,8 @@
 # AI Contribution Policy
 
-This project exists because AI coding agents need enforcement: guardrails plus a test-backed
-self-correction loop that make agents finish work, report status honestly, and ship through
-real gates. We build that discipline into our own agents every day. We ask contributors to
-hold their agents to the same bar — **we enforce discipline on our own agents; we ask the
-same of yours.**
+Tautline helps capable AI agents coordinate useful work and deliver it quickly. Shared intent,
+continuity, and inspectable results should save contributors time. The product does not require
+planning rounds, review ledgers, or routine approval gates.
 
 AI-assisted pull requests are welcome. Agent-authored contributions are expected here, not
 tolerated. What matters is not whether an agent wrote the diff, but whether a human stands
@@ -50,11 +48,9 @@ it was produced.
 
 ## Why this exists
 
-An agent that can generate a plausible-looking diff in seconds can also generate ten
-plausible-looking diffs in seconds. Review time is the scarce resource in any open-source
-project, and this project's entire reason for existing is teaching agents (and the humans who
-run them) to respect that constraint. We apply the same standard to contributions that we
-build into the tool itself.
+Useful contributions include enough context and validation for a maintainer to assess them
+quickly. We value clear behavior, focused changes, and meaningful tests. Apply judgment to the
+work; additional process must earn its cost in time saved.
 
 If you're unsure whether your change clears this bar, open an issue first and ask. See
 [`CONTRIBUTING.md`](../CONTRIBUTING.md) and [`GOVERNANCE.md`](../GOVERNANCE.md) for the rest

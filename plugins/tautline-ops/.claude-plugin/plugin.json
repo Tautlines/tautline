@@ -2,8 +2,8 @@
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "tautline-ops",
   "displayName": "Tautline Delivery Ops",
-  "version": "0.111.0",
-  "description": "Claude Code package for Tautline delivery operations, communications, journals, and media workflows.",
+  "version": "0.148.0",
+  "description": "Claude Code package for database migration collision repair, with iteration-review rendering assets.",
   "author": {
     "name": "Minervit",
     "url": "https://github.com/tautlines"
@@ -13,10 +13,10 @@
   "license": "MIT",
   "keywords": [
     "ai-delivery",
-    "delivery-ops",
-    "iteration-review",
-    "journals",
-    "claude"
+    "database-migrations",
+    "coordination",
+    "claude",
+    "codex"
   ],
   "skills": "./skills/"
 }

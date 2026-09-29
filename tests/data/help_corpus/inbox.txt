@@ -1,0 +1,20 @@
+usage: tautline inbox [-h] [--target TARGET] [--json]
+                      [--answer ID | --answers | --ack ID] [--text TEXT]
+
+Lists decision-ledger entries recorded as PENDING an operator answer, across
+one or more repos, newest first. PENDING is two signals, checked in this
+order: (1) authoritative -- `decision-record --awaiting-operator` set an
+explicit flag on the record; (2) fallback, legacy rows only -- --next contains
+"awaiting" (case-insensitive substring, not a fuzzy classifier). Answers stay
+visible to the source lane until --ack after incorporation. Answer text is
+never executed.
+
+options:
+  -h, --help       show this help message and exit
+  --target TARGET  Repo root to include; repeatable (default `.`). Same-repo
+                   worktrees share one event log.
+  --json           Emit one tautline-inbox/v1 envelope instead of a table.
+  --answer ID      Answer a pending decision by its printed id.
+  --answers        Read unacknowledged answers for the target lane(s).
+  --ack ID         Acknowledge an answer after incorporating it.
+  --text TEXT      The answer text (with --answer). Never executed.

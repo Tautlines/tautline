@@ -45,17 +45,3 @@ def test_marketplace_manifest_version_is_locked():
         "when they run `/plugin marketplace add tautlines/tautline`, so it must be "
         "bumped with the release"
     )
-
-
-def test_lane_session_plugin_version_contracts_remain_pinned(cli):
-    # Post the package-split flip (roadmap #11): the engine lives in cli.py; bin/tautline is a shim.
-    cli_source = (ROOT / "src" / "tautline_methodology" / "cli.py").read_text(encoding="utf-8")
-
-    assert "lane_session_plugin_version_at_start" in cli_source
-    assert "plugin_version_drift" in cli_source
-    assert cli.version_tuple("0.6.73") < cli.version_tuple(
-        cli.STAGE1_SWEEP_REQUIREMENT_PLUGIN_VERSION
-    ), "pre-requirement manifest version must order below the requirement"
-    assert cli.version_tuple(cli.plugin_version()) >= cli.version_tuple(
-        cli.STAGE1_SWEEP_REQUIREMENT_PLUGIN_VERSION
-    ), "current plugin must be at/after the stage1-sweep requirement"

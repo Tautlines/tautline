@@ -1,9 +1,0 @@
-## Context Rotation
-
-- Context rotation is routine maintenance, not a permission checkpoint. Default policy uses soft threshold `60%`, hard threshold `75%`, and a `15m` long-goal heartbeat; managed Claude startup sets `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=85`. Do not force half-context compaction.
-- At PR queued/completed, milestone, goal, summary, handoff-for-review, or long `/goal` heartbeat boundaries, check visible context pressure. At/above soft threshold, refresh continuity, update ledgers, handle journals, compact/restart through the strongest host-supported path, and resume; do not describe context exhaustion as the reason to stop working.
-- A mandatory rotation triggers only on a real host-exposed (measured) context percentage. A self-asserted or estimated context percentage is advisory only and is never a mandatory-rotation trigger or a stop, defer, or handoff reason.
-- Do not rotate mid-edit, on an unsafe branch, before required review/preflight for the current PR tip, or while a monitor needs active recovery. If the host cannot compact/restart from the current turn, write continuity/local evidence and state the exact fresh-session startup action; do not use fallback wording such as `only you can trigger /compact`.
-- If rotation coincides with credential, seeded-account, TOTP, served-origin, or live-verification friction, run adapter-declared discovery first. If unavailable, state one exact setup blocker or action.
-- After rotation, the next session runs lane startup, methodology status, pending journal publication, then `goal-condition` or `goal-next`; it continues the active goal without asking whether to resume.
-- `context-rotation-check --target . --boundary <boundary> --context-percent <percent> --context-percent-source estimate` records estimated pressure. An estimated percent can recommend rotation but never make it mandatory. Details live in context-continuity and goal-execution references.

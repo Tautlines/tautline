@@ -1,0 +1,15 @@
+usage: tautline backlog [-h] [--target TARGET] [--body BODY]
+                        {list,add,take,done} [item]
+
+positional arguments:
+  {list,add,take,done}  list: the open queue, top first. add: file a new item
+                        (give it a title). take: mark an item in progress (no
+                        id takes the top). done: close an item.
+  item                  The title for `add`; the item id for `take` and
+                        `done`. `take` with no id takes the top of the queue.
+
+options:
+  -h, --help            show this help message and exit
+  --target TARGET
+  --body BODY           The one-page spec for `add`. Everything else about the
+                        item is its title.

@@ -1,0 +1,8 @@
+usage: tautline health [-h] [--target TARGET] [--remote] [--json]
+
+options:
+  -h, --help       show this help message and exit
+  --target TARGET
+  --remote         Query live GitHub integration and exact-commit CI (bounded
+                   calls).
+  --json

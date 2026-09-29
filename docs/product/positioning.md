@@ -1,38 +1,48 @@
-# Positioning
+# Product direction
 
-**Tautline** — the governor for AI coding agents — is an **agent-enforcement engine** for the solo builder and the small AI team: it makes AI coding agents *finish*, *tell the truth about status*, and *ship only through your gates*.
+**Tautline helps capable AI agents work together without slowing them down.** It is for
+builders who want to put several agents on a product and still understand who is doing what,
+what has been checked, and which decisions need attention.
 
-## The three-layer authority model
+The product's value is coordination, continuity, and useful evidence. A work manifest should
+save another agent from duplicating work. A handoff should make a restart cheap. An inbox
+answer should reach the agent that needs it. Measure these features by the effort they save.
 
-Every decision the engine makes resolves through one deliberate hierarchy. This is the product's spine, not an implementation detail.
+## The working model
 
-1. **Canonical policy** — `methodology/policy/*.md` is the reusable process source, assembled into `methodology/canonical-rules.md` as a generated compatibility artifact. It is a *replaceable default ruleset*, not vendor law.
-2. **Adapter choices** — your `adapter.json` (e.g. the `example-saas` adapter) makes the project-specific calls: which gates, which providers, which budgets, which runtime targets.
-3. **Tool behavior** — guards, hooks, and CLI subcommands enforce layers 1–2 at the point of action. Memory and audit notes are *evidence only* and never override the layers above.
+- Keep project instructions small. The lean canonical rules and `.tautline.json` render the
+  instructions each runtime reads; project-specific choices belong in the project config.
+- Let agents publish their scope and check peer work at startup and work boundaries. Local
+  sibling worktrees share those declarations without coordination commits or remote calls.
+- Record the tests already being run. Show their code identity and freshness instead of
+  adding another test run or turning a receipt into permission to continue.
+- Collect operator questions and persist answers until consumed. Resume through a short
+  handoff when useful.
+- Use the project's tests and CI for verification. Tautline's development process has one
+  adversarial review before merge, not an accumulating sequence of approval rounds.
 
-Conflicts resolve top-down: canonical wins for reusable process, the adapter wins for project-specific gates, generated files win over stale hand-written docs. One source of truth, three surfaces, no drift.
+## Current boundaries
 
-## What the engine does
+Coordination is local to worktrees sharing a Git common directory. It is advisory: overlapping,
+stale, or blocked work remains visible but does not lock edits or reserve a backlog item.
+Remote fleet synchronization and a hosted dashboard are future work.
 
-The differentiated core is a **test-backed self-correction loop** wrapped around a **guard-contract pattern**:
+Evidence is a record of a command and its result. Health reports separate local observations
+from explicitly requested remote facts. Neither should imply successful deployment,
+acceptance, or human approval that was not observed.
 
-- **Guardrails** block an agent from yielding control, claiming false completion, or skipping a gate.
-- **Self-correction loop** routes a blocked agent back through its own gates until the work is actually done — backed by the `scripts/test.sh` behavior-test suite (ruff + mypy + pytest) and a same-day RCA→fix cadence that hardens the rules from real failures.
-- **Guard-contract pattern** keeps every tool-blocking guard fail-closed with an always-runnable in-band escape, so enforcement never strands the agent.
+Claude Code's startup hook reports context. Its separate builder hook can restrict selected
+GitHub actions for a configured builder lane; GitHub App permissions provide the server-side
+boundary. Codex receives instructions and CLI access, not Claude's hook enforcement. See
+[builder lanes](../builder-lanes.md).
 
-A **render and delivery pipeline** (iteration-review media + publish) is the second surface — the part that is hardest to self-host and the natural commercial edge.
+## What stays out
 
-## Honest enforcement tiers
+Mandatory planning rounds, review-round accounting, completion-claim blocking, compulsory
+journals, and duplicate backlog mirrors are not the product direction. A new blocking control
+needs a concrete defect to prevent and evidence that it saves more time than it costs.
+Coordination utilities earn their place through easier teamwork, not through refusing actions.
 
-Enforcement is not uniform across runtimes, and we say so:
-
-- **Tier A — Claude:** blocking, in-session hooks. The agent is stopped at the moment of the violation.
-- **Tier B — any runtime (incl. Codex):** advisory in-session, with the real teeth at **ship time** — pre-push and CI gates that bind regardless of runtime.
-
-If you run outside Claude, you get ship-time gates, not live blocking. That is the honest line, and it is why the gates live at the boundary you actually control: your repo.
-
-## Who it's for
-
-The **solo-to-small-AI-team builder** running coding agents against a real codebase, who needs the agent to ship through their gates without babysitting. Enterprise multi-tenancy is a named future architecture, not a v1 claim.
-
-> *See the product roadmap and public-release readiness plans for the full thesis and sequencing.*
+The [roadmap](../../ROADMAP.md) separates the working foundation from proposed additions.
+No speed multiplier, cost saving, autonomy score, or hosted-service SLA is claimed without
+supporting measurements.

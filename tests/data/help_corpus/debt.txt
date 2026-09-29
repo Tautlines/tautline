@@ -1,0 +1,17 @@
+usage: tautline debt [-h] [--target TARGET] [--title TITLE] [--body BODY]
+                     [--body-file BODY_FILE] [--refs N] [--json]
+                     {file}
+
+positional arguments:
+  {file}                file: create one debt issue.
+
+options:
+  -h, --help            show this help message and exit
+  --target TARGET
+  --title TITLE         One line naming the debt.
+  --body BODY           The finding.
+  --body-file BODY_FILE
+                        A file holding the finding.
+  --refs N              An issue this debt came out of (repeatable); rendered
+                        as `Refs #N`.
+  --json                Emit a stable JSON envelope.

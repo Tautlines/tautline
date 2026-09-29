@@ -71,9 +71,15 @@ def test_every_registered_artifact_exists():
 
 
 def test_the_registry_is_not_vacuous():
-    """A rewrite that returns an empty set would make both assertions above pass silently."""
+    """A rewrite that returns an empty set would make both assertions above pass silently.
+
+    The floor moved from 30 to 20 in the 2026-08-28 process-bankruptcy demolition, which deleted 29
+    of the shipped modules outright. The number is a NON-VACUITY floor, not a target: its only job
+    is to fail if the discovery ever collapses to nothing, so it tracks the real module count from
+    below rather than pinning it.
+    """
     registered = _registered_paths()
-    assert len(registered) >= 30
+    assert len(registered) >= 20
     assert "bin/tautline" in registered
     assert "src/tautline_methodology/cli.py" in registered
-    assert len(_shipped_modules()) >= 30
+    assert len(_shipped_modules()) >= 20

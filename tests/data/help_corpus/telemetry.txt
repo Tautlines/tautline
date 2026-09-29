@@ -1,6 +1,0 @@
-usage: tautline telemetry [-h] [--show] [--clear]
-
-options:
-  -h, --help  show this help message and exit
-  --show      Show recorded gate events (default).
-  --clear     Delete the local telemetry log.

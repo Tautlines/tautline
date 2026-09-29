@@ -1,0 +1,815 @@
+{
+  "$schema": "https://raw.githubusercontent.com/tautlines/tautline-dev/main/methodology/adapter-schema.json",
+  "_framework": {
+    "channel": "stable",
+    "migrationPolicy": "dry-run",
+    "updatePolicy": "manual",
+    "version": ""
+  },
+  "_generated": {
+    "doNotEdit": true,
+    "methodologyCommit": "self-referential-methodology-repo",
+    "pluginVersion": "0.145.0",
+    "regenerate": "tautline render-adapters --project .tautline/adapter.json --target <project> --write --json-only",
+    "source": "Minervit AI Delivery Methodology",
+    "sourceAdapter": ".tautline/adapter.json",
+    "sourceAdapterSha256": "b03522ddea83d934ae9ac3d04fca98765438d7199404066f1cbb1acb6a0a6aab"
+  },
+  "backlogAdapter": "Framework methodology backlog and RCA work live in docs/backlog/, docs/superpowers/plans/, docs/superpowers/specs/, GitHub issues, and release PRs. Critical/P1 process regressions must be fixed before release; lower-severity findings need explicit deferral evidence.",
+  "backlogProvider": {
+    "activeStatuses": [
+      "In Progress"
+    ],
+    "allowRepoOnlyGoals": true,
+    "apiTokenEnv": "",
+    "authoritativeFor": [
+      "goal-priority",
+      "milestone-order",
+      "goal-status",
+      "bug-status",
+      "task-priority"
+    ],
+    "blockedStatuses": [
+      "Blocked"
+    ],
+    "boardId": "",
+    "completionUnit": "goal",
+    "doneEvidence": {
+      "acTable": "warn"
+    },
+    "doneStatuses": [
+      "Done"
+    ],
+    "emailEnv": "",
+    "enabled": false,
+    "exportMode": "interview-approved",
+    "featureSeries": {},
+    "itemTypes": [
+      "goal",
+      "milestone",
+      "bug",
+      "task"
+    ],
+    "linkPolicy": "external backlog item links to reviewed repo source-of-truth plan before execution",
+    "migrationInterviewPath": ".ai-work/BACKLOG_PROVIDER_MIGRATION.md",
+    "milestoneField": "",
+    "owner": "",
+    "planRepo": "../tautline-backlog",
+    "priorityField": "",
+    "projectKey": "",
+    "projectNumber": 0,
+    "provider": "github-projects",
+    "readyStatuses": [
+      "Ready",
+      "Next"
+    ],
+    "repoPlanRequired": true,
+    "scopeQuery": "",
+    "siteUrl": "",
+    "statusField": "Status",
+    "syncMode": "read-select-write-status-links-notes",
+    "tacticalPlanningAuthority": "repo",
+    "typeField": "",
+    "workOrder": "board"
+  },
+  "behaviorSpecs": {
+    "acceptanceHarnesses": [],
+    "exemption": "BEHAVIOR-SPEC-EXEMPT: <reason>",
+    "inactiveAcceptanceEnforcement": "warn",
+    "maxPendingScenarios": 0,
+    "paths": [],
+    "pendingRequiresOwnerAndTrigger": true,
+    "pendingTags": [
+      "@pending"
+    ],
+    "required": false,
+    "roleVocabulary": {
+      "allowed": [],
+      "forbidden": []
+    },
+    "sourceMaterialRule": "If reviewed external/customer/business behavior specs are provided, review and adapt them before authoring new scenarios; preserve business intent and document deviations.",
+    "sourceMaterials": []
+  },
+  "bootstrapEvidence": {
+    "project": "Minervit AI Delivery Methodology",
+    "repoEvidence": [
+      {
+        "fact": "Handwritten Codex bootstrap declares this repository as the canonical source for the reusable AI delivery process and points agents to methodology/canonical-rules.md.",
+        "path": "AGENTS.md"
+      },
+      {
+        "fact": "Handwritten Claude bootstrap mirrors the canonical methodology authority and must not be overwritten by generated adapter markdown.",
+        "path": "CLAUDE.md"
+      },
+      {
+        "fact": "Primary pytest-based framework regression gate.",
+        "path": "scripts/test.sh"
+      },
+      {
+        "fact": "Legacy/static validation gate still required before release while coverage migrates into pytest.",
+        "path": "scripts/validate.sh"
+      }
+    ],
+    "status": "repo-evident",
+    "summary": "Canonical methodology/framework repository. Repo evidence defines the public harness, local validation gates, release metadata, generated adapter contract, and handwritten bootstrap files used by Codex and Claude in this repository."
+  },
+  "bugBacklog": {
+    "autoP0Categories": [],
+    "autoP1Categories": [
+      "auth",
+      "email",
+      "tenant data",
+      "security",
+      "deploy",
+      "billing",
+      "data loss",
+      "customer-blocking"
+    ],
+    "issueMirrors": [],
+    "requiredFields": [
+      "observed behavior",
+      "expected behavior",
+      "impact",
+      "source files or evidence",
+      "recommended fix",
+      "test plan"
+    ],
+    "rule": "Framework regressions need durable RCA/backlog evidence when they affect clients, release safety, status/board tracking, reviews, tests, updates, or public-boundary hygiene.",
+    "severityTaxonomy": "Critical/P1 process regressions can brick lanes, bypass guardrails, corrupt release/update behavior, or expose private data; fix before release. P2/P3/Nit findings may be deferred with explicit evidence.",
+    "sourceOfTruth": "docs/backlog/, docs/superpowers/specs/, and GitHub issues/PRs for framework regressions and methodology RCAs."
+  },
+  "ciTestGate": {
+    "enabled": true,
+    "enforcement": "block",
+    "events": [
+      "pull_request",
+      "push"
+    ],
+    "expectTests": true,
+    "requiredCheckName": "",
+    "requiredWorkflow": "",
+    "testCommandMarkers": []
+  },
+  "commands": {
+    "branchLivenessCheck": "minervit-methodology branch-liveness-check --target . --strict",
+    "earlyWarningSmoke": "scripts/test.sh",
+    "fastPreflight": "scripts/test.sh",
+    "fullPreflight": "scripts/test.sh",
+    "mainStatus": "scripts/test.sh",
+    "mergeConflictCheck": "git fetch origin experimental --quiet && git merge-tree --write-tree HEAD origin/experimental >/dev/null",
+    "mergeQueue": "gh pr merge <PR> --squash --auto --delete-branch",
+    "openPrCheck": "gh api 'repos/tautlines/tautline-dev/pulls?state=open&per_page=50'",
+    "testEnvironment": "scripts/test.sh"
+  },
+  "contextRotation": {
+    "enabled": true,
+    "hardPercent": 75,
+    "heartbeatBoundary": "goal-heartbeat",
+    "heartbeatMinutes": 15,
+    "safeBoundaries": [
+      "pr-queued",
+      "pr-complete",
+      "milestone-complete",
+      "goal-boundary",
+      "goal-heartbeat",
+      "session-summary",
+      "handoff-for-review"
+    ],
+    "softPercent": 60
+  },
+  "continuity": {
+    "archiveDir": ".ai-continuity/archive",
+    "gitIgnore": true,
+    "path": ".ai-continuity/NEXT_SESSION.md"
+  },
+  "coverageFloor": {
+    "coverageReport": "coverage.json",
+    "diffBase": "origin/main",
+    "enforcement": "warn",
+    "newCodeMinPct": 80
+  },
+  "criticalJourneys": [],
+  "deploymentNotification": {
+    "chatSpace": "Product",
+    "dedupe": true,
+    "enabled": false,
+    "maxChars": 3000,
+    "pipeline": {
+      "evidencePaths": [],
+      "healthCheckBeforeNotify": true,
+      "mode": "ci-post-deploy",
+      "required": false,
+      "requiredCommand": "minervit-methodology publish-deploy-ready-update"
+    },
+    "provider": "google-chat-webhook",
+    "reuseIterationReviewWebhook": true,
+    "sentStateDir": ".ai-work/deployment-notification-delivery",
+    "trigger": "deploy-ready",
+    "webhookEnv": ""
+  },
+  "deploymentTargets": [],
+  "derivedArtifacts": [],
+  "developmentEnvironment": {
+    "lineEndings": {
+      "policy": "lf",
+      "windowsGuidance": "Inside WSL2, use `git config core.autocrlf input` for this checkout so shell scripts, fixtures, and generated policy artifacts stay LF-normalized."
+    },
+    "supportedRuntimes": [
+      "linux",
+      "darwin",
+      "wsl2"
+    ],
+    "windows": {
+      "native": "unsupported",
+      "reason": "The framework's release gates are shell/Python/git based and are verified on POSIX runtimes. WSL2 is the supported Windows developer path.",
+      "setup": "Open the methodology checkout inside WSL2 Ubuntu and run lane-start, methodology-status, scripts/test.sh, and scripts/validate.sh there; do not use native Windows shells as release-evidence runtimes.",
+      "supportedRuntime": "wsl2"
+    }
+  },
+  "documentContext": {
+    "contextIndexPaths": [
+      "docs/reference/policy-module-index.md",
+      "docs/productization/audit-disposition-register.md",
+      "docs/archive/2026-08-process-bankruptcy/plans/2026-07-03-framework-productization-refactor.md"
+    ],
+    "enforcement": "warn",
+    "historicalPaths": [
+      "docs/backlog/session-journals/",
+      "docs/releases/migrations/"
+    ],
+    "ignoredDocPaths": [
+      ".ai-work/",
+      ".ai-continuity/",
+      ".ai-runs/"
+    ],
+    "maxIndexBytes": 120000,
+    "maxIndexLines": 2400,
+    "trackedDocRoots": [
+      "methodology/",
+      "docs/",
+      "plugins/",
+      "adapters/projects/example-saas.json"
+    ]
+  },
+  "flakyQuarantine": {
+    "enforcement": "warn",
+    "markers": [
+      "@flaky",
+      "@pytest.mark.flaky",
+      "@pytest.mark.skip",
+      "@pytest.mark.xfail",
+      "@pytest.mark.skipif",
+      "@unittest.skip",
+      "pytest.skip(",
+      "pytest.xfail(",
+      "describe.skip(",
+      "it.skip(",
+      "test.skip(",
+      "xit(",
+      "xdescribe(",
+      "@disabled",
+      "@ignore",
+      "t.skip(",
+      "#[ignore]"
+    ],
+    "maxMarkers": -1,
+    "scanPath": ""
+  },
+  "generatedFiles": [
+    ".tautline.json"
+  ],
+  "goalArtifacts": {
+    "reviewRequired": true,
+    "sourceOfTruth": "docs/archive/2026-08-process-bankruptcy/plans",
+    "template": "docs/archive/2026-08-process-bankruptcy/plans/2026-07-03-framework-productization-refactor.md",
+    "templateTrigger": "Substantial multi-milestone, multi-PR, overnight, or ambiguous framework/productization work."
+  },
+  "goalExecution": {
+    "claudeGoalGuidance": true,
+    "fallback": "goal-ledger",
+    "preferredClaudeCommand": "/goal"
+  },
+  "goalTracker": {
+    "activeStatuses": [
+      "In Progress"
+    ],
+    "allowRepoOnlyGoals": false,
+    "apiTokenEnv": "",
+    "authoritativeFor": [
+      "goal-priority",
+      "milestone-order",
+      "goal-status"
+    ],
+    "blockedStatuses": [
+      "Blocked"
+    ],
+    "boardId": "",
+    "doneStatuses": [
+      "Done"
+    ],
+    "emailEnv": "",
+    "enabled": false,
+    "linkPolicy": "repo goal plan links back to project item",
+    "milestoneField": "",
+    "owner": "",
+    "priorityField": "",
+    "projectKey": "",
+    "projectNumber": 0,
+    "provider": "github-projects",
+    "readyStatuses": [
+      "Ready",
+      "Next"
+    ],
+    "repoPlanRequired": true,
+    "scopeQuery": "",
+    "siteUrl": "",
+    "statusField": "Status",
+    "workOrder": "board"
+  },
+  "graphify": {
+    "allowProjectInstaller": false,
+    "buildCommand": "graphify update .",
+    "enabled": false,
+    "explainCommand": "graphify explain",
+    "freshnessEnforcement": "disabled",
+    "freshnessRule": "Graphify is optional for this repository until a maintained graph output is intentionally introduced. If it is ever enabled here, the blocking refresh is the no-LLM `graphify update .` (no API key, backend, or external-model dependency) and semantic labeling is a separate non-blocking step.",
+    "gitIgnoreOutput": true,
+    "graphPath": "graphify-out/graph.json",
+    "installCommand": "python3 -m pip install --user graphifyy",
+    "installPackage": "graphifyy",
+    "outputDir": "graphify-out",
+    "pathCommand": "graphify path",
+    "preferWhenPresent": false,
+    "queryCommand": "graphify query",
+    "reportPath": "graphify-out/GRAPH_REPORT.md",
+    "rule": "Use rg and the package/test structure for framework navigation unless a fresh Graphify output is explicitly present.",
+    "semanticCommand": "GRAPHIFY_CLAUDE_CLI_MODEL=haiku graphify label . --backend=claude-cli",
+    "semanticRule": "Semantic enrichment (community labels, GRAPH_REPORT) is a separate NON-blocking step: run the semantic command with its explicit backend only when enrichment is wanted; its failure never blocks commit or push.",
+    "setupCommand": "graphify install",
+    "updateCommand": "graphify update ."
+  },
+  "healthContract": {
+    "enforcement": "off"
+  },
+  "instrumentation": {
+    "cadence": "milestone",
+    "enabled": false
+  },
+  "iterationReview": {
+    "boundary": {
+      "announce": true,
+      "autoRunAtBoundary": true
+    },
+    "delivery": {
+      "chatSpace": "",
+      "dedupe": true,
+      "enabled": false,
+      "primaryUrl": "cloudfront-page",
+      "provider": "google-chat-webhook",
+      "sentStateDir": ".ai-work/iteration-review-delivery",
+      "trigger": "after-merge",
+      "webhookEnv": ""
+    },
+    "enabled": false,
+    "granularities": [
+      "goal"
+    ],
+    "hosting": {
+      "access": "private-cdn",
+      "baseUrl": "",
+      "bucket": "",
+      "cdn": "cloudfront",
+      "keyPattern": "<project>/iteration-reviews/<target-id>/<media-file>",
+      "store": "s3"
+    },
+    "outputs": {
+      "page": true,
+      "video": true
+    },
+    "recordDir": "docs/iteration-reviews",
+    "rendererVersion": "0.2.1",
+    "video": {
+      "music": {
+        "defaultUrl": "",
+        "enabled": true,
+        "source": "adapter-approved",
+        "volume": 0.18
+      }
+    }
+  },
+  "knownProjectRules": [
+    "AGENTS.md and CLAUDE.md are handwritten framework-repo bootstrap files; use render-adapters --json-only for this repo unless a reviewed migration intentionally moves those instructions into generated sources.",
+    "The public framework repo may include only customer-free example adapters; real product/client adapters belong in adopter repos or private history remediation.",
+    "Every framework release must keep VERSION, plugin manifests, release migration reports, public contract metadata, tests, and validation gates in sync."
+  ],
+  "laneCoordination": {
+    "boardPath": ".ai-work/lane-board.json",
+    "contractPath": ".ai-work/lane-contract.json",
+    "enabled": true,
+    "enforcement": "warn",
+    "laneStatusDir": ".ai-work/lane-status",
+    "maxStatusAgeHours": 24,
+    "root": "~/Projects/Minervit",
+    "rule": "For simultaneous lanes, use tracked repo coordination artifacts as the source of truth for shared contracts, lane ownership, dependencies, provided interfaces, blockers, and PR refs. Each lane updates its own lane status file; shared contract/interface changes land early before large dependent PRs."
+  },
+  "laneState": {
+    "executionPacket": ".ai-work/EXECUTION_PACKET.md",
+    "gitIgnore": true,
+    "goalRun": ".ai-work/GOAL_RUN.json",
+    "lockPath": ".minervit-methodology-lock.json",
+    "milestoneRun": ".ai-work/MILESTONE_RUN.json",
+    "runsDir": ".ai-runs"
+  },
+  "latestCode": {
+    "base": "experimental",
+    "enabled": true,
+    "fetchAll": true,
+    "includeOpenPrs": true,
+    "includeRemoteBranches": true,
+    "maxAgeMinutes": 60,
+    "maxAheadBranches": 20,
+    "remote": "origin",
+    "rule": "Framework maintainer lanes track the active release branch for their channel. Experimental refactor lanes reconcile origin/experimental and relevant open PRs before planning, implementation, review, or release.",
+    "statusFile": ".ai-work/LATEST_CODE_BASELINE.json"
+  },
+  "localResourceIsolation": {
+    "composeProjectPrefix": "tautline-minervit-ai-delivery-methodology",
+    "envFile": ".ai-work/lane-env.sh",
+    "envTemplates": {},
+    "isolatedCommands": [],
+    "portStride": 10,
+    "portVariables": []
+  },
+  "localResourceLocks": {
+    "locksDir": "~/.minervit-ai-delivery/locks",
+    "resources": []
+  },
+  "mergeGate": {
+    "blockOnPending": true,
+    "enforcement": "block"
+  },
+  "migrationSafety": {
+    "ackMarker": "MIGRATION-SAFETY-ACK",
+    "enforcement": "warn",
+    "migrationsPath": ""
+  },
+  "milestoneContinuation": {
+    "watchdogCadenceMinutes": 30,
+    "watchdogEnabled": false
+  },
+  "milestoneUpdate": {
+    "chatSpace": "Product Milestones",
+    "dedupe": true,
+    "enabled": false,
+    "maxChars": 4000,
+    "provider": "google-chat-webhook",
+    "sentStateDir": ".ai-work/milestone-update-delivery",
+    "trigger": "milestone-complete",
+    "webhookEnv": ""
+  },
+  "modelEffortPolicy": {
+    "defaultEffort": "high",
+    "executionPacketSonnetEligible": true,
+    "xhighPolicy": "debugging/design escalation only"
+  },
+  "observabilityEvents": {
+    "enabled": true,
+    "humanLog": "events.log",
+    "jsonlLog": "events.jsonl",
+    "requiredBoundaryEvents": [
+      "startup",
+      "planning_review_gate",
+      "preflight",
+      "pr_queue_merge",
+      "blocker",
+      "rca",
+      "continuity",
+      "context_rotation",
+      "goal_transition",
+      "milestone_transition"
+    ],
+    "retainedRotations": 5,
+    "rotateBytes": 5000000,
+    "stateDir": "$HOME/.local/state/minervit/repo-events"
+  },
+  "planAcceptance": {
+    "acHeadings": [
+      "acceptance criteria"
+    ],
+    "enforcement": "off"
+  },
+  "planningArtifacts": {
+    "reviewExemptions": [
+      "doc-only: docs/index/release/backlog/operator-guide changes with no product, runtime, infra, security, data, spec, or test-harness behavior change; implementation review and gates still apply."
+    ],
+    "rule": "One-page specs pulled from the top of the backlog queue (external tautline-backlog repo) are the planning source of truth; docs/archive/2026-08-process-bankruptcy/plans/ is the retired, read-only in-repo plan history kept for reference.",
+    "scratchPaths": [
+      "~/.claude/plans/"
+    ],
+    "sourceOfTruth": "docs/archive/2026-08-process-bankruptcy/plans/",
+    "template": "docs/archive/2026-08-process-bankruptcy/plans/2026-07-03-framework-productization-refactor.md",
+    "templateTrigger": "Non-trivial, protected-category, infrastructure, customer-facing, or adapter-required PR work."
+  },
+  "postMergeTier": {
+    "branch": "experimental",
+    "enforcement": "block",
+    "workflow": "ci-python-full.yml"
+  },
+  "productChat": {
+    "chatSpace": "Product",
+    "enabled": false,
+    "maxChars": 6000,
+    "provider": "google-chat-webhook",
+    "webhookEnv": ""
+  },
+  "productDevelopment": {
+    "surfaces": [
+      "docs/product/**"
+    ]
+  },
+  "productionDeployExists": false,
+  "project": "Minervit AI Delivery Methodology",
+  "readiness": {
+    "sources": []
+  },
+  "repo": "tautlines/tautline-dev",
+  "review": {
+    "claudeReview": "Run one thorough adversarial Claude/Fable review for non-trivial methodology changes before push; fix Critical/P1 findings and document any lower-severity deferrals.",
+    "codexFastMode": true,
+    "codexPlanWrapper": "bin/minervit-methodology codex-plan-review --target .",
+    "codexWrapper": "codex review --base origin/experimental",
+    "crossModelTiming": "before push",
+    "prePushReviewEvidence": true
+  },
+  "runtimeConfig": {
+    "bootAssertionCommand": "",
+    "enforcement": "warn",
+    "requiredSecrets": [],
+    "secretParityCommand": ""
+  },
+  "schemaVersion": "1.0.0",
+  "sessionJournal": {
+    "archiveDir": "docs/backlog/session-journals",
+    "branch": "methodology-session-archive",
+    "cadence": "milestone",
+    "enabled": true,
+    "gitIgnoreLocal": true,
+    "maxBytes": 12000
+  },
+  "sideEffectProof": {
+    "enforcement": "off"
+  },
+  "stakeholderQuestions": {
+    "answeredLabel": "stakeholder-answered",
+    "defaultMention": "",
+    "enabled": false,
+    "openLabel": "needs-stakeholder-answer",
+    "projectStatusOnAnswered": "In Progress",
+    "projectStatusOnOpen": "Blocked",
+    "provider": "github-issues",
+    "syncAt": [
+      "startup",
+      "milestone-boundary",
+      "pr-boundary",
+      "blocked"
+    ],
+    "unknownStakeholderPolicy": "ask-human-once"
+  },
+  "technologyStack": {
+    "approvedCloudProviders": [
+      "none"
+    ],
+    "awsCliConvention": "No cloud provider is required for framework development. Cloud-provider commands are only allowed when a specific release/review task explicitly declares them.",
+    "cloudProviderDefault": "none",
+    "newCloudProviderRequiresApproval": true,
+    "newProjectCloudDefault": "none",
+    "nonNegotiable": [
+      "Framework behavior must remain portable across adopter repos and cannot assume GitHub Projects, Google Chat, AWS, S3/CloudFront, or Claude-only runtimes unless a project adapter opts in.",
+      "Public framework artifacts must not contain private product names, account IDs, live hosts, private adapter paths, or generated client secrets."
+    ],
+    "rule": "Keep the methodology provider-neutral by default. Provider-specific integrations are opt-in adapter capabilities, not framework assumptions."
+  },
+  "testEvidence": {
+    "freshCheckout": {
+      "carryPaths": [
+        ".venv"
+      ],
+      "default": true
+    },
+    "report": {
+      "format": "junit-xml",
+      "path": ".ai-runs/test-runs/latest-junit.xml"
+    }
+  },
+  "uiEvidence": {
+    "captureCommand": "",
+    "enabled": false,
+    "enforcement": "warn",
+    "evidenceDir": ".ai-work/ui-evidence",
+    "issueComments": {
+      "enabled": false,
+      "provider": "github-issues",
+      "required": false,
+      "triggerEvents": [
+        "milestone-complete",
+        "goal-complete"
+      ]
+    },
+    "manifestGlob": "*.json",
+    "requiredEvents": [
+      "milestone-complete",
+      "goal-complete"
+    ],
+    "tool": "playwright"
+  },
+  "usageAccounting": {
+    "enabled": true,
+    "jsonlLog": "usage.jsonl",
+    "retainedRotations": 5,
+    "rollupJson": "usage-rollup.json",
+    "rotateBytes": 5000000,
+    "stateDir": "$HOME/.local/state/minervit/usage"
+  },
+  "workProfiles": {
+    "defaultProfile": "development",
+    "enabled": true,
+    "prePushBase": "origin/experimental",
+    "profileLockPath": ".ai-work/WORK_PROFILE.json",
+    "profiles": {
+      "development": {
+        "allowedExtensions": [],
+        "allowedPaths": [],
+        "blockedPaths": [],
+        "description": "Full implementation profile. All startup, git, review, test, board, and code gates apply.",
+        "maxFileBytes": 0,
+        "pushPolicy": "pr-branch-only"
+      },
+      "product-docs": {
+        "allowedExtensions": [
+          ".md",
+          ".txt",
+          ".pdf",
+          ".png",
+          ".jpg",
+          ".jpeg",
+          ".webp",
+          ".gif",
+          ".drawio",
+          ".excalidraw",
+          ".fig",
+          ".figma",
+          ".heic",
+          ".mov",
+          ".mp4"
+        ],
+        "allowedPaths": [
+          "*.md",
+          "*.txt",
+          "*.pdf",
+          "docs/**",
+          "documentation/**",
+          "product/**",
+          "requirements/**",
+          "wireframes/**",
+          "design/**",
+          "designs/**",
+          "assets/wireframes/**",
+          "assets/product/**",
+          "mockups/**",
+          "screenshots/**",
+          "research/**",
+          "support/**",
+          "runbooks/**"
+        ],
+        "blockedPaths": [
+          ".github/**",
+          ".gitlab/**",
+          ".minervit-ai-delivery.json",
+          ".minervit/**",
+          "AGENTS.md",
+          "CLAUDE.md",
+          "Dockerfile",
+          "Dockerfile.*",
+          "Makefile",
+          "app/**",
+          "apps/**",
+          "bin/**",
+          "charts/**",
+          "client/**",
+          "config/**",
+          "db/**",
+          "deploy/**",
+          "docker/**",
+          "docker-compose*.yml",
+          "docker-compose*.yaml",
+          "drizzle/**",
+          "infra/**",
+          "k8s/**",
+          "lib/**",
+          "migrations/**",
+          "package.json",
+          "package-lock.json",
+          "packages/**",
+          "pnpm-lock.yaml",
+          "poetry.lock",
+          "prisma/**",
+          "pyproject.toml",
+          "requirements*.txt",
+          "scripts/**",
+          "server/**",
+          "src/**",
+          "terraform/**",
+          "tsconfig*.json",
+          "web/**",
+          "yarn.lock"
+        ],
+        "description": "Product manager profile for requirements, wireframes, product docs, planning artifacts, and approved assets.",
+        "maxFileBytes": 25000000,
+        "pushPolicy": "pr-branch-only"
+      },
+      "support-docs": {
+        "allowedExtensions": [
+          ".md",
+          ".txt",
+          ".pdf",
+          ".png",
+          ".jpg",
+          ".jpeg",
+          ".webp",
+          ".gif",
+          ".drawio",
+          ".excalidraw",
+          ".fig",
+          ".figma",
+          ".heic",
+          ".mov",
+          ".mp4"
+        ],
+        "allowedPaths": [
+          "*.md",
+          "*.txt",
+          "*.pdf",
+          "docs/**",
+          "documentation/**",
+          "product/**",
+          "requirements/**",
+          "wireframes/**",
+          "design/**",
+          "designs/**",
+          "assets/wireframes/**",
+          "assets/product/**",
+          "mockups/**",
+          "screenshots/**",
+          "research/**",
+          "support/**",
+          "runbooks/**"
+        ],
+        "blockedPaths": [
+          ".github/**",
+          ".gitlab/**",
+          ".minervit-ai-delivery.json",
+          ".minervit/**",
+          "AGENTS.md",
+          "CLAUDE.md",
+          "Dockerfile",
+          "Dockerfile.*",
+          "Makefile",
+          "app/**",
+          "apps/**",
+          "bin/**",
+          "charts/**",
+          "client/**",
+          "config/**",
+          "db/**",
+          "deploy/**",
+          "docker/**",
+          "docker-compose*.yml",
+          "docker-compose*.yaml",
+          "drizzle/**",
+          "infra/**",
+          "k8s/**",
+          "lib/**",
+          "migrations/**",
+          "package.json",
+          "package-lock.json",
+          "packages/**",
+          "pnpm-lock.yaml",
+          "poetry.lock",
+          "prisma/**",
+          "pyproject.toml",
+          "requirements*.txt",
+          "scripts/**",
+          "server/**",
+          "src/**",
+          "terraform/**",
+          "tsconfig*.json",
+          "web/**",
+          "yarn.lock"
+        ],
+        "description": "Support profile for investigations, support notes, runbooks, docs, screenshots, and approved assets.",
+        "maxFileBytes": 25000000,
+        "pushPolicy": "pr-branch-only"
+      }
+    }
+  }
+}

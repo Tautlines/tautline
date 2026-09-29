@@ -96,8 +96,11 @@ def test_missing_adapter_explains_itself_in_manual_mode(tmp_path, capsys):
     assert "UNVERIFIED" in capsys.readouterr().out
 
 
+# `corrupt-baseline` was a fifth mode here until the 2026-08-28 demolition removed the latest-code
+# baseline: nothing writes or reads LATEST_CODE_BASELINE.json any more, so corrupting it exercises
+# no code path and asserting UNVERIFIED on it would be a test that passes by measuring nothing.
 @pytest.mark.parametrize(
-    "mode", ["no-remote", "no-upstream", "detached", "corrupt-baseline", "hostile-remote"]
+    "mode", ["no-remote", "no-upstream", "detached", "hostile-remote"]
 )
 def test_every_failure_mode_exits_zero_and_still_reports(mode, tmp_path, capsys):
     """C4 + C5. Nonempty output is not enough -- the one-line `clean OK` report is also nonempty --
@@ -110,9 +113,6 @@ def test_every_failure_mode_exits_zero_and_still_reports(mode, tmp_path, capsys)
     elif mode == "detached":
         head = git(lane, "rev-parse", "HEAD")
         git(lane, "checkout", "-q", head)
-    elif mode == "corrupt-baseline":
-        (lane / ".ai-work").mkdir(exist_ok=True)
-        (lane / ".ai-work" / "LATEST_CODE_BASELINE.json").write_text("{not json", encoding="utf-8")
     elif mode == "hostile-remote":
         write_adapter(lane)
         data = json.loads((lane / ".tautline.json").read_text(encoding="utf-8"))

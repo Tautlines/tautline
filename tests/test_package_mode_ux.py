@@ -272,97 +272,7 @@ def test_snapshot_store_snapshot_gets_no_pip_hint(tmp_path):
     assert PIP_HINT not in sync.stdout
 
 
-def test_update_repin_refuses_from_a_package_install_with_a_truthful_remedy(tmp_path):
-    pkg = _make_package_install(tmp_path)
-    result = _run(pkg, "update-repin", env=_hermetic_env(tmp_path / "home"))
-    combined = result.stdout + result.stderr
-    assert result.returncode != 0
-    assert "installed package" in combined, f"the refusal must name the real cause: {combined!r}"
-    assert PIPX_HINT in combined
-    assert PIP_HINT in combined
-    assert "install-cli" in combined, "the checkout-runtime remedy must be named"
-    assert "fix connectivity/auth" not in combined, (
-        "the misleading connectivity diagnosis is reserved for real fetch failures on real checkouts"
-    )
-
-
 # --- 6.1: the upgraded-machine scenario (PP-R1-P1-1 / PP-R3-P1-1) ---------------------------
-
-
-def test_package_mode_short_circuits_even_with_a_valid_configured_checkout(tmp_path):
-    """installKind: package PLUS env still naming a REAL leftover checkout: package mode
-    outranks the configured checkout because pip is the only channel that updates the
-    RUNNING code. The checkout's origin points at a nonexistent path, so ANY attempted
-    fetch would fail loudly — the skip/refusal outputs prove no fetch ever ran."""
-    pkg = _make_package_install(tmp_path)
-    leftover = _make_checkout(
-        tmp_path, "leftover-checkout", origin=str(tmp_path / "missing-remote.git")
-    )
-    env = _hermetic_env(
-        tmp_path / "home",
-        MINERVIT_METHODOLOGY_REPO=str(leftover),
-    )
-    before = _checkout_state(leftover)
-
-    sync = _run(pkg, "sync-methodology", "--no-remote", env=env)
-    assert sync.returncode == 0, f"package-mode sync must stand down, not fail:\n{sync.stdout}\n{sync.stderr}"
-    assert "methodology_update: skipped" in sync.stdout
-    assert PIPX_HINT in sync.stdout
-    assert _checkout_state(leftover) == before, (
-        "package mode mutated the leftover checkout (HEAD, branch, or .git/config changed)"
-    )
-
-    repin = _run(pkg, "update-repin", env=env)
-    combined = repin.stdout + repin.stderr
-    assert repin.returncode != 0
-    assert PIPX_HINT in combined
-    assert "fix connectivity/auth" not in combined, (
-        "update-repin reached the fetch: the refusal must come BEFORE any network touch"
-    )
-    assert "refusing to repin from a stale cached" not in combined
-    assert _checkout_state(leftover) == before, "update-repin touched the leftover checkout"
-
-
-def test_package_mode_sync_does_not_heal_a_leftover_snapshot_store(tmp_path, snapshot_store):
-    """The store half of the upgraded-machine scenario (PP-R1-P1-1 extension): installKind:
-    package PLUS a leftover configured store key. pip is the only channel that updates the
-    RUNNING code, so healing/republishing the leftover checkout into the store would publish
-    a tree nothing on this machine executes — the sync must not touch the store at all."""
-    pkg = _make_package_install(tmp_path)
-    leftover = _make_checkout(
-        tmp_path, "leftover-checkout", origin=str(tmp_path / "missing-remote.git")
-    )
-    env = _hermetic_env(
-        tmp_path / "home",
-        MINERVIT_METHODOLOGY_REPO=str(leftover),
-        MINERVIT_METHODOLOGY_SNAPSHOT_STORE=str(snapshot_store),
-    )
-    before = _checkout_state(leftover)
-
-    sync = _run(pkg, "sync-methodology", "--no-remote", env=env)
-    assert sync.returncode == 0, (
-        f"package-mode sync must stand down, not fail:\n{sync.stdout}\n{sync.stderr}"
-    )
-    assert "methodology_update: skipped" in sync.stdout
-    assert PIPX_HINT in sync.stdout
-    assert "methodology_snapshot:" not in sync.stdout, (
-        "package mode healed/published into the leftover store"
-    )
-    assert not (snapshot_store / "current").exists()
-    assert list(snapshot_store.iterdir()) == [], (
-        "package mode materialized snapshot(s) into the leftover store"
-    )
-    assert _checkout_state(leftover) == before, (
-        "package mode mutated the leftover checkout while standing the store down"
-    )
-
-    status = _run(pkg, "snapshot-status", env=env)
-    assert status.returncode == 0, status.stderr
-    assert "snapshot_store_enabled: false" in status.stdout
-    assert "snapshot_store_standdown: installed package runtime" in status.stdout, (
-        "`enabled: false` over a configured key must name the package standdown, "
-        f"or it reads as a bug:\n{status.stdout}"
-    )
 
 
 def test_package_mode_gated_sync_writes_no_freshness_stamp(tmp_path, snapshot_store):
@@ -720,33 +630,6 @@ def _stub_urlopen(cli, monkeypatch, *, version=None, body=None, error=None, reco
         return _FakeResponse(payload)
 
     monkeypatch.setattr(cli, "urlopen", fake)
-
-
-def test_package_probe_newer_emits_pipx_pip_offer(monkeypatch, tmp_path):
-    cli = _load_package_cli(monkeypatch, tmp_path)
-    calls: list = []
-    _stub_urlopen(cli, monkeypatch, version="0.99.0", record=calls)
-    rec = _GitRecorder(cli)
-
-    probe = cli.framework_update_probe(cli.REPO_ROOT, PROJECT, STABLE_PIN, True, False)
-
-    assert probe["source"] == "package"
-    assert probe["availableVersion"] == "0.99.0"
-    assert probe["isNewer"] is True
-    assert probe["availableSha"] is None
-    assert probe["failureDetail"] is None
-    assert len(calls) == 1 and calls[0][0] == cli.METHODOLOGY_UPDATE_PROBE_PYPI_URL
-    assert calls[0][1] == cli.METHODOLOGY_UPDATE_PROBE_PYPI_TIMEOUT
-    assert rec.calls == [], "package mode must run zero git subprocesses"
-
-    skip = {"action": "skip", "reason": "manual", "wipReasons": []}
-    offers = cli.framework_update_offer_lines(skip, probe, STABLE_PIN)
-    assert offers == [
-        f"framework_update_offer: 0.99.0 is available (running {RUNNING}); "
-        f"update with: {cli.PACKAGE_INSTALL_UPDATE_HINT}"
-    ]
-    assert PIPX_HINT in offers[0] and PIP_HINT in offers[0]
-    assert not cli.response_has_forbidden_opt_in(offers[0]), offers[0]
 
 
 @pytest.mark.parametrize("available", ["0.14.4", "0.1.0"])

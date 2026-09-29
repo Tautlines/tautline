@@ -82,15 +82,3 @@ def test_installed_shim_has_no_repo_preset_exec_bypass(tmp_path):
     store_exec = text.index('"$SNAPSHOT_CURRENT/bin/tautline"')
     canonical_exec = text.index('exec "$MINERVIT_METHODOLOGY_REPO/bin/tautline"')
     assert store_exec < canonical_exec, "the store must be tried before the canonical checkout"
-
-
-def test_install_claude_launcher_reserves_tautline_name(tmp_path):
-    import os
-    out = subprocess.run(
-        [str(ROOT / "bin/tautline"), "install-claude-launcher", "--name", "tautline",
-         "--bin-dir", str(tmp_path / "bin")],
-        env={**os.environ, "HOME": str(tmp_path / "home")},
-        capture_output=True, text=True,
-    )
-    assert out.returncode != 0
-    assert "reserved command" in out.stderr

@@ -1,42 +1,46 @@
-# Privacy Policy
+# Privacy
 
-This methodology plugin stores no data of its own and sends **zero outbound telemetry by default**. It has no analytics, does not phone home, and collects no usage data in the background. The only usage ledger it keeps is **local** (JSONL plus a rollup under `$HOME/.local/state/minervit/usage`) and never leaves the machine. As of 0.9.0 there is one **opt-in, default-off** telemetry surface — the **sanitized instrumentation record** (`publish-instrumentation-record`), a closed-vocabulary record of enumerated event codes plus numbers with **zero product-information capacity** by construction: it has no repo/branch/project/path/goal/task or any freeform field, so no product narrative can be represented in it. Narrative **session journals are local-only** and can no longer be published to any remote (see below).
+Tautline has no analytics endpoint and sends no background usage telemetry. It stores local
+project and workflow records so agents can coordinate and resume work. Your agent host and any
+services you connect have their own data handling policies.
 
-## Outbound data flows
+## Local records
 
-Every network request the CLI makes is one **you explicitly trigger** against an endpoint **you configure** in your project adapter (e.g. the fictional `example-saas` adapter). The plugin initiates no network activity on its own and adds no tracking. Webhook URLs and credentials are read from your environment, never from committed files — adapters store env-var *names* (e.g. `"webhookEnv": "EXAMPLE_SAAS_ITERATION_REVIEW_WEBHOOK"`), not secret values.
+Project configuration and generated agent instructions live in your checkout. Optional
+handoffs contain session context. Shared work manifests contain goals, paths, dependencies,
+blockers, and agent/worktree identity. Evidence receipts describe a command, its result, and
+code identity. Decisions and inbox answers can include operator-provided text.
 
-| Destination | What is sent | Triggered by | Configured in adapter |
-|---|---|---|---|
-| **Google Chat webhooks** | The card content you generate — iteration-review, milestone-update, product-note, deploy-ready, and release-update cards | `publish-iteration-review`, `publish-milestone-update`, `publish-deploy-ready-update`, release-update delivery | `iterationReview.delivery.webhookEnv`, `milestoneUpdate.webhookEnv`, etc. (env-var name → URL) |
-| **GitHub** | Reads/updates to issues, Projects (boards), and PR/check state | `backlog-provider`, `stakeholder-question`, `status`, board-sync commands (via the `gh` CLI and GitHub GraphQL API) | `backlogProvider` owner/project/fields |
-| **Git remotes** | Your **RCA archive** copies (pushed to `methodology-rca-archive`); and, only when you opt in, the **sanitized instrumentation record** — enumerated event codes plus counts/durations with **zero product-information capacity** (no repo/branch/project/path/freeform fields), published to the constant `tautline-telemetry-archive` branch under a pinned, adopter-neutral commit identity | RCA publish (`--commit --push`); `publish-instrumentation-record` when `instrumentation.enabled: true`. **Narrative session journals never reach a remote** — `publish-session-journal`/`publish-pending-session-journals` are disabled in 0.9.0 (local-only) | archive branch/remote (resolved from `remote.origin.url`) |
-| **Amazon S3 / CloudFront** | The generated iteration-review page and JSON record | `publish-iteration-review` | `iterationReview.hosting.bucket` (`store: s3`, `cdn: cloudfront`) |
-| **Upstream methodology repo (auto-update)** | An outbound `git pull --ff-only` fetch of the methodology checkout, followed by an in-place re-exec of the updated CLI | Lane start / `sync-methodology` | `TAUTLINE_METHODOLOGY_REPO` / launcher config |
+Treat these records as project data. Access is governed by the filesystem and repository
+permissions where they reside. Same-machine coordination is not a hosted service; independent
+clones and other machines do not automatically receive the records. No automatic token/cost
+collection or sanitized-instrumentation publisher is part of the current product.
 
-These requests carry only the content you produce and the references needed to deliver it. All other data access (local filesystem, Claude, Codex, Open Brain) comes from the host agent tools you explicitly enable; those tools are governed by their own configuration and policies.
+## Network operations
 
-> **Note on the auto-update fetch.** Auto-update pulls and re-executes upstream code on each lane start (`bin/tautline`, `os.execve` after `git pull --ff-only`). This is an inbound code fetch, not a data export, but operators pointed at a shared upstream should understand that running this tool means fetching and executing whatever that upstream serves. Pin or vendor your methodology checkout if you do not want unattended updates.
+| Integration | Data flow |
+| --- | --- |
+| GitHub / Git | Repository and PR/check reads; configured backlog, issue, board, or stakeholder-question operations; App authentication; explicit release publishing. Repository and item references and requested content reach GitHub. |
+| Jira | Configured backlog queries and updates reach your Jira Cloud site. |
+| Checkout updates | Git fetch/update operations contact the configured framework remote; trust policy controls which code can become active. |
+| Registry and release checks | Package/version requests contact PyPI, npm, or GitHub. |
+| Commands you run | A test or proof command may contact services or print data according to that command's behavior; Tautline does not sandbox it. |
 
-## Tenancy: isolation is the boundary, redaction is defense-in-depth
+Local work status, evidence status, and local health do not need network access. Remote health
+facts are explicitly requested with `--remote`. There is no current automated Google Chat,
+S3 recap, session-journal, or instrumentation publishing workflow.
 
-**Per-tenant isolation is the privacy boundary; publish-time redaction is defense-in-depth, not the boundary**.
+Credentials come from local environment/configuration or your authentication tooling. Never
+commit tokens, private keys, or customer data. Review command arguments and logs before
+sharing them; record paths and goals can also reveal confidential information.
 
-The publish pipeline scrubs person/machine-specific tokens from RCAs before they leave the machine, but that redaction is derived from the **publishing machine's** `$USER` / `$LOGNAME` / home-dir name (`bin/tautline`, `rca_person_specific_tokens()`). A multi-account or CI publisher whose identity differs from the data's subject will under-redact, and project/lane names flow into shared archive paths and Chat cards unredacted. **Do not rely on redaction to keep one tenant's data out of another tenant's reach.** (Narrative session journals are no longer published at all, so their redaction path is moot; the sanitized instrumentation record needs no redaction because it has no freeform capacity to begin with.)
+## Retention and removal
 
-The correct boundary is to publish each tenant's or project's RCAs and iteration-review artifacts to **that tenant's own repo/remote and S3 prefix** — not to a shared archive that co-mingles multiple tenants. Until per-tenant archive destinations are configured, treat all archived artifacts as visible to anyone with access to the shared remote and bucket. The instrumentation record is the exception by design: it carries no tenant-identifying content, only a salted per-lane hash unlinkable to any product without the machine-local salt.
+Local records remain until you remove them or use their applicable lifecycle/rotation commands.
+Uninstalling the CLI does not erase all project state. Consult
+[removal instructions](docs/product/support-sla-model.md) and the relevant command's `--help`.
+Data you explicitly write to a remote service follows that service's retention rules; removing
+a local record does not delete remote issues, comments, releases, or Git history.
 
-## Retention and erasure (GDPR / CCPA)
-
-Published journals, RCAs, and iteration-review records persist in git archive branches and in S3 until explicitly removed. To support data-subject erasure and retention obligations:
-
-- **Purge path.** A `purge-archive` operation must be able to remove a given tenant's or project's published journals, RCAs, and usage artifacts and rewrite the corresponding `_index.md` so the removed entries no longer appear. Treat a verified purge — not redaction — as the response to an erasure request.
-- **Git history.** Because archive copies live in branch history, true erasure of historical commits requires history rewrite (or, preferably, per-tenant branches/repos that can be deleted wholesale). Per-tenant isolation is what makes erasure tractable.
-- **S3 lifecycle.** Configure an S3 **lifecycle policy** on the iteration-review bucket to expire or transition objects after your declared retention window, and enable versioning + a matching noncurrent-version expiration so deletions are not silently undone by retained versions. Document the retention window alongside the bucket configuration.
-- **No silent secondary copies.** The tool keeps no hidden remote copy beyond the archive branches and S3 objects named above and the local-only usage ledger; purging those locations plus your own backups is sufficient.
-
-When this tool is operated on behalf of more than one tenant, the operator is the data controller for the archived artifacts and is responsible for honoring access, retention, and erasure requests against the destinations configured in their adapter.
-
-## Secrets
-
-Credentials and webhook URLs are read from environment variables named by the adapter, never from committed files. Avoid passing secret webhook URLs on the command line; prefer the env-var-name indirection so secrets do not land in the process table, shell history, or logs.
+For privacy questions contact `hello@minervit.ai`. For credential exposure or a vulnerability,
+use [private security reporting](SECURITY.md).

@@ -4,7 +4,6 @@ a byte-identical compatibility mirror, TAUTLINE_* env aliases are emitted everyw
 and install-cli preserves an operator pin set that already trusts the install HEAD.
 """
 
-import subprocess
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -35,28 +34,6 @@ def test_resolve_user_config_env_prefers_new_then_legacy_then_new_default(cli, t
 
 
 # --- brand_env_pairs ---------------------------------------------------------------------------
-
-
-def test_brand_env_pairs_overwrites_stale_aliases(cli):
-    # Codex 92a R1 P2: the writers own the MINERVIT_ values they set, so an inherited divergent
-    # TAUTLINE_ alias is stale and must be overwritten -- both families always agree afterward.
-    env = {"MINERVIT_LANE_SLOT": "3", "TAUTLINE_LANE_SLUG": "stale", "MINERVIT_LANE_SLUG": "fresh", "PATH": "/x"}
-    out = cli.brand_env_pairs(env)
-    assert out["TAUTLINE_LANE_SLOT"] == "3"          # mirrored
-    assert out["TAUTLINE_LANE_SLUG"] == "fresh"      # stale inherited alias overwritten
-    assert out["MINERVIT_LANE_SLOT"] == "3"          # legacy names retained
-    assert "TAUTLINE_PATH" not in out                # only MINERVIT_* mirrored
-
-
-def test_lane_env_values_emits_both_families(cli, tmp_path):
-    data = {
-        "project": "brand-test",
-        "localResourceIsolation": {"composeProjectPrefix": "x", "portVariables": [], "envTemplates": {}},
-    }
-    env = cli.lane_env_values(data, tmp_path)
-    assert env["MINERVIT_LANE_RESOURCE_ISOLATION"] == "1"
-    assert env["TAUTLINE_LANE_RESOURCE_ISOLATION"] == "1"
-    assert env["TAUTLINE_LANE_SLOT"] == env["MINERVIT_LANE_SLOT"]
 
 
 # --- install-cli: new file + legacy mirror + aliases + migration ------------------------------
@@ -147,46 +124,6 @@ def test_installed_shim_sources_tautline_env_first_and_exports_both(run_cli, tmp
     assert "export TAUTLINE_METHODOLOGY_REPO" in shim_text
 
 
-def test_installed_launcher_sources_tautline_env_first(run_cli, tmp_path):
-    install = run_cli("install-cli")
-    assert install.returncode == 0, install.stderr
-    launcher_bin = tmp_path / "launcher-bin"
-    res = run_cli("install-claude-launcher", "--bin-dir", str(launcher_bin), "--name", "brand-test")
-    assert res.returncode == 0, res.stderr
-    text = (launcher_bin / "brand-test").read_text(encoding="utf-8")
-    assert ".config/tautline/tautline.env" in text
-    assert ".config/minervit/methodology.env" in text
-    assert text.index("tautline/tautline.env") < text.index("minervit/methodology.env")
-    assert "${TAUTLINE_METHODOLOGY_REPO:-" in text
-
-
-def test_repin_with_custom_config_env_does_not_touch_default_pair(cli, tmp_path, monkeypatch):
-    # Codex 0.9.2 branch R1 P1: update-repin --config-env /custom must never rewrite the
-    # default installed trust files.
-    new = tmp_path / "tautline.env"
-    legacy = tmp_path / "methodology.env"
-    custom = tmp_path / "custom.env"
-    monkeypatch.setattr(cli, "USER_CONFIG_ENV", new)
-    monkeypatch.setattr(cli, "LEGACY_USER_CONFIG_ENV", legacy)
-    for f in (new, legacy, custom):
-        f.write_text("export MINERVIT_METHODOLOGY_UPDATE_PINS=" + "a" * 40 + "\n", encoding="utf-8")
-    upstream = tmp_path / "upstream"
-    work = tmp_path / "work"
-    subprocess.run(["git", "init", "-q", "-b", "main", str(upstream)], check=True)
-    (upstream / "f").write_text("1", encoding="utf-8")
-    subprocess.run(["git", "-C", str(upstream), "add", "-A"], check=True)
-    subprocess.run(
-        ["git", "-C", str(upstream), "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", "c1"],
-        check=True,
-    )
-    subprocess.run(["git", "clone", "-q", str(upstream), str(work)], check=True)
-    _prev, new_head, _range = cli.repin_methodology_update(work, custom, "stable")
-    assert f"export MINERVIT_METHODOLOGY_UPDATE_PINS={new_head}" in custom.read_text(encoding="utf-8")
-    untouched = "export MINERVIT_METHODOLOGY_UPDATE_PINS=" + "a" * 40
-    assert untouched in new.read_text(encoding="utf-8"), "custom repin must not rewrite the default tautline.env"
-    assert untouched in legacy.read_text(encoding="utf-8"), "custom repin must not rewrite the legacy mirror"
-
-
 def test_installed_shim_prefers_tautline_repo_after_sourcing(run_cli, tmp_path):
     home = tmp_path / "home"
     res = run_cli("install-cli")
@@ -198,49 +135,8 @@ def test_installed_shim_prefers_tautline_repo_after_sourcing(run_cli, tmp_path):
     assert 'MINERVIT_METHODOLOGY_REPO_ENV="${TAUTLINE_METHODOLOGY_REPO:-${MINERVIT_METHODOLOGY_REPO:-}}"' in tail
 
 
-def test_installed_launcher_normalizes_both_repo_families_after_resolution(run_cli, tmp_path):
-    # Codex 0.9.2 R1 P1: after resolution the launcher must export BOTH families with the gated
-    # value; otherwise children preferring TAUTLINE_* can execute a different checkout than the
-    # one the launch gates just validated.
-    install = run_cli("install-cli")
-    assert install.returncode == 0, install.stderr
-    launcher_bin = tmp_path / "launcher-bin"
-    res = run_cli("install-claude-launcher", "--bin-dir", str(launcher_bin), "--name", "brand-p1")
-    assert res.returncode == 0, res.stderr
-    text = (launcher_bin / "brand-p1").read_text(encoding="utf-8")
-    resolved_at = text.index('MINERVIT_METHODOLOGY_REPO="$(launcher_resolve_methodology_repo)"')
-    tail = text[resolved_at:]
-    assert 'TAUTLINE_METHODOLOGY_REPO="$MINERVIT_METHODOLOGY_REPO"' in tail
-    assert "export TAUTLINE_METHODOLOGY_REPO" in tail
-
-
 def test_install_cli_dry_run_discloses_legacy_mirror(run_cli):
     res = run_cli("install-cli", "--dry-run")
     assert res.returncode == 0, res.stderr
     assert "legacy compatibility mirror" in res.stdout
     assert ".config/minervit/methodology.env" in res.stdout
-
-
-def test_repin_updates_both_config_surfaces(cli, tmp_path, monkeypatch):
-    new = tmp_path / "tautline.env"
-    legacy = tmp_path / "methodology.env"
-    monkeypatch.setattr(cli, "USER_CONFIG_ENV", new)
-    monkeypatch.setattr(cli, "LEGACY_USER_CONFIG_ENV", legacy)
-    for f in (new, legacy):
-        f.write_text("export MINERVIT_METHODOLOGY_UPDATE_PINS=" + "a" * 40 + "\n", encoding="utf-8")
-    # Hermetic upstream: a real repo with an origin so fetch/rev-parse succeed.
-    upstream = tmp_path / "upstream"
-    work = tmp_path / "work"
-    subprocess.run(["git", "init", "-q", "-b", "main", str(upstream)], check=True)
-    (upstream / "f").write_text("1", encoding="utf-8")
-    subprocess.run(["git", "-C", str(upstream), "add", "-A"], check=True)
-    subprocess.run(
-        ["git", "-C", str(upstream), "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", "c1"],
-        check=True,
-    )
-    subprocess.run(["git", "clone", "-q", str(upstream), str(work)], check=True)
-    _prev, new_head, _range = cli.repin_methodology_update(work, new, "stable")
-    assert f"export MINERVIT_METHODOLOGY_UPDATE_PINS={new_head}" in new.read_text(encoding="utf-8")
-    assert f"export MINERVIT_METHODOLOGY_UPDATE_PINS={new_head}" in legacy.read_text(encoding="utf-8"), (
-        "the other config surface must be kept in step so mixed-version launchers agree on trust"
-    )

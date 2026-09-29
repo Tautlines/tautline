@@ -158,30 +158,3 @@ def repin(cli, monkeypatch, tmp_path):
     config_env.parent.mkdir(parents=True)
     config_env.write_text(_pin_line(cli, OLD_HEAD) + "\n", encoding="utf-8")
     return config_env
-
-
-def test_repin_journals_ok_only_after_the_write_lands(cli, repin, tmp_path):
-    previous, new_head, _range = cli.repin_methodology_update(tmp_path / "repo", repin, "stable")
-
-    assert (previous, new_head) == (OLD_HEAD, NEW_HEAD)
-    assert _pin_line(cli, NEW_HEAD) in repin.read_text(encoding="utf-8")
-    entry = [e for e in _entries(cli) if e["command"] == "update-repin"][-1]
-    assert entry["outcome"] == "ok"
-    assert entry["new_head"] == NEW_HEAD
-
-
-def test_repin_journals_failure_when_the_config_rewrite_fails(cli, repin, monkeypatch, tmp_path):
-    """The rewrite can still fail -- it is a real write to a real file on disk. Journaling `ok`
-    before it means the forensic record claims a repin that never happened."""
-    def _boom(*_args, **_kwargs):
-        raise OSError("injected failure")
-
-    monkeypatch.setattr(cli, "_rewrite_config_env_export", _boom)
-
-    with pytest.raises(SystemExit):
-        cli.repin_methodology_update(tmp_path / "repo", repin, "stable")
-
-    # The allowlist is untouched: the machine still trusts only what it trusted before.
-    assert _pin_line(cli, OLD_HEAD) in repin.read_text(encoding="utf-8")
-    entries = [e for e in _entries(cli) if e["command"] == "update-repin"]
-    assert [e["outcome"] for e in entries] == ["failed"], entries

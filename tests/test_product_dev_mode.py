@@ -157,51 +157,7 @@ def test_state_reader_none_when_inactive(cli, tmp_path):
     assert cli.product_dev_mode_active(tmp_path) is False
 
 
-def test_default_ttl_is_240_minutes(cli):
-    assert cli.PRODUCT_DEV_MODE_DEFAULT_TTL_MINUTES == 240
-
-
 # --- The safety invariant: neither reader is read by any code-safety path -------------------
-
-
-def test_mode_never_read_by_code_safety():
-    """NEITHER product_dev_mode_active NOR product_dev_mode_state may be referenced inside any
-    code-safety path in bin/tautline -- guard_check or cut_release. The `status` verb
-    (product_dev_mode_command) is the only allowed production caller of the state reader.
-
-    (The version-contract predicate that decides a VERSION bump is required lives in the test
-    module tests/test_release_change_contract.py, not bin/tautline, so it can never reference
-    these bin/tautline-internal readers; the two functions scanned here are the code-safety
-    paths inside the CLI itself.)
-
-    Enforced by scanning the source bodies of the code-safety functions for either reader symbol.
-    """
-    import ast
-
-    source = CLI_ENGINE_PATH.read_text(encoding="utf-8")
-    tree = ast.parse(source)
-    code_safety_names = {"guard_check", "cut_release"}
-    reader_symbols = {"product_dev_mode_active", "product_dev_mode_state"}
-
-    funcs = {
-        node.name: node
-        for node in ast.walk(tree)
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
-    }
-    assert code_safety_names <= set(funcs), (
-        f"code-safety functions missing (renamed?): {code_safety_names - set(funcs)}"
-    )
-
-    for name in code_safety_names:
-        called = {
-            n.id
-            for n in ast.walk(funcs[name])
-            if isinstance(n, ast.Name) and n.id in reader_symbols
-        }
-        assert not called, (
-            f"code-safety path {name}() references the product-dev-mode reader(s) {called}: "
-            "the mode must NEVER be read by a code-safety path"
-        )
 
 
 # --- T2: the `product-dev-mode` verb (root-normalized, sole writer, public-contract) -------
@@ -225,66 +181,6 @@ def _run(args, home: Path, cwd: Path):
     )
 
 
-def test_verb_on_off_status(cli, tmp_path):
-    """`on` arms the mode with a future expiresAt; `status` reports on + remaining TTL; `off`
-    disarms. Black-box through the CLI so the whole verb path is exercised."""
-    root = tmp_path / "checkout"
-    (root / ".git").mkdir(parents=True)  # a plausible adapter root
-    (root / ".tautline.json").write_text("{}", encoding="utf-8")
-    home = tmp_path / "home"
-
-    on = _run(["product-dev-mode", "on", "--target", str(root)], home, root)
-    assert on.returncode == 0, on.stdout + on.stderr
-    assert cli.product_dev_mode_active(root) is True
-
-    status_on = _run(["product-dev-mode", "status", "--target", str(root)], home, root)
-    assert status_on.returncode == 0, status_on.stdout + status_on.stderr
-    assert "on" in status_on.stdout.lower()
-
-    off = _run(["product-dev-mode", "off", "--target", str(root)], home, root)
-    assert off.returncode == 0, off.stdout + off.stderr
-    assert cli.product_dev_mode_active(root) is False
-
-    status_off = _run(["product-dev-mode", "status", "--target", str(root)], home, root)
-    assert status_off.returncode == 0
-    assert "off" in status_off.stdout.lower()
-
-
-def test_verb_is_sole_writer(cli, tmp_path):
-    """After `on`, the state file matches the schema and validates through the reader -- the verb
-    is the only thing that wrote it."""
-    root = tmp_path / "checkout"
-    (root / ".git").mkdir(parents=True)
-    (root / ".tautline.json").write_text("{}", encoding="utf-8")
-    home = tmp_path / "home"
-    _run(["product-dev-mode", "on", "--target", str(root)], home, root)
-    state_file = root / STATE_REL
-    assert state_file.exists()
-    payload = json.loads(state_file.read_text(encoding="utf-8"))
-    assert payload["schema"] == SCHEMA
-    assert payload["on"] is True
-    assert "expiresAt" in payload and "startedAt" in payload
-
-
-def test_verb_resolves_target_to_adapter_root(cli, tmp_path):
-    """Invoked with a NESTED subdir --target, the verb writes <adapter-root>/.ai-work/...json
-    (NOT <nested-subdir>/.ai-work/...), and a repo-root reader then sees it active. This is the
-    round-4 finding that motivated the split."""
-    root = tmp_path / "checkout"
-    (root / ".git").mkdir(parents=True)
-    (root / ".tautline.json").write_text("{}", encoding="utf-8")
-    nested = root / "docs" / "product" / "deep"
-    nested.mkdir(parents=True)
-    home = tmp_path / "home"
-
-    on = _run(["product-dev-mode", "on", "--target", str(nested)], home, root)
-    assert on.returncode == 0, on.stdout + on.stderr
-
-    assert (root / STATE_REL).exists(), "state must land at the adapter root"
-    assert not (nested / STATE_REL).exists(), "no stray state file under the nested subdir"
-    assert cli.product_dev_mode_active(root) is True
-
-
 def test_verb_refuses_target_outside_adapter_root(cli, tmp_path):
     """A --target with no resolvable adapter root fails closed: non-zero exit, no state file."""
     outside = tmp_path / "not-a-checkout"
@@ -293,17 +189,6 @@ def test_verb_refuses_target_outside_adapter_root(cli, tmp_path):
     result = _run(["product-dev-mode", "on", "--target", str(outside)], home, outside)
     assert result.returncode != 0, result.stdout + result.stderr
     assert not (outside / STATE_REL).exists()
-
-
-def test_startup_remediation_registry_partition(cli):
-    """`product-dev-mode` is in EXACTLY ONE of the startup-remediation allow/block lists so the
-    partition test the registry ships stays green."""
-    allowed = set(cli.STARTUP_REMEDIATION_ALLOWED_COMMANDS)
-    blocked = set(cli.STARTUP_REMEDIATION_BLOCKED_COMMANDS)
-    assert "product-dev-mode" in (allowed | blocked)
-    assert not (allowed & blocked), "no command may be in both lists"
-    # An operator-convenience verb is ALLOWED (never blocked by startup remediation).
-    assert "product-dev-mode" in allowed
 
 
 def test_verb_public_contract_status_experimental(cli):

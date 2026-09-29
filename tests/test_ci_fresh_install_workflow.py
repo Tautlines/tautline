@@ -43,23 +43,13 @@ CI_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "ci-python-full.yml"
 # or a ruleset) the moment the tier allows it, and re-run the gh api verification.
 SMOKE_JOB_ID = "fresh-install-smoke"
 
-# The nine Claude hooks lane-start installs; the smoke job must assert every one
-# of them lands in the scratch HOME's settings (PP-R1-P2-1: a wheel that omits or
-# breaks the hook payload must turn the job red). The SessionStart standing-directive
-# hook is registered as a fail-open shell wrapper, so it is identified by its exact
-# `autonomy-directive --hook` invocation rather than a bare `tautline <verb>`.
-CLAUDE_HOOK_NAMES = (
-    "plan-finalization-hook",
-    "branch-liveness-hook",
-    "response-guard-hook",
-    "tool-rejection-hook",
-    "background-command-hook",
-    "latest-code-hook",
-    "context-rotation-heartbeat-hook",
-    "plan-review-pending-hook",
-    "fleet-guard-hook",
-    "autonomy-directive --hook",
-)
+# The hooks the framework ships. The 2026-08-28 process-bankruptcy demolition deleted
+# the nine gate hooks and `lane-start`, the verb that installed them into a machine's
+# Claude settings; `lane-status --hook` (advisory, report-only) is what remains. The
+# guarantee is unchanged (PP-R1-P2-1: a wheel that omits or breaks the hook payload must
+# turn the job red) -- it is now proven by EXECUTING the shipped hook from the installed
+# wheel rather than by finding installed hooks in a settings file.
+CLAUDE_HOOK_NAMES = ("lane-status --hook",)
 
 # The embedded-tree canaries: the sdist->wheel data-fidelity trap silently drops
 # non-Python files (dotfiles first), so the job must look for the exact payload
@@ -199,29 +189,26 @@ def test_smoke_job_verifies_embedded_runtime_files() -> None:
     )
 
 
-def test_smoke_job_exercises_the_lane_hook_surface() -> None:
-    """The README-quickstart lane verb runs, and its hooks land AND execute.
+def test_smoke_job_asserts_the_hook_payload_and_runs_it() -> None:
+    """PP-R1-P2-1: a wheel that omits or breaks the hook payload must turn this job red.
 
-    PP-R1-P2-1: a wheel that omits or breaks the hook payload must turn this job
-    red. Landing is asserted in the scratch HOME's Claude settings plus the scratch
-    repo's git hooks; execution is proven by running an installed hook command
-    through the wheel's console script.
+    Running the hook is NOT sufficient on its own, which is the trap the first version of this
+    step fell into: `lane-status` is contained and always exits 0 by contract, so a thoroughly
+    broken one still passes. The job therefore reads the payload's CONTENT out of the installed
+    tree AND invokes the hook the way a harness does, requiring non-empty output.
     """
     text = smoke_run_text()
-    assert "lane-start --target ." in text, (
-        "the lane-hook surface is the README quickstart's own verb: lane-start --target ."
-    )
-    assert ".claude/settings.json" in text, (
-        "the job must look for the installed Claude hooks in the scratch HOME"
+    assert "_dist/plugins/tautline-core/hooks/hooks.json" in text, (
+        "the job must read the hook payload from the INSTALLED tree, not the source checkout"
     )
     for hook in CLAUDE_HOOK_NAMES:
-        assert hook in text, f"missing installed-hook assertion for {hook}"
-    assert "tautline tool-rejection-hook" in text, (
-        "at least one installed hook command must be EXECUTED from the wheel, "
-        "not merely found in settings"
+        assert f"tautline {hook}" in text, (
+            f"the shipped hook `{hook}` must be asserted in the payload and executed"
+        )
+    assert "the shipped hook produced no output" in text, (
+        "a hook that runs but reports nothing must fail the job; exit code alone cannot, because "
+        "lane-status is contained and always exits 0"
     )
-    for git_hook in ("pre-commit", "pre-push"):
-        assert git_hook in text, f"the git branch-liveness {git_hook} hook must be asserted"
 
 
 def test_scheduled_smoke_builds_the_integration_branch_not_the_default_branch() -> None:

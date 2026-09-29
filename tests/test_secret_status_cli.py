@@ -266,43 +266,6 @@ def test_the_name_argument_is_required(run_cli):
     assert "--name" in (result.stderr + result.stdout)
 
 
-def test_no_webhook_consumer_reads_one_way(cli):
-    """The probe's claim and every consumer's read must agree, as a CLASS.
-
-    The first fix routed two consumers and left six. `secret-status` reports `process-env` for a
-    value under the sibling spelling, so a one-way consumer refuses again and an agent following
-    the printed remedy retries forever. This walks the shipped source rather than a remembered
-    list, so a seventh consumer added later cannot quietly reintroduce the loop.
-    """
-    import re
-    from pathlib import Path
-
-    source = (Path(cli.__file__)).read_text(encoding="utf-8")
-    # The two-way helper's OWN body is excluded: it is where the one-way call legitimately lives,
-    # and it is asked for both spellings in turn. Excised by name so a rename cannot silently widen
-    # the exclusion to some other function.
-    start = source.index("def webhook_env_reachable_value(")
-    end = source.index("\ndef ", start + 1)
-    consumers = source[:start] + source[end:]
-    one_way = re.findall(r"resolve_env\((?:args\.)?\w*webhook_env\w*\)", consumers)
-    assert not one_way, (
-        f"these webhook reads are one-way: {one_way}. `secret-status` probes both rebrand "
-        "spellings, so a one-way consumer refuses a value the probe just called reachable and the "
-        "prescribed retry loops. Route them through `webhook_env_reachable_value`."
-    )
-    # NON-VACUITY: the two-way helper must actually be in use, or the assertion above passes on a
-    # tree where every consumer was deleted just as happily as on a correct one.
-    assert source.count("webhook_env_reachable_value(") >= 6
-
-
-def test_the_two_way_helper_resolves_both_directions(cli, monkeypatch):
-    monkeypatch.setenv("MINERVIT_DEMO_HOOK", "https://x.test/h")
-    monkeypatch.delenv("TAUTLINE_DEMO_HOOK", raising=False)
-    assert cli.webhook_env_reachable_value("TAUTLINE_DEMO_HOOK") == "https://x.test/h"
-    monkeypatch.setenv("TAUTLINE_OTHER_HOOK", "https://y.test/h")
-    assert cli.webhook_env_reachable_value("MINERVIT_OTHER_HOOK") == "https://y.test/h"
-
-
 def test_a_first_setup_machine_is_pointed_at_the_current_store(
     cli, layers, capsys, monkeypatch, tmp_path
 ):
@@ -346,16 +309,6 @@ def test_the_sourcing_remedy_survives_a_path_with_a_space(
     )
 
 
-def test_a_custom_webhook_env_name_is_validated_at_the_boundary(run_cli):
-    """A refusal names `tautline secret-status --name <it>` as a RUNNABLE remedy, and the probe
-    validates its own argument. Validating the name only when printing the remedy would leave the
-    message class non-uniform; validating it at the boundary keeps one message and makes the
-    invalid case say what is actually wrong."""
-    result = run_cli("publish-release-update", "--webhook-env", "not a var name", "--dry-run")
-    assert result.returncode != 0
-    assert "UPPER_CASE environment variable name" in (result.stderr + result.stdout)
-
-
 def test_an_unreadable_config_directory_does_not_crash_the_probe(cli, layers, tmp_path, capsys, monkeypatch):
     """`resolve_user_config_env()` calls `Path.is_file()`, which RAISES for a path behind a
     non-traversable directory -- so the probe died with a traceback before any of its
@@ -372,66 +325,3 @@ def test_an_unreadable_config_directory_does_not_crash_the_probe(cli, layers, tm
     finally:
         hidden.chmod(0o700)
     assert "secret_source: indeterminate" in capsys.readouterr().out
-
-
-@pytest.mark.parametrize(
-    "configured,persisted",
-    [
-        ("MINERVIT_DEMO_TOKEN", "TAUTLINE_DEMO_TOKEN"),
-        ("TAUTLINE_DEMO_TOKEN", "MINERVIT_DEMO_TOKEN"),
-    ],
-)
-def test_a_persisted_sibling_is_found_from_either_prefix(cli, layers, configured, persisted):
-    """The FILE layers look up the exact key, so sibling probing has to run for BOTH prefixes.
-
-    Handling only one direction meant a MINERVIT_-configured name whose file held the TAUTLINE_
-    spelling was reported reachable by the probe and missing by every consumer -- the third distinct
-    direction of the same asymmetry in three review rounds, which is why the spellings now have ONE
-    definition that the probe and the consumers share.
-    """
-    config_env, _secrets = layers
-    config_env.write_text(f"{persisted}=https://x.test/h\n", encoding="utf-8")
-    assert cli.webhook_env_reachable_value(configured) == "https://x.test/h"
-
-
-def test_status_and_publish_resolve_a_webhook_the_same_way(cli, layers, monkeypatch):
-    """A status check that green-lights a command which immediately refuses is worse than none.
-
-    Strict status read the installed config env; the publisher passed only the process environment
-    to the same helper, so the two disagreed on the same lane in the same second.
-    """
-    config_env, _secrets = layers
-    config_env.write_text("DEMO_CHAT_WEBHOOK=https://x.test/h\n", encoding="utf-8")
-    monkeypatch.delenv("DEMO_CHAT_WEBHOOK", raising=False)
-    resolved = cli.webhook_env_reachable_value("DEMO_CHAT_WEBHOOK")
-    assert resolved == "https://x.test/h"
-    # The publisher must accept exactly what status found, without re-reading a narrower source.
-    assert cli.chat_module().google_chat_webhook_url(
-        "demo", "DEMO_CHAT_WEBHOOK", dry_run=False, environ={}, value=resolved
-    ) == "https://x.test/h"
-
-
-def test_a_live_export_beats_a_stale_persisted_alias(cli, layers, monkeypatch):
-    """LAYER-major, not spelling-major -- the whole correctness argument for the loop's shape.
-
-    Asking each spelling for env-then-config-then-secrets in turn let a stale persisted
-    `TAUTLINE_X` in a file beat a live `MINERVIT_X` export: it reversed the process-env-first
-    precedence every other reader has, disagreed with what `secret-status` reports, and would let a
-    publisher post to the wrong Chat space on the strength of a value nobody had updated.
-    """
-    config_env, _secrets = layers
-    config_env.write_text("TAUTLINE_DEMO_HOOK=https://stale.test/h\n", encoding="utf-8")
-    monkeypatch.setenv("MINERVIT_DEMO_HOOK", "https://live.test/h")
-    monkeypatch.delenv("TAUTLINE_DEMO_HOOK", raising=False)
-    assert cli.webhook_env_reachable_value("MINERVIT_DEMO_HOOK") == "https://live.test/h"
-    # ...and the probe must agree, or the two are back to disagreeing about the same secret.
-    assert _probe(cli, "MINERVIT_DEMO_HOOK") == 0
-
-
-def test_the_file_layers_keep_their_own_order(cli, layers):
-    """Config env before secrets file, unchanged: this reorder must not shuffle the layers, only
-    stop a spelling from carrying a whole layer past the one above it."""
-    config_env, secrets = layers
-    config_env.write_text("DEMO_CHAT_WEBHOOK=https://config.test/h\n", encoding="utf-8")
-    secrets.write_text("export DEMO_CHAT_WEBHOOK=https://secrets.test/h\n", encoding="utf-8")
-    assert cli.webhook_env_reachable_value("DEMO_CHAT_WEBHOOK") == "https://config.test/h"

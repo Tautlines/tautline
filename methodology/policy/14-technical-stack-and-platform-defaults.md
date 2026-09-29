@@ -1,9 +1,0 @@
-## Technical Stack And Platform Defaults
-
-- Project adapters own `technologyStack`: approved cloud/hosting providers, credential paths, deployment defaults, and non-negotiable platform choices.
-- New projects default to AWS for cloud services unless the adapter overrides `technologyStack.approvedCloudProviders` and `technologyStack.cloudProviderDefault`. Do not introduce Vercel, GCP, Azure, Netlify, Fly.io, Render, Supabase, Firebase, or another cloud/hosting platform unless the adapter or human operator approves.
-- Tool, framework, starter-template, AI, or hosting-product defaults are not approval for new deployment platforms; use the adapter path or ask one exact approval question only when no approved path exists.
-- For AWS-approved lanes, AWS CLI is the default deploy credential path. Check `aws --version` and `aws sts get-caller-identity` or adapter identity command/profile before deployment/provisioning. Do not ask for SSH keys, create SSH-key blockers, or invent alternate deploy credentials until the AWS CLI path has been checked.
-- Only adapter overrides may declare non-AWS platforms, SSH hosts, non-CLI credentials, deployment targets, or provider-specific setup. Unapproved cloud/hosting, billing, secrets, production deploy, observability, database, or operations burden is T2+ and may be T3.
-- GitHub-backed workflows are rate-limit-budget-aware: prefer REST for equivalent issue/PR reads/comments, cache Project board reads, check GraphQL budget before point-heavy calls, and back off or use cached snapshots before zeroing budget.
-- Plan/spec authority comes from adapter source-of-truth paths; outside paths are scratch unless adapter-approved. Backlog/source-of-truth paths beat tool defaults. T2/T3 plans must include `Cross-Model Review Evidence` before finalization.

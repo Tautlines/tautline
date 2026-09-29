@@ -1,0 +1,11 @@
+usage: tautline lane-role [-h] [--target TARGET] {builder,human,status}
+
+positional arguments:
+  {builder,human,status}
+                        builder: write the marker. human: remove it. status:
+                        print the role and the marker (env, file, or default)
+                        that decided it.
+
+options:
+  -h, --help            show this help message and exit
+  --target TARGET

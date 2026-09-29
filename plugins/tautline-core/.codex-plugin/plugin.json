@@ -3,7 +3,7 @@
     "name": "Minervit",
     "url": "https://github.com/tautlines"
   },
-  "description": "Portable Tautline methodology for AI-assisted software delivery across Claude, Codex, and project adapters.",
+  "description": "Fast agent teamwork with lean project instructions, shared-work context, goal prompts, and handoffs.",
   "homepage": "https://github.com/tautlines/tautline",
   "interface": {
     "brandColor": "#2563EB",
@@ -13,34 +13,30 @@
     ],
     "category": "Productivity",
     "defaultPrompt": [
-      "Audit this repo's AI process rules.",
-      "Install or sync the portable methodology CLI.",
-      "Onboard an unmanaged repo with init, then start an adapter-backed lane.",
-      "Create or advance a source-of-truth goal plan.",
-      "Run the review-before-push workflow.",
+      "Set up lean instructions for this project.",
+      "Show what peer agents are working on.",
+      "Compose a focused goal prompt.",
       "Prepare a continuity handoff.",
-      "Submit a Tautline feature request.",
-      "Triage a product bug through adapter bugBacklog policy.",
-      "Check public-release readiness and migration status."
+      "Inspect work evidence and pending operator decisions."
     ],
     "developerName": "Minervit",
     "displayName": "Tautline AI Delivery",
-    "longDescription": "Packages the Tautline AI Delivery Methodology as a Codex skill bundle for adapter-backed software delivery. It helps teams start lanes, pin framework versions, plan and advance goals, coordinate reviews, triage bugs through adapter policy, run migration and public-release checks, capture continuity, publish RCA or feature-request artifacts, and keep long-running AI work visible. Detailed procedures live in the skill files, policy modules, and docs/reference/plugin-capability-catalog.md.",
+    "longDescription": "Tools and skills for fast AI development: small project instructions, local work coordination, goal prompts, handoffs, and clear operator decisions. The CLI supplies evidence and health reports. Claude has advisory startup context and a specialized configured-builder hook; Codex uses skills and generated instructions. See docs/reference/plugin-capability-catalog.md for current boundaries.",
     "privacyPolicyURL": "https://github.com/tautlines/tautline/blob/main/PRIVACY.md",
-    "shortDescription": "Canonical AI delivery process, reviews, gates, and adapters.",
+    "shortDescription": "Lean instructions, agent coordination, and continuity.",
     "termsOfServiceURL": "https://github.com/tautlines/tautline/blob/main/TERMS.md",
     "websiteURL": "https://github.com/tautlines/tautline"
   },
   "keywords": [
     "ai-delivery",
     "agentic-development",
-    "review",
-    "codex",
-    "claude"
+    "coordination",
+    "claude",
+    "codex"
   ],
   "license": "MIT",
   "name": "tautline-core",
   "repository": "https://github.com/tautlines/tautline",
   "skills": "./skills/",
-  "version": "0.111.0"
+  "version": "0.148.0"
 }

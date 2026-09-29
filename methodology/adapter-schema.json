@@ -612,12 +612,32 @@
         },
         "provider": {
           "type": "string",
-          "enum": [
-            "github-projects"
-          ]
+          "minLength": 1,
+          "description": "Backlog board provider id, validated against the provider registry rather than a closed enum, so a second board system is a registration and not a fork. Membership is checked in code because JSON Schema cannot express \"is in the registry\". A registered provider that does not yet serve a board verb refuses BY NAME when that verb is reached -- declaring a provider and implementing it are separate facts."
         },
         "owner": {
-          "type": "string"
+          "type": "string",
+          "description": "GitHub Projects board owner. Required by the `github-projects` backlog provider only; each provider declares the fields that identify its board."
+        },
+        "siteUrl": {
+          "type": "string",
+          "description": "Jira Cloud site URL, e.g. https://your-team.atlassian.net. Required by the `jira` backlog provider."
+        },
+        "projectKey": {
+          "type": "string",
+          "description": "Jira project key, e.g. PROJ. Required by the `jira` backlog provider."
+        },
+        "boardId": {
+          "type": "string",
+          "description": "Jira board id, optional. Supplies rank ordering; without it board order falls back to a JQL ORDER BY Rank."
+        },
+        "emailEnv": {
+          "type": "string",
+          "description": "NAME of the environment variable holding the Jira account email. Never the value: the adapter is committed to a repository."
+        },
+        "apiTokenEnv": {
+          "type": "string",
+          "description": "NAME of the environment variable holding the Jira API token. Never the value: the adapter is committed to a repository."
         },
         "projectNumber": {
           "type": "integer",
@@ -718,12 +738,32 @@
         },
         "provider": {
           "type": "string",
-          "enum": [
-            "github-projects"
-          ]
+          "minLength": 1,
+          "description": "Backlog board provider id, validated against the provider registry rather than a closed enum, so a second board system is a registration and not a fork. Membership is checked in code because JSON Schema cannot express \"is in the registry\". A registered provider that does not yet serve a board verb refuses BY NAME when that verb is reached -- declaring a provider and implementing it are separate facts."
         },
         "owner": {
-          "type": "string"
+          "type": "string",
+          "description": "GitHub Projects board owner. Required by the `github-projects` backlog provider only; each provider declares the fields that identify its board."
+        },
+        "siteUrl": {
+          "type": "string",
+          "description": "Jira Cloud site URL, e.g. https://your-team.atlassian.net. Required by the `jira` backlog provider."
+        },
+        "projectKey": {
+          "type": "string",
+          "description": "Jira project key, e.g. PROJ. Required by the `jira` backlog provider."
+        },
+        "boardId": {
+          "type": "string",
+          "description": "Jira board id, optional. Supplies rank ordering; without it board order falls back to a JQL ORDER BY Rank."
+        },
+        "emailEnv": {
+          "type": "string",
+          "description": "NAME of the environment variable holding the Jira account email. Never the value: the adapter is committed to a repository."
+        },
+        "apiTokenEnv": {
+          "type": "string",
+          "description": "NAME of the environment variable holding the Jira API token. Never the value: the adapter is committed to a repository."
         },
         "projectNumber": {
           "type": "integer",
@@ -1036,9 +1076,8 @@
             },
             "provider": {
               "type": "string",
-              "enum": [
-                "google-chat-webhook"
-              ]
+              "minLength": 1,
+              "description": "Notify provider id, validated against the provider registry rather than a closed enum, so a second chat tool is a registration and not a fork. Membership is checked in code because JSON Schema cannot express \"is in the registry\"; the refusal names the value and the registered ids. Use \"none\" to declare no delivery deliberately -- with enabled true it is refused, so silence-on-purpose stays distinguishable from silence-by-accident."
             },
             "webhookEnv": {
               "type": "string"
@@ -1108,9 +1147,8 @@
         },
         "provider": {
           "type": "string",
-          "enum": [
-            "google-chat-webhook"
-          ]
+          "minLength": 1,
+          "description": "Notify provider id, validated against the provider registry rather than a closed enum, so a second chat tool is a registration and not a fork. Membership is checked in code because JSON Schema cannot express \"is in the registry\"; the refusal names the value and the registered ids. Use \"none\" to declare no delivery deliberately -- with enabled true it is refused, so silence-on-purpose stays distinguishable from silence-by-accident."
         },
         "webhookEnv": {
           "type": "string"
@@ -1139,9 +1177,8 @@
         },
         "provider": {
           "type": "string",
-          "enum": [
-            "google-chat-webhook"
-          ]
+          "minLength": 1,
+          "description": "Notify provider id, validated against the provider registry rather than a closed enum, so a second chat tool is a registration and not a fork. Membership is checked in code because JSON Schema cannot express \"is in the registry\"; the refusal names the value and the registered ids. Use \"none\" to declare no delivery deliberately -- with enabled true it is refused, so silence-on-purpose stays distinguishable from silence-by-accident."
         },
         "webhookEnv": {
           "type": "string"
@@ -1169,9 +1206,8 @@
         },
         "provider": {
           "type": "string",
-          "enum": [
-            "google-chat-webhook"
-          ]
+          "minLength": 1,
+          "description": "Notify provider id, validated against the provider registry rather than a closed enum, so a second chat tool is a registration and not a fork. Membership is checked in code because JSON Schema cannot express \"is in the registry\"; the refusal names the value and the registered ids. Use \"none\" to declare no delivery deliberately -- with enabled true it is refused, so silence-on-purpose stays distinguishable from silence-by-accident."
         },
         "webhookEnv": {
           "type": "string"
@@ -1742,6 +1778,22 @@
         },
         "crossModelTiming": {
           "type": "string"
+        },
+        "crossModel": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enforcement": {
+              "type": "string",
+              "enum": [
+                "off",
+                "observe",
+                "advise",
+                "block"
+              ],
+              "description": "off = the vendor-difference check does not run; observe = event-log record only; advise = warn and stamp the degradation into the manifest; block = refuse. Default block, which is strictly more permissive than the previous reviewer-must-be-codex rule."
+            }
+          }
         }
       }
     },
@@ -2340,28 +2392,6 @@
         }
       }
     },
-    "renderBudget": {
-      "type": "object",
-      "description": "Adapter-tunable size budget for generated runtime files (CLAUDE.md/AGENTS.md). Replaces the previously hardcoded 15KB/31KB ceiling so a project can raise/lower it deliberately. Defaults: max 31000, min 15000, enforcement warn.",
-      "properties": {
-        "maxGeneratedBytes": {
-          "type": "integer",
-          "minimum": 1000
-        },
-        "minGeneratedBytes": {
-          "type": "integer",
-          "minimum": 0
-        },
-        "enforcement": {
-          "type": "string",
-          "enum": [
-            "warn",
-            "block"
-          ]
-        }
-      },
-      "additionalProperties": false
-    },
     "laneState": {
       "type": "object",
       "required": [
@@ -2569,6 +2599,55 @@
           "description": "Treat a check that has not reported yet as blocking. Defaults true: merging while checks are still running is how a red commit lands on a repo without platform enforcement."
         }
       },
+      "additionalProperties": false
+    },
+    "postMergeTier": {
+      "type": "object",
+      "description": "The post-merge acceptance suite on the integration branch -- the tier that tells you whether the branch you are merging INTO is red. `tautline base-health` reads it; session start, the pre-push hook, and `tautline merge` consult it. The verdict comes from a completed run on the base tip when one exists, else the newest completed run by creation time (commit order); an untested known tip is never green; marker issues are never an input; an unreadable tier is `unknown`, never green. Omitting the key disables it.",
+      "properties": {
+        "enforcement": {
+          "type": "string",
+          "description": "off = never read; advise = report a red base but proceed; block = `tautline merge` and the pre-push hook refuse while the base is red, released only by a live fleet lease held by the merging worktree whose note starts with one of claimNotePrefixes, or by `--override <reason>`.",
+          "enum": [
+            "off",
+            "advise",
+            "block"
+          ]
+        },
+        "provider": {
+          "type": "string",
+          "enum": [
+            "github-actions"
+          ]
+        },
+        "workflow": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Workflow file or name, as `gh run list --workflow` accepts it."
+        },
+        "branch": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Branch the tier runs on. Defaults to the adapter's integration branch (laneStatus.integrationBranch, then latestCode.base)."
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Runs to read per check. Default 20; must cover the longest plausible overlap of in-flight runs."
+        },
+        "claimNotePrefixes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1,
+          "description": "A live fleet lease owned by the merging worktree whose note starts with one of these releases the refusal: the lane fixing the red must be able to land the fix. Default `base-red claim:` and `main-red claim:`."
+        }
+      },
+      "required": [
+        "workflow"
+      ],
       "additionalProperties": false
     },
     "ciTestGate": {
@@ -2843,12 +2922,18 @@
       "properties": {
         "profile": {
           "type": "string",
-          "enum": ["off", "live-tenant"],
+          "enum": [
+            "off",
+            "live-tenant"
+          ],
           "default": "off"
         },
         "enforcement": {
           "type": "string",
-          "enum": ["warn", "block"],
+          "enum": [
+            "warn",
+            "block"
+          ],
           "default": "warn",
           "description": "Whether a milestone-close deploymentTarget WITHOUT profile live-tenant is drift. Default warn (advisory line only, never fails --fail-on-drift/--strict). Set block once this lane has adopted the profile."
         },
@@ -2862,10 +2947,18 @@
                 "minLength": 1,
                 "description": "A go-live control key as reported by control_posture (ciTestGate, healthContract, readiness, runtimeConfig.requiredSecrets, criticalJourneys, flakyQuarantine, remediation), or the literal 'goLiveReadiness.profile' to decline adopting the profile itself."
               },
-              "reason": {"type": "string", "minLength": 12},
-              "decisionRecord": {"type": "string"}
+              "reason": {
+                "type": "string",
+                "minLength": 12
+              },
+              "decisionRecord": {
+                "type": "string"
+              }
             },
-            "required": ["control", "reason"],
+            "required": [
+              "control",
+              "reason"
+            ],
             "additionalProperties": false
           }
         }
@@ -2935,6 +3028,101 @@
       "type": "array",
       "items": {
         "type": "string"
+      }
+    },
+    "agents": {
+      "type": "object",
+      "description": "Registry of agents this project may bind to a role. Keys are opaque agent ids chosen by the adopter.",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "vendor",
+          "runtime",
+          "instructionFile"
+        ],
+        "properties": {
+          "vendor": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Model provider. FREE-FORM: never an enum, never an allowlist. The framework compares two vendor strings for inequality and attaches no other meaning to the value."
+          },
+          "runtime": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Harness this agent runs in. FREE-FORM: determines which in-session enforcement is available, looked up as data in methodology/runtime-capabilities.json."
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "instructionFile": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Generated instruction file for this agent, e.g. CLAUDE.md or AGENTS.md. Replaces the hardcoded RUNTIME_TARGETS table."
+          },
+          "reviewWrapper": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "planReviewWrapper": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reviewGuidance": {
+            "type": "string"
+          },
+          "transcriptMarker": {
+            "type": "string",
+            "description": "Legacy fallback only: the speaker marker to scan for when this agent's wrapper does not emit structured output. Declared per agent, never assumed."
+          },
+          "goalCommand": {
+            "type": "string"
+          },
+          "goalGuidance": {
+            "type": "boolean"
+          },
+          "fastMode": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "runtimeCapabilities": {
+      "type": "object",
+      "description": "What in-session enforcement a runtime actually supplies, keyed by the `runtime` value an agent declares. WHOLE-ENTRY REPLACEMENT per runtime, adapter wins -- never a union with the shipped list, because an adopter whose harness dropped a hook must be able to say so. Runtimes not named here keep the shipped list from methodology/runtime-capabilities.json; a runtime named nowhere is reported as zero-capable, which is the safe default rather than the intended path. Reports only, never blocks.",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "roles": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Per-seam role bindings. Each value must resolve to a key in `agents`.",
+      "properties": {
+        "planner": {
+          "type": "string",
+          "minLength": 1
+        },
+        "planReviewer": {
+          "type": "string",
+          "minLength": 1
+        },
+        "builder": {
+          "type": "string",
+          "minLength": 1
+        },
+        "implementationReviewer": {
+          "type": "string",
+          "minLength": 1
+        }
       }
     }
   }

@@ -1,0 +1,46 @@
+#!/usr/bin/env python3
+"""Conforming PLAN reviewer that requires its `--plan` argument.
+
+`run-plan-review` always appends `--plan <path>` to the wrapper it launches, so a real plan
+reviewer may reasonably insist on it. Certifying such a wrapper by running it BARE tests an
+invocation that never happens in production: this agent would fail a battery it passes in the
+seam.
+
+It reads the file too, not just the flag, because a wrapper that opens what it is given should
+succeed in conformance for the same reason it succeeds in the seam.
+"""
+import json
+import os
+import sys
+
+AGENT_ID = os.environ.get("TAUTLINE_REVIEW_AGENT_ID", "fixture-plan-arg")
+
+argv = sys.argv[1:]
+if "--plan" not in argv:
+    print("no --plan supplied; this reviewer reviews plans", file=sys.stderr)
+    raise SystemExit(2)  # transport failure: it was not invoked the way the seam invokes it
+plan_path = argv[argv.index("--plan") + 1]
+with open(plan_path, encoding="utf-8") as handle:
+    handle.read()
+
+print("reviewing:", " ".join(argv))
+print("## Findings")
+print()
+print("No blockers found.")
+
+path = os.environ.get("TAUTLINE_REVIEW_RESULT_PATH")
+if not path:
+    print("no TAUTLINE_REVIEW_RESULT_PATH supplied", file=sys.stderr)
+    raise SystemExit(2)
+
+with open(path, "w", encoding="utf-8") as handle:
+    json.dump(
+        {
+            "schema": "tautline-agent-review-result/v1",
+            "agent": AGENT_ID,
+            "verdict": "clean",
+            "findings": [],
+        },
+        handle,
+    )
+raise SystemExit(0)

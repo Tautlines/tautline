@@ -3,42 +3,26 @@ import re
 
 
 SUBCOMMAND_HELP_TOKENS = {
-    ("install-claude-launcher", "--help"): ("--operator-channel", "--runtime", "maintainer-mode"),
-    ("publish-release-update", "--help"): ("--last",),
+    # The surviving surface only. The 2026-08-28 process-bankruptcy demolition removed every other
+    # verb this table used to pin; the contract itself -- a documented flag must appear in its own
+    # `--help` -- is unchanged, and each entry below names a flag whose absence would be a silent
+    # regression for a command adopters still run.
     ("sync-methodology", "--help"): (
         "--auto-rescue-local-changes",
         "--no-auto-rescue-local-changes",
     ),
-    ("background-run", "--help"): ("--timeout-seconds",),
-    ("monitor-status", "--help"): ("--max-stale-seconds",),
-    ("response-guard", "--help"): (
-        "--active-monitor",
-        "--derivable-next-action-prompt",
-        "--terminal-stop",
-        "--boundary-summary",
-    ),
-    ("graphify-install", "--help"): ("--skip-setup", "--build"),
-    ("codex-run", "--help"): ("--stage1-sweep",),
-    ("claude-review", "--help"): ("--packet", "--timeout-seconds", "--fail-on-blockers", "--no-fail-on-blockers"),
-    ("claude-review-status", "--help"): ("--review-dir", "--limit"),
-    ("iteration-review-renderer-setup", "--help"): ("--no-install", "--timeout-seconds"),
-    ("maintainer-mode", "--help"): ("on", "off", "status", "update gates"),
     ("methodology-status", "--help"): (
         "--strict",
-        "Exit 0 clean, 1 integrity",
-        "2 debt-only",
-        "methodology_status_blocking:",
-        "docs/reference/startup-remediation.md",
+        "--fail-on-drift",
+        "--no-remote",
     ),
-    ("publish-rca-artifact", "--help"): (
-        "--commit",
-        "--push",
-        "--branch",
-        "--allow-release-checkout-write",
-        "methodology-rca-archive",
-        "Skip git add only",
-    ),
-    ("publish-session-journal", "--help"): ("--allow-release-checkout-write",),
+    ("render-adapters", "--help"): ("--write", "--check", "--project"),
+    ("lane-status", "--help"): ("--hook", "--json"),
+    ("secret-status", "--help"): ("--name",),
+    ("release-tail", "--help"): ("--dry-run",),
+    ("registry-package", "--help"): ("--registry", "--version", "--destination"),
+    ("public-release-export", "--help"): ("--destination",),
+    ("decision-record", "--help"): ("--summary", "--rationale", "--reversibility"),
 }
 
 

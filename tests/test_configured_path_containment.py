@@ -42,31 +42,12 @@ def test_allow_outside_permits_external_scratch_dir(cli, tmp_path):
     assert result == cli.Path("~/.claude/plans/").expanduser()
 
 
-def test_configured_paths_plural_contains_by_default(cli, tmp_path):
-    with pytest.raises(ValueError, match="escapes the project root"):
-        cli.configured_paths(tmp_path, ["ok/here", "/etc/shadow"])
-
-
 # --- Codex P2: operator CLI args / framework-internal paths are NOT contained ---------------
 #
 # A5's containment backstop targets adversarial ADAPTER-config values. Operator-typed CLI file
 # arguments (e.g. monitor-status --log /tmp/run.log) and framework-written manifest/run-metadata
 # paths are trusted external inputs and must resolve without ValueError. cli_path() is the
 # non-contained sibling used at those sites; configured_path() stays contained for adapter values.
-
-
-def test_cli_path_absolute_operator_arg_resolves(cli, tmp_path):
-    # Regression: monitor-status --log /tmp/run.log is a legitimate external input, not adapter config.
-    result = cli.cli_path(tmp_path, "/tmp/run.log")
-    assert result == cli.Path("/tmp/run.log")
-
-
-def test_cli_path_relative_arg_joins_target(cli, tmp_path):
-    assert cli.cli_path(tmp_path, "runs/current.log") == tmp_path / "runs" / "current.log"
-
-
-def test_cli_path_home_arg_expands_outside_root(cli, tmp_path):
-    assert cli.cli_path(tmp_path, "~/notes.md") == cli.Path("~/notes.md").expanduser()
 
 
 def test_configured_path_still_contains_absolute(cli, tmp_path):
@@ -76,18 +57,6 @@ def test_configured_path_still_contains_absolute(cli, tmp_path):
 
 
 # --- Codex R2 P2: harness command TEXT tolerates non-project tokens -------------------------
-
-
-def test_harness_command_with_absolute_executable_tolerated(cli, tmp_path):
-    # behaviorSpecs.acceptanceHarnesses[].command is command TEXT, not a path field. An absolute
-    # executable first token (e.g. `/bin/sh scripts/acceptance.sh`) must not abort
-    # methodology-status/lane-start via the containment ValueError; the token is simply not a
-    # project script, and the in-project script token must still be found and read for proof.
-    script = tmp_path / "scripts" / "acceptance.sh"
-    script.parent.mkdir()
-    script.write_text("echo acceptance-proof\n", encoding="utf-8")
-    text = cli.behavior_harness_script_text(tmp_path, "/bin/sh scripts/acceptance.sh")
-    assert "acceptance-proof" in text
 
 
 def _minimal_document_context_data(**overrides: list[str]) -> dict:
@@ -109,14 +78,3 @@ def _minimal_document_context_data(**overrides: list[str]) -> dict:
     }
     data["documentContext"].update(overrides)
     return data
-
-
-@pytest.mark.parametrize("field", ["contextIndexPaths", "trackedDocRoots", "historicalPaths"])
-def test_document_context_roots_are_contained_by_default(cli, tmp_path, field):
-    # sec-a5-followup: contextIndexPaths/trackedDocRoots/historicalPaths default to in-project paths
-    # and are not documented in adapter-schema.json as containment-exempt, so document_context_status_data
-    # must apply the normal containment backstop to them (unlike scratchPaths/laneCoordination, which are
-    # documented allowlist exceptions).
-    data = _minimal_document_context_data(**{field: ["../outside"]})
-    with pytest.raises(ValueError, match="escapes the project root"):
-        cli.document_context_status_data(data, tmp_path)

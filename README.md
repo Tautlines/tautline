@@ -1,84 +1,68 @@
-# Tautline — the governor for AI coding agents
+# Tautline — fast, coordinated AI development
 
 [![ci-python](https://github.com/tautlines/tautline/actions/workflows/ci-python.yml/badge.svg)](https://github.com/tautlines/tautline/actions/workflows/ci-python.yml)
-[![validate](https://github.com/tautlines/tautline/actions/workflows/validate.yml/badge.svg)](https://github.com/tautlines/tautline/actions/workflows/validate.yml)
-[![renderer-ci](https://github.com/tautlines/tautline/actions/workflows/renderer-ci.yml/badge.svg)](https://github.com/tautlines/tautline/actions/workflows/renderer-ci.yml)
-[![npm-audit](https://github.com/tautlines/tautline/actions/workflows/npm-audit.yml/badge.svg)](https://github.com/tautlines/tautline/actions/workflows/npm-audit.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-Tautline stops AI coding agents — Claude Code, Codex — from claiming false completion,
-skipping your review gates, or stopping early with the work half-done. You keep one canonical
-ruleset, generate a small per-project adapter, and machine-checked enforcement hooks hold the
-agent to it. The rules live where you actually control the boundary: your repository, your
-pre-push hook, your CI.
+Tautline helps Claude Code and Codex agents work together on real repositories. Give each
+project a small set of instructions, see what other agents are changing, keep useful proof of
+what ran, and carry decisions into the next session.
 
-![An agent tries to declare done without a green gate — and gets blocked.](docs/assets/demo.gif)
+The aim is more useful work with less coordination effort. Agents keep moving: work manifests,
+status, and evidence are advisory. There are no mandatory planning rounds, review ledgers, or
+completion hooks. Your project's tests and CI remain the quality boundary.
 
-*An agent tries to declare done without a green gate — and gets blocked.*
+## What you get
 
-## Why Tautline
-
-- **Agents can't fake "done."** A completion claim without a green gate is blocked at the
-  point of action, not caught later in review.
-- **One ruleset, every project.** Canonical policy plus a per-project adapter renders the
-  agent instructions and hooks — no copy-pasted prompt drift across repos.
-- **Zero telemetry by design.** Nothing phones home. Evidence stays as local logs in your
-  own repo; there is no analytics endpoint to opt out of.
-- **140+ subcommands for the whole delivery loop.** One CLI covers init, session start, review
-  gates, release cutting, backlog sync, and continuity handoffs.
-- **Honest enforcement tiers.** Blocking, in-session hooks on Claude; advisory in-session
-  elsewhere, with hard gates at pre-push and CI that bind on any runtime, including Codex.
-- **SHA-pinned supply chain.** Dependencies and update sources are pinned, so an upstream
-  change can't silently alter what runs on your machine.
+- **Shared work intent.** Local sibling worktrees share manifests of goals, scope,
+  dependencies, blockers, and progress. Agents see peer work at startup and when taking a
+  backlog item; the fleet view highlights stale declarations and possible overlaps.
+- **Evidence you can inspect.** Wrap an existing test command with `tautline evidence run`
+  to keep its exit status and code identity. `tautline health` shows current local facts;
+  `--remote` adds on-demand GitHub facts. Unknown stays unknown.
+- **Decisions that survive a session.** The operator inbox collects pending decisions,
+  persists answers, and keeps answers available until the waiting agent acknowledges them.
+  Optional handoffs preserve the next step across a restart.
+- **One small project setup.** `tautline init` renders instructions for Claude Code and
+  Codex. Choose a local queue, GitHub issues, or Jira for your backlog.
+- **Local records, no analytics.** Coordination and evidence stay on your machine.
+  Network access comes from the integrations you use; see [Privacy](PRIVACY.md).
 
 ## Quickstart
 
-You need Python 3.12+ and git. Clone the repository, then install the CLI from the checkout:
+You need Python 3.12+ and git. Tautline supports Linux, macOS, and Windows through WSL2.
+Clone the public release and install the checkout launcher:
 
 ```bash
 git clone https://github.com/tautlines/tautline
 cd tautline
+bin/tautline install-cli --dry-run
 bin/tautline install-cli
-```
-
-`install-cli` writes a portable launcher to `~/.local/bin/tautline` (plus the
-legacy `minervit-methodology` compatibility alias), an
-environment file at `~/.config/tautline/tautline.env`, a pre-commit guard in the
-framework checkout, and autocompact settings in `~/.claude/settings.json`. Pass `--dry-run`
-to see every mutation before it happens; `uninstall-cli` removes the launcher and
-environment file (the `~/.claude/settings.json` autocompact settings and any installed
-git guards stay in place — remove those by hand if you want a full rollback).
-
-Then activate the environment (or restart your shell) and make sure `~/.local/bin` is on your
-`PATH`:
-
-```bash
 source ~/.config/tautline/tautline.env
 ```
 
-Then run the mandatory launcher cutover (the tool banners `next_step_required` until you do):
+The installer creates launchers, configuration, and a local runtime snapshot. It also ensures
+Claude autocompact settings. Its preview lists the affected paths; see
+[install and removal](docs/product/support-sla-model.md) for the exact boundary. New checkout
+installs pin trusted updates to the installed commit.
 
-```bash
-tautline install-claude-launcher --force
-```
-
-Then initialize a project you want the agent to work in:
+Set up the repository where your agents will work:
 
 ```bash
 cd <your-repo>
-tautline init --target .
+tautline init
+tautline lane-status
 ```
 
-Answer the printed interview questions, then re-run `init --target . --continue` to render
-`CLAUDE.md`, `AGENTS.md`, and the per-repo runtime contract. Existing managed repos skip
-onboarding and start a session directly:
+`init` asks for the project, integration branch, test command, backlog, and handoff preference,
+then writes `.tautline.json`, `CLAUDE.md`, and `AGENTS.md`. Every question has a flag;
+`tautline init --yes` accepts the defaults. Existing configurations are preserved unless you
+explicitly pass `--force`.
 
-```bash
-tautline lane-start --target .
-```
-
-The legacy `minervit-methodology` command name keeps working as a compatibility shim for
-existing installs and generated adapters.
+New projects enable work coordination. Existing projects can adopt it without rebuilding their
+process; see [shared work](docs/reference/work.md). The older adapter workflow remains
+available through `tautline init-project-adapter` and `tautline render-adapters`.
+Use [`tautline slim`](docs/reference/lean-migration.md) to migrate a full legacy adapter to
+small project instructions.
 
 ### Install from PyPI
 
@@ -86,111 +70,72 @@ existing installs and generated adapters.
 pipx install tautline
 ```
 
-The package installs the full CLI — adopter flow, adapters, and plugin hooks included. It is
-a stamped snapshot of one release: it does not auto-update via the launcher; update it with
-`pipx upgrade tautline` (or `pip install -U tautline` in a plain virtualenv). The checkout
-install above remains the auto-updating runtime. Everything here is POSIX-first; on Windows,
-use WSL2.
+The PyPI package includes the CLI, adapters, and plugin assets as a snapshot of one release.
+Update it with `pipx upgrade tautline`; it does not update through the checkout launcher.
+The npm package is a pointer to this Python installation, not another runtime.
 
-## Install the Claude Code plugin
+## Everyday use
 
-Tautline ships its own Claude Code plugin marketplace. Inside Claude Code:
-
+```bash
+tautline work status                  # see peer agents and possible overlaps
+tautline work declare "Improve checkout" --path src/checkout
+tautline backlog list                 # use your configured backlog
+tautline evidence run -- scripts/test.sh
+tautline evidence status              # see the result and whether the code still matches
+tautline health                       # local facts; no network
+tautline health --remote              # request current GitHub facts
+tautline inbox                        # pending operator decisions
 ```
+
+Declare and refresh work at meaningful boundaries, not on a timer. Read peer work when starting
+or resuming a session and before picking the next item. Mark the declaration complete or
+abandoned when it ends. A stale or overlapping declaration is information to act on, not a lock.
+
+Manifests coordinate worktrees sharing one local Git repository. They do not synchronize
+independent clones or machines, reserve files, or guarantee that two agents cannot collide.
+Evidence records what a command reported; it does not certify that a feature works or a
+deployment is healthy. Inbox answers are delivered for an agent to interpret, not executed as
+commands.
+
+## Agent plugins
+
+In Claude Code, after installing the CLI:
+
+```text
 /plugin marketplace add tautlines/tautline
 /plugin install tautline-core@tautline
 ```
 
-- **`tautline-core`** — enforced completion gates, lane lifecycle, review-before-push, and the
-  blocking in-session hooks.
-- **`tautline-ops`** — delivery-ops surfaces: iteration review, milestone updates, session
-  journals, usage accounting, event observability. Install it with
-  `/plugin install tautline-ops@tautline`.
+`tautline-core` supplies advisory startup context and skills for goal prompts, handoffs, and
+clear operator instructions. Its builder hook restricts selected GitHub operations only in
+explicitly configured builder lanes. [Builder lanes](docs/builder-lanes.md) explains the
+boundary and GitHub App setup.
 
-The plugins drive the CLI installed in the quickstart above, so install the CLI first.
+`tautline-ops` adds a database migration collision skill. The repository also includes
+iteration-review rendering assets; automated recap publishing is not part of the current CLI.
+Install it with `/plugin install tautline-ops@tautline` when needed.
 
-## How it compares
+Codex uses the generated `AGENTS.md` and available skills. Claude-specific hooks do not run in
+Codex. Both runtimes can use the same CLI and local records.
 
-|                                        | Hand-written `CLAUDE.md` rules | Advisory guardrail repos | Tautline |
-| -------------------------------------- | :---------------------------: | :----------------------: | :------: |
-| Enforced, not advisory                 |               No              |          Partial         |    Yes   |
-| False-completion detection             |               No              |            No            |    Yes   |
-| Works across Claude Code + Codex        |            Claude only        |          Varies          |    Yes   |
-| Review-gate + release tooling built in |               No              |          Rarely          |    Yes   |
+## Upgrading from older Tautline
 
-Prose instructions ask an agent to behave; Tautline makes the machine refuse the action when
-it doesn't. The comparison is about enforcement mechanics, not the quality of anyone else's
-prompts.
+The lean release removes the old completion/review hooks, required planning rounds, and
+publishing machinery. It restores coordination and visibility without restoring those gates.
+Read the [migration guide](docs/reference/lean-migration.md), preview `tautline slim`, and keep
+its backup until you have verified your project. Historical docs under `docs/archive/` and
+`docs/archive-prebankruptcy/` describe older behavior, not current requirements.
 
-## Common questions
+A development branch can be ahead of public packages. Use [GitHub releases](https://github.com/Tautlines/tautline/releases)
+and the installed `tautline version` to identify what you are running; the
+[roadmap](ROADMAP.md) distinguishes current capability from future work.
 
-### How do I stop Claude Code from claiming it's done?
+## Learn more
 
-Tautline installs a Stop-time hook that inspects the agent's response and the session's state
-before the agent can hand back control, and blocks completion claims that aren't backed by
-the required evidence — routing the agent back through the work instead. Independently, the
-pre-push guard refuses to ship anything without a green test gate and review evidence, so a
-false "done" can't reach your remote even if it slips past the session.
+- [Documentation](docs/README.md) and [capability reference](docs/reference/plugin-capability-catalog.md)
+- [Product direction](docs/product/positioning.md) and [roadmap](ROADMAP.md)
+- [Contributing](CONTRIBUTING.md), [governance](GOVERNANCE.md), and [AI contribution policy](.github/AI_CONTRIBUTION_POLICY.md)
+- [Support and uninstall](docs/product/support-sla-model.md), [privacy](PRIVACY.md), and [security reporting](SECURITY.md)
 
-### Can I enforce code review on an AI coding agent?
-
-Yes. Review is a gate, not a suggestion: the agent must produce review evidence for the
-assembled diff before a change can be finalized, and the pre-push and CI gates fail the push
-if that evidence is missing. This binds regardless of which runtime wrote the code.
-
-### Does it work with Codex as well as Claude Code?
-
-Both. On Claude you get live, blocking in-session hooks. On other runtimes, including Codex,
-in-session guidance is advisory, but the real teeth are the pre-push and CI gates that bind
-on any runtime. That split is deliberate and stated plainly — you get ship-time enforcement
-everywhere and live blocking where the host supports it.
-
-### How do I keep AI agents from skipping steps across many repos?
-
-You maintain one canonical ruleset and a small per-project adapter. The CLI renders the
-agent instructions and hooks into each repo from that shared source, so every project follows
-the same operating model without hand-copying prompts that drift out of sync.
-
-### Does Tautline send my code or telemetry anywhere?
-
-No. There is no analytics endpoint and nothing phones home. Enforcement evidence stays on
-your machine as plain local files: review records and continuity handoffs live inside your
-repository checkout, while event logs and usage records default to
-`~/.local/state/minervit/`. Everything is yours to inspect or delete.
-
-## A note on the codebase
-
-The CLI is deliberately a single stdlib-only executable (~35k lines, no third-party runtime
-dependencies) so it stays trivial to audit and vendor. Extraction into a package under `src/`
-is underway; the monolith and the package coexist during that migration. If you open the big
-file first, that is by design, not neglect — see [CONTRIBUTING.md](CONTRIBUTING.md) for the
-rationale and the layout that makes it navigable.
-
-## Docs
-
-- [Documentation index](docs/README.md) — where to start and where to go next.
-- [Operating Manual](docs/reference/operating-manual.md) — the full reference for maintainers
-  and advanced adopters.
-- [Positioning](docs/product/positioning.md) — the authority model and what the engine does.
-- [Support & SLA model](docs/product/support-sla-model.md) — support surfaces and clean
-  uninstall.
-- [Release engineering](docs/reference/operations/release-engineering.md) — how releases are
-  cut, and how adopters pin the stable or experimental framework channel.
-
-## Community
-
-- [CONTRIBUTING.md](CONTRIBUTING.md) — dev setup, the single test gate, and how to open a PR.
-- [AI contribution policy](.github/AI_CONTRIBUTION_POLICY.md) — how AI-assisted contributions
-  are expected to be disclosed and gated.
-- [GOVERNANCE.md](GOVERNANCE.md) — how decisions are made and who owns what.
-- [SECURITY.md](SECURITY.md) — how to report a vulnerability.
-
-This is a community-supported open-source project; it ships with no support SLA. Commercial
-support tiers are described in the [support model](docs/product/support-sla-model.md), and
-general questions can go to `hello@minervit.ai`.
-
-## License
-
-Released under the [MIT License](LICENSE).
-
-Maintained by [Minervit](https://minervit.ai).
+Tautline is MIT-licensed and community-supported, with no support SLA. Maintained by
+[Minervit](https://minervit.ai). General questions: `hello@minervit.ai`.

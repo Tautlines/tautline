@@ -1,14 +1,14 @@
-usage: tautline red-green-check [-h] [--project PROJECT] [--target TARGET]
-                                --file FILE --test-command TEST_COMMAND
-                                [--strict]
+usage: tautline red-green-check [-h] [--target TARGET] --file FILE
+                                --test-command TEST_COMMAND
+                                [--timeout TIMEOUT]
 
 options:
   -h, --help            show this help message and exit
-  --project PROJECT
-  --target TARGET
-  --file FILE           Source file to mutate (a changed critical-journey
-                        source).
+  --target TARGET       Working directory the test command runs in.
+  --file FILE           Source file to mutate.
   --test-command TEST_COMMAND
                         Command (run via bash -c in --target) that should FAIL
                         when the code breaks.
-  --strict              Fail closed when a mutation survives.
+  --timeout TIMEOUT     Seconds allowed per test-command run (baseline and
+                        each mutation), default 600. A run that hits this
+                        reports inconclusive(timeout) rather than hanging.

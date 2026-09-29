@@ -195,111 +195,8 @@ def _methodology_status(binary: Path, clone: Path, lane: Path, *extra, env=None)
     )
 
 
-def test_lane_start_offers_update_and_runs_exactly_one_ls_remote(tmp_path):
-    source, clone, lane = _make_methodology_fixture(tmp_path)
-    binary = clone / "bin" / "tautline"
-    _advance_remote_version(source, NEXT_VERSION)
-    # Bring the candidate object local WITHOUT advancing HEAD (the real post-fetch launch shape):
-    # the probe resolves VERSION fetch-free, and the launch itself never fetches.
-    _git(clone, "fetch", "-q", "origin", "main")
-    shim_dir, log = _make_git_shim(tmp_path)
-
-    started = _lane_start(binary, clone, lane, tmp_path, env=_shim_env(shim_dir))
-
-    assert started.returncode == 0, started.stderr
-    assert (
-        f"framework_update_available: version={NEXT_VERSION} change=minor (running "
-        in started.stdout
-    )
-    assert started.stdout.count("framework_update_available:") == 1
-    assert (
-        f"framework_update_offer: {NEXT_VERSION} is available; stable-channel updates need trust "
-        "set and the release pinned first: tautline install-cli --update-policy pinned, then: "
-        "tautline update-repin, then: tautline sync-methodology --target ."
-    ) in started.stdout
-    assert "framework_remote_status: remote differs" in started.stdout
-    assert _count(log, "ls-remote") == 1, "the probe supplies remote_status; no second ls-remote"
-    assert _count(log, "fetch") == 0, "launch surfaces never fetch"
-
-
-def test_lane_start_no_offer_when_remote_is_equal(tmp_path):
-    source, clone, lane = _make_methodology_fixture(tmp_path)
-    binary = clone / "bin" / "tautline"
-    shim_dir, log = _make_git_shim(tmp_path)
-
-    started = _lane_start(binary, clone, lane, tmp_path, env=_shim_env(shim_dir))
-
-    assert started.returncode == 0, started.stderr
-    assert "framework_update_offer:" not in started.stdout
-    assert f"framework_update_available: version={RUNNING_VERSION}" in started.stdout
-    assert "framework_remote_status: up to date" in started.stdout
-    assert _count(log, "ls-remote") == 1
-
-
 def _framework_remote_status_lines(stdout: str) -> list[str]:
     return [line for line in stdout.splitlines() if line.startswith("framework_remote_status: ")]
-
-
-def test_lane_start_offline_is_byte_identical_to_today_single_ls_remote(tmp_path):
-    source, clone, lane = _make_methodology_fixture(tmp_path)
-    binary = clone / "bin" / "tautline"
-    _git(clone, "remote", "set-url", "origin", str(tmp_path / "missing-lane-remote.git"))
-    shim_dir, log = _make_git_shim(tmp_path)
-
-    # Probe ON: source:"failed" renders from git's own ls-remote stderr (one query, no fallback).
-    on = _lane_start(binary, clone, lane, tmp_path, env=_shim_env(shim_dir))
-    # Probe OFF: the probe stands down and the surface prints today's remote_methodology_status.
-    off = _lane_start(
-        binary, clone, lane, tmp_path, env={"TAUTLINE_METHODOLOGY_UPDATE_PROBE": "off"}
-    )
-
-    assert on.returncode == 0, on.stderr
-    assert off.returncode == 0, off.stderr
-    on_line, off_line = _framework_remote_status_lines(on.stdout), _framework_remote_status_lines(
-        off.stdout
-    )
-    assert on_line == off_line, (on_line, off_line)  # byte-identical to pre-plan output
-    assert on_line and on_line[0].startswith("framework_remote_status: unavailable:")
-    assert "framework_update_offer:" not in on.stdout
-    assert _count(log, "ls-remote") == 1, "one probe ls-remote; no fallback re-probe"
-
-
-def test_lane_start_non_local_candidate_facts_only_zero_fetch_then_status_full_version(tmp_path):
-    source, clone, lane = _make_methodology_fixture(tmp_path)
-    binary = clone / "bin" / "tautline"
-    _advance_remote_version(source, NEXT_VERSION)  # remote ahead, object NOT brought local
-    shim_dir, log = _make_git_shim(tmp_path)
-
-    started = _lane_start(binary, clone, lane, tmp_path, env=_shim_env(shim_dir))
-
-    assert started.returncode == 0, started.stderr
-    # Deliberate launch no-fetch: facts-only sha line, byte-identical availability, zero fetch.
-    assert "framework_update_offer: upstream main is at" in started.stdout
-    assert "inspect with: tautline methodology-status --target ." in started.stdout
-    assert f"framework_update_available: version={RUNNING_VERSION}" in started.stdout
-    assert "framework_remote_status: remote differs" in started.stdout
-    assert _count(log, "fetch") == 0
-
-    # The status surface (fetch allowed) upgrades the sha-only cache to the full version + offer.
-    status = _methodology_status(binary, clone, lane)
-    assert status.returncode == 0, status.stderr
-    assert f"framework_update_available: version={NEXT_VERSION} change=minor (running " in status.stdout
-    assert f"framework_update_offer: {NEXT_VERSION} is available;" in status.stdout
-
-
-def test_methodology_status_metadata_failure_renders_remote_differs_no_offer(tmp_path):
-    source, clone, lane = _make_methodology_fixture(tmp_path)
-    binary = clone / "bin" / "tautline"
-    _advance_remote(source, "VERSION", "not-a-version")  # ls-remote ok, VERSION unparsable
-
-    status = _methodology_status(binary, clone, lane)
-
-    assert status.returncode == 0, status.stderr
-    # A metadata failure is byte-identical to today: the commit-level remote_status line, no offer,
-    # and the decision-derived (running-version) availability line.
-    assert "remote_status: remote differs" in status.stdout
-    assert "framework_update_offer:" not in status.stdout
-    assert f"framework_update_available: version={RUNNING_VERSION}" in status.stdout
 
 
 def test_methodology_status_no_remote_is_byte_identical_with_zero_probe_io(tmp_path):
@@ -352,8 +249,14 @@ def test_emitted_non_release_branch_refusal_names_maintainer_mode_before_the_byp
     """Control 1, asserted on the EMITTED message rather than on `cli.py`'s source text.
 
     The incident: the refusal named exactly one escape -- the allow-non-main env var -- and never
-    named `maintainer-mode on`, the supported control for an operator who intentionally tracks a
-    non-release branch. Two consecutive sessions read it and built a launcher bypass instead.
+    named the maintainer-mode standdown, the supported control for an operator who intentionally
+    tracks a non-release branch. Two consecutive sessions read it and built a launcher bypass
+    instead.
+
+    The 2026-08-28 demolition deleted the `maintainer-mode` VERB; the mode itself is unchanged and
+    is armed by setting its key in the config env file, which is what the refusal now names. This
+    test follows the control, not the spelling: it matches on the key, because that is what an
+    operator has to act on.
 
     The pre-existing pin for this (in test_standdown_loss_and_launcher_divergence.py) grepped
     cli.py's SOURCE and asserted only that "maintainer-mode on" appeared somewhere. That pinned
@@ -369,7 +272,7 @@ def test_emitted_non_release_branch_refusal_names_maintainer_mode_before_the_byp
     assert refused.returncode == 1, refused.stdout + refused.stderr
     emitted = refused.stdout + refused.stderr
 
-    maintainer = emitted.find("maintainer-mode on")
+    maintainer = emitted.find("MINERVIT_METHODOLOGY_MAINTAINER_MODE")
     bypass = emitted.find("MINERVIT_METHODOLOGY_ALLOW_NON_MAIN")
     assert maintainer != -1, f"refusal never names the supported control:\n{emitted}"
     assert bypass != -1, f"refusal never names the narrow escape:\n{emitted}"
@@ -481,39 +384,6 @@ def test_sync_methodology_dirty_stale_fails_closed_then_auto_rescues_from_projec
     assert "# local methodology edit" in _git(clone, "show", f"{rescue_branch}:bin/tautline")
     safe_branch = "".join(ch if ch.isalnum() or ch in "_.-" else "_" for ch in rescue_branch)
     assert (tmp_path / "methodology-rescue-state" / safe_branch / "untracked" / "LOCAL-NOTE.md").exists()
-
-
-def test_lane_start_stable_manual_pin_skips_dirty_stale_update_and_renders(tmp_path):
-    source, clone, lane = _make_methodology_fixture(tmp_path)
-    binary = clone / "bin" / "tautline"
-    _advance_remote(source, "REMOTE-LANE.md", "remote methodology change for lane-start")
-    with (clone / "bin" / "tautline").open("a", encoding="utf-8") as handle:
-        handle.write("\n# local methodology edit before lane-start\n")
-    (clone / "LOCAL-LANE-NOTE.md").write_text("local lane-start untracked methodology note\n", encoding="utf-8")
-
-    started = _run_cli(
-        binary,
-        "lane-start",
-        "--project",
-        str(clone / "adapters" / "projects" / "example-saas.json"),
-        "--target",
-        str(lane),
-        cwd=lane,
-        env={"MINERVIT_METHODOLOGY_RESCUE_STATE_DIR": str(tmp_path / "methodology-rescue-state")},
-    )
-
-    assert started.returncode == 0, started.stderr
-    assert (
-        "framework_pin: channel=stable version=unversioned-current updatePolicy=manual "
-        "migrationPolicy=dry-run source=adapter"
-    ) in started.stdout
-    assert "framework_remote_status: remote differs" in started.stdout
-    assert (
-        "methodology_update: skipped - framework updatePolicy=manual; "
-        "run sync-methodology intentionally at a safe boundary"
-    ) in started.stdout
-    assert (lane / "CLAUDE.md").exists()
-    assert (lane / "AGENTS.md").exists()
 
 
 def test_sync_methodology_dirty_current_skips_unless_explicit_auto_rescue(tmp_path):

@@ -1,9 +1,0 @@
-usage: tautline work-loop [-h] [--project PROJECT] [--target TARGET]
-                          [--dry-run] [--plan PLAN]
-
-options:
-  -h, --help         show this help message and exit
-  --project PROJECT
-  --target TARGET
-  --dry-run
-  --plan PLAN

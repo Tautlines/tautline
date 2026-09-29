@@ -1,9 +1,0 @@
-usage: tautline stop-guard-aggregate [-h] [--repo-root REPO_ROOT] [--json]
-                                     [--write-baseline]
-
-options:
-  -h, --help            show this help message and exit
-  --repo-root REPO_ROOT
-  --json
-  --write-baseline      Re-stamp the committed baseline from this measurement
-                        (a reviewed act, not routine).

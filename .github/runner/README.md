@@ -165,6 +165,10 @@ cannot silently change how the next job behaves — a stale `.gitconfig`, a `pip
 wrong index, an interpreter left in the tool cache. Those produce confusing, hard-to-reproduce
 failures, and clearing them is worth the ~10s `setup-python` spends re-downloading per job.
 
+The live `bin`, `bin.*`, `externals`, `externals.*`, and `_diag` paths stay in place during both
+wipe and restore. Runner auto-updates can make the image snapshot obsolete; replacing those
+paths would unlink active executables/logs or downgrade the worker beneath the listener.
+
 ### This is hygiene, not a security boundary
 
 Stated plainly, because an earlier draft of this file claimed otherwise and was wrong:

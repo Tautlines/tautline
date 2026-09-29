@@ -141,7 +141,9 @@ def test_true_drift_message_hints_at_version_alignment(cli, tmp_path):
     hint = entries[0]
     assert "different methodology build" in hint
     assert "pip install -U tautline" in hint
-    assert "update-repin" in hint
+    # The checkout half of "align versions". This pinned `update-repin` and kept passing after that
+    # verb was deleted, leaving the hint pointing at a command the CLI refuses.
+    assert "advance the framework checkout" in hint
 
     # Same content change with AGREEING stamps: a plain hand-edit must NOT claim a build skew.
     doc = json.loads(fresh)
@@ -153,43 +155,6 @@ def test_true_drift_message_hints_at_version_alignment(cli, tmp_path):
 
 
 # --- the writers must not churn a stamp-only difference ----------------------------------------
-
-
-def test_lane_start_writer_preserves_a_stamp_only_difference(cli, tmp_path):
-    data, target, lane_json = _rendered_lane(cli, tmp_path)
-    lane_json.write_text(_serialize(_foreign_stamped(lane_json)), encoding="utf-8")
-    os.utime(lane_json, (SENTINEL_MTIME, SENTINEL_MTIME))
-    before = lane_json.read_bytes()
-
-    # Item 69 added a third return list (downgraded) and a keyword-only trigger.
-    written, _skipped, _downgraded = cli.write_generated_files(
-        data, EXAMPLE_ADAPTER, target, trigger="test"
-    )
-
-    assert lane_json.read_bytes() == before
-    assert lane_json.stat().st_mtime == SENTINEL_MTIME
-    assert all(path.name != cli.LANE_ADAPTER_FILE for path in written)
-
-
-def test_first_render_stamps_current_identity(cli, tmp_path):
-    """No on-disk adapter: nothing to be equivalent TO — the first render writes the current
-    runtime's truthful identity."""
-    target = tmp_path / "fresh-target"
-    target.mkdir()
-    data = cli.load_project(EXAMPLE_ADAPTER)
-
-    # Item 69 added a third return list (downgraded) and a keyword-only trigger.
-    written, _skipped, _downgraded = cli.write_generated_files(
-        data, EXAMPLE_ADAPTER, target, trigger="test"
-    )
-
-    lane_json = target / cli.LANE_ADAPTER_FILE
-    assert lane_json in written
-    doc = json.loads(lane_json.read_text(encoding="utf-8"))
-    assert doc["_generated"]["methodologyCommit"] == cli.running_methodology_commit(short=True)
-    assert doc["_generated"]["pluginVersion"] == (
-        (REPO_ROOT / "VERSION").read_text(encoding="utf-8").strip()
-    )
 
 
 # --- render-adapters --write / --check ----------------------------------------------------------

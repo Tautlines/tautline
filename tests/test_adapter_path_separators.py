@@ -58,39 +58,3 @@ def test_project_source_arg_normalizes_stored_backslashes(cli):
 
     data = {"_generated": {"sourceAdapter": "adapters\\projects\\example-saas.json"}}
     assert cli.project_source_arg(data, Path("unused")) == "adapters/projects/example-saas.json"
-
-
-def test_lane_start_resolves_backslashed_source_adapter(run_cli, cli, tmp_path):
-    # End-to-end pin at the lane_project call site (where the production failure was raised): a
-    # Windows-rendered backslashed sourceAdapter must RESOLVE, so lane-start must not die with
-    # "sourceAdapter is missing". The forged target's remote intentionally mismatches example-saas,
-    # so lane-start still fails the later repo-identity check -- reaching THAT proves the source
-    # adapter resolved AND its sha matched (the sha is computed from the resolved file).
-    import hashlib
-    import json
-    import subprocess
-
-    target = tmp_path / "forged-lane"
-    target.mkdir()
-    subprocess.run(["git", "-C", str(target), "init", "-q"], check=True)
-    subprocess.run(
-        ["git", "-C", str(target), "remote", "add", "origin", "git@github.com:owner/not-example-saas.git"],
-        check=True,
-    )
-    source = cli.REPO_ROOT / "adapters/projects/example-saas.json"
-    data = json.loads(source.read_text())
-    data["_generated"] = {
-        "doNotEdit": True,
-        "source": "Minervit AI Delivery Methodology",
-        "sourceAdapter": "adapters\\projects\\example-saas.json",  # backslashes (Windows render)
-        "sourceAdapterSha256": hashlib.sha256(source.read_bytes()).hexdigest(),
-        "methodologyCommit": "test",
-        "pluginVersion": "test",
-        "regenerate": "test",
-    }
-    (target / ".minervit-ai-delivery.json").write_text(json.dumps(data, indent=2) + "\n")
-
-    res = run_cli("lane-start", "--target", str(target), "--skip-update")
-    combined = res.stdout + res.stderr
-    assert "sourceAdapter is missing" not in combined  # backslashed path resolved
-    assert "does not match the target git remote" in combined  # reached the later, correct check

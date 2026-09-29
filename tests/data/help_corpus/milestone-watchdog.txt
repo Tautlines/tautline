@@ -1,8 +1,0 @@
-usage: tautline milestone-watchdog [-h] [--project PROJECT] [--target TARGET]
-                                   [--force]
-
-options:
-  -h, --help         show this help message and exit
-  --project PROJECT
-  --target TARGET
-  --force

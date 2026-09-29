@@ -2,8 +2,8 @@
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "tautline-core",
   "displayName": "Tautline AI Delivery",
-  "version": "0.111.0",
-  "description": "Claude Code package for Tautline AI delivery skills and blocking in-session hooks.",
+  "version": "0.148.0",
+  "description": "Claude Code package for lean project instructions, shared-work context, goal prompts, handoffs, and scoped builder controls.",
   "author": {
     "name": "Minervit",
     "url": "https://github.com/tautlines"
@@ -14,7 +14,7 @@
   "keywords": [
     "ai-delivery",
     "agentic-development",
-    "review",
+    "coordination",
     "claude",
     "codex"
   ],

@@ -1,0 +1,11 @@
+usage: tautline evidence [-h] [--target TARGET] [--json]
+                         {run,status} [command ...]
+
+positional arguments:
+  {run,status}
+  command          run: executable and arguments after --.
+
+options:
+  -h, --help       show this help message and exit
+  --target TARGET
+  --json           Machine-readable status.

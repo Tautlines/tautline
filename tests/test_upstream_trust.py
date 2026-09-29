@@ -58,27 +58,35 @@ def test_pinned_policy_non_matching_refuses(cli, monkeypatch):
     assert "not in the pinned allowlist" in msg
 
 
-def test_gate_refusal_includes_repin_recovery_guidance(cli, monkeypatch):
-    # A blocked lane start must tell the operator how to proceed (review, then
-    # update-repin), not just refuse: the 0.7.0->0.8.2 stable advance left a
-    # product lane hard-blocked with no recovery instruction in the output.
+def test_gate_refusal_includes_pin_recovery_guidance(cli, monkeypatch):
+    # A blocked lane start must tell the operator how to proceed -- review, then advance the pin --
+    # not just refuse: the 0.7.0->0.8.2 stable advance left a product lane hard-blocked with no
+    # recovery instruction in the output.
+    #
+    # Keyed to the PIN SURFACE, not to a verb name. This asserted `update-repin`, and kept passing
+    # after the 2026-08-28 demolition deleted that verb -- so the guidance it was guarding sent
+    # operators to a command the CLI answers with "invalid choice", which is the same hard block
+    # in a new costume. The allowlist is what the operator must actually edit.
     monkeypatch.setenv("MINERVIT_METHODOLOGY_UPDATE_POLICY", "pinned")
     monkeypatch.setenv("MINERVIT_METHODOLOGY_UPDATE_PINS", "b" * 40)
     monkeypatch.setattr(cli, "run_git", lambda root, args: "unavailable")
     detail = cli.gate_methodology_upstream_advance(HEAD)
     assert detail is not None
-    assert "update-repin" in detail
+    assert cli.METHODOLOGY_UPDATE_PINS_ENV in detail
+    assert str(cli.METHODOLOGY_UPDATE_PINS_FILE) in detail
     assert "review" in detail.lower()
 
 
-def test_gate_refusal_signed_policy_gives_signature_guidance_not_repin(cli, monkeypatch):
-    # update-repin only rewrites the pinned allowlist; the signed policy ignores it, so a
-    # signed-policy refusal must steer to signature/signer remediation instead (Codex R1 P2).
+def test_gate_refusal_signed_policy_gives_signature_guidance_not_the_pin_surface(cli, monkeypatch):
+    # The pin allowlist is ignored by the signed policy, so a signed-policy refusal must steer to
+    # signature/signer remediation instead (Codex R1 P2). Asserted against the pin surface rather
+    # than the retired verb name: `"update-repin" not in detail` went vacuously true the moment
+    # nothing emitted that string, and a check that cannot fail is not a check.
     monkeypatch.setenv("MINERVIT_METHODOLOGY_UPDATE_POLICY", "signed")
     monkeypatch.setattr(cli, "run_command", lambda *a, **k: (1, "", "no signature"))
     detail = cli.gate_methodology_upstream_advance(HEAD)
     assert detail is not None
-    assert "update-repin" not in detail
+    assert cli.METHODOLOGY_UPDATE_PINS_ENV not in detail
     assert "signature" in detail.lower() or "signer" in detail.lower()
 
 
@@ -275,125 +283,13 @@ def _init_repo_with_upstream(tmp_path, upstream_version=None):
     return work, first, second
 
 
-def test_repin_advances_pin_after_fetch(cli, tmp_path):
-    work, first, second = _init_repo_with_upstream(tmp_path)
-    config_env = tmp_path / "methodology.env"
-    config_env.write_text(
-        f"export MINERVIT_METHODOLOGY_UPDATE_POLICY=pinned\nexport MINERVIT_METHODOLOGY_UPDATE_PINS={first}\n",
-        encoding="utf-8",
-    )
-    previous, new_head, trusted_range = cli.repin_methodology_update(work, config_env)
-    assert previous == first
-    assert new_head == second
-    assert first[:12] in trusted_range and second[:12] in trusted_range
-    assert f"MINERVIT_METHODOLOGY_UPDATE_PINS={second}" in config_env.read_text(encoding="utf-8")
-    assert first not in config_env.read_text(encoding="utf-8")
-
-
 # --- R1 P1: repin must keep BOTH pin spellings in lockstep -----------------------------------
 # install-cli dual-writes MINERVIT_ and TAUTLINE_ pins, and resolve_env prefers the TAUTLINE_
 # alias. Repin used to rewrite only the MINERVIT_ line, so a stale TAUTLINE_ value kept shadowing
 # the fresh pin -> the next pinned update was wrongly rejected even though repin reported success.
 
 
-def test_repin_dual_writes_both_pin_spellings(cli, tmp_path, monkeypatch):
-    work, first, second = _init_repo_with_upstream(tmp_path)
-    config_env = tmp_path / "methodology.env"
-    config_env.write_text(
-        "export MINERVIT_METHODOLOGY_UPDATE_POLICY=pinned\n"
-        "export TAUTLINE_METHODOLOGY_UPDATE_POLICY=pinned\n"
-        f"export MINERVIT_METHODOLOGY_UPDATE_PINS={first}\n"
-        f"export TAUTLINE_METHODOLOGY_UPDATE_PINS={first}\n",
-        encoding="utf-8",
-    )
-    previous, new_head, _ = cli.repin_methodology_update(work, config_env)
-    assert previous == first and new_head == second
-    text = config_env.read_text(encoding="utf-8")
-    assert f"export MINERVIT_METHODOLOGY_UPDATE_PINS={second}" in text
-    assert f"export TAUTLINE_METHODOLOGY_UPDATE_PINS={second}" in text
-    assert first not in text  # no stale spelling of either pin name survives
-    util = cli.util_module()
-    for spelling in ("MINERVIT_METHODOLOGY_UPDATE_PINS", "TAUTLINE_METHODOLOGY_UPDATE_PINS"):
-        assert util.user_config_env_value(spelling, config_env) == second
-    # Model a fresh shell sourcing the repinned file, then resolve_env's TAUTLINE-first read: the
-    # effective allowlist is the new pin, so the next pinned update is accepted (not the stale one).
-    for spelling in ("TAUTLINE_METHODOLOGY_UPDATE_PINS", "MINERVIT_METHODOLOGY_UPDATE_PINS"):
-        monkeypatch.setenv(spelling, util.user_config_env_value(spelling, config_env))
-    assert util.resolve_env(cli.METHODOLOGY_UPDATE_PINS_ENV) == second
-
-
-def test_repin_dual_writes_both_spellings_in_mirror(cli, tmp_path, monkeypatch):
-    work, first, second = _init_repo_with_upstream(tmp_path)
-    primary = tmp_path / "tautline.env"
-    mirror = tmp_path / "methodology.env"
-    monkeypatch.setattr(cli, "USER_CONFIG_ENV", primary)
-    monkeypatch.setattr(cli, "LEGACY_USER_CONFIG_ENV", mirror)
-    body = (
-        "export MINERVIT_METHODOLOGY_UPDATE_POLICY=pinned\n"
-        f"export MINERVIT_METHODOLOGY_UPDATE_PINS={first}\n"
-        f"export TAUTLINE_METHODOLOGY_UPDATE_PINS={first}\n"
-    )
-    primary.write_text(body, encoding="utf-8")
-    mirror.write_text(body, encoding="utf-8")
-    cli.repin_methodology_update(work, primary)
-    for surface in (primary, mirror):
-        text = surface.read_text(encoding="utf-8")
-        assert f"export MINERVIT_METHODOLOGY_UPDATE_PINS={second}" in text
-        assert f"export TAUTLINE_METHODOLOGY_UPDATE_PINS={second}" in text
-        assert first not in text  # mirror kept in lockstep too
-
-
-def test_repin_previous_reads_effective_tautline_first_pin(cli, tmp_path):
-    # A pre-existing desync (TAUTLINE_ != MINERVIT_) must be reported by what the machine actually
-    # trusted: the TAUTLINE_ spelling resolve_env prefers, not the shadowed MINERVIT_ line.
-    work, first, second = _init_repo_with_upstream(tmp_path)
-    effective = "e" * 40
-    config_env = tmp_path / "methodology.env"
-    config_env.write_text(
-        "export MINERVIT_METHODOLOGY_UPDATE_POLICY=pinned\n"
-        f"export MINERVIT_METHODOLOGY_UPDATE_PINS={first}\n"
-        f"export TAUTLINE_METHODOLOGY_UPDATE_PINS={effective}\n",
-        encoding="utf-8",
-    )
-    previous, new_head, _ = cli.repin_methodology_update(work, config_env)
-    assert previous == effective  # TAUTLINE-first, not the stale MINERVIT_ value
-    assert new_head == second
-
-
 # --- R2 P2: repin must fail closed on fetch/channel errors -----------------------------------
-
-
-def test_repin_fails_closed_when_fetch_fails(cli, tmp_path):
-    # Codex R2 P2: a failed `git fetch origin <branch>` (offline/auth/missing branch) left a STALE
-    # cached origin/<branch> remote-tracking ref that repin silently pinned and reported as current
-    # upstream. Repin must exit non-zero and leave the pin untouched instead.
-    work, first, second = _init_repo_with_upstream(tmp_path)
-    config_env = tmp_path / "methodology.env"
-    config_env.write_text(
-        f"export MINERVIT_METHODOLOGY_UPDATE_POLICY=pinned\nexport MINERVIT_METHODOLOGY_UPDATE_PINS={first}\n",
-        encoding="utf-8",
-    )
-    # Break the upstream AFTER the initial push: fetch now fails, but the cached origin/main
-    # remote-tracking ref (== second) survives and would be silently repinned without the fix.
-    subprocess.run(
-        ["git", "-C", str(work), "remote", "set-url", "origin", str(tmp_path / "gone.git")],
-        check=True,
-        capture_output=True,
-    )
-    with pytest.raises(SystemExit) as excinfo:
-        cli.repin_methodology_update(work, config_env)
-    assert "fetch" in str(excinfo.value)
-    text = config_env.read_text(encoding="utf-8")
-    assert f"MINERVIT_METHODOLOGY_UPDATE_PINS={first}" in text, "pin must be unchanged on fetch failure"
-    assert second not in text, "repin must never fall back to the stale cached origin/<branch> ref"
-
-
-def test_update_repin_rejects_unknown_channel(run_cli):
-    # Codex R2 P2: --channel accepted any string and unknown values silently mapped to main,
-    # so a typo repinned trust to the wrong branch. Argparse must reject unknown channels.
-    res = run_cli("update-repin", "--channel", "expermental")
-    assert res.returncode != 0
-    assert "invalid choice" in res.stderr
 
 
 # --- P1: verify BEFORE the checkout advances (fetch-verify-then-merge) -----------------------
@@ -410,34 +306,6 @@ def _git_head(repo) -> str:
 
 class _ReExecReached(Exception):
     pass
-
-
-def test_update_leaves_head_unchanged_when_upstream_untrusted(cli, tmp_path, monkeypatch):
-    work, first, second = _init_repo_with_upstream(tmp_path)
-    monkeypatch.setattr(cli, "REPO_ROOT", work)
-    monkeypatch.setenv("MINERVIT_METHODOLOGY_UPDATE_POLICY", "pinned")
-    # origin/main (==second) is NOT pinned, so the advance is refused.
-    monkeypatch.setenv("MINERVIT_METHODOLOGY_UPDATE_PINS", first)
-    monkeypatch.setattr(cli, "METHODOLOGY_UPDATE_PINS_FILE", cli.Path("/nonexistent/pins"))
-    monkeypatch.setattr(cli, "consume_methodology_reexec_token", lambda: None)
-
-    def _no_execve(*a, **k):
-        raise AssertionError("os.execve must NOT run when upstream trust is denied")
-
-    monkeypatch.setattr(cli.os, "execve", _no_execve)
-
-    assert _git_head(work) == first
-    status, detail = cli.update_methodology_repo(False)
-
-    # No dead ends (operator directive 2026-07-11): the checkout never advanced, so it still runs
-    # trusted pinned code -- a safe launch state. The hold is reported as "held" (launch continues)
-    # instead of "failed" (launch blocked), and the remedy ships alongside the error text.
-    assert status == "held"
-    assert "held by the trust policy" in detail
-    assert "trusted retained checkout" in detail
-    assert "update-repin" in detail, "the remedy must ship alongside the error text"
-    assert "refus" in detail.lower()
-    assert _git_head(work) == first, "checkout must NOT advance to unverified upstream code"
 
 
 def test_untrusted_retained_head_stays_fail_closed(cli, tmp_path, monkeypatch):
@@ -555,33 +423,6 @@ def _pinned_held_detail(cli, tmp_path, monkeypatch, upstream_version=None, polic
     return status, detail, first, second
 
 
-def test_held_pinned_remedy_names_the_resolved_version_and_channel(cli, tmp_path, monkeypatch):
-    status, detail, _first, _second = _pinned_held_detail(
-        cli, tmp_path, monkeypatch, upstream_version="0.99.0"
-    )
-
-    assert status == "held"
-    # Exactly ONE take-it line: the resolved offer REPLACES the generic remedy, never doubles it.
-    assert detail.count("update-repin") == 1
-    assert "<stable|experimental>" not in detail, "the channel must be resolved, not left to guess"
-    assert "0.99.0 is available" in detail, "the remedy must name the release actually being held"
-    assert "tautline sync-methodology --target ." in detail, (
-        "the offer must name the taking command"
-    )
-
-
-def test_held_remedy_degrades_to_the_sha_when_version_unreadable(cli, tmp_path, monkeypatch):
-    # No VERSION at the candidate: name the commit rather than borrow a version from anywhere else.
-    # A wrong version is worse than no version -- it sends the operator to repin a release the hold
-    # is not actually about.
-    status, detail, _first, second = _pinned_held_detail(cli, tmp_path, monkeypatch)
-
-    assert status == "held"
-    assert detail.count("update-repin") == 1
-    assert "<stable|experimental>" not in detail
-    assert f"the upstream release at {second[:12]} is available" in detail
-
-
 def test_held_pinned_remedy_uses_the_candidate_not_a_stale_probe(cli, tmp_path, monkeypatch):
     # The display probe resolves independently and can name a DIFFERENT sha than the one being held.
     # The candidate is authoritative: an env-forced probe version must not leak into the remedy.
@@ -621,57 +462,6 @@ def test_held_signed_policy_keeps_its_own_remedy(cli, tmp_path, monkeypatch):
     assert "0.99.0 is available" not in detail, "no repin offer may be injected into a signed hold"
 
 
-def test_held_offer_formatter_resolves_the_channel(cli, tmp_path, monkeypatch):
-    # Unit-level: the non-stable channel must render as an explicit `--channel <name>` flag, since
-    # the whole point of the fix is that the operator never has to pick between the two.
-    work, _first, second = _init_repo_with_upstream(tmp_path, upstream_version="0.99.0")
-    subprocess.run(
-        ["git", "-C", str(work), "fetch", "origin", "main"], check=True, capture_output=True
-    )
-    monkeypatch.setattr(cli, "REPO_ROOT", work)
-    monkeypatch.setenv("MINERVIT_METHODOLOGY_UPDATE_POLICY", "pinned")
-    monkeypatch.setenv("MINERVIT_METHODOLOGY_UPDATE_PINS", "c" * 40)
-    monkeypatch.setattr(cli, "METHODOLOGY_UPDATE_PINS_FILE", cli.Path("/nonexistent/pins"))
-
-    offer = cli._held_candidate_take_it_offer(work, second, "experimental")
-
-    assert offer is not None
-    assert "0.99.0 is available" in offer
-    assert "tautline update-repin --channel experimental" in offer
-    assert not offer.startswith("framework_update_offer: "), (
-        "embedded in a detail, not printed as its own line"
-    )
-
-    # A non-pinned policy opts out entirely: nothing to rewrite, so the gate's own remedy stands.
-    monkeypatch.setenv("MINERVIT_METHODOLOGY_UPDATE_POLICY", "signed")
-    assert cli._held_candidate_take_it_offer(work, second, "experimental") is None
-
-
-def test_held_refusal_swap_is_fail_safe(cli, tmp_path, monkeypatch):
-    # If the gate's remedy text ever changes shape, the swap must return the gate's text untouched
-    # rather than dropping the remedy or emitting a half-rewritten one.
-    work, _first, second = _init_repo_with_upstream(tmp_path, upstream_version="0.99.0")
-    subprocess.run(
-        ["git", "-C", str(work), "fetch", "origin", "main"], check=True, capture_output=True
-    )
-    monkeypatch.setattr(cli, "REPO_ROOT", work)
-    monkeypatch.setenv("MINERVIT_METHODOLOGY_UPDATE_POLICY", "pinned")
-    monkeypatch.setenv("MINERVIT_METHODOLOGY_UPDATE_PINS", "c" * 40)
-    monkeypatch.setattr(cli, "METHODOLOGY_UPDATE_PINS_FILE", cli.Path("/nonexistent/pins"))
-
-    unrecognized = "refusing to advance: some future remedy shape"
-    assert cli._resolve_held_refusal(unrecognized, work, second, "stable") == unrecognized
-
-    # And the recognized shape IS swapped, with the generic text fully gone.
-    recognized = (
-        f"refusing to advance: reason; {cli._generic_pinned_advance_remedy()}; see SECURITY.md"
-    )
-    swapped = cli._resolve_held_refusal(recognized, work, second, "stable")
-    assert cli._generic_pinned_advance_remedy() not in swapped
-    assert "0.99.0 is available" in swapped
-    assert swapped.count("update-repin") == 1
-
-
 def test_held_remedy_stays_display_only():
     # The offer must never become an input to the update DECISION -- that is the update-prompts
     # invariant this reuses. Structural guard: the held formatters are reachable only from
@@ -683,26 +473,3 @@ def test_held_remedy_stays_display_only():
         body = source[start:end]
         assert "_held_candidate_take_it_offer" not in body
         assert "_resolve_held_refusal" not in body
-
-
-def test_both_held_emitters_print_the_detail_verbatim():
-    # The resolved remedy is formatted in ONE place (update_methodology_repo). That only holds if
-    # BOTH held emitters -- lane_start and _sync_methodology_body -- print the detail they are
-    # handed without resolving, reformatting, or appending a competing remedy of their own. An
-    # emitter that rebuilt the remedy locally would drift from the other the moment either changed,
-    # which is how the generic `<stable|experimental>` text reached the operator on every surface.
-    source = (REPO_ROOT / "src" / "tautline_methodology" / "cli.py").read_text(encoding="utf-8")
-    emitter_line = 'print(f"methodology_update: {status} - {detail}")'
-    assert source.count(emitter_line) == 2, "expected exactly the lane-start and sync held emitters"
-
-    for enclosing in ("def lane_start(", "def _sync_methodology_body("):
-        start = source.index(enclosing)
-        end = source.index("\ndef ", start + 1)
-        body = source[start:end]
-        assert emitter_line in body, f"{enclosing} must print the detail verbatim"
-        # Neither emitter may resolve a remedy itself -- that is the formatter's single job.
-        # (Prose mentions of update-repin in the surrounding comments are fine; calling the
-        # resolver or the offer renderer from an emitter is not.)
-        assert "_held_candidate_take_it_offer" not in body
-        assert "_resolve_held_refusal" not in body
-        assert "_framework_update_version_offer" not in body

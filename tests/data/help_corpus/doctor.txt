@@ -1,0 +1,19 @@
+usage: tautline doctor [-h] [--target TARGET] [--base BASE]
+                       [--diff-file DIFF_FILE] [--watch PID:LOGPATH]
+                       [--stale-after STALE_AFTER]
+
+options:
+  -h, --help            show this help message and exit
+  --target TARGET       Git checkout the branch-liveness and skip-lint checks
+                        read.
+  --base BASE           skip-lint diff base ref (default:
+                        origin/<latestCode.base> read from this target's own
+                        .tautline.json when present, else origin/main).
+  --diff-file DIFF_FILE
+                        skip-lint: read the unified diff from this file
+                        instead of running git (for tests/CI).
+  --watch PID:LOGPATH   Repeatable. Run monitor-liveness for this PID + log
+                        file; skipped entirely when omitted.
+  --stale-after STALE_AFTER
+                        monitor-liveness staleness threshold, e.g. 10m, 1h
+                        (default: 10m).

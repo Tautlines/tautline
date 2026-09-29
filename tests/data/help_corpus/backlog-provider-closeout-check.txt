@@ -1,9 +1,0 @@
-usage: tautline backlog-provider-closeout-check [-h] [--project PROJECT]
-                                                [--target TARGET] --pr PR
-
-options:
-  -h, --help         show this help message and exit
-  --project PROJECT
-  --target TARGET
-  --pr PR            Merged PR number whose closing references must be
-                     reconciled.

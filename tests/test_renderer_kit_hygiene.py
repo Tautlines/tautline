@@ -43,25 +43,3 @@ def test_renderer_kit_ignores_dependency_build_and_media_outputs():
         "*.jpg",
     ]:
         assert pattern in ignore
-
-
-def test_iteration_review_renderer_state_dir_defaults_outside_repo(cli, monkeypatch, tmp_path):
-    monkeypatch.setenv("HOME", str(tmp_path))
-    monkeypatch.delenv("MINERVIT_RENDERER_KIT_STATE_DIR", raising=False)
-
-    state_dir = cli.iteration_review_renderer_state_dir()
-
-    assert state_dir == tmp_path / ".local/state/tautline/renderer-kit"
-    assert not cli.path_is_under(state_dir, cli.REPO_ROOT)
-
-
-def test_iteration_review_renderer_setup_refuses_repo_local_cache(cli, monkeypatch, tmp_path):
-    repo_local_cache = cli.REPO_ROOT / ".tmp-renderer-cache"
-    monkeypatch.setenv("MINERVIT_RENDERER_KIT_STATE_DIR", str(repo_local_cache))
-
-    try:
-        cli.prepare_iteration_review_renderer_tree(tmp_path, cli.iteration_review_renderer_state_dir())
-    except SystemExit as exc:
-        assert "must be outside the methodology repo" in str(exc)
-    else:
-        raise AssertionError("repo-local renderer cache was accepted")

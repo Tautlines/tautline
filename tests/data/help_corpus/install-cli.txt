@@ -9,5 +9,6 @@ options:
   --dry-run             Print planned actions without changing anything.
   --update-policy {signed,pinned,warn,unverified}
                         Auto-update trust policy written to methodology.env.
-                        Default 'pinned' pins the install commit; advance with
-                        update-repin.
+                        Default 'pinned' pins the install commit; advance the
+                        pin by adding the reviewed commit to the trusted-pins
+                        file.

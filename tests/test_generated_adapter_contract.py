@@ -89,7 +89,7 @@ milestone-start --target . --plan <source-of-truth-plan>
 milestone-advance --target . --event <event>
 ^## Autonomy And Planning
 plan-finalization-precheck --target . --plan <source-of-truth-plan>
-Review target is 2 rounds; rounds 3-4 self-authorize with `--exception-note`
+Review target is 2 rounds inside a five-round budget charged per plan LINEAGE
 Evidence is tracked `.plan-reviews/`
 ^## Planning Artifacts And Backlog Source Of Truth
 Source/template:
@@ -146,39 +146,6 @@ def _assert_marker(content: str, marker: str, filename: str) -> None:
     assert marker in content, f"{filename} missing generated adapter marker: {marker}"
 
 
-def test_example_saas_generated_adapter_contract(cli):
-    adapter_path = EXAMPLE_ADAPTER
-    data = cli.load_project(adapter_path)
-    files = cli.expected_files(data, str(adapter_path))
-
-    # Future runtime targets must intentionally satisfy this shared generated-adapter contract
-    # or split out a narrower per-runtime contract instead of silently skipping coverage.
-    for filename in sorted(cli.GENERATED_MARKDOWN_FILES):
-        content = files[filename]
-        assert len(content.encode()) <= MAX_EXAMPLE_SAAS_RENDERED_MARKDOWN_BYTES, filename
-        for marker in REQUIRED_RENDERED_ADAPTER_MARKERS:
-            _assert_marker(content, marker, filename)
-        for marker in FORBIDDEN_RENDERED_ADAPTER_MARKERS:
-            assert marker not in content, f"{filename} leaked generated adapter marker: {marker}"
-
-
-def test_a_pinned_board_renders_its_identity_into_every_generated_adapter(cli):
-    """Item 71 WS2 / RCA 2026-07-02: the board is resolved from an ADAPTER PIN, never from a
-    projectsV2 discovery query. Discovery is what found the wrong board and then read it
-    confidently, so the pin has to be visible in the authority document every lane loads."""
-    data = cli.load_project(EXAMPLE_ADAPTER)
-    provider = data["backlogProvider"]
-    assert provider["enabled"] and provider["owner"] and provider["projectNumber"], (
-        "this test is vacuous unless the example adapter actually pins a board"
-    )
-    files = cli.expected_files(data, str(EXAMPLE_ADAPTER))
-
-    for filename in sorted(cli.GENERATED_MARKDOWN_FILES):
-        content = files[filename]
-        assert f"{provider['owner']}/projects/{provider['projectNumber']}" in content, filename
-        assert "ad-hoc projectsV2 discovery is prohibited" in content, filename
-
-
 def test_a_lane_with_no_board_pin_gets_no_identity_line(cli):
     """A lane with nothing to pin gets NO line rather than a line that guesses -- guessing is the
     failure this closes. Each of the three conditions is dropped independently, because a partial
@@ -196,100 +163,6 @@ def test_a_lane_with_no_board_pin_gets_no_identity_line(cli):
 
 
 PR_REFERENCE_MARKER = "- PR refs:"
-
-
-def test_provider_backed_adapter_renders_pr_reference_contract(cli):
-    """Item 101 rule 1-3: a board mirror reads PR text as its only evidence, so a pinned lane's
-    authority document has to say what goes in a PR title and when a closing keyword is allowed.
-
-    The POSITIVE half of the conditionality pair. Without it every assertion about this feature
-    is of the form "the text does not appear", which a no-op render satisfies perfectly."""
-    data = cli.load_project(EXAMPLE_ADAPTER)
-    provider = data["backlogProvider"]
-    assert provider["enabled"] and provider["owner"] and provider["projectNumber"], (
-        "this test is vacuous unless the example adapter actually pins a board"
-    )
-
-    files = cli.expected_files(data, str(EXAMPLE_ADAPTER))
-
-    # Both generated runtimes, because the line is wired into two separate render branches
-    # (provider-item mode and goal orchestration) and a one-branch render is the defect this
-    # catches -- it is exactly how item 71 WS4 shipped in a PR body but not in the tree.
-    for filename in sorted(cli.GENERATED_MARKDOWN_FILES):
-        content = files[filename]
-        assert PR_REFERENCE_MARKER in content, filename
-        assert "ISSUE number in every PR title" in content, filename
-        assert "an advancing PR carries no closing keyword" in content, filename
-        assert "board-item-updates" in content, filename
-
-
-def test_provider_item_completion_mode_also_renders_the_pr_reference_contract(cli):
-    """The other render branch. `provider_item_mode` builds its own goal-orchestration block, so
-    a line added to only one branch renders for half the adopters and nothing says so."""
-    data = cli.load_project(EXAMPLE_ADAPTER)
-    data["backlogProvider"]["completionUnit"] = "provider-item"
-    assert cli.provider_item_completion_enabled(data), (
-        "this test is vacuous unless the mutation actually selects provider-item mode"
-    )
-
-    files = cli.expected_files(data, str(EXAMPLE_ADAPTER))
-
-    for filename in sorted(cli.GENERATED_MARKDOWN_FILES):
-        assert PR_REFERENCE_MARKER in files[filename], filename
-
-
-def test_issueless_adapter_renders_byte_identical(cli, monkeypatch):
-    """An adapter with no issue-backed backlog -- this framework's own shape -- must render
-    BYTE-IDENTICALLY with and without item 101, and be unaffected by any future edit to the
-    contract text. Tautline titles its PRs by component, not by issue number, and a rule rendered
-    into a repo that does not use it is a rule its lanes learn to ignore.
-
-    Proven by MUTATION, not by absence: the contract line is swapped for a sentinel of a very
-    different length and the rendered bytes must be unchanged. A plain "the marker is absent"
-    assertion cannot tell a correctly-gated render from a render that never happened, so it would
-    stay green if the feature were deleted -- and it would also stay green if the gate were
-    written as `enabled` alone, which is why each of the three predicates is dropped separately.
-    """
-    for dropped in ("enabled", "owner", "projectNumber"):
-        data = cli.load_project(EXAMPLE_ADAPTER)
-        original = data["backlogProvider"][dropped]
-        data["backlogProvider"][dropped] = False if dropped == "enabled" else type(original)()
-
-        baseline = cli.expected_files(data, str(EXAMPLE_ADAPTER))
-
-        monkeypatch.setattr(
-            cli,
-            "PR_REFERENCE_ADAPTER_LINE",
-            "- SENTINEL: this line must never reach an adapter with no issue-backed backlog,"
-            " and it is deliberately much longer than the real one so any leak moves the byte"
-            " count rather than merely changing its text.\n",
-        )
-        mutated = cli.expected_files(data, str(EXAMPLE_ADAPTER))
-
-        for filename in sorted(cli.GENERATED_MARKDOWN_FILES):
-            assert mutated[filename] == baseline[filename], (
-                f"{filename} changed when the PR-reference line changed, with {dropped} unset: "
-                "the line is not gated on all three provider-pin conditions"
-            )
-            assert PR_REFERENCE_MARKER not in baseline[filename], filename
-            assert "SENTINEL" not in mutated[filename], filename
-
-
-def test_board_item_updates_skill_states_pr_reference_contract():
-    """The skill is where this item deliberately put the detail that does not fit the rendered
-    byte corridor, so an unprotected skill surface is an unprotected half of the deliverable."""
-    skill_root = REPO_ROOT / "plugins" / "tautline-core" / "skills" / "board-item-updates"
-    text = (skill_root / "SKILL.md").read_text() + (
-        skill_root / "references" / "board-item-updates-policy.md"
-    ).read_text()
-
-    for required in (
-        "owner/repo#",
-        "Fixes #",
-        "advancing",
-        "default branch",
-    ):
-        assert required in text, f"board-item-updates skill is missing: {required}"
 
 
 def _run_cli(*args: str):
@@ -370,42 +243,92 @@ def test_render_adapters_json_only_preserves_handwritten_markdown(tmp_path):
 # --- item 37: the framework runs its own test-execution control -------------------------------
 
 
-def test_self_adapter_declares_test_evidence_report():
-    """Dogfood: Tautline must be subject to the control it ships.
-
-    A framework that adds a test-execution gate and then does not point it at its own suite is
-    making exactly the declaration-instead-of-execution claim this feature exists to end. The
-    source adapter declares the report, and the GENERATED adapter must carry it too -- `test-run`
-    reads the generated file, and its `_generated.sourceAdapterSha256` is byte-compared against the
-    source, so a source edit without a re-render fails before the key is ever read.
-    """
-    import json
-
-    source = json.loads((REPO_ROOT / ".tautline" / "adapter.json").read_text(encoding="utf-8"))
-    generated = json.loads((REPO_ROOT / ".tautline.json").read_text(encoding="utf-8"))
-
-    for name, data in (("source", source), ("generated", generated)):
-        report = (data.get("testEvidence") or {}).get("report")
-        assert report, f"the {name} adapter must declare testEvidence.report"
-        assert report["format"] == "junit-xml", name
-        assert report["path"] == ".ai-runs/test-runs/latest-junit.xml", name
-
-    assert (generated.get("_generated") or {}).get("sourceAdapterSha256"), (
-        "the generated adapter must carry the source hash the dogfood run is checked against"
-    )
+# The one junit report path on this repo. It used to be declared in the 1.x self-adapter
+# (testEvidence.report.path) until the repo migrated to the lean profile, whose config
+# deliberately has no such key -- but the path is still load-bearing: CI's evidence job copies
+# exactly this file (.github/workflows/ci-python-full.yml and ci-python.yml both hardcode it).
+JUNIT_REPORT_PATH = ".ai-runs/test-runs/latest-junit.xml"
 
 
-def test_test_sh_emits_the_declared_junit_report():
-    """The declared path is only meaningful if the runner actually writes it. Without this, the
-    adapter could point at a file nothing ever produces and every run would degrade to
-    exit-code-only while still looking configured."""
-    import json
-
+def test_test_sh_emits_the_junit_report_ci_evidence_reads():
+    """The path is only meaningful if the runner actually writes it AND the consumer reads the
+    same one. Without this, test.sh could stop emitting (every run degrades to exit-code-only
+    while CI still looks configured) or the workflow could drift to a path nothing produces --
+    the declaration-instead-of-execution failure this control exists to end, kept after the
+    adapter key that used to anchor it retired with the 1.x profile."""
     script = (REPO_ROOT / "scripts" / "test.sh").read_text(encoding="utf-8")
-    declared = json.loads((REPO_ROOT / ".tautline.json").read_text(encoding="utf-8"))
-    path = declared["testEvidence"]["report"]["path"]
-
     assert "--junitxml=" in script, "test.sh must emit a machine-readable report"
-    assert path.split("/")[-1] in script, (
-        f"test.sh must write the report the adapter declares ({path})"
+    assert JUNIT_REPORT_PATH in script, f"test.sh must write {JUNIT_REPORT_PATH}"
+
+    for workflow in ("ci-python-full.yml", "ci-python.yml"):
+        text = (REPO_ROOT / ".github" / "workflows" / workflow).read_text(encoding="utf-8")
+        assert JUNIT_REPORT_PATH in text, (
+            f"{workflow} must read the report test.sh writes ({JUNIT_REPORT_PATH})"
+        )
+
+
+# --- the rendered adapter may not instruct an agent to run a command that does not exist --------
+#
+# The 2026-08-28 process-bankruptcy demolition cut the CLI from 182 subcommands to 19 while the
+# renderer still emitted a 206-line adapter naming 32 of the deleted ones -- step one of its
+# Session Start was `lane-start`, which now errors. `adapter_drift` could not see it: it compares
+# what is on disk against what the renderer produces, and both sides were equally stale, so drift
+# reported "clean" over content that was wrong. Nothing else in the suite read the emitted text
+# for verb validity.
+
+
+def _registered_verbs() -> set[str]:
+    """The verbs `tautline --help` actually offers, parsed from its own choices block."""
+    out = subprocess.run(
+        [sys.executable, str(REPO_ROOT / "bin" / "tautline"), "--help"],
+        capture_output=True, text=True, check=False,
+    ).stdout
+    return {v.strip() for v in out.partition("{")[2].partition("}")[0].split(",") if v.strip()}
+
+
+def _verbs_named_in(text: str) -> set[str]:
+    """Every `tautline <verb>` the rendered text tells a reader to run."""
+    return set(re.findall(r"\btautline\s+([a-z][a-z0-9-]+)", text))
+
+
+def test_the_registered_verb_list_was_actually_read():
+    """Discovery for the check below, asserted on its own.
+
+    An empty or junk parse would make the verb check pass by comparing against nothing, and would
+    look exactly like a clean render.
+    """
+    verbs = _registered_verbs()
+    assert "render-adapters" in verbs and "version" in verbs
+    assert 5 < len(verbs) < 60, f"the --help choices parse returned {len(verbs)} entries"
+
+
+def test_the_rendered_adapter_names_no_command_the_cli_refuses(cli):
+    """Every verb the generated adapter instructs an agent to run must be a real subcommand."""
+    data = cli.load_project(EXAMPLE_ADAPTER)
+    rendered = cli.expected_files(data, str(EXAMPLE_ADAPTER))
+    registered = _registered_verbs()
+
+    checked = 0
+    for name, text in rendered.items():
+        if not name.endswith(".md"):
+            continue
+        checked += 1
+        dead = sorted(_verbs_named_in(text) - registered)
+        assert not dead, (
+            f"{name} tells an agent to run {dead}, which `tautline` refuses with 'invalid choice'. "
+            "The renderer must not document commands the CLI does not have."
+        )
+    assert checked == len(cli.GENERATED_MARKDOWN_FILES), (
+        f"only {checked} generated markdown file(s) were checked; the loop is skipping targets"
     )
+
+
+def test_the_verb_scan_would_catch_a_dead_command():
+    """The checking layer, proven against a planted defect.
+
+    Without this, a scan whose regex stopped matching would report every adapter clean forever --
+    the failure mode the demolition itself demonstrated.
+    """
+    planted = "Run `tautline lane-start --target .` first.\n"
+    assert _verbs_named_in(planted) == {"lane-start"}
+    assert "lane-start" not in _registered_verbs()

@@ -105,7 +105,20 @@ jobs:
           base="$(git merge-base "origin/${base_ref}" HEAD)"
           git diff --check "${base}..HEAD"
 
-      # CommandCenter evidence: one `eval` suite whose results are the four gates this job owns.
+      # Single field, single condition, no network: refuses a PR whose title/body carry no
+      # `Backlog: <id>` (or provider-native) reference when THIS repo's `.tautline.json` names a
+      # `backlog` provider -- and is a silent no-op (exit 0) on every repo state where it does
+      # not. `GITHUB_EVENT_NAME`/`GITHUB_EVENT_PATH` are GitHub's own default env vars, already
+      # present in every step; the script reads the PR title/body from the event JSON rather than
+      # from a `${{ github.event.pull_request.* }}` expression so untrusted PR text is never
+      # interpolated into a shell command. See scripts/check_pr_backlog_ref.py and
+      # docs/reference/backlog.md ("PR reference stamp") for the grammar and the why.
+      - name: Check the PR names its backlog item
+        id: pr-backlog-ref
+        if: always()
+        run: python3 scripts/check_pr_backlog_ref.py
+
+      # CommandCenter evidence: one `eval` suite whose results are the gates this job owns.
       # Each gate step has `if: always()` so a later gate still reports after an earlier failure
       # (the job still fails -- blocking behavior is unchanged); the composer maps each outcome.
       - name: Compose evidence document
@@ -117,7 +130,8 @@ jobs:
             --result validate.methodology-suite=${{ steps.methodology-suite.outcome }} \
             --result validate.compile-cli=${{ steps.compile-cli.outcome }} \
             --result validate.validate-sh-freeze=${{ steps.validate-sh-freeze.outcome }} \
-            --result validate.whitespace=${{ steps.whitespace.outcome }}
+            --result validate.whitespace=${{ steps.whitespace.outcome }} \
+            --result validate.pr-backlog-ref=${{ steps.pr-backlog-ref.outcome }}
 
       - name: Upload evidence artifact
         if: always()

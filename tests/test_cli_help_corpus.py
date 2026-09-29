@@ -106,8 +106,16 @@ def test_root_help_matches_golden():
     _assert_help_matches(_capture("--help"), _golden_path(ROOT_STEM).read_text(encoding="utf-8"))
 
 
-@pytest.mark.parametrize("verb", VERBS)
-def test_subcommand_help_matches_golden(verb):
+@pytest.mark.parametrize("verb", VERBS, ids=lambda v: v)
+def test_verb_help_matches_golden(verb: str) -> None:
+    """The per-verb goldens, content-compared -- not just the root.
+
+    `test_enumeration_agrees_across_ast_argparse_and_goldens` below proves every verb HAS a
+    golden file; it does not read what is IN one. Without this, a verb's own `--help` text (a
+    flag's help string, say) could drift from its committed golden with nothing in this suite
+    catching it -- which is exactly how `init.txt` shipped stale once, silently, until read by
+    hand rather than by a test.
+    """
     _assert_help_matches(_capture(verb, "--help"), _golden_path(verb).read_text(encoding="utf-8"))
 
 

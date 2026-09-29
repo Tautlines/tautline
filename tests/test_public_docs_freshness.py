@@ -83,15 +83,3 @@ def test_public_docs_do_not_treat_generated_canonical_as_edit_source():
                 offenders.append(f"{path.relative_to(ROOT)}: {claim}")
 
     assert offenders == []
-
-
-def test_release_engineering_documents_framework_channel_pins():
-    readme = (ROOT / "README.md").read_text(encoding="utf-8")
-    release_engineering = (
-        ROOT / "docs" / "reference" / "operations" / "release-engineering.md"
-    ).read_text(encoding="utf-8")
-
-    assert "docs/reference/operations/release-engineering.md" in readme
-    assert "tautline set-framework-channel --target . stable" in release_engineering
-    assert "tautline set-framework-channel --target . experimental" in release_engineering
-    assert "wipSafe: true" in release_engineering

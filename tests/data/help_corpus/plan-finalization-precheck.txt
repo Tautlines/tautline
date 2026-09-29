@@ -1,8 +1,0 @@
-usage: tautline plan-finalization-precheck [-h] [--project PROJECT]
-                                           [--target TARGET] --plan PLAN
-
-options:
-  -h, --help         show this help message and exit
-  --project PROJECT
-  --target TARGET
-  --plan PLAN

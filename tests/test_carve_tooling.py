@@ -36,7 +36,7 @@ from carve.apply import (  # noqa: E402
     resolve,
     self_referential_users,
 )
-from carve.model import adjacency_gaps, parse_module  # noqa: E402
+from carve.model import parse_module  # noqa: E402
 
 CLI = Path(__file__).resolve().parents[1] / "src" / "tautline_methodology" / "cli.py"
 
@@ -164,32 +164,6 @@ def test_carve_round_trips_through_a_real_import(tmp_path):
     assert proc.returncode == 0, proc.stderr
     # The `cli.<attr>` surface survives the move via the re-export alias.
     assert proc.stdout.split() == ["localshared", "/"]
-
-
-@pytest.mark.skipif(not CLI.exists(), reason="monolith not present")
-def test_the_monolith_parses_and_stays_adjacency_bound():
-    """Guards the premise of the whole campaign against silent drift."""
-    source = CLI.read_text(encoding="utf-8")
-    symbols = parse_module(source)
-    defs = [s for s in symbols if s.kind in ("def", "class")]
-    assert len(defs) > 1000
-
-    gaps = adjacency_gaps(defs)
-    within_context = sum(1 for g in gaps if g <= 3) / len(gaps)
-    # Span-disjoint does not imply diff-disjoint: this is why lanes cannot simply
-    # partition by domain and edit in parallel.
-    #
-    # The threshold is deliberately well under the starting measurement. At the uncarved
-    # base this was 89.8%; every carve excises a span and merges the blank lines that
-    # surrounded it, so neighbouring survivors drift further apart and the ratio falls as
-    # the campaign proceeds (W1 alone took it to 79.9%). A ratcheting assertion here would
-    # just fail on every successful wave. What still needs guarding is that the file is
-    # dominated by tightly-packed symbols at all -- once that stops being true, the
-    # conflict-elimination machinery is no longer buying anything.
-    assert within_context > 0.60, (
-        f"only {within_context:.1%} of adjacent pairs sit within git's diff context; "
-        "the conflict-elimination premise may no longer hold"
-    )
 
 
 MODULE_SCOPE_SAMPLE = textwrap.dedent(

@@ -1,12 +1,13 @@
 {
   "hooks": {
-    "PostToolUseFailure": [
+    "SessionStart": [
       {
         "matcher": "*",
         "hooks": [
           {
             "type": "command",
-            "command": "tautline tool-rejection-hook"
+            "command": "/bin/sh -c 'command -v tautline >/dev/null 2>&1 && tautline lane-status --hook 2>/dev/null || true'",
+            "timeout": 25
           }
         ]
       }
@@ -17,75 +18,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "tautline background-command-hook"
-          }
-        ]
-      },
-      {
-        "matcher": "ExitPlanMode",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "tautline plan-finalization-hook"
-          }
-        ]
-      },
-      {
-        "matcher": "Edit|Write|MultiEdit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "tautline plan-review-pending-hook"
-          }
-        ]
-      },
-      {
-        "matcher": "Edit|Write|MultiEdit|NotebookEdit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "tautline fleet-guard-hook"
-          }
-        ]
-      },
-      {
-        "matcher": "AskUserQuestion",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "tautline question-guard-hook"
-          }
-        ]
-      }
-    ],
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "tautline response-guard-hook"
-          }
-        ]
-      }
-    ],
-    "SessionStart": [
-      {
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "/bin/sh -c 'command -v tautline >/dev/null 2>&1 && tautline autonomy-directive --hook 2>/dev/null || true'",
-            "timeout": 5
-          }
-        ]
-      },
-      {
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "/bin/sh -c 'command -v tautline >/dev/null 2>&1 && tautline lane-status --hook 2>/dev/null || true'",
-            "timeout": 25
+            "command": "/bin/sh -c 'command -v tautline >/dev/null 2>&1 || exit 0; f=\"${TMPDIR:-/tmp}/tautline-guard.$$\"; out=$(tautline builder-guard --hook 2>\"$f\"); rc=$?; err=$(cat \"$f\" 2>/dev/null); rm -f \"$f\" 2>/dev/null; [ \"$rc\" -eq 2 ] || exit 0; tautline builder-guard --help >/dev/null 2>&1 || exit 0; printf \"%s\\n\" \"$out\"; printf \"%s\\n\" \"$err\" >&2; exit 2'",
+            "timeout": 10
           }
         ]
       }

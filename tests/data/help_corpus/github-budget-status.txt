@@ -1,7 +1,14 @@
 usage: tautline github-budget-status [-h] [--target TARGET] [--refresh]
+                                     [--identity]
 
 options:
   -h, --help       show this help message and exit
   --target TARGET
   --refresh        Ignore the cached rate-limit status and fetch fresh budget
                    data.
+  --identity       Force the GitHub identity report on for this invocation,
+                   whatever MINERVIT_GITHUB_IDENTITY is set to, and
+                   mint/refresh this lane's identity record. This verb is
+                   where an operator asks the question on purpose, so the
+                   master knob should not silence the answer here
+                   (MINERVIT_GITHUB_IDENTITY=0 still wins over the flag).

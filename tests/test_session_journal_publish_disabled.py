@@ -7,7 +7,6 @@ publish-instrumentation-record as the sanitized replacement. Journals remain loc
 (prepare/validate). See the plan's narrative-journals section.
 """
 
-import json
 import os
 import subprocess
 import sys
@@ -43,16 +42,6 @@ def _lane(tmp_path):
     return target
 
 
-def test_publish_session_journal_refuses_in_every_mode(tmp_path):
-    journal = tmp_path / "journal.md"
-    journal.write_text(JOURNAL_BODY, encoding="utf-8")
-    for extra in (["--commit", "--push"], [], ["--allow-release-checkout-write", "--no-stage"]):
-        result = _run(tmp_path, "publish-session-journal", "--file", str(journal), *extra)
-        assert result.returncode == 1, f"mode {extra} should refuse"
-        assert "disabled as of 0.9.0" in result.stderr
-        assert "publish-instrumentation-record" in result.stderr
-
-
 def test_publish_session_journal_writes_nothing_to_the_release_checkout(tmp_path):
     # Even the no-commit/preview path must not write into any git worktree.
     journal = tmp_path / "journal.md"
@@ -61,28 +50,3 @@ def test_publish_session_journal_writes_nothing_to_the_release_checkout(tmp_path
     _run(tmp_path, "publish-session-journal", "--file", str(journal), "--allow-release-checkout-write", "--no-stage")
     after = subprocess.run(["git", "-C", str(REPO_ROOT), "status", "--porcelain"], capture_output=True, text=True).stdout
     assert before == after, "publish-session-journal must not touch the framework checkout"
-
-
-def test_publish_pending_refuses_for_every_adapter(tmp_path):
-    target = _lane(tmp_path)
-    raw = json.loads(EXAMPLE_ADAPTER.read_text(encoding="utf-8"))
-    raw["sessionJournal"] = {**raw.get("sessionJournal", {}), "enabled": True}  # even ENABLED refuses now
-    source_dir = target / ".tautline"
-    source_dir.mkdir()
-    adapter = source_dir / "adapter.json"
-    adapter.write_text(json.dumps(raw), encoding="utf-8")
-    result = _run(tmp_path, "publish-pending-session-journals", "--project", str(adapter), "--target", str(target))
-    assert result.returncode == 1
-    assert "disabled as of 0.9.0" in result.stderr
-    assert "publish-instrumentation-record" in result.stderr
-
-
-def test_help_text_describes_refusal_and_names_replacement(tmp_path):
-    for cmd in ("publish-session-journal", "publish-pending-session-journals"):
-        result = _run(tmp_path, cmd, "--help")
-        assert result.returncode == 0
-        # argparse hard-wraps the description, so collapse whitespace before substring-matching.
-        collapsed = "".join(result.stdout.split())
-        assert "publish-instrumentation-record" in collapsed
-        low = result.stdout.lower()
-        assert "disabled" in low or "deprecated" in low

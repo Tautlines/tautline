@@ -18,9 +18,849 @@ that file is not present in a published copy). This file starts at 0.7.0.
 
 ## [Unreleased]
 
+## [0.148.0] - 2026-09-29
+
+Fast agent teamwork, with an intentional compatibility break from public 0.111.0. This
+pre-1.0 recovery is an explicit exception to the normal additive-only minor-release policy;
+review the migration below before upgrading. Shared context and useful
+evidence return without required plans, review rounds, extra test runs, or new merge gates.
+
 ### Added
+- `tautline work`: declare what a lane is changing, see sibling worktrees and overlapping scope,
+  update dependencies/blockers, and finish or abandon work. Startup and work pickup show advisory
+  context. Stale, missing, and corrupt records are explicit; they never lock ordinary development.
+  State is local to sibling worktrees sharing one Git repository, not a cross-machine service.
+- `tautline evidence run -- <command>` records a verification command already being run;
+  `evidence status` distinguishes a current receipt from stale, failed, or interrupted work.
+  No raw output or command arguments are stored and no hook runs tests automatically.
+- `tautline health`: an on-demand integration view. Remote CI facts require `--remote`;
+  an unknown or cancelled check is never presented as a passing check.
+- Operator answers: `inbox --answer <id> --text ...`, `inbox --answers`, and `inbox --ack <id>`.
+  An answer persists through session restarts until the source lane incorporates and acknowledges it.
 
 ### Changed
+- Public documentation and package descriptions now describe the lean product and its limits.
+  Coordination is advisory; one adversarial review and the project's test gate remain the process.
+- New project setup enables work coordination. Existing projects can opt in without a forced
+  migration. Utilities are evaluated by time saved, not by how many actions they block.
+- The public upgrade includes setup interviews, local/GitHub/Jira backlog providers, handoffs,
+  decision readers, diagnostics, and the optional builder identity/tools added since 0.111.0.
+
+### Fixed
+- Runner cleanup preserves auto-updated executables and live logs, preventing online runners from silently losing their ability to start jobs.
+- Builder tests no longer inherit operator roles/credentials or write the operator's token cache.
+- Upgrade/rollback verification exercises the public 0.111.0 baseline at the integration tip.
+- Repeated `slim` runs preserve handwritten adapters in projects that are already lean.
+
+### Migration from 0.111.0
+- Update the CLI and plugin, then run `tautline slim --target <project> --dry-run` and review its
+  preview before applying `tautline slim --target <project>`. Existing artifacts are archived,
+  not deleted; handwritten instructions are preserved. Update handwritten startup instructions
+  to use `lane-status` and `work status` instead of removed lane/review commands.
+- The old Stop/completion guards, review-round economy, board/goal synchronization, mandatory
+  journals, and fleet lease enforcement were removed. New work declarations are advisory;
+  do not rely on the old gates after upgrading. See `docs/reference/lean-migration.md`.
+- PyPI installs are snapshots: use `pipx upgrade tautline`. Checkout installations follow their
+  configured channel. Keep the migration archive if you need to restore an older adapter.
+
+### Previously available only on the development channel
+
+### Added
+- **Builder-lane GitHub verbs.** `tautline board list|show|fields`, `tautline issue
+  show|comments|find|comment` and `tautline debt file` are a build agent's entire
+  GitHub surface. The board is READ-ONLY -- there is no move, no status write, no `item-add` --
+  because a board's ordering is the product director's statement of what matters, an input to a
+  lane and never an output. The only writes that exist are one stamped issue comment and one
+  off-board debt issue, and both are read back before they are reported as done. Opt in per
+  project with a `builderGithub` block in the lean adapter.
+- **`tautline builder-guard`.** A Claude `PreToolUse` Bash hook, plus a `gh` PATH shim
+  (`tautline builder-guard --shim-dir`) for lanes with no hook contract, that makes those verbs
+  the only route: an allow-list over `gh` subcommands, with `gh api` restricted to read GETs,
+  `gh search` to `prs`, `gh repo` to `view|clone|sync`, and `gh release`, `gh issue`, `gh project`
+  and everything unknown denied. Direct HTTP to api.github.com is caught too, including inside
+  `bash -c`, a loop body or a command substitution. **Humans are never bound**: the predicate
+  stands down before any parsing when the lane is not a builder, and the hook exits 0 rather than
+  denying when `tautline` is missing or predates the verb.
+- **`tautline builder-token`, `tautline lane-role`, `tautline builder-env`.** A builder lane
+  authenticates as a GitHub App installation (`<app-slug>[bot]`) whose Projects permission is
+  Read-only, so a board write is refused by GitHub rather than by us, and every builder write is
+  attributed to the bot. `tautline builder-token --status` prints the permissions GitHub itself
+  reported for the minted token, which is what turns the scope claim into evidence. The GitHub
+  verbs use it automatically: an exported `GH_TOKEN`/`GITHUB_TOKEN` still wins, then the App, then
+  `gh auth token` -- so a human running the same verb by hand is unaffected.
+- `docs/builder-lanes.md`: the whole model on one page, including the two residual gaps the
+  operator has to decide about (the App's Contents write permission is fenced by branch protection,
+  not by this framework; Workflows write is optional and should stay unset).
+
+### Changed
+
+## [0.147.0] - 2026-08-30
+
+The Tier-1 salvage batch: seven tools reclaimed from the process-bankruptcy demolition,
+re-seated as on-demand, advisory-only commands, plus the standing Working style block in
+every rendered adapter and the goal-writing guidance.
+
+### Added
+- Every rendered adapter now carries a standing **Working style** block (work autonomously,
+  log decisions, work exhaustively when blocked, fan out subagents, evidence before done) —
+  ambient in every session; goals now add only goal-specific scope (#620).
+- `/goal` skill + `docs/reference/goals.md`: composes a goal from a short description,
+  bare-text output (#620).
+- `inbox`, `decisions-report`, `event-tail`, `event-log-path`, `event-rotate`: readers for the
+  decision ledger, plus a cross-repo pending-decisions queue; `decision-record --awaiting-operator`
+  marks operator-owned questions explicitly (#622).
+- `github-budget-status` restored; `stakeholder-question ask|list` posts tagged, secret-scanned
+  questions to GitHub issues (#624).
+- `doctor` (branch-liveness, framework-staleness, skip-lint, monitor-liveness — advisory,
+  always exit 0) and `red-green-check` (mutation probe with a crash-safe backup protocol) (#623).
+- The wisdom pack: `docs/reference/lessons.md`, `verify-before-trusting.md`,
+  `giving-human-instructions.md`, and `docs/CONTROL-LEDGER.md` — the rent ledger (#621).
+
+### Changed
+- Lean config free-text fields now carry length caps, and the adapter renderer refuses
+  (actionably) rather than ever writing an over-cap file (#620).
+- Existing lean projects pick everything up with one `tautline slim --target .` after updating
+  the framework checkout.
+
+## [0.146.0] - 2026-08-28
+
+Three lean features on top of the 0.145.0 process-bankruptcy baseline: a project's first adapter,
+where its backlog lives, and how a session hands off to the next one.
+
+### Added
+- **`tautline init`.** The setup interview for a repo that has never carried a Tautline adapter:
+  at most 8 questions (project name; repo; integration branch; test command; where the backlog
+  lives -- local, GitHub, or Jira, plus that provider's fields; whether continuity handoffs are
+  on; up to three project rules), and every one of them also a flag (`--name`, `--repo`,
+  `--branch`, `--test-cmd`, `--backlog`, the per-provider `--backlog-*` flags, `--handoffs`) so an
+  agent can run the whole thing non-interactively with `--yes`. Writes a lean `.tautline.json`,
+  validates it on the same formatter `validate-adapter` uses (now lean-aware), and renders
+  `CLAUDE.md`/`AGENTS.md`. Refuses to overwrite an existing config unless `--force` is passed, and
+  a `--force` re-run prefills every question from the config already on disk, so it doubles as a
+  reconfigure. A `--force` run over a project whose only existing adapter is the legacy
+  `.minervit-ai-delivery.json` name archives it (never strands it) beside the new
+  `.tautline.json`, with a note pointing at `tautline slim` if its content was worth migrating.
+  Right after the backlog-provider question is answered, `init` echoes the same backlog-norm
+  sentence the rendered adapter carries -- confirmation that reuses Track J's renderer rather
+  than a hand-written paraphrase that could drift from it. `render-adapters` and `lane-status`
+  each print one advisory line pointing an un-adopted repo at `tautline init` -- report-only,
+  exit code unchanged; `backlog` has nothing else it can do without a config, so it already
+  refused with the same pointer. A closed stdin or interrupt partway through the interview
+  (`Ctrl-D`/`Ctrl-C`) aborts with a clean message instead of a traceback; nothing is written.
+- **Continuity handoffs.** An optional `handoffs: true` lean config key. `docs/reference/
+  handoffs.md` defines one file, `.ai-continuity/HANDOFF.md` (Doing / State / Next / Gotchas, one
+  page, latest wins -- the whole point is that a fresh session can pick up from it after any
+  session ends), a `/handoff` skill writes it on request, `tautline lane-status` reports its age
+  as one advisory line, and the generated adapter gains two lines instructing an agent to read it
+  at session start and refresh it at checkpoints.
+- **Backlog providers.** One CLI verb, `tautline backlog`, with four subactions --
+  `list`/`add`/`take`/`done` -- reading the target's lean config. Three providers behind the same
+  seam: `local` (a `QUEUE.md` table plus ready/building/done directories), `github` (issues by
+  label, via plain REST/`gh api`, never the Projects GraphQL endpoint), and `jira` (issues in a
+  project, transitions resolved by name). No sync: nothing runs on a schedule or a hook, nothing
+  writes except these four explicit commands. The generated adapter names the configured provider
+  as the project's one backlog surface, so an agent does not file follow-ups into a repo TODO file
+  instead. `docs/reference/backlog.md` documents the three providers, their config keys, and the
+  credential environment variables -- credentials are never written to config.
+
+### Changed
+- **The lean-1 schema** (`methodology/adapter-schema-lean.json`) gains two optional keys:
+  `handoffs` (boolean, default false) and `backlog` (`provider: local|github|jira` plus
+  provider-specific fields). Both are additive -- every config that validated before still
+  validates unchanged.
+
+## [0.145.0] - 2026-08-28
+
+### Removed
+- **The process engine.** Operator-directed process-bankruptcy demolition: the CLI goes from **181
+  subcommands to 19** and `cli.py` from 73,287 lines to ~13,100. Deleted outright: the review-round
+  economy (round budgets, tiers, hard caps, ledgers, lineage keys, manifests and `diff_sha256`
+  freeze/void semantics), plan-review gates and `finalize-plan-review`, board/milestone/goal sync,
+  session journals and instrumentation, the RCA pipeline, the guard-check registry and stop-guard
+  corpus, the per-machine pinned hooks and the `update-repin` treadmill, the policy-phrase SSOT,
+  and the 14,000-line release-migration-report generator — with the 30 source modules and 29
+  plugin skills that served only those features.
+- **The per-PR release boundary.** `merge_gate.py` and the VERSION-bump-per-PR contract are gone.
+  Releases are batched: this entry is one. **Tests-green enforcement now lives solely in the CI
+  workflows** — `ci-python` runs `scripts/test.sh` on every pull request and `ci-python-full` adds
+  the daily matrix, the coverage ratchet and the fresh-install packaging leg. There is no local
+  gate that can be skipped, and no evidence file to forge.
+- **`renderBudget`.** Its `minGeneratedBytes: 15000` floor demanded the generated adapter be
+  *large* and fired on every render once the lean template landed. The lean renderer caps itself at
+  2KB by construction instead.
+
+### Changed
+- **`render-adapters` emits the lean adapter.** It now calls the same renderer `tautline slim`
+  uses, projecting a 1.x adapter through the lean config so a project keeps its own rules: the
+  generated `CLAUDE.md` goes from 16,312 bytes naming 32 now-deleted verbs to 1,189 bytes naming
+  none. A new guard reads the emitted text and refuses any `tautline <verb>` the CLI does not
+  register.
+- **`methodology-status` reports identity, pin, lock and adapter drift.** The ceremony index —
+  goal and milestone ledgers, board currency, hook inventories, control posture, go-live readiness
+  — went with the machinery behind it. Adapter drift is the one blocking condition; `--posture` and
+  `--enter-remediation-on-debt` are removed rather than left inert.
+- **Two security controls moved rather than dying with their host.** The runtime required-secret
+  degrade-to-empty scan moved from `methodology-status` to `validate-adapter`, and
+  `runtime_capabilities` now names missing *carriers* as well as gates.
+- **The provider registry keeps its transports' absence honest.** Every shipped provider derives
+  `unavailable_verbs` from its category contract, so adapter membership, per-provider identity and
+  secret-env format validation keep working while no verb claims a capability it cannot serve.
+
+### Kept
+The surface that remains, and is tested: `version`, `install-cli`, `uninstall-cli`,
+`sync-methodology`, `render-adapters`, `validate-adapter`, `init-project-adapter`,
+`methodology-status`, `lane-status`, `decision-record`, `release-tail`, `release-drift-check`,
+`cut-release`, `registry-package`, `public-contract`, `public-release-check`,
+`public-release-export`, `secret-status`, and `slim`.
+
+### Migration
+See **`docs/reference/lean-migration.md`**. Existing projects run `tautline slim`, which archives
+process artifacts with `git mv`, removes the framework's hooks, rewrites the config to `lean-1` and
+renders the thin adapter — never deleting, with `--dry-run` to preview. `tests/test_upgrade_path_e2e.py`
+proves a machine on the previous release survives the upgrade, the reinstall and a rollback.
+Superseded documentation is read-only under `docs/archive/2026-08-process-bankruptcy/`.
+
+## [0.144.0] - 2026-08-28
+
+### Added
+- **`tautline slim` — one command migrates an adapted project to the lean profile.** It archives the
+  project's process artifacts (the plan directory its own config names, `.plan-reviews`,
+  `.impl-reviews`, review ledgers, the 1.x adapter source) into `docs/archive-prebankruptcy/` with
+  `git mv` so history follows them; removes the framework's Claude hooks from `~/.claude/settings.json`
+  and its `pre-commit`/`pre-push` git hooks, leaving user-authored hooks alone; rewrites
+  `.tautline.json` to the new `lean-1` contract, preserving project identity and dropping every
+  ceremony key; and renders a thin (<2KB) `CLAUDE.md`/`AGENTS.md` in place of the ~16KB one.
+  Nothing is deleted — every rewritten file is backed up first — and running it twice is a no-op.
+  A hand-authored `CLAUDE.md` (one without the `<!-- GENERATED -->` header) is never overwritten:
+  the lean adapter is written to `CLAUDE.md.lean-proposed` beside it. Review ledgers and plan
+  directories are archived whether or not git tracks them; gitignored lane scratch is left in
+  place. A `settings.json` that cannot be parsed is a hard failure with a nonzero exit and a
+  `FAILED` section, never a success-shaped summary. `--dry-run` prints the plan;
+  `--keep-agent-hooks` opts out of touching the agent settings.
+- **`lean-1` project contract** (`methodology/adapter-schema-lean.json`): four required keys
+  (`schemaVersion`, `project`, `integrationBranch`, `commands.test`) plus optional `review`,
+  `security`, `release`, `laneStatus` and `projectRules`. Process is prose in the generated adapter,
+  not configuration.
+
+### Changed
+- **`tautline lane-status` understands a lean adapter.** It previously degraded to "lane status
+  could not be computed" against any config that failed the 1.x loader's eleven required keys.
+- **`tests/test_upgrade_path_e2e.py` now proves both release transitions**: the process migration
+  (a real rendered project with the real installed hooks, through `slim`, asserting nothing is
+  destroyed and a second run is a byte-for-byte no-op) and the existing runtime transition
+  (previous release → this code → rollback).
+
+## [0.143.0] - 2026-08-27
+
+### Changed
+- **Jira identity values are validated for grammar, not just presence.** `projectKey` must match
+  Jira's key grammar — an uppercase letter followed by at least one more uppercase alphanumeric —
+  so a value carrying a path segment, whitespace or a newline can no longer be interpolated into
+  the authoritative board pin. `boardId` must be a positive ASCII integer of bounded length. 0.142.0
+  tested it with `str.isdigit()`, which is true for `"0"`, for Unicode digits like `"٣"`, and for a
+  six-thousand-digit string — all three were accepted and rendered into an authoritative pin that
+  identifies no board. The length bound is what lets the check *report* them: converting an
+  unbounded digit string raises instead, because CPython refuses integer conversion beyond 4300
+  digits. `siteUrl` is validated by DNS label rather than by character class, so
+  `team-.atlassian.net` and `team..atlassian.net` are refused, and both DNS length limits apply —
+  63 octets per label, 253 for the whole hostname.
+- **One rule decides which adapter block configures the board.** Provider dispatch resolved the
+  active block as "`backlogProvider` if enabled, otherwise `goalTracker` if that key is present at
+  all"; configuration selection required the legacy block to be *enabled*. So an adapter with a
+  disabled `backlogProvider` beside a **present but disabled** `goalTracker` dispatched to one
+  block while reading its configuration from the other. Both now use one resolver. The pin's own
+  suppression — a lane with nothing pinned gets no line rather than one taken from elsewhere — moved
+  to the pin, where it is a rendering decision rather than a selection one; it fires only on an
+  explicit `backlogProvider.enabled: false`, so a legacy adapter carrying only `goalTracker` still
+  pins normally.
+
+### Note
+The Jira provider remains **declared, not yet validated against a live site**, and this release
+adds no Jira call: every board verb still refuses by name. The HTTP client moved to its own release
+after four of six review findings in two rounds were its credential or cache behaviour — including
+a shared cache that crossed authentication boundaries and a containment claim about tracebacks that
+was not true. That surface deserves its own review budget.
+
+## [0.142.0] - 2026-08-27
+
+### Added
+- **Jira can now be configured in an adapter.** `backlogProvider` accepts a provider's own identity
+  fields, so a Jira board is declared with `siteUrl`, `projectKey` and optionally `boardId` instead
+  of GitHub's `owner` + `projectNumber`. Credentials are named, never carried: `emailEnv` and
+  `apiTokenEnv` name environment variables, on the same rule the chat webhooks already follow.
+- **`jira` is a registered backlog provider.** It declares every board verb **unavailable**, so each
+  one refuses by name rather than failing obscurely.
+
+### Changed
+- **The adapter identity model is per-provider.** `owner` and `projectNumber` are required only by
+  `github-projects`; each provider declares which fields it needs and is validated against its own
+  set. A GitHub adapter is unaffected.
+- **The rendered board pin follows the provider.** A lane on a Jira board no longer receives a
+  GitHub `<owner>/projects/<n>` pin, and the status summaries print the provider's own coordinates.
+
+### Note
+This release makes a Jira adapter **configurable** — it loads, validates and renders. It does **not**
+make it work: no Jira call is made anywhere in this release, and every board operation refuses by
+name saying the verb is not implemented yet. Reads land in the next release, writes in the one after.
+The provider is **declared, not yet validated against a live site**; nothing here has spoken to a
+real Jira instance.
+## [0.141.0] - 2026-08-27
+
+### Fixed
+- **The plan-review hard cap counts total executions, not charged spend.** An execution that funded
+  no inquiry — an infrastructure failure, or a reviewer that returned no classifiable verdict — is
+  still uncharged against the **budget**, but now advances the **ceiling**. Both previously read one
+  number, so a reviewer that never emits a `## Findings` heading could take unlimited rounds.
+- **The ceiling is lineage-wide.** Uncharged executions are summed across every resolved member.
+  Counting only the current member left a declared successor of a predecessor with four
+  unclassifiable runs at a ceiling of zero and a full fresh quota.
+- **Topology and cost are different questions.** A wrapper-success format error supplies lineage
+  edges, work items and predecessor evidence even though it spends no budget, because it really did
+  review. A failed wrapper still supplies nothing. Readers are enumerated by test as TOPOLOGY or
+  COST, and a new unclassified one fails the suite.
+- **Round labels are compared by ordinal** in the runtime cap guard, so `R1` and `R01` no longer buy
+  separate runs past the refusal to finalize an existing unfinalized run.
+
+### Note
+- A lineage carrying uncharged executions may see its **ceiling count rise**. That is the
+  correction, not a regression — those runs really happened. Charged spend is unchanged, and so is
+  the rounds 1–2 convergence ladder.
+
+## [0.140.0] - 2026-08-27
+
+### Added
+- **A backlog board other than GitHub Projects can now be named in an adapter.**
+  `backlogProvider.provider` and the deprecated `goalTracker.provider` moved from closed `enum`s to
+  registry-validated strings. Adding a board system is a registration, not a schema edit and not a
+  fork. `stakeholderQuestions.provider` is deliberately unchanged and still accepts only
+  `github-issues` — the stakeholder issue operations are not dispatched yet, so opening it would
+  let an adapter name another provider and then write to GitHub anyway.
+- **A declared provider that cannot serve a board operation refuses BY NAME.** Every board read and
+  write now resolves the provider the adapter declares before acting, and one that does not serve
+  the verb says so — naming itself, the verb, and what to do instead. It never falls back to
+  GitHub, because a fallback would drive the wrong board while looking like it worked.
+- **The board and the work items are separate choices.** `backlogProvider` and
+  `stakeholderQuestions` resolve independently in code, so one provider's board over another
+  provider's issues becomes expressible as soon as the issues key opens — nothing assumes the two
+  agree.
+
+### Changed
+- **`validate-adapter` runs the backlog/issues registry check too.** Membership left JSON Schema
+  when the enums opened, so without this the self-service lint would report a clean adapter that
+  `load_project` refuses on the next command. Absent and present-but-blank are distinct answers.
+- **`github-projects` is no longer a schema `enum` literal.** It remains accepted and remains the
+  default; the guarantee is now asserted directly by test rather than inferred from the schema's
+  shape.
+
+### Note
+This release makes a non-GitHub board **nameable and honestly refused**. It does not make one
+configurable, and it ships no second board provider. The adapter identity fields are still
+GitHub-shaped (`owner` + `projectNumber`), so naming another registered provider and enabling it is
+refused at load, by name, saying exactly that. Per-provider identity fields land with the release
+that adds the first provider needing them.
+
+## [0.139.0] - 2026-08-26
+
+### Added
+- **A provider registry, so an adopter's stack can be named without forking the CLI.** Every
+  integration seam in the adapter contract was a single-value `enum` that did two jobs at once: it
+  declared which system you intend to use *and* gated whether the framework can drive it. Those are
+  now separate. Membership belongs to a registry, so adding a provider is a registration rather
+  than a schema edit; availability belongs to a per-verb capability probe, so a provider can be
+  legitimately named while one of its verbs is not available yet — and that verb refuses **by
+  name** instead of quietly doing nothing.
+- **A null notify provider, so "I have no chat tool" is an expressible answer.** The four chat
+  seams (`iterationReview.delivery`, `milestoneUpdate`, `productChat`, `deploymentNotification`)
+  accept `"none"`. It performs no I/O, never raises, and reports that nothing was delivered and
+  why. Declaring `enabled: true` alongside it is refused at load, so a deliberate opt-out stays
+  distinguishable from a broken webhook.
+
+### Changed
+- **The four notify `provider` fields are validated against the registry instead of a closed
+  `enum`.** Existing adapters are unaffected: `google-chat-webhook` is registered and behaves
+  identically, payloads and sent-state semantics are unchanged, and the reference adapter renders
+  byte-for-byte as before. Because membership left JSON Schema, `validate-adapter` now runs the
+  registry check too — without it the lint would have reported a clean adapter that the next
+  command refuses.
+- **One Google Chat transport instead of two.** `post_iteration_review_google_chat` was a verbatim
+  copy of `post_google_chat_webhook` differing only in two string literals — a duplicate transport
+  is somewhere for two copies to drift. Both operator-facing strings are preserved exactly.
+## [0.138.0] - 2026-08-26
+
+### Fixed
+- **The hard-cap refusal no longer promises a reset that does not happen.** The message a lane reads
+  at the moment it is most tempted to evade said *"The counter resets on a base change; the
+  obligation does not, and nothing enforces that but you."* Both halves were false — 0.135.0 made
+  the ceiling base-independent and 0.136.0 enforced the successor case. It now states the actual
+  behaviour and names the acknowledgement flags.
+- **The shipped `review-before-push` skill reference said the same two false things.** Adopters
+  reading it were told the rule was advisory when the tooling had begun enforcing it.
+
+### Added
+- **A conformance test pins every surface describing reset semantics.** This was the fourth pass at
+  one rule; each earlier pass corrected one surface while another kept contradicting it, and the
+  third claimed to have checked every occurrence. The test asserts both the **absence** of the
+  falsified wordings and the **presence** of the true claims, and discovers candidate surfaces
+  across `methodology/`, `src/` and `plugins/` — a methodology-only scan would have missed both
+  surfaces that were actually wrong.
+
+## [0.137.0] - 2026-08-26
+
+### Fixed
+- **`review-evidence-check` honours `--strict` for the durable round history.** A missing or
+  damaged history returned `1` unconditionally, while every other evidence failure in the same
+  command returns `0` without `--strict` and the help says `--strict` is what blocks — so
+  diagnostic callers failed unexpectedly on this one check. Strict behaviour is unchanged,
+  including the ordering that refuses a history-only deletion despite a zero outgoing diff.
+- **Predecessor round history is found under unusual planning roots.** Ref discovery ran
+  `ls-tree --name-only` without `-z` and stripped each line, so a `planningArtifacts.sourceOfTruth`
+  containing non-ASCII, a tab or leading whitespace — all permitted by the schema — made git
+  C-quote its output, the `.rounds.json` suffix check miss, and a capped predecessor's history go
+  **silently undiscovered**. A successor then started at zero with a full budget.
+- **An out-of-target planning root no longer tracebacks out of the push gate.** Any adopter keeping
+  plans in an external repository crashed on every push. It is now reported as a diagnostic error —
+  deliberately not the empty result beside it, which would let `--strict` pass on a history the
+  gate never inspected.
+
+## [0.136.0] - 2026-08-26
+
+### Added
+- **A new branch over capped work is refused.** When a branch has no recorded rounds but changes
+  paths belonging to another branch already at its round cap, `codex-run` refuses and names it.
+  Two exits: **decompose** the work, or `--acknowledge-reset <branch>
+  --acknowledge-reset-reason '<why>'`. It never advertises cutting a new branch — #600 removed
+  that phrasing because advertising it is what got it taken. This is the third and last of the
+  resets: parts 1 and 2 closed re-cut, rebase and fresh-worktree for the *same* branch.
+- Detection reads **branch refs**, not the working tree — a predecessor's history is committed on
+  its own branch, so a successor cut from the integration branch never sees it on disk, which is
+  the exact shape of the incident this work exists for.
+
+### Changed
+- **The rule text catches up with the code.** Rule 258 and `methodology/policy/17-review-before-push.md`
+  said *"a base change resets the counter"*; 0.135.0 stopped the ceiling resetting. They now state
+  the ceiling's real scope, that the charged counter and confirming predicate stay lineage-scoped,
+  and this release's refusal.
+- The acknowledgement rides in the round's **manifest**, and `finalize` carries it into the tracked
+  ledger — **no tracked file is written during a round**.
+
+### Fixed
+- `run_git_status` captures bytes and decodes with `surrogateescape`. `text=True` collapsed paths
+  differing only as `\r` versus `\n` onto one identity, which would **fabricate** an overlap and
+  refuse unrelated work.
+
+## [0.135.0] - 2026-08-26
+
+### Fixed
+- **The round-budget counter reads the tracked round history, not only gitignored `.ai-runs`.**
+  That store has **zero tracked files**, so a fresh worktree or clone of a branch reported *zero*
+  spent rounds and got a full fresh budget — the cheapest and most frequent of the three resets,
+  fired by ordinary hygiene on a fleet running 20+ linked worktrees. **Counts can go up, and that
+  is the fix.**
+- **The absolute ceiling is base-independent** — a rebase no longer refills it. Canonical rule 258:
+  a base change resetting the counter is *"mechanical, not permission"*. The charged counter and
+  confirming predicate keep their lineage semantics, so a round free going in is not charged
+  coming out.
+- `codex-run` prints `codex_run_lineage_source:`, so a count that is low because this checkout
+  cannot see the history is distinguishable from a branch that genuinely has none.
+
+### Changed
+- **Read-only: no new writes.** Recording rounds to a tracked file *during* a round can retarget a
+  dirt-sensitive review wrapper, so that work is filed separately rather than bundled here.
+
+### Known gap
+- The history records rounds at **finalize**, and blocker rounds are normally never finalized, so a
+  fresh worktree counts finalized rounds rather than every execution — lower than true spend,
+  though no longer zero. A low count only permits more rounds; it never refuses work.
+- **The same gap bounds the rebase guarantee.** The ceiling survives a base change for rounds the
+  history can *attribute* — finalized ones. An old-base **local** manifest with no durable row is
+  ambiguous (a never-finalized pre-rebase round, or an earlier lane's spend under a reused branch
+  name) and is excluded: excluding only permits more rounds, while counting would refuse a lane.
+
+## [0.134.0] - 2026-08-26
+
+### Added
+- **Append-only round history in a new tracked file.** `finalize-implementation-review` now writes
+  `.impl-reviews/<slug>.rounds.json` — one accounting row per finalized round, plus a `lineage{}`
+  block. The durable half of making the round budget enforceable: the counter reads
+  `.ai-runs/review-evidence/`, which is gitignored with **zero tracked files**, so the count zeroes
+  on a re-cut, on an incidental rebase, and in any fresh worktree or clone of the same branch.
+  **Nothing reads the history yet** — no lane's counted rounds change in this release. Commit the
+  new file alongside the ledger; its absence is not an error.
+- Rows carry **accounting fields only**, never `classified_findings`: this writer runs inside every
+  generated adapter, so repeating finding prose per round would multiply review text in customer
+  repositories. Each row carries its exact `branch` and an **immutable execution key** (the
+  reviewer's `log_sha256`), because `feat/a-b` and `feat/a_b` share one file and because
+  re-finalizing one review must not count as two rounds.
+
+### Changed
+- **The review ledger itself is unchanged** — no new keys, and the schema literal does not move.
+  That is why the history is a separate file: a checkout pinned to an earlier release rebuilds
+  `<slug>.json` from the current manifest and atomically replaces it, so a history stored inside it
+  would be deleted by that writer. Lagging pinned CLIs are a supported environment.
+
+## [0.133.0] - 2026-08-25
+
+### Added
+- **Changed-path overlap primitive for round-budget lineage.** `implementation_review_changed_paths`
+  and `implementation_review_paths_overlap` — the signal that survives a branch rename, which the
+  round counter's own store does not: `.ai-runs/review-evidence/` is gitignored with zero tracked
+  files. **No callers in this release**; the reset refusal that consumes them lands later, so no
+  round count, refusal or gate behaviour moves here. Both fail open narrowly — an unknown answer
+  reads as "no overlap known", never as a guess, because a fabricated overlap is the one failure
+  mode that could refuse legitimate work.
+
+## [0.132.0] - 2026-08-25
+
+### Changed
+- **ruff 0.15.21 → 0.16.2** (dev dependency). Verified against the current tree before taking it: both versions report `All checks passed!` on `bin/tautline src tests tools`, and both count **6443** E501 hits over `LINT_PATHS`, measured with the ratchet's own invocation (`--select E501 --output-format json`) — that is exactly `E501_BASELINE`, so the pin change moves it by zero.
+
+## [0.131.0] - 2026-08-25
+
+### Fixed
+- **The implementation-review round budget now says, in the rule itself, that it follows the WORK and not the branch name.** The plan-review rule already forbade successors, splits, renames, copies and new branches from refilling a spent budget. The implementation-review rule beside it said only *"a base change starts a new lineage"* — no anti-evasion clause at all — and the hard-cap refusal advertised *"a new branch is a new lineage and starts a fresh count"* as one of its two exits.
+
+  **That asymmetry reads as a licence, and it was taken as one.** A capped branch was re-cut as a fresh lineage to obtain rounds; the rebuild then produced twelve P1 findings the cap had been holding back, several of which would have shipped a break-glass mechanism that could be fooled by a downgraded severity, an unrelated branch's manifest, or an omitted finding. The cap was right and the prose did not say so.
+
+  The refusal message now distinguishes decomposing the **work** into genuinely smaller, independently reviewable PRs from re-cutting the same content, and states plainly that at the cap with an unresolved Critical or P1 the work does not ship.
+
+## [0.130.0] - 2026-08-24
+
+### Fixed
+- **Asking permission to continue now BLOCKS when a standing autonomy directive is active.** The permission-seeking guard resolved its severity through `phraseChecks`, which defaults to advisory, so under a directive that forbids permission-seeking the guard logged the violation and the turn shipped anyway. Under an active directive the block is now forced rather than delegated, and a demoted tier cannot disarm it — only a whole-guard opt-out can.
+
+  **What it will not block.** The promotion consumes the detector's reason codes rather than re-deriving them, so a turn that merely REPORTS state ("clean checkpoint", "no work-in-flight") stays advisory: under a directive that says work until no safe work remains, saying so when it is true is compliance. A negated handback ("I won't stop here; I'm continuing") is forward motion, not a handback. Recording an operator-owned fork with `decision-record` or `stakeholder-question-ask` licenses **asking** and continuing; it does not license **stopping**. Ending a turn by handing back requires a declared, fresh blocker (`tautline blocker-declare`) — the exit the guard's own error message has always named — and a missing, stale or unreadable blocker record fails closed to refusing.
+
+  **An explicit human stop outranks the directive.** A directive governs autonomous continuation; it never overrides the operator ending the lane.
+
+## [0.129.0] - 2026-08-24
+
+### Changed
+- **The opt-in/standby detector now reports WHY it fired, not just whether it did.** `response_forbidden_opt_in_reasons()` returns reason codes — a decision menu, a direct handback phrase, a state description, a `should I …` interrogative — and `response_has_forbidden_opt_in()` becomes a one-line view over it. Its verdict is unchanged: the refactor was verified against the previous implementation over 20 shapes and both `human_discussion_request` values with zero divergences, and that result is frozen as a golden test.
+
+  **Why it matters.** A caller that has to treat a completion report differently from a permission handoff previously had no choice but to re-derive that judgement alongside the detector, and two implementations of one judgement drift. The detector's own phrase list is now a proven partition — handback versus state — with a test that fails the build if a phrase is added without being classified.
+
+## [0.128.0] - 2026-08-23
+
+### Fixed
+- **`base-health` no longer reads a post-job teardown failure as evidence the base's code is broken.** A run that concluded `failure` whose *every* failing step is teardown — `Complete runner`, `Complete job`, `Stop containers`, or a generated `Post Run …` step — is now reported `unknown` rather than `red`. Unknown never blocks and says so.
+
+  **Unknown, not green, and that distinction is the whole design.** Green would claim the base's code is good on evidence that only shows teardown ran and failed. The gate stops *refusing* on it; it does not start *vouching* for it.
+
+  **Every ambiguity stays red.** An unreadable jobs payload, a failing job with no failing step recorded, a single unrecognised step name, or **any job or step whose conclusion is neither green nor `failure`** — a matrix fail-fast `cancelled`, a `timed_out` — all leave the refusal standing. That last one is not hypothetical: an exact `!= "failure"` filter *skipped* those conclusions rather than treating them as ambiguity, so a run carrying a cancelled job alongside a teardown-only failure would have been read as teardown-only and downgraded, with nothing having established that the cancelled job would have passed — the extra read is allowed to fail, never to excuse. Only `failure` is eligible: `cancelled`, `timed_out`, `startup_failure`, `action_required` and `stale` have no step-level meaning and are untouched. GitHub exposes no step *type*, so recognition is name-based — and **name alone is not enough**, because step names are workflow-authored. Two guards follow from that. The prefix is `Post Run ` and not the looser `Post `, so a real step called "Post results to Slack" is not mistaken for teardown. And **position is required as well**: a teardown-named step counts only when it sits in the *trailing run* of teardown-named steps, which is where GitHub appends the post-job phase — so an adopter's genuine step called `Complete runner` in the middle of a job cannot open the gate.
+
+  **The residual limit is stated rather than papered over:** a job whose *last* step is user-authored and named exactly like a teardown step is indistinguishable through this API. Nothing in the payload separates those two cases.
+
+  Measured on this repository: `Complete runner` was the failing step in 8 of the 12 failing steps across the ten `ci-python-full` runs on `experimental` still concluding `failure`, and 6 of 10 counted per attempt over the last seven merges. With `postMergeTier.enforcement` armed to `block`, each one refused every lane's merge. 0.127.0 removed *this* repository's cause; this removes the framework's, for every lane whose runner has its own job hooks.
+
+### Added
+- **`post_merge_tier_run_jobs`** reads one run's jobs and steps. It is called **only** when the tier is already refusing, so the common green path costs exactly what it did before — one extra `gh run view --json jobs` on a red, and nothing otherwise.
+
+## [0.127.0] - 2026-08-23
+
+### Fixed
+- **The self-hosted runner's job-completed hook no longer fails the job it cleans up after.** `.github/runner/job-cleanup.sh` ends with `exit 0` and a comment stating the contract it exists to hold: *"Never fail the job on cleanup trouble: this hook's exit code becomes the JOB's exit code."* It was not holding it. The runner does not execute a job hook through its shebang — it runs it as `bash --noprofile --norc -e -o pipefail`, visible in every job log directly above the hook's output — so the invoker's `-e` overrode the script's own deliberately `-e`-free `set -uo pipefail`, and the first unguarded non-zero command aborted the script before it could reach `exit 0`. The abort then became the job's conclusion, after every real step had passed.
+
+  **Measured, not estimated:** classifying the failing step of the last 22 red `ci-python-full` runs on `experimental` put `Complete runner` — post-job teardown — at half of them, with no long tail. Because `postMergeTier.enforcement` has been armed to `block` since 0.119.0, each of those refused every lane's merge. A gate that is wrong half the time is one lanes learn to `--override` without reading, so the cost was not the lost minutes; it was the credibility of the control 0.119.0 was built to establish.
+
+  The reachable trigger is a race on `_diag`, the runner's **live** diagnostic directory: the runner rotates files there while the job completes, so a path can vanish between the hook's `[ -e ]` test and its `cp -a`. `set +e` drops the inherited errexit and an `EXIT` trap covers what `set +e` cannot — a `-u` unbound-variable abort exits regardless of errexit. Both are needed; neither alone holds the contract.
+
+### Fixed, from the review of this release
+- **A failed identity copy now skips the wipe instead of deregistering the runner.** Dropping the inherited `errexit` removed an abort that had been covering this *by accident*: if `.runner` or `.credentials` could not be copied to the scratch dir, the old script died before the wipe and left `$HOME` intact. Without that abort the wipe would proceed, the restore would have no identity to put back, and the runner would go offline — while the hook still reported success. Trading a red job for a deregistered runner is a worse bargain than the one this release exists to fix, so identity failures are now fatal to the cleanup and the home is deliberately left dirty. `_diag` stays best-effort, because its race *is* the case this release removes.
+- **An unusable scratch directory skips cleanup instead of copying the filesystem root.** With `errexit` dropped, a failed `mktemp -d` left `KEEP_DIR` empty, and `${KEEP_DIR}/.` then expands to `/.` — so the identity restore would `cp -a "/." "$HOME/"`, filling the runner's disk and still exiting 0. `set -u` does not catch it, because the variable is set and merely empty. Reproduced: the test that pins this wrote 11GB in 60 seconds against the unguarded script.
+
+- **The test-only path overrides are gated behind an explicit sentinel.** Read unconditionally, they meant the *production* hook trusted `JOB_CLEANUP_HOME_DIR` / `JOB_CLEANUP_PRISTINE_DIR` from whatever environment it was handed — anything exporting the first would silently redirect the wipe, and a second pointing nowhere would let the wipe run against the real home with nothing to restore from. Moving off the `RUNNER_` prefix cut the collision odds but not the trust. The overrides now require `JOB_CLEANUP_TEST_MODE=1`, so the production path is literally the pair that was hardcoded before this release.
+
+- **The hook's own tests can no longer run cleanup against the live runner home.** Gating the overrides created a new hazard in the tests that exercise the ungated path: with the sentinel absent the hook falls back to its production target, and `/home/runner` — which does not exist on a developer machine — **is** the live home on this project's CI container, where it holds `_work` and therefore the checkout pytest is running from. Those tests would have wiped the running job's own workspace. They now run against a copy whose production literals are rewritten to throwaway paths, and a ratchet pins the number of direct invocations of the real hook so the next test cannot reintroduce it.
+
+All four were found by the cross-model review rounds on this diff, and each is pinned by a test proven red against the unguarded script. Three of the four are the same shape: the original script's inherited `errexit` had been masking a fail-open path by accident, so each layer of the fix exposed the next.
+
+### Changed
+- **Cleanup trouble is reported instead of silently discarded.** Every failure-prone command in the hook sent stderr to `/dev/null`, so a failing hook logged `Process completed with exit code 1` and nothing about which command produced it. That suppression is why this defect survived 22 runs classified as a flake rather than being read off the log. Failures are now named on stderr and still never propagate.
+- **`JOB_CLEANUP_HOME_DIR` / `JOB_CLEANUP_PRISTINE_DIR`** override the previously hardcoded `/home/runner` and `/opt/runner-pristine`. They exist so the suite can execute the real script against throwaway directories rather than assert on its text — a shape test would stay green against a script that re-acquires `errexit` later or grows a new unguarded command. The runner sets neither, so container behaviour is byte-for-byte what it was.
+
+## [0.126.0] - 2026-08-23
+
+### Changed
+- **The methodology assigns roles, not vendors.** `methodology/canonical-rules.md` and the skill policy references now say "the planner", "the plan reviewer", "the builder" and "the implementation reviewer" where they said "Codex" and "Claude". The most explicit case was the Execution Packet Work Loop, which assigned all three seams by vendor name — "Codex leads milestone-level planning and gets Claude review", "Claude consumes the tactical queue" — so the methodology named one vendor as the only permissible planner and another as the only permissible builder.
+- **The two cross-model review seams name roles.** "Claude asks Codex" / "Codex asks Claude" becomes the builder asking whatever `roles.implementationReviewer` binds, which the gate already requires to be a different vendor than the author. The finding-retrieval section is about the reviewer's wrapper generally, and the legacy transcript marker is the agent's own declared `agents.<id>.transcriptMarker` rather than a guessed `^codex$` literal.
+- **The lane instruction-file rule covers every registered agent.** "Never overwrite hand-written lane `CLAUDE.md` or `AGENTS.md`" enumerated two vendors' files, so a third agent's instruction file was protected by nothing. It now names each registered agent's `instructionFile`, keeping the two familiar names as examples rather than as the whole list.
+
+### Unchanged, deliberately
+Genuinely vendor-specific artifacts keep their names, because renaming a real thing is not de-coupling: `usage-import-claude` parses a Claude transcript format, `install-claude-launcher` installs the Claude Code launcher, `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` is a Claude Code environment variable, the Graphify backend flags name real backends, and "Claude memories" is a real artifact.
+
+Two adapter keys were **kept vendor-named against the plan's instruction**, because the plan was wrong about them: `review.codexFastMode` is what the launcher actually reads (`codex_fast_mode_status`), and `goalExecution.preferredClaudeCommand` is what the goal path reads. The registry keys the plan named — `agents.<id>.fastMode`, `agents.<id>.goalCommand` — are *written* by the compat shim from those legacy keys and are never read for enforcement. Documenting the registry key as the opt-out would have told lanes to set a key that changes nothing: the stale-claim defect this whole program exists to remove, introduced by the release meant to remove it.
+
+### Measured cap raises
+Role vocabulary is strictly longer than a vendor name — "the plan reviewer" is three words where "Codex" is one — so every substitution is a net add and four capped modules had no headroom to absorb it. Each raised by its own measured delta with the reason recorded above the constant: `10-goal-orchestration` 523 → 534, `13-planning` 656 → 658, `21-lane-lifecycle` 541 → 548, `17-review-before-push` 708 → 712, and the global canonical byte ratchet 82,407 → 82,661.
+
+## [0.125.0] - 2026-08-22
+
+### Fixed
+- **Two plan-review runs in the same second no longer share a log path — and no longer destroy each other's evidence.** The run log is named with a second-resolution stamp plus the plan slug and round label, so two runs of the same plan and round inside one second produced the *same* filename and the second silently overwrote the first. A recorded manifest binds its log by `sha256`, so the overwrite made `plan-finalization-precheck` refuse the plan with `plan review log hash mismatch` and `plan review run metadata hash mismatch`: the lane could not finalize a review it genuinely ran, and the original log was already gone. Reachable by any lane taking two rounds quickly.
+
+  Found while chasing what had been treated as a CI flake — it reddened `experimental` on three unrelated commits, one predating the investigation, always as `test_two_round_happy_path_unchanged` and always CI-only, because a slower machine puts the two runs in different seconds. A colliding path now gains a suffix, which preserves sort order and appears only on a real collision, so the stamp shape every other reader parses is unchanged.
+
+## [0.124.0] - 2026-08-22
+
+### Fixed
+- **A malformed adapter `fleet` block no longer wedges every commit.** `fleet_config` raises on an invalid value, and `fleet_guard_hook` catches that deliberately so a broken adapter does not block edits. `portable-gate-check` let it propagate, so pre-commit refused **every** commit in the repository — including the commit that fixes the adapter, leaving `--no-verify` as the only way out. The commit-time mirror was stricter than the gate it mirrors, in the one direction that traps a lane. A lockout is not a safer failure than a miss.
+
+### Known limitation, stated rather than implied
+A checkout whose adapter marker lives in a **subdirectory** still does not get the portable gates at commit time. The installed hook passes `--target .`, which names the worktree root because git runs `pre-commit` from there. Fixing that turned out to be a cross-cutting change to the whole hook template rather than a target substitution — every gate the hook invokes assumes the target is the worktree root, and the hook exits at `work-profile-check` before it ever reaches the portable gates. Five review rounds each found the next layer of that same change, so it is routed as designed work rather than patched a sixth time. This release does not regress that layout; it is the same position as 0.123.0.
+
+## [0.123.0] - 2026-08-22
+
+### Added
+- **`tautline portable-gate-check`.** The two in-session write gates that have a commit-time equivalent — `plan-review-pending` and `fleet-guard` — now run from `pre-commit` on **any** runtime, so a lane on a harness without Claude Code hooks is no longer silently ungated on those two. The verb reuses the hooks' own block-reason functions rather than reimplementing the rules: two controls with one name disagreeing about what they forbid is worse than having only one.
+- **The limit is stated, never conflated.** Two of the **seven** blocking gates are portable. The other five gate in-session events with no commit-time artifact. The two SessionStart carriers are report-only and are counted **separately** — crediting a runtime with a gate that cannot block anything overstates enforcement exactly as badly as hiding one that is missing.
+
+### Not included, deliberately
+- **No CI counterpart**, though a `pre-commit` hook alone is skippable with `--no-verify`. Measured against this repository, a CI job for these two rules *is* the defect that requirement exists to prevent: `fleet-guard` reads leases under the repository's `git-common-dir`, and `plan-review-pending` reads `.ai-runs/`, which is gitignored with **zero tracked files**. A fresh `actions/checkout` holds neither, so the job would find nothing and pass on **every** diff — a permanently green job standing in for a floor that does not exist, which is worse than no job because it looks like coverage. A first cut shipped exactly that job; it was removed rather than kept green. `CI_ENFORCED_CAPABILITIES` is empty **as data**, so the coverage line reports *"2 of 7 gates run at commit-time, none in CI — both read state a CI checkout does not have"* and cannot drift from prose. Filed as `2026-08-22-ci-floor-for-the-portable-write-gates`.
+
+### Changed
+- The pre-commit refusal **names its own bypass** and says that nothing downstream re-checks these two rules. An agent that discovers `--no-verify` independently learns both that the gate is optional and that the framework hid it.
+- Version skew **fails open and loudly**: a lane whose resolved CLI predates the verb is told the gates are not enforced there and that nothing catches them downstream, instead of every commit being refused by an unrecognised-verb error.
+- A repository where no adapter resolves is not blocked — the gates have no rules to apply there — and the verb reports what it did **not** check rather than going silent.
+
+### Fixed
+- **Staged deletions and renames were invisible to the gate.** The staged path set came from `--name-only --diff-filter=ACMR`, which drops `D` outright and gives a rename's destination only, so `git rm` on a file covered by a fleet lease — or on a plan with a pending review — committed with `portable_gate_check: ok`. Deleting a guarded file is precisely what a lease exists to stop, so the destructive case was the one the gate could not see. Now `--name-status -M`, with both sides of a rename checked.
+- **A subdirectory target no longer reports a silent pass.** `--target <subdir>` resolved the adapter from the caller's target rather than the discovered root, so the verb reported "nothing to enforce" for a repository whose adapter sits one directory up.
+
+### Required migration
+- **Run `tautline install-hooks --target .` (or `lane-start`) in every checkout.** The gates reach a machine only when its pre-commit hook is rewritten. Required rather than optional because the gap is silent from inside the lane.
+
+## [0.122.0] - 2026-08-22
+
+### Fixed
+- **The plan-review edit guard can now be asked at commit time without lying.** The rule fires in the window between a successful plan-review run and its finalize, and it was written for `PreToolUse`, where the worktree still holds exactly the reviewed content. A commit-time caller stands somewhere else — the edit has already happened — so hashing the worktree read "already voided" and would allow the very commit that voids the run. `plan_review_pending_block_reason` now takes `content_hash`, naming **which version** to judge.
+- **A review of never-committed content is no longer invisible.** Edit A→B, review B, then stage B→C: B is in neither `HEAD` nor the worktree, so **no** hash a commit-time caller can compute identifies the pending run. The new `any_unbound_run` mode asks the weaker, honest question instead — does this plan have a successful run that no manifest accounts for? A run the manifest already accounts for stays exempt, so a finalized plan does not block forever.
+- **Deleting a reviewed plan is judged.** The guard returned no block reason for any path absent from the worktree, so `git rm` on a plan with a pending review passed — the most destructive case the guard exists to stop. Existence is now required only when the caller has not named a version.
+
+Both parameters default to the in-session behaviour, so the `PreToolUse` hook is unchanged in what it forbids. Nothing in this release passes either one; it lands the rule the portable-gate migration will consume.
+
+## [0.121.0] - 2026-08-22
+
+### Added
+- **Runtime capability reporting.** `methodology/runtime-capabilities.json` declares what in-session enforcement each harness supplies — 7 blocking gates and 2 report-only session carriers, one entry per hook registered in `hooks.json`. A lane whose builder runs in a harness with no hooks loses all seven gates; before this it lost them with no signal at all.
+- **`runtimeCapabilities` adapter key.** Declare or override what a runtime supplies. WHOLE-ENTRY REPLACEMENT per runtime, adapter wins — never a union, because an adopter whose harness dropped a hook must be able to say so. Adding a harness is a data edit: no enum, no code change, no upstream PR.
+- **`runtime_enforcement` in the implementation-review manifest.** A PR reviewed in an under-gated lane records that durably, where it outlives the session that produced it.
+
+### Changed
+- `methodology-status` reports enforcement as `N of 7 in-session gates and M of 2 session carriers`. It is the only surface that works on a runtime with no hooks at all — which is exactly the lane that most needs it.
+- `lane-status` adds one ENFORCEMENT line at session start, only when a resolved runtime is missing something. A clean lane still prints exactly one line.
+
+### Notes
+- **Reports, never blocks.** A `degradationPolicy` knob was considered and cut: it is the rejected refuse-to-run option re-entering through a side door.
+- **Unresolved is not zero.** A lane whose adapter declares no builder is reported as unresolved, never as zero-capable — saying otherwise would put a false claim in a durable artifact, and overstating degradation is still a false report.
+- An undeclared or unknown runtime is reported as zero-capable: the safe default, not the intended path.
+
+## [0.120.0] - 2026-08-21
+
+### Added
+- **Agent output contract.** An agent writes `review-result.json`; the seam reads it, rejects a wrapper that lies about its identity, and refuses malformed output. Replaces reverse-engineering one vendor's transcript format, which returned `unlocatable` for every other agent and made the caller SKIP the findings cross-check — a review that reported clean while checking nothing.
+- **`tautline agent-conformance`.** Certifies any agent's wrapper against the contract, including one this repository has never run. Seven fixture agents exercise it as real subprocesses; no vendor CLI is installed anywhere in the test path.
+- **`review.crossModel.enforcement`** (`off|observe|advise|block`, default `block`). `vendor` stays a free-form string — no enum, no allowlist.
+- **Findings block finalization.** The reviewer's own structured findings can refuse a contradicting finalize; `--findings-addressed` records the operator's assertion that they were resolved, stamped into the tracked ledger.
+
+### Changed
+- **The four identity gates assert vendor DIFFERENCE, not `reviewer == "codex"`.** Evidence records the bound agent id resolved through `roles`, so a lane that binds a different reviewer produces evidence naming it.
+- Neutral command names with the vendor-named spellings kept as deprecated aliases until 1.0.0: `review-run`, `plan-review-native`, `packet-review`, `packet-review-status`.
+- `stage2-codex` → `stage2-cross-model`; both spellings still bind, because the stage constant is used in a glob and failing to match the old one would make every ledger already on disk invisible.
+- Degraded reviews are printed AND stamped into the manifest rather than skipped silently.
+
+### Removed
+- `CODEX_TRANSCRIPT_SPEAKER_MARKER` and `command_matches_codex_wrapper`, deleted rather than shimmed.
+
+## [0.119.0] - 2026-08-21
+
+### Changed
+- **A red post-merge tier outranks feature work — now canonical, and this repository arms the
+  refusal.** `methodology/canonical-rules.md` carries the clause every adopter inherits: the tier
+  is adapter-declared and read at session start, before push, and before merge; the first lane to
+  read a red owns it (claim, stop, work to green); diagnosis does not discharge it; marker silence
+  is never green; unreadable is `unknown`, never green; under `enforcement=block`, `merge` and
+  pre-push refuse unless the pushing or merging worktree holds the live claim, and `merge` alone
+  also accepts a recorded `--override` (pre-push has no override path). This
+  repository's adapter flips `postMergeTier.enforcement` to `block` on `ci-python-full.yml` over
+  `experimental`. Completes backlog item 124 (routed from an adopter lane's self-RCA: three PRs
+  merged into a red main, the last one 47 minutes after the lane knew).
+
+### Fixed
+- The merge `--override` decision record names `base-health` only when the base-health gate was
+  actually bypassed (red + `block` with no claim, or the cross-repo fail-closed path); under
+  `advise` or after a claim release it no longer claims a bypass that did not happen.
+- The continuity handoff no longer carries a base-health re-read obligation when the adapter no
+  longer declares a tier.
+
+## [0.118.0] - 2026-08-21
+
+### Added
+- **The post-merge tier is re-read at every boundary, and an in-flight run is an obligation.**
+  The pre-push hook now runs `tautline base-health --boundary pre-push` on every push — including
+  the docs/assets profile, because a red base is not a property of the diff — and an installed
+  hook that lacks the step reads as missing, so `lane-start` / `methodology-status --fail-on-drift`
+  drive a reinstall on every existing checkout. Session start names the read. Under
+  `postMergeTier.enforcement=block` a push into a red base is refused unless this worktree holds
+  the live claim on the red (`fleet-lease claim --note "base-red claim: <ref>"`); `advise`
+  narrates; `unknown` never blocks. Every read is recorded in `.ai-work/BASE_HEALTH.json`, and a
+  run still in flight at the read surfaces in the continuity handoff as a re-read owed.
+- **`tautline merge` refuses to merge into a red base** when `postMergeTier.enforcement=block`
+  (pulled forward from the planned 0.119.0 at review: a declared-enforcing `merge` boundary that
+  nothing wired was misleading). The refusal is released by this worktree's live claim on the red
+  or by `--override <reason>`, which now names the red run in the decision record. A cross-repo
+  merge never reads this checkout's tier: it fails closed under `block` (override records
+  `base-health` as bypassed) and narrates under `advise`. `gh pr merge` now runs only through the
+  `merge_execute` seam. The canonical ranking clause and this repository's flip to `block` remain
+  0.119.0.
+
+### Fixed
+- `base-health` pins `gh run list --repo` to the adapter's declared repository so it and the tip
+  probe describe the same integration remote (carried from 0.117.0's review at the cap).
+
+## [0.117.0] - 2026-08-21
+
+### Added
+- **`postMergeTier` adapter key and `tautline base-health`: read whether the branch you are
+  merging into has a red post-merge acceptance suite.** Until now the framework could only ask
+  whether a pull request's own checks were green; it had no way to ask whether the integration
+  branch's post-merge suite was red, so a lane could add merge after merge to an already-broken
+  branch with every gate reporting success. An adapter now names that suite (`workflow`, plus an
+  optional `branch` that defaults to the integration branch) and `base-health` reads it. The
+  verdict is a completed run on the base tip when one exists, else the newest completed run by
+  commit order — not completion order, because long suites overlap and an older commit's red can
+  finish after the tip's green. An untested known tip is reported `unknown`, never green; marker
+  issues are never consulted; an unreadable tier is `unknown`, never green. Read-only in this
+  release: the pre-push re-check (0.118.0) and the merge refusal (0.119.0) ride on it. Absent key
+  means nothing changes.
+
+## [0.116.1] - 2026-08-21
+
+### Fixed
+- **`experimental`'s post-merge suite is green again.** The 0.116.0 merge commit (#578) carried a
+  stale `(0.115.0)` title because the merge bypassed `tautline merge`, whose release-subject guard
+  exists to refuse exactly that; the detector test then failed on every post-merge run. The
+  published subject cannot be corrected, so the frozen drift allowlist records it with a note
+  naming the bypass as the real defect. No runtime change.
+
+## [0.116.0] - 2026-08-20
+
+### Changed
+- **The plan-review round budget is charged per plan lineage, with a hard cap of five rounds.**
+  A plan lineage — the original plan plus every successor or branch that declares it as a
+  predecessor — now shares one round budget capped at five review rounds. Successors and branches
+  inherit the lineage's spent rounds and never refill the budget. When the cap is reached, a
+  capped finalize records the remaining findings into the plan document itself at honest severity,
+  and the plan proceeds to the build as the final plan: the end of endless planning.
+
+## [0.115.0] - 2026-08-20
+
+### Added
+
+- **Agent registry and per-seam role bindings (inert).** An adapter may declare an `agents`
+  registry and `roles` bindings — `planner`, `planReviewer`, `builder`,
+  `implementationReviewer`. `vendor` and `runtime` are free-form strings with no enum and no
+  allowlist: an adopter running any model on any harness registers their own values and every
+  gate works unchanged. `vendor` and `runtime` stay separate axes, so two harnesses from one
+  provider are not mistaken for cross-model review, and one provider may have several harnesses.
+- **`validate-adapter` reports registry errors alongside schema errors**, never instead of them,
+  so an adopter sees every violation in one pass. `methodology-status` prints the bindings
+  synthesised from legacy vendor-named keys, and warns that those keys are removed in 1.0.0 —
+  the guess is visible and pinnable rather than silent.
+
+### Changed
+
+- Legacy vendor-named keys (`review.codexWrapper`, `review.claudeReview`,
+  `goalExecution.preferredClaudeCommand` and their siblings) keep working through a compatibility
+  shim confined to one module, which is deleted at 1.0.0. The shim fills per-FIELD gaps, so an
+  adapter part-way through migration keeps a resolvable wrapper. It never infers who authored a
+  plan: an adapter too sparse to identify a seam author gets a refusal with a remedy in a later
+  release, never a fabricated author.
+
+Nothing reads `roles` yet and the rendered adapters are byte-identical, so this release changes
+no behavior for any existing adapter. The gate inversion lands later, after the agent output
+contract — inverting first would let an adapter bind a reviewer whose findings the framework
+cannot read, and report a bound, clean review that had checked nothing.
+
+## [0.114.0] - 2026-08-19
+
+### Changed
+- **Warn-only stop-guard findings no longer print into the conversation.**
+  While the wave-3 stop chain is warn-only, the response guard's yield-gate findings (pending
+  work on record, unyielded background run) are recorded in the guard event log only. The
+  transcript advisory they used to emit carried no enforcement and no information the log did not
+  already hold — the 2026-08-19 stop-hook RCA measured it at ~302K tokens injected into a single
+  lane as 1,362 near-verbatim repeats of 23 distinct states. `stop-guard-aggregate` and
+  `guard-report` read the event log, so the false-positive measurement that gates the chain's
+  future flip to blocking is unchanged, and blocking-mode refusals are emitted exactly as before.
+  (item 120 WS2)
+
+## [0.113.0] - 2026-08-18
+
+### Added
+- **A lane can name which GitHub identity it is holding.**
+  `tautline github-budget-status --identity` prints the login, host, token source, and an
+  eight-hex SHA-256 fingerprint that is never the token itself, and registers this lane in a
+  machine-local identity record. When two lanes on one machine are active on the same upstream
+  under one login, it warns and names both remedies (a per-lane `GH_TOKEN` bot PAT or a GitHub App
+  installation token), with the runbook at
+  `docs/reference/operations/per-lane-github-identity.md`. Closes Control 4 of RCA
+  `20260630T202308Z`, the last of its five outstanding.
+  **It must not cry wolf**, so the advisory fires only for two or more recently active lanes on
+  the same upstream, on this machine, under one login. A lane is a **worktree root**: an
+  invocation from a subdirectory resolves to the lane its root owns, while sibling linked
+  worktrees stay distinct lanes, because in this framework's standard topology — one isolated
+  worktree per lane — they are exactly the concurrent lanes the advisory exists to catch.
+  Collapsing them onto their shared common dir, as the first version did, made `len(lanes)`
+  permanently 1 and the warning unreachable. A checkout with no parseable remote never
+  participates. **Cross-machine sharing is NOT detected**, and the canonical rule says so in a
+  phrase pinned by a test, so a later edit cannot quietly widen the claim past what the control
+  measures.
+  The subsystem is advisory and cannot fail a lane: every failure path prints one
+  `github_identity: unavailable - <reason>` line and leaves the exit code alone.
+  `MINERVIT_GITHUB_IDENTITY=0` stands it down entirely.
+  Registration happens only when `--identity` is passed — a passive status read must not
+  manufacture the collision it reports.
+
+### Changed
+- **`gh auth token` no longer takes the machine-wide `gh` serialization lock.** It reads the local
+  credential store and issues no API request, so serializing it bought zero rate-limit protection
+  while costing up to the full 30 s acquire timeout. The exemption is keyed on the command, so a
+  new caller of the same command cannot forget it.
+- Measured, not hoped: warm identity snapshot **0.21 ms**, full printed surface **0.15 ms**,
+  against the plan's 150 ms veto. The memo is keyed by resolved target path as well as lane key,
+  so a warm read in a fresh process runs **zero** subprocesses — asserted by a test, because as
+  originally written it ran two.
+- Generated adapter unchanged: both rendered files are byte-identical. The reach Control 4 asks
+  for lands in the `github-projects-reads` skill reference, which costs the corridor nothing; the
+  adapter line measured **186 bytes against 202 free** and was deferred rather than stranding
+  every later item in this program.
+
+## [0.112.0] - 2026-08-18
+
+### Changed
+- **Board reads cost ~10x less GraphQL budget.** `gh project item-list`, `field-list`, and `view`
+  are served by a hand-written GraphQL query instead of the `gh project` subcommands. Measured
+  against a 227-item board: `item-list --limit 100` costs 102 GraphQL points and `field-list`
+  costs 102, where the equivalent hand-written query costs 11 and 1. The budget is 5000
+  points/hour, so `gh project` capped a machine at ~49 board reads an hour and the measured peak
+  was 47 — lanes were sitting exactly on the ceiling. A full schema-plus-227-item read now costs
+  34 points against ~331. The payload is a strict superset of gh's, verified against a live
+  board; mutations, `--query` scopes, non-JSON output, unrecognized flags and field-list limits
+  above GraphQL's page cap still run through `gh` untouched.
+- **Board items carry issue/PR state and issue-field-backed values inline.** gh omits both, so
+  an issue-field-backed `Priority` was invisible (53 of 100 items on the live board) — leaving
+  `workOrder=priority` silently falling back to status/position. Inline state is a fallback rather
+  than a replacement for the per-item REST `issue view`: that read is live where the board payload
+  is cached, and a gate deciding whether work is finished keeps its live read.
+- **The board field schema is cached for 24 hours** (was 300s) and served from cache whenever
+  fresh — re-reading this static schema was 43% of all measured GraphQL spend. Staleness and
+  cross-account exposure are bounded five ways: refresh on an unresolvable field/option, purge on
+  a rejected write, item-only invalidation on a successful write, always-fresh reads for board
+  adoption, and keying to the authenticated gh account — with no long-lived cache when that
+  identity cannot be resolved. `TAUTLINE_GITHUB_FIELD_SCHEMA_TTL_SECONDS` overrides the TTL.
+- **Incomplete board reads fail closed** rather than returning partial field values, including
+  nested label/user/pull-request/reviewer connections, and a paginated read shares one deadline
+  across pages instead of granting each page the caller's full timeout.
 
 ## [0.111.0] - 2026-08-18
 

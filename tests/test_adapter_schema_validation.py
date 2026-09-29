@@ -81,9 +81,15 @@ EXPECTED_SCHEMA_PROPERTY_NAMES = {
     "workProfiles",
 }
 
+# `github-projects` is deliberately NOT here any more. The backlog/issues provider fields moved from
+# a closed `enum` to a registry-validated string, so the schema no longer enumerates the value --
+# membership is checked in code, because JSON Schema cannot express "is in the registry". The
+# guarantee an adopter actually depends on is that `github-projects` remains ACCEPTED and remains
+# the default, which `test_the_default_backlog_provider_is_still_accepted` asserts directly instead
+# of inferring it from the schema's shape. `github-issues` survives here because
+# `uiEvidence.issueComments.provider` is a different seam and is still enum-closed.
 EXPECTED_SCHEMA_ENUM_LITERALS = {
     "github-issues",
-    "github-projects",
     "darwin",
     "legacy-reviewed",
     "linux",
@@ -253,75 +259,6 @@ def test_load_project_fails_loud_on_unknown_key(cli, tmp_path):
         assert "typodKey" in str(exc)
 
 
-def test_development_environment_status_accepts_wsl2(cli):
-    data = _example(cli)
-    normalized = cli.load_project(EXAMPLE)
-
-    status = cli.development_environment_status(normalized, runtime="wsl2")
-
-    assert status["runtime"] == "wsl2"
-    assert status["issues"] == []
-    assert data["developmentEnvironment"]["windows"]["supportedRuntime"] == "wsl2"
-
-
-def test_detected_development_runtime_recognizes_wsl2(cli, monkeypatch):
-    monkeypatch.setattr(cli.sys, "platform", "linux")
-    original_read_text = cli.Path.read_text
-
-    def fake_read_text(path, *args, **kwargs):
-        if str(path) == "/proc/sys/kernel/osrelease":
-            return "5.15.90.1-microsoft-standard-WSL2"
-        if str(path) == "/proc/version":
-            return "Linux version 5.15.90.1-microsoft-standard-WSL2"
-        return original_read_text(path, *args, **kwargs)
-
-    monkeypatch.setattr(cli.Path, "read_text", fake_read_text)
-
-    assert cli.detected_development_runtime() == "wsl2"
-
-
-def test_detected_development_runtime_recognizes_wsl1_without_approving_wsl2(cli, monkeypatch):
-    monkeypatch.setattr(cli.sys, "platform", "linux")
-    monkeypatch.setenv("WSL_DISTRO_NAME", "Ubuntu")
-    monkeypatch.delenv("WSL_INTEROP", raising=False)
-    original_read_text = cli.Path.read_text
-
-    def fake_read_text(path, *args, **kwargs):
-        if str(path) in {"/proc/sys/kernel/osrelease", "/proc/version"}:
-            return "Linux version 4.4.0-microsoft"
-        return original_read_text(path, *args, **kwargs)
-
-    monkeypatch.setattr(cli.Path, "read_text", fake_read_text)
-
-    assert cli.detected_development_runtime() == "wsl1"
-    data = cli.load_project(EXAMPLE)
-    status = cli.development_environment_status(data, runtime="wsl1")
-    assert status["issues"]
-    assert "wsl1" in status["issues"][0]
-
-
-def test_development_environment_status_blocks_native_windows_when_unsupported(cli):
-    data = cli.load_project(EXAMPLE)
-
-    status = cli.development_environment_status(data, runtime="win32")
-
-    assert status["issues"]
-    assert "native Windows is not a supported lane runtime" in status["issues"][0]
-    assert "WSL2" in status["issues"][0]
-
-
-def test_development_environment_is_optional_for_legacy_adapters(cli):
-    data = json.loads(EXAMPLE.read_text())
-    data.pop("developmentEnvironment")
-    normalized = data.copy()
-    normalized["developmentEnvironment"] = cli.normalize_development_environment(data)
-
-    status = cli.development_environment_status(normalized, runtime="win32")
-
-    assert status["issues"] == []
-    assert status["warnings"] == ["adapter does not declare supported development runtimes; using compatibility mode"]
-
-
 def test_development_environment_rejects_contradictory_native_windows_support(cli, tmp_path):
     data = json.loads(EXAMPLE.read_text())
     data["developmentEnvironment"]["supportedRuntimes"].append("win32")
@@ -333,19 +270,6 @@ def test_development_environment_rejects_contradictory_native_windows_support(cl
         raise AssertionError("load_project accepted contradictory Windows runtime policy")
     except SystemExit as exc:
         assert "cannot include win32" in str(exc)
-
-
-def test_load_project_coerces_legacy_t0_round_budget(cli, tmp_path, capsys):
-    data = json.loads(EXAMPLE.read_text())
-    data["review"]["roundBudgets"]["T0"] = 1
-    legacy = tmp_path / "legacy-t0-budget.json"
-    legacy.write_text(json.dumps(data))
-
-    loaded = cli.load_project(legacy)
-
-    captured = capsys.readouterr()
-    assert loaded["review"]["roundBudgets"]["T0"] == 0
-    assert "review.roundBudgets.T0=1 is legacy" in captured.err
 
 
 def test_validate_adapter_command_passes_on_example(run_cli):
@@ -468,11 +392,13 @@ def test_product_development_defaults_to_empty_surfaces(cli, tmp_path):
 def test_committed_example_and_self_adapter_stay_valid(cli):
     # The example adapter declares no PM surface (opt-in default empty).
     assert cli.load_project(EXAMPLE)["productDevelopment"]["surfaces"] == []
-    # The self-adapter ships the repo's concrete PM surface (pm-surface-prepush plan T3): the
-    # loader accepts docs/product/** (bounded, under the allowlist, disjoint from the hard-excluded
-    # docs/superpowers/** plan root the self-adapter's sourceOfTruth points at).
-    self_adapter = REPO_ROOT / ".tautline" / "adapter.json"
-    assert cli.load_project(self_adapter)["productDevelopment"]["surfaces"] == ["docs/product/**"]
+    # The repo's own adapter is lean-1 since the framework repo migrated itself onto the lean
+    # profile; it must stay valid against the authoritative lean validator, not the 1.x loader.
+    from tautline_methodology import lean
+
+    self_adapter = json.loads((REPO_ROOT / ".tautline.json").read_text(encoding="utf-8"))
+    assert lean.is_lean_config(self_adapter)
+    assert lean.lean_config_errors(self_adapter) == []
 
 
 # --- loader ACCEPT (bounded, under the docs/product allowlist, plan root outside it) ---

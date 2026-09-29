@@ -1,35 +1,19 @@
 usage: tautline methodology-status [-h] [--project PROJECT] [--target TARGET]
                                    [--no-remote] [--allow-non-main]
-                                   [--fail-on-drift] [--strict] [--posture]
-                                   [--enter-remediation-on-debt]
+                                   [--fail-on-drift] [--strict]
 
 options:
-  -h, --help            show this help message and exit
+  -h, --help         show this help message and exit
   --project PROJECT
   --target TARGET
   --no-remote
-  --allow-non-main      Allow a non-release-branch methodology checkout for
-                        this run, matching lane-start's flag of the same name
-                        (one-shot deviation;
-                        MINERVIT_METHODOLOGY_ALLOW_NON_MAIN=1 is the
-                        environment equivalent).
-  --fail-on-drift       Exit 0 clean, 1 integrity (adapter drift or an
-                        unsupported runtime; refuses to start), or 2 debt-only
-                        (agent-fixable lane debt). Prints
-                        'methodology_status_blocking: <integrity|debt> - <gate
-                        names>' as the last line whenever the exit code is
-                        nonzero. See docs/reference/startup-remediation.md.
-  --strict              Escalate every debt gate to exit 1 as well; --strict
-                        never returns 2, including combined with --fail-on-
-                        drift.
-  --posture             Print one 'control_posture_warn:' line per quality
-                        control that is not enforcing (off, warn, empty or
-                        unreachable), with the reason. The one-line
-                        'control_posture:' summary prints either way.
-                        Diagnostic: posture never changes the exit code.
-  --enter-remediation-on-debt
-                        (internal) Passed by the generated launcher. On a
-                        debt-only --fail-on-drift outcome, atomically persist
-                        the startup-remediation marker before exiting 2 (exit
-                        1 with a synthetic remediation_marker gate if the
-                        marker cannot be written).
+  --allow-non-main   Allow a non-release-branch methodology checkout for this
+                     run, matching lane-start's flag of the same name (one-
+                     shot deviation; MINERVIT_METHODOLOGY_ALLOW_NON_MAIN=1 is
+                     the environment equivalent).
+  --fail-on-drift    Exit 1 when the generated files have drifted from the
+                     adapter, printing 'methodology_status_blocking: integrity
+                     - drift' as the last line. Exit 0 otherwise.
+  --strict           Identical to --fail-on-drift: exit 1 on adapter drift.
+                     Kept as a separate spelling because existing scripts and
+                     CI steps pass it.
