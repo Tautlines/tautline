@@ -49,7 +49,7 @@ def test_cross_clone_identity_privacy_and_terminal_state(clones):
     raw = git(remote, "show", f"refs/heads/tautline/work:records/{first['namespace']}/agent.json")
     assert "/private/project" not in raw and "gitDir" not in raw and "worktree" not in raw
     work_git.sync(a, config(), [record(status="completed")], publish=True)
-    done = work_git.sync(b, config(), [], force=True)
+    done = work_git.sync(b, config(), [record("Other owner")], force=True)
     assert {r["status"] for r in done["records"]} == {"active", "completed"}
     assert before == {p: (git(p, "rev-parse", "HEAD"), git(p, "status", "--porcelain")) for p in (a, b)}
     assert all(git(p, "rev-parse", "--is-shallow-repository") == "false" for p in (a, b))
@@ -96,13 +96,14 @@ def test_offline_is_cached_and_pending_retries(clones):
 
 def test_cache_and_no_sync_do_no_network(clones, monkeypatch):
     a, _, _ = clones
-    work_git.sync(a, config(), [record()], publish=True)
+    local = [record()]
+    work_git.sync(a, config(), local, publish=True)
     original = work_git._run
     def run(root, args, *pos, **kw):
         assert "fetch" not in args and "push" not in args and "ls-remote" not in args
         return original(root, args, *pos, **kw)
     monkeypatch.setattr(work_git, "_run", run)
-    assert work_git.sync(a, config(), [])['sync']['state'] == "cached"
+    assert work_git.sync(a, config(), local)['sync']['state'] == "cached"
     assert work_git.sync(a, config(), [record("Unpublished")], publish=True, refresh=False)['sync']['pending']
 
 
@@ -279,6 +280,7 @@ def test_delayed_snapshot_cannot_overwrite_a_newer_same_clone_publication(clones
     current = [old]
     work_git.sync(a, config(), current, publish=True)
     newer = record("Completed scope", status="completed")
+    newer["shareRetired"] = True  # Explicit completion while Git coordination is enabled.
     # File replacement order is authoritative even if the owner's wall clock went backwards.
     newer["updatedAt"] = old["updatedAt"] - 60
     current[:] = [newer]

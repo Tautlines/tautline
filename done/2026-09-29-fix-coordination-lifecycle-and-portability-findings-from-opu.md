@@ -1,0 +1,3 @@
+# Fix coordination lifecycle and portability findings from Opus review
+
+Address the confirmed Opus5.5 retrospective findings while preserving bounded advisory coordination. Prevent retired manifests from exhausting the lifetime record limit; reconcile removed records, minimize publishing work, preserve configured SSH transports, distinguish fetch freshness from publish failures, and correct stale/cache/inbox edge cases. Reproduce actionable bugs, use existing review passes for direct corrections and focused fresh reviews for substantial lifecycle changes. Keep no new approval gates or background work. Record every finding disposition.

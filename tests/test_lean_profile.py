@@ -63,6 +63,31 @@ def test_a_dict_shaped_review_key_does_not_become_the_review_norm():
     assert lean_cfg["review"] == lean.DEFAULT_REVIEW_NORM
 
 
+@pytest.mark.parametrize("agent", ["Claude", "Codex"])
+@pytest.mark.parametrize(
+    "review",
+    [None, "One adversarial review before merge; fix Critical/P1; merge.",
+     "  One adversarial review before merge; fix Critical/P1; merge.  ",
+     "Check database migrations for data loss."],
+)
+def test_review_guidance_cannot_replace_the_two_core_reviews(agent, review):
+    cfg = lean.lean_config_from_legacy(LEGACY_MINIMAL)
+    if review is None:
+        cfg.pop("review")
+    else:
+        cfg["review"] = review
+    rendered = lean.render_lean_adapter(cfg, agent=agent)
+    assert "fresh-context adversarial self-review" in rendered
+    assert "self-review (same model), then one independent" in rendered
+    assert "fresh-context review by a different model family" in rendered
+    assert "Before merge" in rendered
+    assert "Fix Critical/P1" in rendered
+    if review and review.startswith("Check"):
+        assert review in rendered
+    assert "One adversarial review before merge;" not in rendered
+    assert len(rendered.encode()) <= lean.LEAN_ADAPTER_MAX_BYTES
+
+
 @pytest.mark.parametrize(
     "mutate, expected_fragment",
     [

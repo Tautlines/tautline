@@ -9,7 +9,8 @@ what ran, and carry decisions into the next session.
 
 The aim is more useful work with less coordination effort. Agents keep moving: work manifests,
 status, and evidence are advisory. There are no mandatory planning rounds, review ledgers, or
-completion hooks. Your project's tests and CI remain the quality boundary.
+completion hooks. Before merge, use the project's tests and CI plus [two bounded reviews](docs/reference/reviews.md):
+one fresh-context adversarial self-review, then one review from a different model family.
 
 ## What you get
 

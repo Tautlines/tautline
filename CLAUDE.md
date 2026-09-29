@@ -9,7 +9,7 @@ Reusable AI delivery framework. Integration branch: `experimental` (base branche
 ## Process — this is the whole process
 - Take the top backlog item; specs are one page.
 - Failing test first; small diffs.
-- One adversarial review before merge; fix Critical/P1; merge.
+- Before merge: one fresh-context adversarial self-review, then one different-model review. Fix Critical/P1; name reviewers/models in the PR. No review loops.
 - Never commit secrets or customer data.
 - Releases are batched scripts, run when there is something to ship; a release must not break deployed users (`tests/test_upgrade_path_e2e.py` proves the transition).
 - Every control pays rent: measure catches and false blocks; judge coordination by time saved. Preserve delivery speed. Incidents are answered with a test, not a rule.

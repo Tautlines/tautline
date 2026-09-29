@@ -54,7 +54,7 @@
     },
     "review": {
       "type": "string",
-      "description": "The review norm, as one sentence of prose. Not machinery: there is no round budget, ledger, manifest, or verdict to configure."
+      "description": "Additional review focus, as one sentence of prose. The fresh-context self-review and different-model review always apply; this field cannot replace them. No round budget, ledger, manifest, or verdict machinery."
     },
     "security": {
       "type": "object",

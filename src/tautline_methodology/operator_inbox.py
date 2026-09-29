@@ -116,8 +116,8 @@ def _lock(directory: Path):
 def _write(path: Path, row: dict):
     fd, name = tempfile.mkstemp(prefix=".answer-", dir=path.parent)
     try:
-        with os.fdopen(fd, "w", encoding="utf-8") as stream:
-            json.dump(row, stream, sort_keys=True)
+        with os.fdopen(fd, "w", encoding="utf-8", errors="backslashreplace") as stream:
+            json.dump(row, stream, sort_keys=True, ensure_ascii=False)
             stream.write("\n")
             stream.flush()
             os.fsync(stream.fileno())

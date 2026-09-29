@@ -6,7 +6,7 @@ the private development history to the public repository.
 
 ## Prepare one release
 
-- Merge the tested changes and one adversarial review. Run `scripts/test.sh` on Python 3.12,
+- Merge the tested changes after the fresh-context self-review and different-model review. Run `scripts/test.sh` on Python 3.12,
   and verify the upgrade from the previous public version, not just the latest development tip.
 - Update `VERSION`, both plugin packages' manifests, the marketplace version, and release notes
   together. The newest `CHANGELOG.md` section must match the version and describe the actual

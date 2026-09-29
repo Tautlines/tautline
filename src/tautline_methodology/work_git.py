@@ -21,10 +21,16 @@ import uuid
 from collections.abc import Callable
 from pathlib import Path, PurePosixPath
 
+from .util import child_env
+
 SCHEMA = "tautline-work/v1"
 MARKER = ".tautline-work.json"
 BRANCH_SCHEMA = "tautline-work-branch/v1"
 MAX_RECORDS = 256
+MAX_SCAN_RECORDS = 4096
+RETIRED_RECORDS = 32
+RETENTION_SECONDS = 7 * 24 * 3600
+TERMINAL = {"completed", "abandoned"}
 MAX_RECORD_BYTES = 16_384
 MAX_CACHE_BYTES = MAX_RECORDS * MAX_RECORD_BYTES + 65_536
 _FIELDS = {"schema", "lane", "goal", "branch", "paths", "interfaces", "dependsOn", "item", "pr", "blocker", "status", "updatedAt", "expiresHours"}
@@ -44,9 +50,9 @@ def _run(root: Path, args: list[str], deadline: float, *, data: bytes | None = N
     remaining = deadline - time.monotonic()
     if remaining <= 0:
         raise SyncError("synchronization time budget expired")
-    process_env = dict(os.environ)
-    process_env.update({"GIT_TERMINAL_PROMPT": "0", "GCM_INTERACTIVE": "never", "SSH_ASKPASS_REQUIRE": "never"})
-    process_env["GIT_SSH_COMMAND"] = process_env.get("GIT_SSH_COMMAND", "ssh") + " -oBatchMode=yes"
+    process_env = child_env(GIT_TERMINAL_PROMPT="0", GCM_INTERACTIVE="never", SSH_ASKPASS_REQUIRE="never")
+    # Respect Git SSH transport/key selection. No terminal, stdin, or askpass is available;
+    # the shared deadline still bounds a misbehaving custom transport.
     if env:
         process_env.update(env)
     try:
@@ -91,7 +97,7 @@ def _json_read(path: Path, limit: int = MAX_CACHE_BYTES):
 
 
 def _atomic(path: Path, value) -> None:
-    raw = json.dumps(value, sort_keys=True, separators=(",", ":")).encode() + b"\n"
+    raw = json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8", "backslashreplace") + b"\n"
     fd, temporary = tempfile.mkstemp(prefix=".sync-", dir=path.parent)
     try:
         with os.fdopen(fd, "wb") as stream:
@@ -119,12 +125,34 @@ def _locations(target: Path, config: dict) -> tuple[Path, str]:
                 pass
         finally:
             Path(temporary).unlink(missing_ok=True)
-    stored_identity = _json_read(identity, 1024)
+    stored_identity = _json_read(identity, 4096)
     if not isinstance(stored_identity, dict):
         raise SyncError("invalid local coordination identity")
     namespace = stored_identity.get("namespace", "")
     if not isinstance(namespace, str) or not _NAMESPACE.fullmatch(namespace):
         raise SyncError("invalid local coordination identity")
+    # Local-only binding detects copied Git directories. Paths may change on a rename;
+    # retain identity while the underlying directory is still the same. Never publish it.
+    info = Path(common).stat()
+    binding = [str(Path(common).resolve()), info.st_dev, info.st_ino]
+    if stored_identity.get("binding") != binding:
+        identity_lock = os.open(base / "identity.lock", os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
+        try:
+            fcntl.flock(identity_lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            current_identity = _json_read(identity, 4096)
+            if not isinstance(current_identity, dict) or not _NAMESPACE.fullmatch(str(current_identity.get("namespace", ""))):
+                raise SyncError("invalid local coordination identity")
+            namespace = current_identity["namespace"]
+            previous_binding = current_identity.get("binding")
+            if previous_binding is not None and (
+                not isinstance(previous_binding, list) or len(previous_binding) != 3
+                or previous_binding[1:] != binding[1:]
+            ):
+                namespace = uuid.uuid4().hex
+            if previous_binding != binding:
+                _atomic(identity, {"namespace": namespace, "binding": binding})
+        finally:
+            os.close(identity_lock)
     key = hashlib.sha256((config["remote"] + "\0" + config["branch"]).encode()).hexdigest()[:24]
     cache = base / key
     if cache.is_symlink():
@@ -165,20 +193,48 @@ def validate_record(record: object, namespace: str | None = None, lane: str | No
             raise MetadataError("invalid remote record timestamp")
     if not 1 <= record["expiresHours"] <= 168:
         raise MetadataError("invalid remote record expiry")
-    if len(json.dumps(record).encode()) > MAX_RECORD_BYTES:
+    if len(json.dumps(record, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8", "backslashreplace")) + 1 > MAX_RECORD_BYTES:
         raise MetadataError("invalid remote record size")
     return record
 
 
-def _public(records: list[dict], namespace: str) -> list[dict]:
-    if len(records) > MAX_RECORDS:
-        raise MetadataError("local declaration limit exceeded")
+def retained(records: list[dict], now: float | None = None) -> list[dict]:
+    """Bound the live coordination view, not the number of tasks ever performed."""
+    now = time.time() if now is None else now
+    live = [r for r in records if r["status"] not in TERMINAL
+            and now - r["updatedAt"] <= r["expiresHours"] * 3600 + RETENTION_SECONDS]
+    if len(live) > MAX_RECORDS:
+        raise MetadataError("active declaration limit exceeded")
+    retired = sorted((r for r in records if r["status"] in TERMINAL
+                      and now - r["updatedAt"] <= RETENTION_SECONDS),
+                     key=lambda r: (r["updatedAt"], r["lane"]), reverse=True)
+    return live + retired[:min(RETIRED_RECORDS, MAX_RECORDS - len(live))]
+
+
+def _public(records: list[dict], namespace: str, known: list[dict] | None = None) -> list[dict]:
+    published = {r["lane"]: r for r in known or [] if r["namespace"] == namespace}
     result = []
     for record in records:
+        # Never retroactively publish private retired history when Git mode is enabled.
+        previous = published.get(record["lane"])
+        if record["status"] in TERMINAL and not previous and not record.get("shareRetired"):
+            continue
+        # Removed/changed worktrees no longer assert a current scope to peers. Local history
+        # still explains why the declaration is stale; no timestamps or status are invented.
+        if record.get("state") == "STALE" and record.get("reason") in {
+            "worktree removed or unavailable", "worktree changed branch"
+        }:
+            continue
         public = {key: record[key] for key in _FIELDS if key in record}
         public["namespace"] = namespace
+        if record["status"] in TERMINAL and not record.get("shareRetired"):
+            # Lane reuse is not proof this goal/scope was ever shared. A legacy/local-only
+            # completion can retire the last public intent, never export new private text.
+            public = dict(previous)
+            if previous["status"] not in TERMINAL:
+                public.update(status=record["status"], updatedAt=record["updatedAt"])
         result.append(validate_record(public))
-    return sorted(result, key=lambda record: record["lane"])
+    return sorted(retained(result), key=lambda record: record["lane"])
 
 
 def _fetch(target: Path, config: dict, cache: Path, deadline: float) -> str | None:
@@ -207,7 +263,7 @@ def _read_tree(target: Path, tip: str | None, deadline: float) -> tuple[list[dic
         path = raw_path.decode("utf-8", errors="replace")
         if path != MARKER and not path.startswith("records/"):
             raise MetadataError("configured branch is not a Tautline metadata branch")
-        if len(entries) >= MAX_RECORDS + 1:
+        if len(entries) >= MAX_SCAN_RECORDS + 1:
             problems.append("remote record limit exceeded")
             break
         if mode != b"100644" or kind != b"blob" or not size.isdigit() or int(size) > MAX_RECORD_BYTES:
@@ -243,20 +299,44 @@ def _read_tree(target: Path, tip: str | None, deadline: float) -> tuple[list[dic
     return records, "; ".join(dict.fromkeys(problems))
 
 
-def _publish(target: Path, config: dict, cache: Path, namespace: str, records: list[dict], tip: str | None, deadline: float) -> bool:
+def _publish(target: Path, config: dict, cache: Path, namespace: str, records: list[dict], tip: str | None, deadline: float, *, remote: list[dict] | None = None) -> bool:
     fd, index_name = tempfile.mkstemp(prefix=".index-", dir=cache)
     os.close(fd)
     Path(index_name).unlink()
     env = {"GIT_INDEX_FILE": index_name, "GIT_AUTHOR_NAME": "Tautline", "GIT_AUTHOR_EMAIL": "tautline@localhost", "GIT_COMMITTER_NAME": "Tautline", "GIT_COMMITTER_EMAIL": "tautline@localhost"}
     try:
         _run(target, ["read-tree", tip] if tip else ["read-tree", "--empty"], deadline, env=env)
-        updates = []
-        values = [(MARKER, {"schema": BRANCH_SCHEMA})] + [(f"records/{namespace}/{r['lane']}.json", r) for r in records]
+        listing = _run(target, ["ls-files", "--stage", "-z"], deadline, env=env).stdout
+        existing = {}
+        for entry in listing.split(b"\0"):
+            if entry:
+                meta, path = entry.split(b"\t", 1)
+                existing[path.decode("utf-8", "surrogateescape")] = meta.split()[1].decode()
+        combined = [r for r in remote or [] if r["namespace"] != namespace] + records
+        keep = retained(combined)
+        keep_paths = {f"records/{r['namespace']}/{r['lane']}.json" for r in keep}
+        known_paths = {f"records/{r['namespace']}/{r['lane']}.json" for r in remote or []}
+        fmt = _run(target, ["rev-parse", "--show-object-format"], deadline).stdout.decode().strip()
+        if fmt not in {"sha1", "sha256"}:
+            raise MetadataError("unsupported Git object format")
+        updates = [f"0 {'0' * (40 if fmt == 'sha1' else 64)}\t{path}\n"
+                   for path in existing if path not in keep_paths and
+                   (path in known_paths or re.fullmatch(rf"records/{namespace}/[A-Za-z0-9][A-Za-z0-9_-]{{0,63}}\.json", path))]
+        # Peer blobs remain byte-for-byte unchanged; only this clone's current records are written.
+        values = [(MARKER, {"schema": BRANCH_SCHEMA})] + [
+            (f"records/{namespace}/{r['lane']}.json", r) for r in records
+            if f"records/{namespace}/{r['lane']}.json" in keep_paths]
         for path, value in values:
-            raw = json.dumps(value, sort_keys=True, separators=(",", ":")).encode() + b"\n"
-            sha = _run(target, ["hash-object", "-w", "--stdin"], deadline, data=raw).stdout.decode().strip()
+            raw = json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8", "backslashreplace") + b"\n"
+            sha = hashlib.new(fmt, b"blob " + str(len(raw)).encode() + b"\0" + raw).hexdigest()
+            if existing.get(path) == sha:
+                continue
+            actual = _run(target, ["hash-object", "-w", "--stdin"], deadline, data=raw).stdout.decode().strip()
+            if actual != sha:
+                raise MetadataError("Git blob identity mismatch")
             updates.append(f"100644 {sha}\t{path}\n")
-        _run(target, ["update-index", "--index-info"], deadline, data="".join(updates).encode(), env=env)
+        if updates:
+            _run(target, ["update-index", "--index-info"], deadline, data="".join(updates).encode(), env=env)
         tree = _run(target, ["write-tree"], deadline, env=env).stdout.decode().strip()
         if tip and tree == _run(target, ["rev-parse", tip + "^{tree}"], deadline).stdout.decode().strip():
             return True
@@ -269,7 +349,6 @@ def _publish(target: Path, config: dict, cache: Path, namespace: str, records: l
     finally:
         Path(index_name).unlink(missing_ok=True)
         Path(index_name + ".lock").unlink(missing_ok=True)
-
 
 
 def _cached(path: Path) -> dict:
@@ -303,7 +382,8 @@ def _cached(path: Path) -> dict:
     return stored
 
 def _digest(records: list[dict]) -> str:
-    return hashlib.sha256(json.dumps(records, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    ordered = sorted(records, key=lambda r: (r["namespace"], r["lane"]))
+    return hashlib.sha256(json.dumps(ordered, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 
 
 def sync(target: Path, config: dict, records: list[dict], *, publish: bool = False, force: bool = False, refresh: bool = True, load_local: Callable[[], list[dict]] | None = None) -> dict:
@@ -314,7 +394,7 @@ def sync(target: Path, config: dict, records: list[dict], *, publish: bool = Fal
     Filesystem callers supply `load_local` so publication re-reads the authoritative atomic
     local records under the synchronization lock, independent of snapshot age or wall clocks.
     """
-    result: dict = {"namespace": "", "records": [], "sync": {"state": "unknown", "lastSuccess": None, "lastAttempt": None, "pending": publish, "remote": config["remote"], "branch": config["branch"], "error": ""}}
+    result: dict = {"namespace": "", "records": [], "sync": {"state": "unknown", "lastSuccess": None, "lastAttempt": None, "pending": publish, "remote": config["remote"], "branch": config["branch"], "error": "", "syncIntervalSeconds": config.get("syncIntervalSeconds", 60)}}
     lock_fd = None
     lock_acquired = False
     cache = None
@@ -328,10 +408,10 @@ def sync(target: Path, config: dict, records: list[dict], *, publish: bool = Fal
         result["records"] = stored.get("records", [])
         meta = result["sync"]
         meta.update({key: stored[key] for key in ("lastSuccess", "lastAttempt", "pending", "error") if key in stored})
-        local = _public(records, namespace)
+        local = _public(records, namespace, result["records"])
         local_hash = _digest(local)
         published_hash = stored.get("publishedHash")
-        meta["pending"] = bool(meta["pending"] or publish or (local and local_hash != published_hash))
+        meta["pending"] = bool(meta["pending"] or publish or (local_hash != published_hash and (local or published_hash is not None)))
         meta["state"] = stored.get("state", "unknown")
         if meta["pending"] and meta["state"] in {"fresh", "cached"}:
             meta["state"] = "pending"
@@ -352,7 +432,7 @@ def sync(target: Path, config: dict, records: list[dict], *, publish: bool = Fal
             fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
             lock_acquired = True
         except BlockingIOError:
-            meta.update(state=("pending" if meta["pending"] else "cached") if meta["lastSuccess"] else "unknown", error="another local synchronization is in progress")
+            meta.update(state="cached" if meta["state"] == "fresh" else meta["state"], error="another local synchronization is in progress")
             return result
         # A previous holder may have completed between our initial cache read and this lock.
         latest = _cached(cache_file)
@@ -367,29 +447,50 @@ def sync(target: Path, config: dict, records: list[dict], *, publish: bool = Fal
         push_urls = _run(target, ["remote", "get-url", "--push", "--all", config["remote"]], deadline).stdout.splitlines()
         if len(fetch_urls) != 1 or fetch_urls != push_urls:
             raise MetadataError("coordination remote must have one matching fetch and push URL; configure a dedicated remote")
+        rejected_tip = object()
         for _ in range(3):
             tip = _fetch(target, config, cache, deadline)
             remote, problems = _read_tree(target, tip, deadline)
-            result["records"] = remote
+            result["records"] = retained(remote)
             meta.update(lastSuccess=time.time(), error=problems)
             if load_local is not None:
                 # A sibling may have replaced a record after the caller took its snapshot.
                 # Re-read for every retry; timestamps cannot order writes after clock rollback.
-                local = _public(load_local(), namespace)
+                local = _public(load_local(), namespace, remote)
                 local_hash = _digest(local)
-                meta["pending"] = bool(meta["pending"] or (local and local_hash != published_hash))
+                meta["pending"] = bool(meta["pending"] or (local_hash != published_hash and (local or published_hash is not None)))
+            # Reconcile deletions and expired history even when no live scope changed.
+            if not local and load_local is None:
+                local = _public(records, namespace, remote)
+                local_hash = _digest(local)
+            own_remote = [r for r in remote if r["namespace"] == namespace]
+            desired = retained([r for r in remote if r["namespace"] != namespace] + local)
+            desired_own = [r for r in desired if r["namespace"] == namespace]
+            meta["pending"] = _digest(own_remote) != _digest(desired_own)
+            if tip == rejected_tip:
+                meta.update(state="unknown" if problems else ("pending" if meta["pending"] else "fresh"),
+                            error="publication rejected (permission or branch rule); fetched peer view is current" if meta["pending"] else problems)
+                if not meta["pending"]:
+                    published_hash = local_hash
+                break
+            # Fold peer-history cleanup into an actual owner update. A reader with no
+            # changed claims must not attempt writes merely to maintain someone else's history.
             if meta["pending"]:
-                if not _publish(target, config, cache, namespace, local, tip, deadline):
+                if not _publish(target, config, cache, namespace, local, tip, deadline, remote=remote):
+                    rejected_tip = tip
                     continue
-                own = {record["lane"] for record in local}
-                result["records"] = [record for record in remote if record["namespace"] != namespace or record["lane"] not in own] + local
+                result["records"] = desired
                 meta["pending"] = False
                 published_hash = local_hash
                 if load_local is not None:
-                    current_hash = _digest(_public(load_local(), namespace))
-                    meta["pending"] = current_hash != published_hash
+                    current = _public(load_local(), namespace, result["records"])
+                    current_desired = retained([r for r in desired if r["namespace"] != namespace] + current)
+                    current_own = [r for r in current_desired if r["namespace"] == namespace]
+                    meta["pending"] = _digest(current_own) != _digest(desired_own)
                     if meta["pending"] and not problems:
                         meta["error"] = "local declarations changed during synchronization; publication remains pending"
+            else:
+                published_hash = local_hash
             meta["state"] = "unknown" if problems else ("pending" if meta["pending"] else "fresh")
             break
         else:

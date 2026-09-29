@@ -38,8 +38,13 @@ visible information, with no dependency scheduler. Clear the blocker with
 Finish with `work finish`; stop without completing with `work abandon`. `work status --all`
 includes retired declarations, and `--json` returns their structured records, effective states,
 and overlap findings. `work declare` replaces your previous manifest; `work update` on a retired
-manifest resumes it. Retired records are retained until manually removed or replaced; Git
-history also retains published versions in shared mode.
+manifest resumes it. Local retired files move into the work store's `retired/` directory and
+remain available for inspection until manually removed or replaced. `--all` includes a bounded
+sample of up to 32 retired records from the last seven days; it is not a permanent history browser.
+Live claims have a separate 256-record limit, so routine task turnover does not consume it.
+Local scans are bounded (4096 directory entries and a short read budget); an incomplete live
+scan reports UNKNOWN and does not replace the shared namespace. Older flat local records are
+still readable. Git history retains published versions even after cleanup of the branch tip.
 
 ## Local coordination
 
@@ -78,8 +83,15 @@ dedicated metadata branch carries manifests separately from source branches; it 
 PRs or merges into the product's code. Use a dedicated branch, not `main`, the integration
 branch, or an existing feature branch. Existing Git credentials and repository permissions
 control who can read and publish declarations. The branch must allow direct writes; repository rules that deny them leave publication pending. Metadata commits include `[skip ci]`; exclude this branch explicitly in CI systems that do not honor that marker. Application hooks do not run during metadata synchronization. No separate service or account is required.
-Each clone gets a persistent random namespace, combined with the lane ID so two people using
-the same worktree path or `--lane` name do not overwrite one another. Use separate worktrees
+Each fresh Git clone gets a persistent random namespace, combined with the lane ID so two
+people using the same worktree path or `--lane` name do not overwrite one another. A local-only
+filesystem binding detects ordinary copies of a Git directory and assigns a new identity.
+A same-filesystem rename keeps the identity. Device/inode remapping (for example some container
+mounts or restored images) cannot always be distinguished from a copy; use independent Git
+clones for those environments.
+Existing unbound identities are adopted without changing them. Copies made before adoption,
+or whole-machine snapshots that preserve the binding, cannot be distinguished reliably: use
+`git clone` for independent machines rather than copying `.git`. No filesystem binding is published. Use separate worktrees
 or explicit lane names for independent agents in a clone. A reader without push permission
 can see peers; its own updates remain pending until it has write access. Repository writers
 can modify the metadata branch; lane identity is coordination information, not authenticated
@@ -106,7 +118,19 @@ paths, interfaces, dependencies, blockers, item references, and PR links on the 
 branch. A public repository makes this information public. Automatic absolute local paths
 and machine hostnames are excluded from the published manifest, but text you declare is
 shared as written. Do not put secrets, customer information, or private machine details in
-that text. Git history retains prior versions; finishing a declaration does not erase it.
+that text. Git history retains prior versions; finishing a declaration does not erase it. Enabling Git
+mode shares active local intent, but does not retroactively publish retired local goals that
+were never shared. A finish or abandon performed with Git coordination enabled records the
+intent to share that final update, even if its push must wait. A local-only or legacy completion
+can retire the last public manifest but cannot export new private text from reuse of the same lane.
+Published retired records remain briefly visible (up to 32, for seven days,
+within the 256-record shared-view limit). Records expired for more than seven days leave the
+branch tip. An owner publication includes bounded cleanup of retired/expired records; read-only observations
+do not attempt a push just for peer-history cleanup, and
+fresh peer claims remain untouched. Removed local records and scopes invalidated by a removed
+worktree or branch change stop asserting active work on the next successful sync. Local stale
+records remain inspectable; temporary offline clones may still show the last fetched state.
+Unchanged blobs are reused rather than re-hashed through one Git process per record.
 
 ## Observe PR outcomes
 
@@ -168,7 +192,9 @@ New `tautline init` projects enable a short lifecycle instruction in generated a
 `tautline init --no-work-coordination` to omit it. Existing lean projects opt in by adding
 `"workCoordination": true` to `.tautline.json`. To refresh generated agent instructions, run
 `tautline slim --target .`. Handwritten instructions are preserved; incorporate the work lifecycle
-line from any `.lean-proposed` file if needed. Changing local mode to the Git object takes effect
+line manually: "Use `tautline work`: `status` on wake/resume and before new work; `declare`
+before edits; `update` on scope changes; `finish` or `abandon` to retire scope." Already-lean
+projects do not receive new proposals for handwritten files. Changing local mode to the Git object takes effect
 immediately and does not require regenerating instructions.
 
 The boolean controls adapter guidance and keeps storage local. The Git object both enables
@@ -179,3 +205,8 @@ a Tautline adapter; automatic startup notices require a managed Tautline project
 
 The feature earns its place through less duplicated work, fewer conflicting changes and faster
 resumes. It adds no mandatory plan, recurring review, edit gate or polling loop.
+
+The metadata schema is versioned. Unsupported fields or malformed records keep the aggregate
+view UNKNOWN, because an incomplete inventory must not look complete. Future incompatible
+field changes require a schema version change and explicit reader compatibility; they are
+not silently accepted as valid v1 records.

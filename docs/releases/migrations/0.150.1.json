@@ -1,0 +1,23 @@
+{
+  "schema": "minervit-release-migration-report/v1",
+  "version": "0.150.1",
+  "wipSafe": true,
+  "behaviorChanges": [
+    "Core guidance requires a fresh-context self-review followed by a different-model-family review, with direct verification of fixes and no repeated review loop.",
+    "Shared manifests retain bounded recent history and reconcile removed claims without consuming a lifetime task quota. Private retired text is not automatically published."
+  ],
+  "requiredMigrations": [],
+  "optionalMigrations": [
+    {
+      "id": "refresh-core-review-guidance",
+      "surface": "project-adapter",
+      "command": "tautline slim --target .",
+      "description": "Refresh generated adapters. For handwritten adapters, manually add the core two-review instruction from docs/reference/reviews.md; slim preserves already-lean handwritten files."
+    }
+  ],
+  "deprecatedSurfaces": [],
+  "productsTested": [],
+  "rollbackNotes": [
+    "Active local and shared manifests remain compatible with 0.150.0. Older versions do not list records moved into the local retired directory; existing Git history is preserved. Returning to an older runtime restores its previous synchronization and review-guidance behavior."
+  ]
+}

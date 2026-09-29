@@ -46,8 +46,9 @@ growing; fix the underlying problem when a new diagnostic appears.
    the stable channel, advanced during release promotion.
 2. Explain the problem, resulting behavior, and validation. A one-page spec is enough when a
    spec is useful. Small fixes can go directly to a PR.
-3. Run `scripts/test.sh` and get one adversarial review. Fix Critical/P1 findings before merge;
-   record useful follow-ups without starting a review-round ritual.
+3. Run `scripts/test.sh`; get one fresh-context adversarial self-review, then one review from
+   a different model family. Fix Critical/P1 findings; name both reviewers/models and outcomes
+   in the PR summary. See [review guidance](docs/reference/reviews.md). No repeated review cycles.
 4. Sign off your commits with `git commit -s` under the Developer Certificate of Origin.
 5. Merge through the repository's configured checks. Releases are batched, not required for
    every PR; see [the release procedure](docs/reference/releases.md).

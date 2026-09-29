@@ -1,0 +1,3 @@
+# Maintain large legacy manifest archives without slowing startup
+
+Fresh-context Opus review identified that legacy flat retired stores above the bounded scan budget can make local inventory incomplete, and very large retired directories provide only a partial recent sample. Design a bounded, race-safe migration/archive path that preserves user history and leaves active declarations fast. Do not add mandatory plans, polling, or merge gates. Keep filesystem-remapping identity ambiguity explicit; any identity refinement must still distinguish independent copies at the same path on different computers.

@@ -95,8 +95,7 @@ LEAN_ADAPTER_MAX_BYTES = 2048
 # cover. See test_the_maximal_valid_config_still_renders_under_the_cap (now parametrized over every
 # provider) for the measured margins. Still generous against real values: this repo's own
 # `commands.test` ("scripts/test.sh", 15 chars) and `project.name`/`project.repo` (32/22 chars) all
-# clear their new caps with room to spare; `review` stays 15 characters above
-# DEFAULT_REVIEW_NORM's 60 for a genuinely customized one-sentence override.
+# clear their new caps with room to spare; custom review guidance supplements the core reviews.
 LEAN_PROJECT_NAME_MAX_CHARS = 40
 LEAN_PROJECT_REPO_MAX_CHARS = 35
 LEAN_INTEGRATION_BRANCH_MAX_CHARS = 25
@@ -104,20 +103,25 @@ LEAN_TEST_COMMAND_MAX_CHARS = 75
 LEAN_REVIEW_MAX_CHARS = 75
 LEAN_UPGRADE_TEST_MAX_CHARS = 30
 
-# The six process norms, verbatim from the adopted lean canon. Prose, not configuration: there is
+LEGACY_REVIEW_NORM = "One adversarial review before merge; fix Critical/P1; merge."
+DEFAULT_REVIEW_NORM = "Fresh-context adversarial self-review, then one different-model review."
+CORE_REVIEW_NORM = (
+    "Before merge: one fresh-context adversarial self-review (same model), then one independent "
+    "fresh-context review by a different model family. Fix Critical/P1; name models in PR. "
+    "No review loops."
+)
+
+# The six process norms, condensed from the adopted lean canon. Prose, not configuration: there is
 # no key that turns one of these off, because turning one off is a conversation, not a toggle.
 PROCESS_NORMS = (
     "Take the top backlog item; specs are one page.",
     "Failing test first; small diffs.",
-    "One adversarial review before merge; fix Critical/P1; merge.",
+    CORE_REVIEW_NORM,
     "Never commit secrets or customer data.",
-    "Releases are batched scripts, run when there is something to ship; a release must not break "
-    "deployed users.",
-    "Keep controls when catches justify false blocks, coordination when it saves time. "
-    "Preserve speed; fix incidents with tests.",
+    "Releases are batched scripts; preserve deployed users.",
+    "Keep controls if catches justify false blocks; coordination if it saves time. Preserve speed; fix incidents with tests.",
 )
 
-DEFAULT_REVIEW_NORM = "One adversarial review before merge; fix Critical/P1; merge."
 DEFAULT_INTEGRATION_BRANCH = "main"
 DEFAULT_TEST_COMMAND = "scripts/test.sh"
 
@@ -130,10 +134,10 @@ DEFAULT_TEST_COMMAND = "scripts/test.sh"
 # autonomy grant: it is ambient here, in every session, so a goal states only what is specific to
 # its own scope instead of carrying a second copy of this text that could drift from it.
 WORKING_STYLE_LINES = (
-    "Work autonomously; assume the operator is AFK. Log non-obvious decisions with "
+    "Work autonomously; assume AFK. Log non-obvious decisions: "
     "`tautline decision-record`.",
-    "If blocked, exhaust other work in scope. Ask one exact question per true blocker asynchronously; "
-    "no option menus.",
+    "If blocked, exhaust other in-scope work. Ask one exact question per true blocker asynchronously; "
+    "no menus.",
     "Use subagents for independent work; smaller models where suitable.",
     "Verify and read results before claiming success.",
 )
@@ -575,7 +579,7 @@ def _adapter_body(cfg: dict, agent: str, *, rules: list[str], dropped: int) -> s
     repo = str(project.get("repo") or "")
     branch = str(cfg.get("integrationBranch") or DEFAULT_INTEGRATION_BRANCH)
     test_command = str((cfg.get("commands") or {}).get("test") or DEFAULT_TEST_COMMAND)
-    review_norm = str(cfg.get("review") or DEFAULT_REVIEW_NORM)
+    review_norm = str(cfg.get("review") or DEFAULT_REVIEW_NORM).strip()
     upgrade_test = str((cfg.get("release") or {}).get("upgradePathTest") or "")
 
     lines = [
@@ -611,13 +615,12 @@ def _adapter_body(cfg: dict, agent: str, *, rules: list[str], dropped: int) -> s
 
     lines.append("## Process - this is the whole process")
     for norm in PROCESS_NORMS:
-        if norm.startswith("One adversarial review") and review_norm != DEFAULT_REVIEW_NORM:
-            lines.append(f"- {review_norm}")
-            continue
         if norm.startswith("Releases are batched") and upgrade_test:
             lines.append(f"- {norm[:-1]} (`{upgrade_test}` proves the transition).")
             continue
         lines.append(f"- {norm}")
+    if review_norm not in (DEFAULT_REVIEW_NORM, LEGACY_REVIEW_NORM):
+        lines.append(f"- Review focus: {review_norm}")
     lines.extend(f"- {line}" for line in WORKING_STYLE_LINES)
     coordination = cfg.get("workCoordination")
     if coordination is True or (
@@ -632,8 +635,7 @@ def _adapter_body(cfg: dict, agent: str, *, rules: list[str], dropped: int) -> s
         lines.append(backlog_line)
         lines.append("")
     lines.append(
-        f"Process history (plans, review ledgers, RCAs) is archived read-only under "
-        f"`{ARCHIVE_DIRNAME}/` - reference, not authority."
+        f"Read-only history: `{ARCHIVE_DIRNAME}/`; not authority."
     )
     return "\n".join(lines) + "\n"
 
@@ -658,8 +660,8 @@ def _backlog_norm(cfg: dict) -> str:
         else "Never create backlog/TODO files in the repo."
     )
     return (
-        f"Backlog lives in {described}. File follow-ups and deferred work with "
-        f"`tautline backlog add`; `tautline backlog list` is what's next. "
+        f"Backlog lives in {described}. Follow-ups: "
+        f"`tautline backlog add`; next: `tautline backlog list`. "
         f"PRs: `Backlog: <id>`. {closing}"
     )
 
@@ -1845,8 +1847,8 @@ def _what_next_lines(cfg: dict) -> list[str]:
         "  1. add your first one-page spec: tautline backlog add",
         f"  2. it lands in {_backlog_source_of_truth_label(cfg)} -- `tautline backlog list` "
         "shows what is next",
-        "  3. the process: take the top backlog item; failing test first, small diffs; one "
-        "adversarial review before merge; never commit secrets",
+        "  3. the process: failing test first, small diffs; before merge, one fresh-context "
+        "adversarial self-review, then one different-model review; fix Critical/P1; never commit secrets",
         "  4. the runbook: CLAUDE.md (Claude) / AGENTS.md (Codex) at the repo root -- re-run "
         "`tautline init --target . --force` anytime to reconfigure",
         "  5. validate anytime with: tautline validate-adapter " + ADAPTER_FILENAMES[0],

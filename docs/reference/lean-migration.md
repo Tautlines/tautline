@@ -126,7 +126,7 @@ permission grants and does not belong in a repository.
   "project": {"name": "Example SaaS", "repo": "example-org/example-saas"},
   "integrationBranch": "main",
   "commands": {"test": "make preflight"},
-  "review": "One adversarial review before merge; fix Critical/P1; merge.",
+  "review": "Fresh-context adversarial self-review, then one different-model review.",
   "security": {"secretScan": true, "customerDataScan": true},
   "release": {"batched": true},
   "laneStatus": "advisory",
@@ -164,3 +164,9 @@ without waiting on a release. `/goal` and `/handoff` become available as slash c
 
 Not working from a framework checkout, or want the released version instead? Use the published
 marketplace from the root `README.md` (`/plugin marketplace add tautlines/tautline`).
+
+Review guidance is supplemental to the two core reviews. Re-run `tautline slim --target .`
+after upgrading to refresh generated instructions. Handwritten instructions are preserved;
+manually add the two-review requirement from [reviews](reviews.md). Already-lean projects do
+not receive new proposals for handwritten files. Generated files report drift after the
+upgrade until re-rendered; this does not mean the old review machinery has returned.

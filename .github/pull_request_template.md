@@ -8,7 +8,11 @@ Backlog: <item-id>
 
 - [ ] `scripts/test.sh` passed on this change (it already includes lint and types).
 - [ ] `git diff --check` passed.
-- [ ] One adversarial review completed; Critical/P1 findings resolved.
+- [ ] Fresh-context adversarial self-review completed; reviewer/model and outcome noted below.
+- [ ] Different-model-family review completed; reviewer/model and outcome noted below.
+- [ ] Critical/P1 findings resolved and fixes verified.
+
+Reviewers/models (effort when known), reviewed scope, findings and fixes:
 
 `scripts/validate.sh` aliases the same suite; do not run both for duplicate evidence.
 Note material limitations or useful follow-ups here.

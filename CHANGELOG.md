@@ -18,6 +18,21 @@ that file is not present in a published copy). This file starts at 0.7.0.
 
 ## [Unreleased]
 
+## [0.150.1] - 2026-09-29
+
+### Changed
+- Core review guidance requires one fresh-context adversarial self-review, then one independent review by a different model family. Record the actual reviewers in the PR and verify fixes directly; no repeated review cycle, mandatory plan or review hook is added. Generated adapters always retain both reviews, with project review text as additional focus.
+
+### Fixed
+- Shared work manifests retire and remove old declarations without consuming a lifetime task quota. Recent history is bounded, fresh peer work is preserved, and unchanged blobs avoid per-record Git writes.
+- Git coordination respects configured SSH transports, detects ordinary copied clone identities, stops publishing locally invalidated worktree scopes, and preserves uncertainty in old or offline cached views. Rejected publication remains pending while fetched peer observations stay usable.
+- Enabling Git coordination no longer publishes private retired goals, including private work that reused a previously shared lane. Explicit Git-mode completion can still publish final updates after an offline retry.
+- Local and shared text limits agree, including Unicode work goals and inbox answers. Handwritten-adapter setup instructions describe the actual manual update path.
+
+### Migration
+- No action is required for active work records. Retired local records move into a separate directory when updated; `work status --all` shows bounded recent history. Git history retains already-published versions.
+- Run `tautline slim --target <project>` to refresh generated review guidance. For handwritten adapters, add the two-review instruction from `docs/reference/reviews.md` manually; already-lean handwritten adapters are preserved.
+
 ## [0.150.0] - 2026-09-29
 
 ### Added

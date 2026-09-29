@@ -24,6 +24,9 @@ from tautline_methodology.util import resolve_env
 SCHEMA = "tautline-work/v1"
 MAX_RECORD_BYTES = 16_384
 MAX_RECORDS = 256
+MAX_SCAN_RECORDS = 4096
+RETIRED_RECORDS = 32
+RETENTION_SECONDS = 7 * 24 * 3600
 TERMINAL = {"completed", "abandoned"}
 STATUSES = {"active", "blocked", *TERMINAL}
 _ID = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$")
@@ -97,6 +100,11 @@ def _validate(record: object, name: str) -> dict:
     for key in ("item", "pr", "blocker"):
         if not isinstance(record.get(key), str):
             raise WorkError(f"invalid {key}")
+    for key in ("goal", "branch", "item", "pr", "blocker"):
+        if len(record[key]) > 8000:
+            raise WorkError(f"{key} exceeds 8000 characters")
+    if "shareRetired" in record and not isinstance(record["shareRetired"], bool):
+        raise WorkError("invalid retirement sharing intent")
     if record.get("status") not in STATUSES:
         raise WorkError("unrecognized status")
     for key in ("paths", "interfaces", "dependsOn"):
@@ -163,16 +171,58 @@ def _local_snapshot(target: Path, lane: str | None = None) -> dict:
         raise WorkError("work store is not a regular directory")
     trees = _worktrees(target)
     now = time.time()
-    for index, path in enumerate(store.iterdir()):
-        if index >= MAX_RECORDS:
-            records.append({"lane": "store", "state": "UNKNOWN", "reason": "record limit exceeded"})
+    # Retired history has a separate directory: normal task turnover cannot consume the
+    # active-record scan budget. Existing flat retired files are still read on upgrade.
+    def modified(path):
+        try:
+            return path.stat(follow_symlinks=False).st_mtime_ns
+        except FileNotFoundError:
+            return -1
+    candidates = []
+    with os.scandir(store) as entries:
+        for scanned, entry in enumerate(entries):
+            if scanned >= MAX_SCAN_RECORDS:
+                records.append({"lane": "store", "state": "UNKNOWN", "reason": "local scan limit exceeded"})
+                break
+            if entry.name.endswith(".json"):
+                candidates.append(Path(entry.path))
+            if len(candidates) > MAX_SCAN_RECORDS:
+                break
+    own_path = store / (current["lane"] + ".json")
+    candidates.sort(key=lambda p: (p == own_path, modified(p)), reverse=True)
+    if own_path.exists() and own_path not in candidates:
+        candidates.insert(0, own_path)
+    if len(candidates) > MAX_SCAN_RECORDS:
+        records.append({"lane": "store", "state": "UNKNOWN", "reason": "local scan limit exceeded"})
+    candidates = candidates[:MAX_SCAN_RECORDS]
+    retired_dir = store / "retired"
+    if retired_dir.is_symlink():
+        raise WorkError("retired work store must not be a symlink")
+    if retired_dir.is_dir():
+        history = []
+        history_deadline = time.monotonic() + 0.05
+        with os.scandir(retired_dir) as entries:
+            for scanned, entry in enumerate(entries):
+                if scanned >= MAX_SCAN_RECORDS or time.monotonic() > history_deadline:
+                    break  # Retired history is explicitly a bounded sample, never a live-work gate.
+                if entry.name.endswith(".json"):
+                    history.append(Path(entry.path))
+        own_retired = retired_dir / (current["lane"] + ".json")
+        if own_retired.exists() and own_retired not in history:
+            history.append(own_retired)
+        history.sort(key=lambda p: (p == own_retired, modified(p)), reverse=True)
+        candidates += history[:RETIRED_RECORDS]
+    scan_deadline = time.monotonic() + 0.25
+    for path in candidates:
+        if time.monotonic() > scan_deadline:
+            records.append({"lane": "store", "state": "UNKNOWN", "reason": "local scan time budget exceeded"})
             break
-        if not path.name.endswith(".json"):
-            continue
         try:
             record = dict(_read(path))
             age = now - record["updatedAt"]
             status = record["status"]
+            if status in TERMINAL and age > RETENTION_SECONDS:
+                continue
             state, reason = status.upper(), ""
             if age < 0:
                 state, reason = "UNKNOWN", "timestamp is in the future"
@@ -185,8 +235,17 @@ def _local_snapshot(target: Path, lane: str | None = None) -> dict:
                     state, reason = "STALE", "declaration expired; owner may have stopped"
             record.update(state=state, reason=reason, ageHours=round(max(0, age) / 3600, 1))
             records.append(record)
+        except FileNotFoundError:
+            continue  # A concurrent finish/reactivation can move a record between stores.
         except (OSError, ValueError, TypeError, RuntimeError) as exc:
             records.append({"lane": _safe(path.stem, 64), "state": "UNKNOWN", "reason": _safe(exc)})
+    live = [r for r in records if r.get("status") not in TERMINAL]
+    retired = sorted((r for r in records if r.get("status") in TERMINAL),
+                     key=lambda r: r["updatedAt"], reverse=True)
+    if len(live) > MAX_RECORDS:
+        live = sorted(live, key=lambda r: r["lane"] != current["lane"])[:MAX_RECORDS]
+        live.append({"lane": "store", "state": "UNKNOWN", "reason": "active record limit exceeded"})
+    result["records"] = live + retired[:RETIRED_RECORDS]
     return result
 
 
@@ -247,8 +306,10 @@ def snapshot(target: Path, lane: str | None = None, *, cfg: dict | None = None,
         result["backend"] = "git"
         local = [record for record in result["records"] if record.get("schema") == SCHEMA]
         def load_local():
-            return [record for record in _local_snapshot(target, lane)["records"]
-                    if record.get("schema") == SCHEMA]
+            snapshot_records = _local_snapshot(target, lane)["records"]
+            if any(r.get("schema") != SCHEMA for r in snapshot_records):
+                raise work_git.MetadataError("local declarations incomplete; shared publication remains pending")
+            return [record for record in snapshot_records if record.get("schema") == SCHEMA]
         shared = work_git.sync(target, configured, local, publish=publish, force=force,
                                refresh=refresh, load_local=load_local)
         # Another local agent may have updated while this call fetched/pushed. Do not hide its
@@ -294,7 +355,8 @@ def render(state: dict, *, all_records: bool = False, compact: bool = False) -> 
                      ("; local publication pending" if sync.get("pending") else ""))
         if sync.get("error"):
             lines.append("  " + _safe(sync["error"]))
-        if not last or sync.get("state") not in {"fresh", "cached"}:
+        if (not last or sync.get("state") not in {"fresh", "cached", "pending"}
+                or time.time() - last > sync.get("syncIntervalSeconds", 60)):
             lines.append("  Remote work may be missing or outdated; an empty view does not mean nobody is working.")
     for record in records[:6] if compact else records:
         marker = " (you)" if record.get("id", record["lane"]) == state.get("id", state["lane"]) else ""
@@ -352,14 +414,21 @@ def _write(store: Path, record: dict) -> None:
     if store.is_symlink() or store.parent.is_symlink():
         raise WorkError("work store must not be a symlink")
     store.mkdir(parents=True, exist_ok=True, mode=0o700)
-    raw = json.dumps(record, indent=2, sort_keys=True).encode() + b"\n"
+    retired = store / "retired"
+    if retired.is_symlink():
+        raise WorkError("retired work store must not be a symlink")
+    destination = retired if record["status"] in TERMINAL else store
+    destination.mkdir(exist_ok=True, mode=0o700)
+    raw = json.dumps(record, indent=2, sort_keys=True, ensure_ascii=False).encode("utf-8", "backslashreplace") + b"\n"
     if len(raw) > MAX_RECORD_BYTES:
         raise WorkError("declaration exceeds 16KB; shorten scope or goal")
-    fd, name = tempfile.mkstemp(prefix=".work-", dir=store)
+    fd, name = tempfile.mkstemp(prefix=".work-", dir=destination)
     try:
         with os.fdopen(fd, "wb") as stream:
             stream.write(raw)
-        os.replace(name, store / (record["lane"] + ".json"))
+        os.replace(name, destination / (record["lane"] + ".json"))
+        other = store if destination == retired else retired
+        (other / (record["lane"] + ".json")).unlink(missing_ok=True)
     finally:
         Path(name).unlink(missing_ok=True)
 
@@ -399,6 +468,8 @@ def command(args: argparse.Namespace) -> int:
             return 0
         store = Path(state["store"])
         old_path = store / (state["lane"] + ".json")
+        if not old_path.exists():
+            old_path = store / "retired" / (state["lane"] + ".json")
         if args.action == "declare":
             record = {
                 "schema": SCHEMA, "lane": state["lane"], "goal": args.goal,
@@ -425,8 +496,17 @@ def command(args: argparse.Namespace) -> int:
                 record[key] = []
         if args.action in {"finish", "abandon"}:
             record["status"] = "completed" if args.action == "finish" else "abandoned"
+            try:
+                coordination = _coordination_config(Path(state["worktree"]), None)
+            except (OSError, ValueError, TypeError, RuntimeError):
+                # Invalid/unavailable sharing config must not gate a local completion.
+                # Without readable sharing intent, never export a new retired payload.
+                coordination = False
+            record["shareRetired"] = isinstance(coordination, dict) and coordination.get("backend") == "git"
         elif args.action == "update" and record["status"] in TERMINAL:
             record["status"] = getattr(args, "status", None) or "active"
+        if args.action not in {"finish", "abandon"}:
+            record.pop("shareRetired", None)
         record["updatedAt"] = time.time()
         if args.action != "abandon":
             record.update(

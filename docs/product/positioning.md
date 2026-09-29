@@ -18,14 +18,14 @@ answer should reach the agent that needs it. Measure these features by the effor
   adding another test run or turning a receipt into permission to continue.
 - Collect operator questions and persist answers until consumed. Resume through a short
   handoff when useful.
-- Use the project's tests and CI for verification. Tautline's development process has one
-  adversarial review before merge, not an accumulating sequence of approval rounds.
+- Use the project's tests and CI for verification. Before merge, get one fresh-context adversarial
+  self-review, then one review from a different model family. Keep both passes bounded.
 
 ## Current boundaries
 
-Coordination is local to worktrees sharing a Git common directory. It is advisory: overlapping,
-stale, or blocked work remains visible but does not lock edits or reserve a backlog item.
-Remote fleet synchronization and a hosted dashboard are future work.
+Coordination shares a local Git common directory by default, with opt-in Git-branch sharing
+across clones and computers. It is advisory: overlapping, stale, or blocked work does not lock
+edits or reserve a backlog item. A visual fleet page remains future work.
 
 Evidence is a record of a command and its result. Health reports separate local observations
 from explicitly requested remote facts. Neither should imply successful deployment,
