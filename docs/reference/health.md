@@ -33,3 +33,7 @@ lands; the exact SHA remains visible for that reason.
 
 For proof you ran locally and its relationship to current repository files, see
 [execution receipts](evidence.md).
+
+For PR state and exact-head CI attached to agent declarations, use
+[`tautline work status --remote`](work.md#observe-pr-outcomes). `health --remote` continues to
+observe the integration branch rather than individual PRs.

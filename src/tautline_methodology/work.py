@@ -16,6 +16,7 @@ import subprocess
 import sys
 import tempfile
 import time
+from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 
 from tautline_methodology.util import resolve_env
@@ -311,6 +312,21 @@ def render(state: dict, *, all_records: bool = False, compact: bool = False) -> 
             details.append(_safe(record["reason"]))
         if details:
             lines.append("    " + "; ".join(details))
+        observation = record.get("prObservation")
+        if observation:
+            observed = observation.get("observedAt")
+            try:
+                when = datetime.fromtimestamp(observed, timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+            except (TypeError, ValueError, OverflowError, OSError):
+                when = "unavailable"
+            head = _safe(observation.get("headSha") or "unknown", 12)
+            lines.append(
+                f"    Observed PR {_safe(observation.get('state', 'unknown')).upper()}; "
+                f"CI {_safe(observation.get('ci', 'unknown')).upper()}; head={head}; "
+                f"checked={when}; Deployment UNKNOWN"
+            )
+            if observation.get("reason"):
+                lines.append("      " + _safe(observation["reason"]))
     if compact and len(records) > 6:
         lines.append(f"  {len(records) - 6} more; run `tautline work status` for all declarations")
     for overlap in state["overlaps"][:6] if compact else state["overlaps"]:
@@ -349,6 +365,9 @@ def _write(store: Path, record: dict) -> None:
 
 
 def command(args: argparse.Namespace) -> int:
+    if getattr(args, "remote", False) and args.action != "status":
+        print("work_error: --remote is only valid for work status", file=sys.stderr)
+        return 1
     try:
         if getattr(args, "description", None) is not None:
             if args.action != "declare" or args.goal is not None:
@@ -360,6 +379,19 @@ def command(args: argparse.Namespace) -> int:
         state = _local_snapshot(target, args.lane)
         if args.action in {"status", "sync"}:
             state = snapshot(target, args.lane, refresh=not args.no_sync, force=args.action == "sync")
+            if getattr(args, "remote", False):
+                from tautline_methodology.work_remote import attach_observations
+                try:
+                    state = attach_observations(target, state, all_records=args.all)
+                except (OSError, ValueError, TypeError, RuntimeError):
+                    # A failed optional observation must not hide already-readable peer intent.
+                    for record in state["records"]:
+                        if record.get("pr") and (args.all or record["state"].lower() not in TERMINAL):
+                            record["prObservation"] = {
+                                "state": "unknown", "headSha": None, "ci": "unknown",
+                                "observedAt": None, "url": None, "deployment": "unknown",
+                                "reason": "PR observation unavailable; declared work is unchanged",
+                            }
             if args.json:
                 print(json.dumps(state, indent=2, sort_keys=True))
             else:
@@ -423,6 +455,7 @@ def configure(parser) -> None:
     parser.add_argument("--target", type=Path, default=Path("."))
     parser.add_argument("--lane", help="Stable agent ID; default is this worktree (or TAUTLINE_WORK_LANE).")
     parser.add_argument("--no-sync", action="store_true", help="Use cached shared state only; writes remain pending until sync.")
+    parser.add_argument("--remote", action="store_true", help="For status only: observe declared GitHub PRs and exact-head CI within one five-second budget.")
     parser.add_argument("--all", action="store_true", help="Include completed and abandoned declarations in status.")
     parser.add_argument("--json", action="store_true", help="Machine-readable status.")
     parser.add_argument("--goal", help="Replace the declaration's goal.")

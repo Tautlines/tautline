@@ -9,7 +9,7 @@ availability. `tautline --help` and each command's `--help` supply the exact arg
 | Workflow | Current tools and boundary |
 | --- | --- |
 | Project setup | `init`, `slim`, adapter validation/rendering, and checkout/PyPI installation. Lean instructions are the default. |
-| Shared work | `work` manifests across local sibling worktrees, with an opt-in Git metadata branch for other clones, computers, and teammates. Startup and backlog pickup surface cached peer intent; bounded sync reports uncertainty when unavailable. Advisory overlap/staleness, no file locks or merge gates. [Configuration](work.md). |
+| Shared work | `work` manifests across local sibling worktrees, with an opt-in Git metadata branch for other clones, computers, and teammates. Startup and backlog pickup surface cached peer intent; bounded sync reports uncertainty when unavailable. Explicit `work status --remote` connects declarations to PR state and exact-head CI. Advisory overlap/staleness, no file locks or merge gates. [Configuration](work.md). |
 | Backlog | `backlog list/add/take/done` with one configured local, GitHub, or Jira provider. No board mirrors or atomic agent reservation guarantee. Jira has not been validated against a live site. |
 | Evidence | `evidence run -- <command>` records an execution and code identity; `evidence status` reports its relevance to the current tree. Optional and local. |
 | Health | `health` reports local facts. `health --remote` requests GitHub facts. No automatic deployment, no inference that an unknown check passed. |

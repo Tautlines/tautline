@@ -33,8 +33,9 @@ not yet been collected; it is not a reason to block a session, PR, or release.
 | `red-green-check` — mutates a named symbol, confirms the given test command kills it, restores the original (Tier-1 reclaim) | 0.147.0 (2026-08-30) | — | pending first review |
 | PR<->backlog reference check — `scripts/check_pr_backlog_ref.py`, active only when a backlog provider is configured | 0.148.0 | Framework config now enables the existing check; no additional review step | observe real use |
 | Shared work declarations — advisory, local by default, optional Git sharing, no edit or merge lock | 0.148.0 | Sibling-worktree and independent-clone discovery, concurrent pushes, offline recovery, overlap, stale/crash handling verified; duplicated effort avoided still to measure | observe real use |
+| Optional PR outcomes in work status | 0.150.0 | Exact-head, changed-head and unavailable observations verified; default paths collect no PR data. Operator time saved still to measure | observe real use |
 | Optional execution receipts and health reports | 0.148.0 | Fresh/stale/interrupted results and unknown health are distinguished; never an extra merge gate | observe real use |
 
-0.147.0 landed on the development channel in August. The next public release carries the lean
-workflow and recovery features to adopters. Evaluate their value during ordinary use, without a
+The lean recovery is public in 0.148.1, Git-shared manifests in 0.149.0, and optional PR
+observations in 0.150.0. Evaluate their value during ordinary use, without a
 separate review ceremony.

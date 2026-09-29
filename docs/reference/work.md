@@ -108,6 +108,36 @@ and machine hostnames are excluded from the published manifest, but text you dec
 shared as written. Do not put secrets, customer information, or private machine details in
 that text. Git history retains prior versions; finishing a declaration does not erase it.
 
+## Observe PR outcomes
+
+```sh
+tautline work status --remote
+tautline work status --remote --json
+tautline work status --remote --all
+```
+
+`--remote` explicitly asks GitHub for the PRs named in visible declarations. It shows each PR's
+open, draft, merged, or closed state, observed head commit, and CI result for that exact commit.
+It requires the `gh` CLI with access to the linked GitHub.com repositories. Unsupported links,
+missing access, incomplete responses and absent checks report unknown. Skipped or neutral checks
+cannot produce a passing CI result.
+
+The whole PR refresh has a five-second budget, with up to four concurrent requests and eight
+unique PRs. Repeated links reuse one observation. Work beyond the time or size limit remains
+unknown. Each observation has a timestamp; a PR may change immediately afterward. A head change
+during collection invalidates the CI observation. Results are not written into declarations or
+published to the shared metadata branch.
+
+Declared progress and observed outcomes stay separate: an active declaration can reference a
+merged PR, and completing a declaration does not say its PR merged. CI success establishes only
+the observed checks, not sufficient coverage, review approval, acceptance or deployment.
+Deployment remains explicitly unknown.
+
+This option is only valid with `work status`. Ordinary status, startup, work pickup and edits
+collect no PR observations. Git-mode manifest refresh is still controlled by its adapter settings;
+`--no-sync --remote` uses cached manifests while explicitly querying their PRs. There is no
+background polling, automatic retirement, required check or additional development gate.
+
 ## Reading the view
 
 - `ACTIVE` and `BLOCKED` are fresh declarations. The view includes owner, branch, worktree,

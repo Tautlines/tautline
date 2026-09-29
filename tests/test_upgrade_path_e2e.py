@@ -16,7 +16,7 @@ the real eighteen-entry payload 0.143.0's `install-hooks` produced, recorded bef
 deleted. That is deliberate and not a downgrade: the state under test is a machine set up by an
 OLDER release, so a fixture that asks the current installer to build it would drift forward with
 every change to that installer, which is the drift the migration exists to survive. B checks out
-the pinned public 0.148.1 baseline, so running on the integration tip still proves an upgrade.
+the pinned public 0.149.0 baseline, so running on the integration tip still proves an upgrade.
 """
 
 import hashlib
@@ -39,7 +39,7 @@ EXAMPLE_ADAPTER = REPO_ROOT / "adapters" / "projects" / "example-saas.json"
 # Deliberately pinned to the deployed public version while recovering from demolition. Update
 # only when a newer public release becomes the supported migration baseline, not on every merge.
 # Resolve by VERSION rather than a private commit SHA: exported public history has different IDs.
-RUNTIME_BASELINE_VERSION = "0.148.1"
+RUNTIME_BASELINE_VERSION = "0.149.0"
 
 # The adapter budget the lean profile exists to hold. `render_lean_adapter` targets 2048; this is
 # the gate's slightly looser ceiling, so a few bytes of a longer project name is not a release
@@ -632,7 +632,7 @@ def test_runtime_baseline_stays_on_public_release_when_integration_is_current(tm
     _git("init", "-q", "-b", "main", cwd=tmp_path)
     _git("config", "user.email", "test@example.invalid", cwd=tmp_path)
     _git("config", "user.name", "test", cwd=tmp_path)
-    (tmp_path / "VERSION").write_text("0.148.1\n", encoding="utf-8")
+    (tmp_path / "VERSION").write_text("0.149.0\n", encoding="utf-8")
     _git("add", "VERSION", cwd=tmp_path)
     _git("commit", "-qm", "public baseline", cwd=tmp_path)
     expected = _git("rev-parse", "HEAD", cwd=tmp_path)
@@ -644,7 +644,7 @@ def test_runtime_baseline_stays_on_public_release_when_integration_is_current(tm
 
 def test_runtime_baseline_missing_history_is_a_failure_not_a_skip(tmp_path):
     _git("init", "-q", "-b", "main", cwd=tmp_path)
-    with pytest.raises(pytest.fail.Exception, match="0.148.1.*full Git history"):
+    with pytest.raises(pytest.fail.Exception, match="0.149.0.*full Git history"):
         _runtime_baseline(tmp_path)
 
 

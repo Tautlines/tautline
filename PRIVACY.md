@@ -50,3 +50,8 @@ a local record does not delete remote issues, comments, releases, or Git history
 
 For privacy questions contact `hello@minervit.ai`. For credential exposure or a vulnerability,
 use [private security reporting](SECURITY.md).
+
+`tautline work status --remote` explicitly queries declared GitHub.com PR URLs and exact-head
+checks through the authenticated `gh` CLI. It does not send manifest goals, blockers, local paths
+or test output to GitHub. Observations remain in the command output; they are not saved or
+published as work declarations.

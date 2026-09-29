@@ -18,6 +18,14 @@ that file is not present in a published copy). This file starts at 0.7.0.
 
 ## [Unreleased]
 
+## [0.150.0] - 2026-09-29
+
+### Added
+- `tautline work status --remote` connects declared agent work to observed GitHub PR state and CI for the exact PR head. Requests are deduplicated, concurrent and bounded by one five-second budget. Inaccessible, incomplete or changing observations remain unknown; ordinary startup and work pickup do not query PRs.
+
+### Fixed
+- Shared-manifest setup instructions now enable the Git backend directly through `.tautline.json` and `work sync`. Refreshing generated agent guidance with `slim` is optional.
+
 ## [0.149.0] - 2026-09-29
 
 ### Added

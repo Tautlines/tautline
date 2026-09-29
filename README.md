@@ -16,7 +16,8 @@ completion hooks. Your project's tests and CI remain the quality boundary.
 - **Shared work intent.** Share manifests of goals, scope, dependencies, blockers, and
   progress across local worktrees, or opt into a Git metadata branch across computers and
   teammates. Agents see peer work at startup and when taking a backlog item; the fleet view
-  highlights stale declarations and possible overlaps.
+  highlights stale declarations and possible overlaps. `work status --remote` adds observed
+  PR state and CI for each PR head when requested.
 - **Evidence you can inspect.** Wrap an existing test command with `tautline evidence run`
   to keep its exit status and code identity. `tautline health` shows current local facts;
   `--remote` adds on-demand GitHub facts. Unknown stays unknown.
@@ -80,6 +81,7 @@ The npm package is a pointer to this Python installation, not another runtime.
 
 ```bash
 tautline work status                  # see peer agents and possible overlaps
+tautline work status --remote         # request PR outcomes and exact-head CI
 tautline work declare "Improve checkout" --path src/checkout
 tautline backlog list                 # use your configured backlog
 tautline evidence run -- scripts/test.sh

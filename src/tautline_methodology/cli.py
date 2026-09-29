@@ -5863,6 +5863,7 @@ RELEASE_ARTIFACT_PATHS = [
     "src/tautline_methodology/operator_inbox.py",
     "src/tautline_methodology/work.py",
     "src/tautline_methodology/work_git.py",
+    "src/tautline_methodology/work_remote.py",
     "src/tautline_methodology/runtime_capabilities.py",
     "src/tautline_methodology/cli.py",
     "src/tautline_methodology/gitutil.py",
